@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "adminhead",
+  "description": "Adminhead's Claude Code plugins: skills, agents, commands, hooks, and MCP servers.",
+  "owner": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "example",
+      "source": "./plugins/example",
+      "description": "Template plugin showing a skill and a function hook. Copy it to start a new plugin.",
+      "version": "0.1.0",
+      "category": "development"
+    }
+  ]
+}
