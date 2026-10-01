@@ -13,6 +13,13 @@
       "description": "Template plugin showing a skill and a function hook. Copy it to start a new plugin.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "secret-stash",
+      "source": "./plugins/secret-stash",
+      "description": "Replaces secrets with stable IDs before they reach the API, and restores real values in tool arguments and on-screen text.",
+      "version": "0.1.0",
+      "category": "security"
     }
   ]
 }

@@ -1,0 +1,23 @@
+{
+  "name": "secret-stash",
+  "version": "0.1.0",
+  "description": "Replaces secrets in content bound for the model with stable identifiers, and restores them in tool arguments and on-screen text.",
+  "author": {
+    "name": "Buck Brady"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "envVars": {
+      "type": "string",
+      "title": "Environment variables to stash",
+      "description": "Names of environment variables whose values are stashed at session start. The project file can list more.",
+      "multiple": true
+    },
+    "projectFile": {
+      "type": "string",
+      "title": "Project file",
+      "description": "Path of the project config, relative to the project root.",
+      "default": ".secret-stash.json"
+    }
+  }
+}
