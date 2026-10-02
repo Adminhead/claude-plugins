@@ -1,0 +1,30 @@
+   Compiling demo v0.1.0 (/work/rsbad)
+error[E0277]: cannot subtract `&str` from `i32`
+ --> src/lib.rs:7:7
+  |
+7 |     a - "x"
+  |       ^ no implementation for `i32 - &str`
+  |
+  = help: the trait `Sub<&str>` is not implemented for `i32`
+help: the following other types implement trait `Sub<Rhs>`
+ --> /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/ops/arith.rs:210:8
+  |
+  = note: `i32` implements `Sub`
+ ::: /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/ops/arith.rs:225:0
+  |
+  = note: in this macro invocation
+ --> /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/internal_macros.rs:22:8
+  |
+  = note: `&i32` implements `Sub<i32>`
+ ::: /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/internal_macros.rs:33:8
+  |
+  = note: `i32` implements `Sub<&i32>`
+ ::: /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/core/src/internal_macros.rs:44:8
+  |
+  = note: `&i32` implements `Sub`
+  = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `demo` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `demo` (lib test) due to 1 previous error

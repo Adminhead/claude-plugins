@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "github-pat",
+  "Description": "GitHub PAT",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 10,
+  "EndColumn": 49,
+  "Match": "REDACTED",
+  "Secret": "REDACTED",
+  "File": "__TREE__/settings_local.py",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.8,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "__TREE__/settings_local.py:github-pat:1"
+ }
+]
