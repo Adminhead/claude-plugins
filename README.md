@@ -1,6 +1,24 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists three plugins: `example`, a template to copy, `secret-stash`, which keeps secrets out of API requests ([docs](docs/plugins/secret-stash.md)), and `ripgrep`, which teaches Claude to search with `rg` ([docs](docs/plugins/ripgrep.md)).
+Claude Code plugin marketplace `adminhead`. It lists 15 plugins. Install one with `claude plugin install <plugin>@adminhead`.
+
+| Plugin | Description | Docs |
+| --- | --- | --- |
+| `example` | Template plugin showing a skill and a function hook. Copy it to start a new plugin. | [plugins/example](plugins/example) |
+| `secret-stash` | Replaces secrets with stable IDs before they reach the API, and restores real values in tool arguments and on-screen text. | [docs](docs/plugins/secret-stash.md) |
+| `ripgrep` | Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context. | [docs](docs/plugins/ripgrep.md) |
+| `git` | Git skills: focused commits and worktrees. | [docs](docs/plugins/git.md) |
+| `github` | GitHub skills: Actions workflows, Dependabot configuration, and PR review comments. | [docs](docs/plugins/github.md) |
+| `efficient` | Cost-conscious engineering skills for coding, planning, testing, research, web, and language and database work. | [docs](docs/plugins/efficient.md) |
+| `authoring` | Skills for authoring Claude Code skills, agent instruction files, and architecture decision records. | [docs](docs/plugins/authoring.md) |
+| `devenv` | Configure, migrate, debug, and verify devenv.sh developer environments. | [docs](docs/plugins/devenv.md) |
+| `chezmoi` | Manage, migrate, and troubleshoot chezmoi-managed dotfiles. | [docs](docs/plugins/chezmoi.md) |
+| `pass-cli` | Use the Proton Pass CLI without exposing secrets. | [docs](docs/plugins/pass-cli.md) |
+| `sentry` | Instrument apps with official Sentry SDKs. | [docs](docs/plugins/sentry.md) |
+| `playwright-cli` | Drive a headless, isolated browser from Bash with playwright-cli. | [docs](docs/plugins/playwright-cli.md) |
+| `termwright` | Drive and test terminal UI apps with the termwright CLI. | [docs](docs/plugins/termwright.md) |
+| `accessibility` | Accessibility skills: manual screen-reader and keyboard testing of web journeys. | [docs](docs/plugins/accessibility.md) |
+| `quality` | Test running, security audit, second-opinion review, and de-slopping skills for verifying code changes. | [docs](docs/plugins/quality.md) |
 
 ## Layout
 
