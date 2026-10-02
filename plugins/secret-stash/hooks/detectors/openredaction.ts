@@ -32,10 +32,58 @@ export const PRESETS: readonly string[] = [
   'pci_dss', 'soc2', 'soc-2',
 ]
 
+// Keyword-then-value patterns whose separator may be plain whitespace, so the "value" can be the
+// next word of prose ("secret management", "access token verification-flow").
+const KEYWORD_PATTERNS: ReadonlySet<string> = new Set([
+  'GENERIC_SECRET', 'GENERIC_API_KEY', 'OAUTH_CLIENT_SECRET', 'OAUTH_TOKEN', 'BEARER_TOKEN',
+])
+
+// Prose check, applied when whitespace or `:` separates keyword and value (`secret: denied` is an
+// error message); `=` marks an assignment, where the library's match stands. Words, identifiers and
+// call syntax are not secrets. A value passes when it has a digit or a symbol (`-_.` do not count).
+// A long letters-only value passes when it mixes case. This misses a short passphrase made of
+// letters only, and still stashes a prose word with a digit or symbol (`utf8mb4_bin`). The `.env`
+// key rule covers `key: value` lines.
+export function looksLikeSecret(value: string): boolean {
+  if (/[A-Za-z_]\w*\(\)|\]\(/.test(value)) return false
+  if (/[^A-Za-z\-_.]/.test(value)) return true
+  return value.length >= 20 && /[a-z]/.test(value) && /[A-Z]/.test(value)
+}
+
+function proseValue(value: string, context: string, at: number): boolean {
+  const before = context.slice(0, at)
+  const sep = /[:=\s]+$/.exec(before)?.[0] ?? ''
+  // A separator that fills the whole context is unreadable; treat it as an assignment.
+  if (sep.length === before.length || sep.includes('=')) return true
+  return looksLikeSecret(value)
+}
+
+// The library's AWS secret pattern matches any 40-character run of [A-Za-z0-9/+=], paths and hashes
+// included. Real keys are random base64 with at least two character classes, are not a run of
+// lowercase path segments or a hex digest (git SHA-1), and are not cut from a longer base64 or path
+// token. A key word may sit anywhere in the context, before or after, across lines (CSV headers,
+// YAML values on the next line, trailing comments).
+function isAwsSecret(value: string, context: string, at: number): boolean {
+  const classes = [/[a-z]/, /[A-Z]/, /[0-9]/].filter(re => re.test(value)).length
+  if (classes < 2) return false
+  if (/^[0-9a-f]{40}$/.test(value) || /^[a-z0-9]*(?:\/[a-z0-9]*){2,}$/.test(value)) return false
+  if (/[A-Za-z0-9+/]/.test(context[at - 1] ?? '') || /[A-Za-z0-9+/=]/.test(context[at + value.length] ?? '')) return false
+  return /aws|amazon|secret|access.?key/i.test(context)
+}
+
+// Adds our own check after the library's validator.
+function tightened(p: Scannable): Scannable {
+  const own: Scannable['validator'] =
+    p.type === 'AWS_SECRET_KEY' ? isAwsSecret : KEYWORD_PATTERNS.has(p.type) ? proseValue : undefined
+  if (!own) return p
+  const base = p.validator
+  return { ...p, validator: (value, context, at) => (base?.(value, context, at) ?? true) && own(value, context, at) }
+}
+
 let everything: Scannable[] | undefined
 function allPatterns(): Scannable[] {
   // No restrictions: the library's whole pattern list.
-  return (everything ??= new Lite().getPatterns())
+  return (everything ??= new Lite().getPatterns().map(tightened))
 }
 
 // Every pattern name the config may list.

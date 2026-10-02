@@ -3,8 +3,8 @@ import type { Match, Source } from '../types.ts'
 export type Scannable = {
   type: string
   regex: RegExp
-  // Receives the matched value and up to 50 characters of context each side.
-  validator?: (value: string, context: string) => boolean
+  // Receives the matched value, up to 50 characters of context each side, and the value's offset in that context.
+  validator?: (value: string, context: string, at: number) => boolean
 }
 
 // Budget for one detect() call across all its patterns.
@@ -45,7 +45,8 @@ export function scanPatterns(
       const start = m.index + (m[1] === undefined ? 0 : m[0].indexOf(value))
       const end = start + value.length
       if (whitelist.has(value)) continue
-      if (p.validator && !p.validator(value, text.slice(Math.max(0, start - CONTEXT), end + CONTEXT))) continue
+      const from = Math.max(0, start - CONTEXT)
+      if (p.validator && !p.validator(value, text.slice(from, end + CONTEXT), start - from)) continue
       // Counted after the filters, so whitelisted or rejected matches (a long base64 blob) don't hit the cap.
       if (++count > MAX_MATCHES) throw new ScanOverrun(`secret-stash: pattern ${p.type} accepted over ${MAX_MATCHES} matches`)
       out.push({ start, end, category: p.type, source })
