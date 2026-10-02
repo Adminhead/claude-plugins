@@ -1,0 +1,6 @@
+{
+  "name": "mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness.",
+  "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
+}

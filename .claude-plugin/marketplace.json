@@ -139,6 +139,13 @@
       "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, homelab networking, and Terraform.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "mcp",
+      "source": "./plugins/mcp",
+      "description": "Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
