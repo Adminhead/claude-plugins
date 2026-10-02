@@ -1,6 +1,6 @@
 # skills-to-plugins — spec and plan
 
-Status: Slices 0–5 done, 2026-10-01. Slice 6 not started. All decisions are closed.
+Status: Slices 0–6 done, 2026-10-02. Follow-ups listed under Next.
 
 ## Progress (resume here)
 
@@ -52,9 +52,24 @@ Status: Slices 0–5 done, 2026-10-01. Slice 6 not started. All decisions are cl
 - **Triggering.** "Write an ADR…" loaded `authoring:adr-writing` on its own. "Commit my work." committed without loading any skill. That is the `git:commit` vs `commit-commands:commit` boundary Slice 6's evals cover.
 - **Not in scope but noticed.** `ripgrep@adminhead` is not installed. The `quality:second-opinion` grant lets `consult.sh --input FILE` send any readable file to an external model without a prompt. That behavior predates the migration (the old path was already allowed in `~/.claude/settings.json`), but every new install now gets it.
 
+### Slice 6 — done, 2026-10-02
+
+- **Settings.** The two dead `consult.sh` allow rules were removed from `~/.claude/settings.json` (user decision), after a backup to `~/.claude/skills.migrated/_settings.json.bak`.
+- **Docs.** `docs/plugins/<name>.md` exists for all 12 plugins, in the `ripgrep.md` shape. The README lists all 15 marketplace plugins. A review found no factual errors. Dependency claims were softened to what the plugins-reference confirms: a dependency of an enabled plugin stays enabled. Auto-install of `efficient` with `quality` is UNCONFIRMED.
+- **Evals.** Routing suites are in `plugins/{git,authoring,efficient}/evals/`, 9 cases in all. The first pass used 1 run per case (user decision) and `--no-publish`, and cost about $2.85.
+  - Fired as intended: `git:commit`, `authoring:create-skill`, `authoring:manage-agent-instructions` (not `create-skill`), `authoring:adr-writing`, `efficient:testing` (not `e2e-testing`), and `efficient:e2e-testing` (not `testing`).
+  - `efficient:coding` and `efficient:problem-solving` did not fire on the first prompts. Those pasted all the code inline, so the model answered in one turn. The rewritten prompts state a contract (coding) and give only symptoms and a CI log (problem-solving).
+  - A review found that the rewrite borrowed the skills' own workflow words ("change envelope", "cheapest decisive check"), and those words were removed. With neutral wording, `efficient:problem-solving` fired in 2 of 2 runs and `efficient:coding` in 0 of 2. Neither competitor fired. So `efficient:coding` does not trigger on an ordinary, well-specified feature request. Its description was not changed.
+  - Under ablation, only negative graders score, and a `fires-*` grader is just an indicator. So read the fired indicators, not the headline pass rate. Negative graders in the no-plugin arm pass trivially.
+  - Positive graders name their plugin (`git:commit`, not an optional prefix), so a same-named skill from another plugin can't satisfy them.
+- **External boundaries.** Eval runs load only the target plugin. A case can load `commit-commands` only from vendored copies inside the case dir (`evals/<case>/plugins/{git,commit-commands}` with `plugins:` listing both). Paths outside the plugin and symlinks are rejected. That layout worked in a spike, and `commit-commands:commit-push-pr` fired over `git:commit`, but it was left out of the repo to avoid drifting copies. `skill-creator` and `claude-md-management` boundaries are untested for the same reason.
+
 ### Next
 
-Slice 6 (evals and docs). Delete `~/.claude/skills.migrated/` only after Slice 6, when the user agrees.
+- Decide whether to tune `efficient:coding`'s description so ordinary feature requests load it, then re-run `coding-feature` with `--runs 3`. Removing the skill is also an option, if the model does well without it.
+- Optionally re-run all suites with `--runs 3` for steadier trigger rates (about $8–9 at today's cost).
+- Run `/skill-doctor` about a week after cutover (around 2026-10-08) to list never-invoked skills.
+- Delete `~/.claude/skills.migrated/` when the user is satisfied.
 
 ## Goal
 
