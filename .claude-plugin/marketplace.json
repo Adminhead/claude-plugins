@@ -69,6 +69,13 @@
       "description": "Use the Proton Pass CLI without exposing secrets.",
       "version": "0.1.0",
       "category": "security"
+    },
+    {
+      "name": "sentry",
+      "source": "./plugins/sentry",
+      "description": "Instrument apps with official Sentry SDKs.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
