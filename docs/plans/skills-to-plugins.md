@@ -1,12 +1,12 @@
 # skills-to-plugins — spec and plan
 
-Status: Slices 0 and 1 done, 2026-10-01. Slices 2–6 not started. All decisions are closed.
+Status: Slices 0–5 done, 2026-10-01. Slice 6 not started. All decisions are closed.
 
 ## Progress (resume here)
 
 ### Slice 0 — done
 
-- **Changed (uncommitted):**
+- **Changed (committed in `5c73e24`):**
   - `plugins/secret-stash/hooks/detectors/openredaction.ts` (`tightened`, `looksLikeSecret`, `isAwsSecret`)
   - `plugins/secret-stash/tests/openredaction.test.ts`
   - The "Prose guard" row in `docs/plans/secret-stash.md`
@@ -40,9 +40,21 @@ Status: Slices 0 and 1 done, 2026-10-01. Slices 2–6 not started. All decisions
 - **`avoid-ai-writing`** 3.36.0 is installed from `conorbronsdon-skills`, and `avoid-ai-writing:avoid-ai-writing` loads. The user-level copy and `commands/clean-ai-writing.md` moved to `~/.claude/skills.migrated/` (the command under `_commands/`). `agents/scribe.md` now preloads `avoid-ai-writing:avoid-ai-writing`. A spawned subagent quoted the skill's H1, so agent `skills:` accepts plugin-qualified names.
 - **Installed-plugin check re-run.** No new duplicates. The only short-name match is `design:design-system`, already known.
 
+### Slices 2–5 — done, 2026-10-01
+
+- **Built.** 12 plugins, one commit each, every one reviewed (`review` for `quality`, `quick-review` for the rest). Each plugin landed with its marketplace entry, so Slice 2 had no separate scaffold commit. Worktree isolation failed for every coder agent, so the coders wrote disjoint `plugins/<p>/` dirs in the main checkout.
+- **Plan changes, by user decision.** `actions`, `dependabot`, and `pr-comments` moved from `git` to a new `github` plugin. The `screen-reader-testing` plugin became `accessibility`, the home for future accessibility skills. The directory move for `accessibility` landed inside the `quality` commit (`c89b041`) by mistake, and `51ea0a5` finishes it. The user chose a follow-up commit over a rewrite.
+- **Review fixes.** `quality`'s manual-only descriptions now say `/quality:test`, `/quality:test-harness`, and `/quality:audit`. `sentry`'s `crons.md` keeps the bare `sentry-cli`, since it means the binary there.
+- **`dependencies`.** `quality` declares `["efficient"]`. Bare names resolve against the plugin's own marketplace (plugins-reference docs).
+- **Installed.** All 12 are installed at user scope, and a fresh session lists all 40 skills. The scripts in the cache keep their exec bits.
+- **Script runs.** `/quality:test`, `authoring:adr-writing` (dry run), and `authoring:create-skill`'s validator all ran from the plugin paths with no permission denials. `${CLAUDE_SKILL_DIR}` resolves to the marketplace source dir, not the cache, for this directory marketplace. Not run: `github:pr-comments` (needs a real PR) and `quality:second-opinion` (sends content to OpenAI or Google).
+- **Cutover.** The 40 old dirs moved to `~/.claude/skills.migrated/`. The five agent files were backed up to `skills.migrated/_agents/`, then updated to `efficient:coding`, `efficient:planning`, `efficient:problem-solving`, and `quality:second-opinion`. A fresh session shows no bare leftovers, and a spawned `architect` quoted the H1s of both of its preloaded plugin skills. `~/.claude/skills` now holds only the out-of-scope design skills.
+- **Triggering.** "Write an ADR…" loaded `authoring:adr-writing` on its own. "Commit my work." committed without loading any skill. That is the `git:commit` vs `commit-commands:commit` boundary Slice 6's evals cover.
+- **Not in scope but noticed.** `ripgrep@adminhead` is not installed. The `quality:second-opinion` grant lets `consult.sh --input FILE` send any readable file to an external model without a prompt. That behavior predates the migration (the old path was already allowed in `~/.claude/settings.json`), but every new install now gets it.
+
 ### Next
 
-Slice 2 (scaffold).
+Slice 6 (evals and docs). Delete `~/.claude/skills.migrated/` only after Slice 6, when the user agrees.
 
 ## Goal
 
