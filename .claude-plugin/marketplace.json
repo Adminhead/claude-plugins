@@ -146,6 +146,13 @@
       "description": "Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "aws",
+      "source": "./plugins/aws",
+      "description": "AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
