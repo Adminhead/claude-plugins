@@ -1,16 +1,16 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 15 plugins. Install one with `claude plugin install <plugin>@adminhead`.
+Claude Code plugin marketplace `adminhead`. It lists 21 plugins. Install one with `claude plugin install <plugin>@adminhead`.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
 | `example` | Template plugin showing a skill and a function hook. Copy it to start a new plugin. | [plugins/example](plugins/example) |
 | `secret-stash` | Replaces secrets with stable IDs before they reach the API, and restores real values in tool arguments and on-screen text. | [docs](docs/plugins/secret-stash.md) |
 | `ripgrep` | Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context. | [docs](docs/plugins/ripgrep.md) |
-| `git` | Git skills: focused commits and worktrees. | [docs](docs/plugins/git.md) |
-| `github` | GitHub skills: Actions workflows, Dependabot configuration, and PR review comments. | [docs](docs/plugins/github.md) |
-| `efficient` | Cost-conscious engineering skills for coding, planning, testing, research, web, and language and database work. | [docs](docs/plugins/efficient.md) |
-| `authoring` | Skills for authoring Claude Code skills, agent instruction files, and architecture decision records. | [docs](docs/plugins/authoring.md) |
+| `git` | Git skills: focused commits, branches, history rewrites and recovery, and worktrees. | [docs](docs/plugins/git.md) |
+| `github` | GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot. | [docs](docs/plugins/github.md) |
+| `efficient` | Cost-conscious engineering skills for coding, planning, debugging, testing, research, experiments, prototypes, and modernization, plus web, language (Go, Rust, Python, TypeScript, JavaScript, Bash), framework (React, Vue, Vite, TanStack, FastAPI), database (Postgres, MySQL, Redis), and auth work. | [docs](docs/plugins/efficient.md) |
+| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config. | [docs](docs/plugins/authoring.md) |
 | `devenv` | Configure, migrate, debug, and verify devenv.sh developer environments. | [docs](docs/plugins/devenv.md) |
 | `chezmoi` | Manage, migrate, and troubleshoot chezmoi-managed dotfiles. | [docs](docs/plugins/chezmoi.md) |
 | `pass-cli` | Use the Proton Pass CLI without exposing secrets. | [docs](docs/plugins/pass-cli.md) |
@@ -18,7 +18,13 @@ Claude Code plugin marketplace `adminhead`. It lists 15 plugins. Install one wit
 | `playwright-cli` | Drive a headless, isolated browser from Bash with playwright-cli. | [docs](docs/plugins/playwright-cli.md) |
 | `termwright` | Drive and test terminal UI apps with the termwright CLI. | [docs](docs/plugins/termwright.md) |
 | `accessibility` | Accessibility skills: manual screen-reader and keyboard testing of web journeys. | [docs](docs/plugins/accessibility.md) |
-| `quality` | Test running, security audit, second-opinion review, and de-slopping skills for verifying code changes. | [docs](docs/plugins/quality.md) |
+| `quality` | Test running, security and config audits, threat modeling, privacy review, production-readiness and test-gap review, mistake-proofing, second-opinion review, and de-slopping skills for verifying code changes. | [docs](docs/plugins/quality.md) |
+| `tooling` | Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit. | [docs](docs/plugins/tooling.md) |
+| `observability` | Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems. | [docs](docs/plugins/observability.md) |
+| `api` | Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers. | [docs](docs/plugins/api.md) |
+| `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
+| `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
+| `aws` | AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review. | [docs](docs/plugins/aws.md) |
 
 ## Layout
 

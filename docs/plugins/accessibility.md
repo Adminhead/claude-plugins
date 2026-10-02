@@ -1,6 +1,6 @@
 # accessibility
 
-Adds a skill for manual screen-reader and keyboard testing of an implemented web journey. It is the home for future accessibility skills. Today it holds one, which replaces the user-level `screen-reader-testing` skill.
+Adds a skill for manual screen-reader and keyboard testing of an implemented web journey. It is the home for future accessibility skills. Today it holds one, which replaces the user-level `screen-reader-testing` skill. Version 0.2.0 added a reference the skill reads when it writes the test script.
 
 ## What it adds
 
@@ -9,6 +9,14 @@ Adds a skill for manual screen-reader and keyboard testing of an implemented web
 | `accessibility:screen-reader-testing` | `screen-reader-testing` | Plan, run with you, and report manual screen-reader and keyboard tests covering names, roles, states, form errors, live announcements, dialogs, menus, and focus return |
 
 The old bare name no longer works. Use the `accessibility:` prefix.
+
+The skill's `commands-and-scenarios` reference holds:
+
+- Screen-reader keys for VoiceOver, NVDA, JAWS, and TalkBack.
+- Three scenario scripts with the announcements to expect: a modal dialog, a live region, and tabs.
+- Debugging tips, and a table of common failures with likely causes and fixes.
+
+Wording differs between screen readers, browsers, and versions. The "expect" lines name the information that must come through (name, role, state, value), and Claude records the speech you actually heard.
 
 ## Requirements
 
