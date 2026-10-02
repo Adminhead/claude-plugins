@@ -34,6 +34,7 @@ Show one table, with one row per actionable request. Merge duplicate or overlapp
 - Set **action** to `fix`, `push back`, or `clarify`, plus a one-line reason. Push back when the request is wrong, out of scope, or conflicts with another reviewer. Clarify when you can't tell what the reviewer wants.
 - Peek at code only when the right action depends on it.
 - Skip praise, FYIs, and bot chatter with no request. Note the skipped IDs in one line under the table.
+- Read the [triage rubric](references/triage.md) when the right action isn't obvious. It covers reviewer types, value against risk, repo-policy checks, and conflicting requests. Cite its rule in the action's reason.
 
 Then ask in plain text which rows to address: `all`, a list like `T1,T3,R1`, or `none`. Wait for the answer.
 
@@ -52,5 +53,5 @@ If a fix turns out larger or riskier than the triage suggested, stop and ask bef
 ## 3. Report
 
 - **Fixed:** `T1` → what changed (`file`) → check and result.
-- **Not addressed:** each skipped, `push back`, or `clarify` row, with a draft reply the user can paste into the thread. Keep drafts short and specific. You never post them.
+- **Not addressed:** each skipped, `push back`, or `clarify` row, with a draft reply the user can paste into the thread. Keep drafts short and specific, using the reply templates in [triage](references/triage.md). You never post them.
 - **Noticed:** related issues outside the reviewers' requests, if any.

@@ -5,12 +5,13 @@ Read before every workflow or custom-action edit. A workflow is privileged autom
 ## Controls, in order
 
 1. **Keep untrusted values out of shells.** PR content, branch names, commit messages, issue and PR titles and bodies, labels, and emails are untrusted. Never interpolate them into `run:`. Put them in `env:` and quote them in the shell, or pass them as a non-shell action input.
+   - Untrusted multiline text written to `$GITHUB_ENV` or `$GITHUB_OUTPUT` can inject variables or outputs. Use the delimiter form with a random per-run delimiter, never a fixed `EOF`, or write a file for arbitrary data.
    - [Script injections](https://docs.github.com/en/actions/concepts/security/script-injections), [contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts)
 
-2. **Keep privileged triggers away from PR-controlled code.** Use `pull_request` for untrusted PR CI. Use `pull_request_target` or `workflow_run` only when a privileged context is required. In those contexts, never check out or run PR or fork code, and treat upstream artifacts as untrusted. Don't share a cache across the untrusted-to-privileged boundary. `pull_request_target` is not a safe way to test a PR.
+2. **Keep privileged triggers away from PR-controlled code.** Use `pull_request` for untrusted PR CI. Use `pull_request_target` or `workflow_run` only when a privileged context is required. `issue_comment` and `issues` are privileged too, since anyone who can comment can start them and they run the default branch with a write token. In those contexts, never check out or run PR or fork code, and treat upstream artifacts as untrusted. Don't share a cache across the untrusted-to-privileged boundary. `pull_request_target` is not a safe way to test a PR.
    - [Secure use](https://docs.github.com/en/actions/reference/security/secure-use), [`pull_request_target`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target)
 
-3. **Grant only what each job needs.** Declare minimal `GITHUB_TOKEN` permissions at workflow or job scope. Add a write scope only for the operation that needs it. Keep secrets out of source, logs, outputs, and summaries. Masking fails once a value is transformed.
+3. **Grant only what each job needs.** Declare minimal `GITHUB_TOKEN` permissions at workflow or job scope. Add a write scope only for the operation that needs it. Keep secrets out of source, logs, outputs, and summaries. Masking fails once a value is transformed. Don't enable `set -x` or `bash -x` in steps that handle secrets. Set `persist-credentials: false` on `actions/checkout` when the job later runs code you don't control or never pushes.
    - [`permissions`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions)
 
 4. **Pin third-party reusable workflows by full SHA.** Unlike actions (see the version policy in SKILL.md), a separately referenced third-party reusable workflow keeps a full SHA from the intended upstream repo, not a fork.
@@ -43,4 +44,4 @@ Get an explicit design decision before a change that would:
 - add `pull_request_target`, `workflow_run`, a self-hosted runner, an unverifiable third-party action, or a third-party reusable workflow that can't be verified and SHA-pinned
 - log, transmit, or store a secret in an output, artifact, cache, summary, or source file
 
-Sources reviewed 2026-09-06/07. Recheck them when changing security-sensitive behavior.
+Review a workflow against these with [audit](audit.md). Sources reviewed 2026-09-06/07, with the `issue_comment` and `$GITHUB_ENV` points checked 2026-10-02. Recheck them when changing security-sensitive behavior.

@@ -32,4 +32,14 @@ Read for `.github/workflows/*.yml` edits and failed runs.
 4. Use debug logging only when needed and allowed. Never log contexts, secrets, tokens, or untrusted payloads.
    - [Workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands), [debug logging](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging)
 
+## Runtime-deprecation upgrades
+
+When a run log warns that an action uses a deprecated runtime (for example an old Node version), upgrade only the actions the warning names.
+
+1. Move each action to its latest stable major, using the ref format from the version policy in SKILL.md.
+2. Commit one action per commit, or one tightly related group, so a failure points at one change.
+3. Keep triggers, permissions, and behavior unchanged. If a new major needs workflow changes, say so and make them in a separate commit.
+4. Rerun the affected workflows and check the logs for the warning and for any new one. Static checks can't confirm the runtime change.
+5. In the PR notes, list each action from-to, any that couldn't move and why, and which runs verified it.
+
 Sources reviewed 2026-09-06. Verify live docs for service-specific syntax, runner images, and limits.

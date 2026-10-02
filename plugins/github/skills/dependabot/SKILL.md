@@ -5,7 +5,7 @@ description: Configure, review, and troubleshoot GitHub Dependabot version and s
 
 # GitHub Dependabot
 
-Change `.github/dependabot.yml` from evidence in the repo's manifests and GitHub's own logs. Read [official docs index](references/official-github-docs.md) before using an unfamiliar option or ecosystem.
+Change `.github/dependabot.yml` from evidence in the repo's manifests and GitHub's own logs. Read [official docs index](references/official-github-docs.md) before using an unfamiliar option or ecosystem. Read [options and recipes](references/options-and-recipes.md) for cooldown, grouping, `directories` globs, security-only mode, cron schedules, less common ecosystem values, and example configs.
 
 ## Safety boundary
 

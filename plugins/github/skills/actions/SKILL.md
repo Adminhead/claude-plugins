@@ -1,6 +1,6 @@
 ---
 name: actions
-description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run (gh run view). Not for Dependabot config (github:dependabot) or triggering dispatches, releases, or deployments.
+description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run (gh run view). Not for Dependabot config (github:dependabot) or triggering dispatches, releases (`github:release`), or deployments.
 ---
 
 # GitHub Actions
@@ -15,6 +15,9 @@ Change workflows and actions from evidence in the affected files and runs, with 
    - Workflow change or failed run: [workflows](references/workflows.md).
    - `action.yml` or `action.yaml` change: [custom actions](references/actions.md). Read both when a workflow calls an action you are changing.
    - CodeQL setup, SARIF, or CodeQL build/analysis failure: also [CodeQL](references/codeql.md).
+   - Reducing CI time or cost, or trimming wasted runs: [efficiency](references/efficiency.md).
+   - Reviewing or hardening workflows for security (an audit): [audit](references/audit.md).
+   - Workflows for a Go module (test, lint, release): [Go](references/go.md).
 4. For exact keys, contexts, event semantics, and runtimes, check the live GitHub docs linked in the references. Don't copy versions from other repos.
 
 ## Action version policy

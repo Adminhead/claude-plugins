@@ -1,6 +1,9 @@
 {
   "name": "github",
-  "version": "0.1.0",
-  "description": "GitHub skills: Actions workflows, Dependabot configuration, and PR review comments.",
-  "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
+  "version": "0.2.0",
+  "description": "GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
 }
