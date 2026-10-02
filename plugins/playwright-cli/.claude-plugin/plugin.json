@@ -1,0 +1,9 @@
+{
+  "name": "playwright-cli",
+  "version": "0.1.0",
+  "description": "Drive a headless, isolated browser from Bash with playwright-cli.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

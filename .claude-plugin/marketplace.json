@@ -76,6 +76,13 @@
       "description": "Instrument apps with official Sentry SDKs.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "playwright-cli",
+      "source": "./plugins/playwright-cli",
+      "description": "Drive a headless, isolated browser from Bash with playwright-cli.",
+      "version": "0.1.0",
+      "category": "testing"
     }
   ]
 }
