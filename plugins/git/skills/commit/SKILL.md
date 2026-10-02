@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Plan and create focused Git commits that follow the repository's message convention, including release-please and commitlint Conventional Commits. Use when asked to commit work, split changes into commits, or draft or fix a commit message. Not for pushing or opening PRs (`commit-commands:commit-push-pr`, if installed) or for history rewriting (`git:history`).
+description: "Write or create Git commits that follow the repository's message convention, including release-please and commitlint Conventional Commits. Use when asked to \"write a commit message\", \"write the commit message for the staged change\", \"commit the staged changes\", \"commit this\", split changes into several commits, or fix a commit message, including when only the message text is wanted. Reads the diff and recent history to pick the type, scope, and format. Not for pushing or opening PRs (`commit-commands:commit-push-pr`, if installed) or for history rewriting (`git:history`)."
 ---
 
 # Git Commit

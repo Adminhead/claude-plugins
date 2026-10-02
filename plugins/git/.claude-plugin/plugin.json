@@ -1,6 +1,6 @@
 {
   "name": "git",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
   "author": {
     "name": "Buck Brady",
