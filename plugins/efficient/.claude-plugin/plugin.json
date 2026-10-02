@@ -1,6 +1,9 @@
 {
   "name": "efficient",
-  "version": "0.1.0",
-  "description": "Cost-conscious engineering skills for coding, planning, testing, research, web, and language and database work.",
-  "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
+  "version": "0.2.0",
+  "description": "Cost-conscious engineering skills for coding, planning, debugging, testing, research, experiments, prototypes, and modernization, plus web, language (Go, Rust, Python, TypeScript, JavaScript, Bash), framework (React, Vue, Vite, TanStack, FastAPI), database (Postgres, MySQL, Redis), and auth work.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
 }

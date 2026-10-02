@@ -27,6 +27,8 @@ jest path/to/test-file.js -t 'scenario name'
 
 Use the project's actual extension, module mode, and command wrapper. Check Context7 or the official runner docs before relying on version-dependent mocking, fake timers, environment, or TypeScript APIs.
 
+With Bun, `bun test` always runs Bun's built-in runner, while `bun run test` runs the `test` script from `package.json`. Bun as a package manager doesn't imply Bun as the runner, so read the script and the test imports first. If `scripts.test` calls Jest or Vitest, use `bun run test`. Running `bun test` there silently uses the wrong runner.
+
 ## Go standard testing
 
 Inspect `go.mod`, package layout, build tags, and documented commands. From the appropriate module root, a common focused command is:

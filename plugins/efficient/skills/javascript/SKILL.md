@@ -1,6 +1,6 @@
 ---
 name: javascript
-description: JavaScript runtime semantics for ESM vs CommonJS, module side effects, promises and the event loop, async ownership and cleanup, browser vs Node/Bun/Deno/edge boundaries, measured performance, and focused JS tests. Use when writing, reviewing, or debugging *.js/*.mjs/*.cjs or runtime behavior of any JS/TS code (import errors, unhandled rejections, leaks, ordering bugs). Not for type-level work (efficient:typescript), React (efficient:react), or HTML/CSS/a11y (efficient:web-development).
+description: JavaScript runtime semantics for ESM vs CommonJS, module side effects, promises and the event loop, async ownership and cleanup, browser vs Node/Bun/Deno/edge boundaries, measured performance, and focused JS tests. Use when writing, reviewing, or debugging *.js/*.mjs/*.cjs or runtime behavior of any JS/TS code (import errors, unhandled rejections, leaks, ordering bugs). Not for type-level work (efficient:typescript), React (efficient:react), Vite configuration and bundling (efficient:vite), or HTML/CSS/a11y (efficient:web-development).
 ---
 
 # Efficient JavaScript

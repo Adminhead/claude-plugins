@@ -19,6 +19,12 @@ Read this when the repository already uses pytest and you are adding or changing
 - Mock only boundaries the code doesn't own, such as network, filesystem, clock, subprocess, credentials, or third-party services.
 - Patch the name where the unit under test looks it up (`mod_under_test.requests`, not `requests`).
 - Assert the observable request or result at that boundary. Don't mock internal collaborators just to mirror implementation steps.
+- Use `patch(target, autospec=True)` so the mock enforces the real signature. A call with the wrong arguments then raises `TypeError` instead of passing silently. Since 3.8, `patch` on an async function returns an `AsyncMock` on its own.
+- Assert that an async mock was awaited, not just called. `assert_awaited_once()` and `assert_awaited_once_with(...)` fail when the coroutine was created but never awaited, which `assert_called_once()` accepts.
+
+## Markers
+
+- Register every custom marker (`markers` under `[tool.pytest.ini_options]`) and run with `--strict-markers`, so a typo fails collection instead of creating a new marker that selects nothing.
 
 ## Async tests
 
@@ -31,3 +37,4 @@ Read this when the repository already uses pytest and you are adding or changing
 - Target narrowly with `pytest path/test_x.py::test_name -x`, or `-k expr` for a subset.
 - `--lf` reruns the last failures. `-p no:randomly` rules out ordering effects when `pytest-randomly` is installed.
 - `-W error` turns warnings into failures, which helps surface `ResourceWarning` and deprecation issues.
+- When the repo has `pytest-cov`, `--cov=<pkg> --cov-report=term-missing` lists the uncovered line ranges. Read them to find behavior a test should pin, such as an untested error branch. Coverage is a diagnostic, not a target, so don't write tests to raise the number.

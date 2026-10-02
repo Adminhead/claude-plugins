@@ -21,6 +21,7 @@ Preserve observable behavior, error behavior, feature combinations, cancellation
 - Prefer a concrete function, struct, or enum. Add a trait only for multiple real implementations, a consumer-owned substitution seam, or a generic algorithm.
 - Group code by responsibility. Keep representation private behind constructors when callers must not break invariants.
 - When a trait is warranted, decide its error type, `Send`/`Sync` bounds, object safety, and feature gating on purpose. Don't make downstream crates implement a public trait unless that extension point is the contract.
+- Read [references/idioms.md](references/idioms.md) when modeling states as enums, adding newtypes or builders, choosing `Cow`, or deciding where `#[must_use]` belongs.
 
 ## Ownership
 
@@ -63,7 +64,7 @@ Preserve observable behavior, error behavior, feature combinations, cancellation
 - Put unit tests in `#[cfg(test)] mod tests` and public-API tests in `tests/`.
 - Test each affected non-default feature with `cargo test --features <f>`. Don't build an automatic feature matrix.
 - Keep test-only helpers out of the production API.
-- Read [references/testing.md](references/testing.md) for test layout, error and panic assertions, async tests, property tests, or benchmark evidence.
+- Read [references/testing.md](references/testing.md) for test layout, doctests, error and panic assertions, async tests, property tests, coverage, or benchmark evidence.
 
 ## Validate
 

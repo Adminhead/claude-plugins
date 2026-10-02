@@ -52,7 +52,8 @@ Use for consequential, contentious, broad, or rapidly changing questions where e
 5. Deliberately test independence: separate original reporting or data from derivative coverage and avoid counting copies as confirmation.
 6. Triangulate contested or high-impact claims; examine disagreement rather than averaging it away.
 7. Synthesize facts, inferences, alternatives, and residual uncertainty against the decision criteria.
-8. Perform a claim-level support audit and stop at the defined boundary unless new evidence can change the decision.
+8. Red-team the synthesis before finalizing. Ask what is missing, what alternative explanation fits the same facts, which source is carrying too much of the conclusion, and what bias the source set may share. Run a targeted retrieval only when a gap could change the decision.
+9. Perform a claim-level support audit and stop at the defined boundary unless new evidence can change the decision.
 
 Deep research is not an obligation to produce a long report, spawn subagents, or collect a quota. Use parallel subagents only when several independent subquestions each need their own reading. If an access, time, or evidence boundary prevents a conclusion, package the strongest supported partial result and the next decision-relevant gap.
 

@@ -25,13 +25,14 @@ Related skills:
 - App-lifetime resources (connection pools, HTTP clients) belong in the existing `lifespan` context manager. Acquire before `yield`, release after.
 - Per-request resources belong in dependencies. Operation-local resources belong in the operation or service that creates them.
 - If startup fails partway, release what was acquired and let the failure propagate. Never serve a half-initialized app.
-- Don't do schema creation, network calls, or unrelated work at import time or in lifespan without an existing requirement.
+- Don't create schema (`Base.metadata.create_all`) in lifespan or at import time. Startup DDL races concurrent deploys and bypasses migrations, so schema changes go through the repo's migration tool. Don't add network calls or unrelated work there either without an existing requirement.
 - If tests need isolated state, use or add the smallest app factory in the existing style rather than mutating module globals.
 
 ## Dependencies
 
 - Inject request-scoped infrastructure, the authenticated principal, and service collaborators through `Depends`. Don't construct them ad hoc in handlers.
 - `app.dependency_overrides` is keyed by the original callable. Reuse the canonical provider function so overrides work, and don't wrap it in a lambda or new function at the use site.
+- Share a repeated dependency as an `Annotated` alias, such as `DbDep = Annotated[AsyncSession, Depends(get_db)]` or `CurrentUserDep`. It is plain type-alias syntax, keeps editor and type-checker support, and still wraps the canonical provider, so `dependency_overrides` keeps working. Follow the repo's existing alias names.
 - A `yield` dependency owns cleanup around its `yield`. Keep its commit, rollback, and close behavior there, not duplicated in handlers.
 - Each dependency acquires or validates one concern. Don't hide business mutations, silent authorization decisions, or commits in a convenience dependency.
 
@@ -41,6 +42,7 @@ Related skills:
 - Never return ORM objects, internal exceptions, credentials, or write-only fields just because they serialize.
 - For PATCH, keep "omitted" distinct from "set to null." In Pydantic v2, use `model_dump(exclude_unset=True)`; v1 uses `.dict(exclude_unset=True)`.
 - Put input validation on the request model. Domain invariants and conflict decisions stay in the service.
+- Give offset or limit pagination a deterministic `ORDER BY` with a unique tiebreaker (for example `created_at, id`). Without one the database may return rows in a different order per page, so pages skip or repeat rows (PostgreSQL documents this for `LIMIT`).
 - Change status codes, aliases, default/exclude behavior, or OpenAPI-visible fields only when the contract requires it.
 
 ## Handlers and async
@@ -53,6 +55,7 @@ Related skills:
 
 - Get a validated principal through the established security dependency, and pass only the trusted identity the service needs.
 - Keep 401-versus-403 mapping and `WWW-Authenticate` headers consistent with existing policy.
+- A JWT `sub` claim is a string (RFC 7519). Convert it to the key type at the dependency and treat a failed conversion like any other invalid token (401). FastAPI's current JWT tutorial uses PyJWT. Keep the repo's library unless `efficient:auth` says to change it.
 - Never treat a client-supplied ID, role, or claim as authorization. Authorize the action and resource before any durable mutation or sensitive response.
 
 ## Transactions
@@ -69,6 +72,7 @@ Related skills:
 - Supply fake principals, clocks, and collaborators through dependencies. Don't patch handlers or call real identity providers.
 - `with TestClient(app) as client:` runs lifespan. A bare `TestClient(app)` does not.
 - `httpx.AsyncClient(transport=ASGITransport(app=app))` does not run lifespan. Test a seam that doesn't need it, or use the repo's existing lifespan arrangement. Don't add a package just for this.
+- Test persistence against the same database engine production uses (a throwaway Postgres container or the repo's test database), not in-memory SQLite. SQLite differs on constraints, types, and locking, so green tests can hide production failures. Create the schema in the fixture the way the repo does, using its migrations when it has them.
 - Use `efficient:testing` to pick the smallest meaningful set of cases (success, validation, 401/403, conflict, cleanup).
 
 ## Validate

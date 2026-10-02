@@ -59,10 +59,16 @@ Preserve the public contract (results, raised exceptions, ordering, side effects
 ## Validate
 
 - Run the narrowest configured checks that reach the change, for example `uv run ruff check <paths>`, `uv run ruff format --check <paths>`, `uv run mypy <pkg>` or `uv run pyright <paths>`, and `uv run pytest <path>::<test> -x`.
+- For ruff findings, run `ruff check --fix` (safe fixes), then `ruff format`. Apply `--unsafe-fixes` only after reading `ruff check --diff --unsafe-fixes`, because an unsafe fix can change behavior (an exception type, a comment). Re-run until nothing changes. Suppress with `# noqa: <code>` and a reason, not a bare `# noqa`, and ask the user when a finding has more than one reasonable fix.
 - Exercise what the type checker can't prove, such as the raised exception, resource closure, import behavior, and task completion or cancellation.
 - `python -X dev` (or `-W error::ResourceWarning`) surfaces unclosed resources. `PYTHONASYNCIODEBUG=1` reports slow callbacks and never-awaited coroutines.
 - When the repo uses pytest, read [references/pytest.md](references/pytest.md) before adding or changing tests.
 - Use `efficient:testing` to choose which regression tests to add.
+
+## Reliability and observability
+
+- Before adding retries, timeouts, batch handling, or a queue worker, read [references/reliability.md](references/reliability.md).
+- Before adding structured logging, correlation IDs, or metrics, read [references/observability.md](references/observability.md).
 
 ## Performance
 

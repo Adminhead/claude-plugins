@@ -1,6 +1,6 @@
 ---
 name: python-packaging
-description: Build and validate installable Python distributions, covering pyproject.toml build config, metadata and versions, runtime vs optional dependencies, package data, entry points, and wheel/sdist clean-install checks. Use when changing [build-system] or [project] tables, console scripts, package discovery, or preparing a release artifact. Not for general Python code (efficient:python), choosing libraries, or publishing credentials.
+description: Build and validate installable Python distributions, covering pyproject.toml build config, metadata and versions, runtime vs optional dependencies, package data, entry points, wheel/sdist clean-install checks, uv project workflows, and PyPI release workflows with trusted publishing. Use when changing [build-system] or [project] tables, console scripts, package discovery, uv locking or CI and Docker installs, or preparing a release artifact or publish workflow. Not for general Python code (efficient:python), choosing libraries, or registry accounts and credentials.
 ---
 
 # Efficient Python Packaging
@@ -13,6 +13,10 @@ Keep the repository's build backend (hatchling, setuptools, flit-core, pdm-backe
 - Record the distribution name versus the import package name, `requires-python`, public modules, dependencies, extras, package data, entry points, and which artifacts ship.
 - Find consumers before changing a published name, import path, command name, extra, or marker.
 - Backend options differ. Look up the selected backend's options with Context7 (`resolve-library-id`, then `query-docs`) rather than borrowing another backend's keys.
+
+## uv projects
+
+When the repo uses uv (`uv.lock` or `[tool.uv]`), read [references/uv.md](references/uv.md) for the lock, sync, CI (`--locked` vs `--frozen`), Docker, workspace, and Python-pin rules. It also covers `uvx` and PEP 723 scripts.
 
 ## Dependencies and metadata
 
@@ -54,7 +58,7 @@ When the repo has a supported Python matrix (tox, nox, CI), don't claim cross-ve
 ## Release handoff
 
 - The tree is clean apart from intended changes, artifact versions and filenames match the requested release, and no untracked `dist/` output or credentials are staged.
-- This skill doesn't publish, and it doesn't touch registry accounts, tokens, or trusted-publisher settings.
+- This skill doesn't publish, and it doesn't touch registry accounts, tokens, or trusted-publisher settings. It can write the publish workflow. To write or review one, read [references/release-publishing.md](references/release-publishing.md). It uses OIDC trusted publishing, so no PyPI token is stored, and the repo owner registers the publisher.
 
 ## Failure triage
 

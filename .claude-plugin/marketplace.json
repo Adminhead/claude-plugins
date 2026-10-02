@@ -45,8 +45,8 @@
     {
       "name": "efficient",
       "source": "./plugins/efficient",
-      "description": "Cost-conscious engineering skills for coding, planning, testing, research, web, and language and database work.",
-      "version": "0.1.0",
+      "description": "Cost-conscious engineering skills for coding, planning, debugging, testing, research, experiments, prototypes, and modernization, plus web, language (Go, Rust, Python, TypeScript, JavaScript, Bash), framework (React, Vue, Vite, TanStack, FastAPI), database (Postgres, MySQL, Redis), and auth work.",
+      "version": "0.2.0",
       "category": "development"
     },
     {

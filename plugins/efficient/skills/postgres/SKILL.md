@@ -1,6 +1,6 @@
 ---
 name: postgres
-description: "Measured PostgreSQL diagnosis and change: EXPLAIN/ANALYZE, index choice (B-tree, GIN, BRIN, partial, expression, INCLUDE), statistics, locks and wait events, MVCC/vacuum, isolation and serialization retries, SKIP LOCKED queues, partitioning, CREATE INDEX CONCURRENTLY, and backup/restore checks. Use for slow queries, lock stalls, bloat, or Postgres-specific SQL/ops. Not for portable schema modeling or migration design (efficient:database-design)."
+description: "Measured PostgreSQL diagnosis and change: EXPLAIN/ANALYZE, index choice (B-tree, GIN, BRIN, partial, expression, INCLUDE), statistics, locks and wait events, MVCC/vacuum, isolation and serialization retries, SKIP LOCKED queues, partitioning, CREATE INDEX CONCURRENTLY, online DDL, row-level security policy cost, pgvector indexes, and backup/restore checks. Use for slow queries, lock stalls, bloat, Postgres-specific schema choices, or vector search. Not for portable schema modeling or migration staging (efficient:database-design), MySQL/MariaDB (efficient:mysql), or caching/queues on Redis (efficient:redis)."
 ---
 
 # Efficient PostgreSQL
@@ -38,13 +38,18 @@ For portable tables, keys, constraints, relationships, and migration staging, us
 
 ## 5. Choose the narrowest remedy
 
-**Read [references/remedies.md](references/remedies.md) before proposing a fix.** It covers queries, indexes, and statistics; locking, MVCC, and isolation; maintenance; partitioning; and advanced features, with the conditions each remedy requires.
+**Read [references/remedies.md](references/remedies.md) before proposing a fix.** It covers queries, indexes, and statistics; locking, MVCC, and isolation; maintenance; partitioning; online DDL; row-level security; and advanced features, with the conditions each remedy requires.
+
+Two further references apply only to their own branch:
+
+- Read [references/schema-design.md](references/schema-design.md) when choosing Postgres types, keys, constraints, or partitioning for a new or changed table.
+- Read [references/pgvector.md](references/pgvector.md) when the work involves embeddings, nearest-neighbor queries, or hybrid keyword and vector search.
 
 ## 6. Plan the operational change
 
 - Make the change additive and reversible where feasible. Test it on representative data under concurrent load in an approved non-production environment first.
 - For a production index that must not block writes, prefer `CREATE INDEX CONCURRENTLY` when its restrictions fit. It can't run inside a transaction block (many migration tools wrap one by default), it takes longer, and a failure leaves an `INVALID` index. Afterward, check `pg_index.indisvalid`, then drop or rebuild an invalid index explicitly.
-- Hold changes that need disruptive locks, table rewrites, restarts, or replication changes until the owner accepts the impact. Many `ALTER TABLE` forms take `ACCESS EXCLUSIVE`, so set a `lock_timeout` for DDL.
+- Hold changes that need disruptive locks, table rewrites, restarts, or replication changes until the owner accepts the impact. Many `ALTER TABLE` forms take `ACCESS EXCLUSIVE`, so set a `lock_timeout` for DDL. The online DDL section in `references/remedies.md` lists which column and constraint changes avoid a rewrite.
 
 ## 7. Verify outcome and guardrails
 

@@ -57,6 +57,7 @@ This skill owns the compile-time contract, meaning compiler configuration, type 
 - Prefer generics that relay a relationship already present in the inputs over overloads, conditional types, or template-literal types.
 - Add overloads only when each call shape has a distinct, understandable result that a union signature would lose.
 - Stop before a type needs recursive conditionals or distribution tricks that produce errors callers can't act on. Use a simpler API instead.
+- When a conditional, mapped, or template-literal type is really needed, read [references/advanced-types.md](references/advanced-types.md).
 
 ## Modules and declarations
 
@@ -65,6 +66,10 @@ This skill owns the compile-time contract, meaning compiler configuration, type 
 - Scope an ambient `declare module "x"` to one verified untyped dependency or asset pattern, declaring only what exists at runtime.
 - Prefer fixing package `exports`, resolution config, or upstream `@types` over `declare module "*"`, global augmentation, or duplicate third-party typings.
 - Don't add `skipLibCheck`, `paths` aliases, ambient globals, or module shims as a local fix without weighing their project-wide effect.
+
+## Package boundaries
+
+To restrict which files a package may import (entry points only, no deep imports, no cycles), read [references/module-boundaries.md](references/module-boundaries.md). It covers the dependency-cruiser rules and how to prove they fail on a violation.
 
 ## Runtime validation
 

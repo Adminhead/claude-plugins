@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Write, review, or revise an implementation plan whose scope, verification, and reruns are proportionate to risk, cutting cost without dropping required outcomes. Use when asked to "plan this", "review this plan", "what's the cheapest way to verify", or when a task spans several slices or risky boundaries. Not for claude-mem phased plans meant for /do execution (claude-mem:make-plan), or for single bounded edits (efficient:coding).
+description: Write, review, or revise an implementation plan whose scope, verification, and reruns are proportionate to risk, cutting cost without dropping required outcomes. Use when asked to "plan this", "review this plan", "what's the cheapest way to verify", or when a task spans several slices or risky boundaries; also for acceptance criteria on an ambiguous or high-risk change, a plan several agents will execute, work too big for one session, and on request ("grill me") a stress-test of a plan. Not for claude-mem phased plans meant for /do execution (claude-mem:make-plan), legacy-system migration plans (efficient:modernize), single bounded edits (efficient:coding), measured autonomous experiment loops (efficient:experiment-loop), or throwaway prototypes (efficient:prototype).
 ---
 
 # Efficient Planning
@@ -9,10 +9,10 @@ Use this skill for implementation plans and plan reviews. Preserve product outco
 
 ## Workflow
 
-1. **Discover, read-only.** Inspect the relevant specs, code boundaries, conventions, dependencies, risks, and unknowns before choosing steps. For a broad sweep, delegate to an Explore subagent and keep only its conclusions. Use `codegraph_explore` when the repo has a `.codegraph/` directory. Stay in plan mode if the session is in it.
-2. **State the outcome and completion conditions first.** Make each condition observable.
+1. **Discover, read-only.** Inspect the relevant specs, code boundaries, conventions, dependencies, risks, and unknowns before choosing steps. For a broad sweep, delegate to an Explore subagent and keep only its conclusions. Stay in plan mode if the session is in it.
+2. **State the outcome and completion conditions first.** Make each condition observable. The repo shows how the system behaves today, not what the business requires, so record business rules, SLAs, and compliance obligations as assumptions until the user confirms them. Read `references/acceptance-criteria.md` when the request is ambiguous or touches security, data, migrations, or external contracts.
 3. **Separate requirements from suggestions.** Required behavior, constraints, security, and acceptance conditions are fixed. Proposed files, tools, tests, commands, architecture, and ordering are changeable unless the user explicitly required them.
-4. **Bound the plan to affected behavior and risk.** Add detail where mistakes would be costly, irreversible, security-relevant, or hard to detect. Split large work into vertical, independently verifiable slices, and put shared contracts or foundations before the slices that depend on them. Don't impose a fixed planning depth, test-to-code ratio, or time limit.
+4. **Bound the plan to affected behavior and risk.** Add detail where mistakes would be costly, irreversible, security-relevant, or hard to detect. Split large work into vertical, independently verifiable slices, and put shared contracts or foundations before the slices that depend on them. Don't impose a fixed planning depth, test-to-code ratio, or time limit. For a refactor, order the steps by dependency (contracts and types, then implementations, then callers, then cleanup), run the existing tests between phases, and give the riskiest phase a rollback step.
 5. **Handle unknowns explicitly.** For each material unknown, state a bounded assumption, the least evidence that could update it, and a trigger to continue, change course, or stop. Investigate irreversible decisions more deeply. Proceed on a stated assumption for non-blocking unknowns rather than asking.
 6. **Pick the cheapest reliable evidence per condition.** Prefer targeted inspection, a focused check, or a narrow reproduction when it settles the condition. For empirical uncertainty, state the hypothesis and keep what the check teaches, including informative failures.
 7. **Make expensive checks earn their place.** For each one, name its distinct benefit and the risk it covers. Reuse existing tests and tools first; new test infrastructure is a separate cost that needs its own justification. Remove duplicate checks. Require a full matrix or full suite only when the requirement or risk calls for it.
@@ -20,6 +20,14 @@ Use this skill for implementation plans and plan reviews. Preserve product outco
 9. **Simplify and set stop conditions.** Remove work that can't change a decision. Stop when every completion condition has reliable evidence.
 
 For multi-slice execution, mirror the plan's steps as TaskCreate items so progress stays visible.
+
+## Optional modes
+
+Read the matching reference only when its trigger applies.
+
+- `references/stress-test.md`: the user asks to be grilled or to stress-test a plan. This mode asks questions before proceeding, so use it only on request.
+- `references/multi-agent-plans.md`: several agents will execute the plan in parallel.
+- `references/long-running-work.md`: the work is too big for one session and needs a durable map of open decisions.
 
 ## Plan output
 

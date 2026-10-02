@@ -1,6 +1,6 @@
 ---
 name: web-design
-description: "Evidence-based visual design for an existing product: extend its visual system, set hierarchy and responsive/state/accessibility intent, write or revise DESIGN.md, and review rendered UI against it. Use for redesigning a screen, documenting design standards, or a design handoff with acceptance criteria. Not for bold aesthetic exploration of new UI (frontend-design), style/palette lookup (ui-ux-pro-max), or component styling code (ui-styling)."
+description: "Evidence-based visual design for an existing product: extend its visual system, set hierarchy and responsive/state/accessibility intent, write or revise DESIGN.md, and review rendered UI against it. Use for redesigning a screen, documenting design standards, or a design handoff with acceptance criteria. Not for bold aesthetic exploration of new UI (frontend-design), style/palette lookup (ui-ux-pro-max), component styling code (ui-styling), or throwaway prototypes (efficient:prototype)."
 ---
 
 # Efficient Web Design
@@ -36,6 +36,7 @@ It produces design intent and acceptance criteria. Implementation belongs elsewh
 - Show relationships with grouping, alignment, spacing, type roles, and semantic color. Prefer real product terms over decorative icons, vague copy, or color alone.
 - Keep familiar web conventions unless product evidence justifies breaking them. Align reading order, visual order, and keyboard order.
 - Remove competing elements before adding effects, gradients, shadows, or motion.
+- Add motion only when it guides attention, communicates a state change, or keeps spatial continuity. Otherwise leave it out. Keep feedback to about 100 to 150 ms, small transitions to about 200 to 300 ms, and larger ones to about 300 to 500 ms. Ease out for entrances and ease in for exits. Don't animate high-frequency or keyboard-initiated actions. Specify a reduced-motion behavior that drops movement and keeps short fades. For React implementation, use `efficient:react` references/motion.md, and consider the View Transitions API for page-level transitions.
 
 ## 4. Foundations
 
@@ -44,7 +45,9 @@ Reuse existing values and names. Define any new decision by its purpose and its 
 - **Typography.** Define roles (display, heading, body, label, data). Build hierarchy from a restrained mix of size, weight, line length, and spacing. Text must stay readable at narrow widths and at enlarged sizes.
 - **Spacing and surfaces.** Use a small repeatable rhythm. Avoid arbitrary per-element offsets and ornamental containers.
 - **Color.** Assign semantic roles for surface, text, border, interactive emphasis, and status. Reserve strong color for meaning. Give every status a non-color cue. Check contrast for each text, icon, border, and focus pair in its real context.
-- **Components.** Document the product object each one represents, its purpose, variants, and states. Visual resemblance alone is not a reason to merge unrelated behavior.
+- **Components.** Document the product object each one represents, its purpose, variants, and states. Visual resemblance alone is not a reason to merge unrelated behavior. Read [references/components.md](references/components.md) when specifying or reviewing states, forms, tables, overlays, or feedback.
+- **Dark and other themes.** Redefine the existing semantic tokens instead of inverting the palette. Read [references/dark-mode.md](references/dark-mode.md) when adding or reviewing a dark theme.
+- **No color system.** Read [references/color-oklch.md](references/color-oklch.md) only when the product has none and the task needs a baseline.
 
 ## 5. Responsive, state, and inclusive contracts
 
@@ -62,6 +65,7 @@ Reuse existing values and names. Define any new decision by its purpose and its 
   - success
   - recovery
 - Hover must never be the only affordance, and status color never the only signal.
+- Give any drag interaction (reordering, sliders, drag-and-drop) a single-pointer alternative without dragging, such as buttons or a menu, unless dragging is essential (WCAG 2.2 SC 2.5.7, Level AA).
 - Target WCAG 2.2 AA unless the product requires another level. Make these explicit:
   - visible focus
   - heading and landmark intent
@@ -87,8 +91,10 @@ Reuse existing values and names. Define any new decision by its purpose and its 
 ## 8. Review the rendered result
 
 - When the UI runs, drive it with `playwright-cli:playwright-cli` (if installed) or the claude-in-chrome skill. Check a wide width, a narrow width, 200% zoom, and each material state. Walk it by keyboard. Inspect focus, labels, contrast, order, target spacing, overflow, and reduced motion.
-- Treat an automated audit (axe, Lighthouse) as supplemental evidence, not proof. For a full WCAG audit use `design:accessibility-review`. For screen reader behavior use `accessibility:screen-reader-testing` if installed.
+- Treat an automated audit (axe, Lighthouse) as supplemental evidence, not proof. For a full WCAG audit use `design:accessibility-review` (if installed). For screen reader behavior use `accessibility:screen-reader-testing` if installed.
 - Judge the result against the documented hierarchy and system, not taste. Record the viewport, state, and interaction path.
+- Read [references/rendered-review-checklist.md](references/rendered-review-checklist.md) for the defects to look for (overflow and containment, alignment, readability, media, font loading, focus) and a P0 to P3 severity scale.
+- Read [references/interface-polish.md](references/interface-polish.md) only when the user asks for a polish pass.
 - Report at most three material findings, ordered by impact on users. Give each one its evidence and the smallest design correction. If nothing material turns up, say so and state the limits of the review.
 - Without a runnable UI, do a source-and-design review only. Mark rendered claims unverified.
 

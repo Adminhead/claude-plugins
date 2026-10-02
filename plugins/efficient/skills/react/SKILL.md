@@ -1,11 +1,11 @@
 ---
 name: react
-description: "React component work: boundaries, props vs local state, derived values, effects, keys, render purity, component-level accessibility, measured performance, and focused component tests. Use when adding, changing, reviewing, or debugging React UI behavior (stale state, effect loops, lost state, re-render cost, hydration mismatches). Not for visual design direction, JS/TS language issues, or TanStack routing/data APIs (use efficient:tanstack)."
+description: "React component work: boundaries, props vs local state, derived values, effects, keys, render purity, Server Component and Action boundaries, component-level accessibility, measured performance, motion, React 19 upgrades, and focused component tests. Use when adding, changing, reviewing, or debugging React UI behavior (stale state, effect loops, lost state, re-render cost, hydration mismatches). Not for visual design direction (efficient:web-design), JS/TS language issues (efficient:javascript, efficient:typescript), Vite configuration (efficient:vite), Vue component work (efficient:vue), or TanStack routing/data APIs (efficient:tanstack)."
 ---
 
 # Efficient React
 
-This skill owns component composition and local UI behavior. It does not own visual direction (`efficient:web-design`), language-level concerns (`efficient:javascript`, `efficient:typescript`), or routing and server state (`efficient:tanstack` when the project uses TanStack; otherwise follow the installed library's conventions).
+This skill owns component composition and local UI behavior. It does not own visual direction (`efficient:web-design`), language-level concerns (`efficient:javascript`, `efficient:typescript`), bundler configuration (`efficient:vite`), or routing and server state (`efficient:tanstack` when the project uses TanStack; otherwise follow the installed library's conventions).
 
 ## Before editing
 
@@ -46,6 +46,7 @@ Then place it:
 - Keep urgent input feedback separate from expensive deferrable work (`useTransition`, `useDeferredValue`) only when users can see lag. Never defer a value that must stay synchronous for correctness.
 - Place Suspense and error boundaries where the wait or failure should be contained, not around the whole page by default. Give each fallback a useful next action.
 - For hydration mismatches, repeated renders, lost state, or stale results, reduce the problem to deterministic inputs. Check keys, state ownership, render-time mutation, and server/client-dependent values such as `Date.now()`, `window`, and locale. Never suppress the warning or add a delay as the fix.
+- When the code uses `"use server"`, `"use client"`, `useActionState`, `useOptimistic`, or `useSyncExternalStore`, read [references/react-server-and-forms.md](references/react-server-and-forms.md). It covers server/client boundaries, authorizing every Server Function, and `cache`.
 
 ## Effects
 
@@ -60,6 +61,7 @@ Use an effect only to synchronize with an external system, such as subscriptions
 
 - Start with semantic HTML and native controls. Every interactive control needs an accessible name, every form control a label, and every informative image alt text. Add ARIA only where native semantics can't express the behavior.
 - Keep DOM, reading, and focus order aligned. Don't add key handlers that duplicate native activation.
+- Read [references/component-accessibility-patterns.md](references/component-accessibility-patterns.md) when building or reviewing a custom control. It lists anti-patterns and short fixes for icon buttons, disclosures, and field errors.
 - Treat dynamic errors, status messages, dialogs, menus, and focus movement as one contract. That contract covers role, state, announcement, and focus restoration, including disabled, loading, invalid, and recovery states.
 - Implement the accepted responsive rules without choosing new visual direction. Check reflow at narrow widths, 200% text, visible focus, contrast, keyboard operation, and target size.
 
@@ -67,6 +69,9 @@ Use an effect only to synchronize with an external system, such as subscriptions
 
 - Follow the repo's existing layout for co-locating the component, styles, test, and helpers. Keep feature components inside their feature. Add shared primitives only when several confirmed consumers need the same contract.
 - Keep behavior changes separate from refactors, migrations, and upgrades unless they are inseparable.
+- For animation work, read [references/motion.md](references/motion.md). It covers Motion for React, reduced motion, and where GSAP's license stands.
+- Read [references/component-api.md](references/component-api.md) when designing a reusable component's props (controlled and uncontrolled state, an `as` prop, compound parts).
+- Read [references/react-19-upgrade.md](references/react-19-upgrade.md) when upgrading from React 18 or fixing a removed-API error. StrictMode still double-invokes effects in React 19, so don't lower effect-count assertions on that basis.
 
 ## Performance
 
@@ -75,11 +80,12 @@ Use an effect only to synchronize with an external system, such as subscriptions
 3. Remove unnecessary work first. Common causes are misplaced state, repeated synchronization, and needless re-renders.
 4. Add `memo`/`useMemo`/`useCallback`, deferral, code splitting, or virtualization only when measurement shows a gain and the invalidation stays correct. If the React Compiler is enabled, manual memoization is usually redundant.
 5. Change one cause at a time and remeasure the same interaction. If the symptom won't reproduce, make no optimization claim.
+6. After a profile names the cost, read [references/react-performance-catalog.md](references/react-performance-catalog.md) for the matching category (waterfalls, bundle, re-renders, rendering). It is a menu for a measured problem, not a checklist to apply by default.
 
 ## Tests and checks
 
 - Add the smallest test that proves the changed behavior. Render with only the providers production needs, act through accessible controls, and assert visible output, accessible state, or an observable callback.
-- Read [references/react-component-testing.md](references/react-component-testing.md) when writing or revising a component test. It covers query priority, interaction helpers, network mocking, providers, and DOM vs. browser environment.
+- Read [references/react-component-testing.md](references/react-component-testing.md) when writing or revising a component test. It covers query priority, interaction helpers, network mocking, providers, DOM vs. browser environment, an axe smoke test, boundary tests, and `renderHook`.
 - Use a real browser check (`playwright-cli:playwright-cli` if installed, the claude-in-chrome skill, or `efficient:e2e-testing`) when layout, focus, scrolling, CSS, browser APIs, or hydration matter. A DOM-only test is not evidence for those.
 - Run the narrowest formatter, typecheck, lint, and targeted test that reach the change. Don't install a runner or test library just for this.
 - When a check fails, classify it before fixing. It is a product defect, a wrong expectation, a test-setup problem, a build issue, or an environment gap.

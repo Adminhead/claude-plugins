@@ -17,9 +17,10 @@ If an E2E, setup, or suite-refactor task also changes behavior that needs a focu
    - New or changed behavior: start with one happy-path test for that behavior, and stop there unless a case below applies.
    - Pure refactor: run the relevant existing tests. Update a test only when a change to the supported public interface breaks it.
    - Add one edge or failure case only when an explicit requirement, production contract, or surfaced defect calls for it. Skip speculative inputs and permutations.
-   - Confirmed defect: add the smallest test that discriminates the reported behavior. When practical, show it failing before the fix and passing after. If a pre-fix run is impossible, say why instead of claiming it failed.
+   - Confirmed defect: add the smallest test that discriminates the reported behavior. When practical, show it failing before the fix and passing after. If a pre-fix run is impossible, say why instead of claiming it failed. Name the test after the failure it prevents, and put it where similar bugs have clustered.
+   - Test-first work (the user asks for red-green-refactor, or the fix is easiest to drive from a failing test): read `references/tdd.md`.
 
-3. **Choose the smallest proving level.** Prefer a direct unit test of the public contract. Move to a component, database, or service test only when a lower level can't establish the behavior. Don't test mocks, fixtures, or helpers for their own sake.
+3. **Choose the smallest proving level.** Prefer a direct unit test of the public contract. Move to a component, database, or service test only when a lower level can't establish the behavior. Don't test mocks, fixtures, or helpers for their own sake. When a fake or sandbox path and the real path must return the same shape, one parity test that runs the same assertions against both catches drift that mocks hide.
 
 4. **Write a discriminating test.**
    - Name it by scenario and outcome.
@@ -33,7 +34,7 @@ If an E2E, setup, or suite-refactor task also changes behavior that needs a focu
    - Read `references/framework-runners.md` before choosing a command when the runner or its targeting syntax is unfamiliar (pytest, Vitest/Jest, Go, Cargo, or unknown).
    - Read `references/database-and-service-tests.md` before writing any test that needs a database, container, or local service.
 
-6. **Run proportionately.** Run the narrowest target that reaches the new test first. Rerun it after relevant code or test changes. Run a broader group only when project policy, shared code, config, or dependencies make it necessary. Treat coverage as a diagnostic for unexpected gaps, never a quota.
+6. **Run proportionately.** Run the narrowest target that reaches the new test first. Rerun it after relevant code or test changes. Run a broader group only when project policy, shared code, config, or dependencies make it necessary. Treat coverage as a diagnostic for unexpected gaps, never a quota. Don't count your own review of code you just wrote as evidence that its tests are sufficient, because the same blind spots that produced a bug tend to miss it in review. A check that runs can disagree with you.
 
 7. **Diagnose failures before widening scope.** Classify the failure as a product defect, wrong expectation, unstable or order-dependent test, runner or config issue, or missing infrastructure. Keep the failure output. Don't add retries or broaden scenarios to make a failure disappear. If prerequisites can't be met safely, report the test as blocked with the missing requirement.
 

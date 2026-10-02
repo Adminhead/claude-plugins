@@ -8,6 +8,13 @@ Read this when a Rust change needs test design beyond a plain unit test. Use the
 - Public API and cross-module wiring go in `tests/*.rs`. Each top-level file there compiles as a separate crate, so shared helpers belong in `tests/common/mod.rs`.
 - Doctests on public items double as usage docs. Run them with `cargo test --doc`.
 
+## Doctests
+
+- Write examples on public items as ordinary code in a fenced block. A line starting with `# ` is compiled but hidden from the rendered docs, which suits setup.
+- To use `?`, end the example with a hidden `# Ok::<(), MyError>(())` line, or wrap it in a `fn main() -> Result<...>`.
+- Mark a block `no_run` to compile without running it (network, filesystem), `ignore` to skip compiling, `should_panic` when panicking is documented, and `compile_fail` to assert that misuse doesn't compile.
+- Doctests run for library crates only. A binary crate's doc examples are not run.
+
 ## Errors and panics
 
 - Assert the contractual variant with `assert!(matches!(err, MyError::NotFound { .. }))`, plus any relevant source, state, or recovery effect.
@@ -25,6 +32,10 @@ Read this when a Rust change needs test design beyond a plain unit test. Use the
 - Use `proptest` or `quickcheck` only when the repo already has them and the behavior is invariant-rich, such as round trips, ordering, parser totality, or bounds.
 - Keep generators inside the supported input domain.
 - Keep a plain example test for any failure found, and commit `proptest-regressions/` files.
+
+## Coverage
+
+`cargo llvm-cov` (a separate tool, `cargo install cargo-llvm-cov --locked`) reports which lines tests execute. Use `--html` to browse them and `--lcov --output-path lcov.info` for CI tools. Doctest coverage needs `--doctests` and a nightly toolchain. Read the report to find untested branches and error paths. Don't set a percentage target or `--fail-under-lines` gate, because a number rewards tests that execute code without checking anything.
 
 ## Benchmarks
 

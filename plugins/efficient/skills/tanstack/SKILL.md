@@ -1,6 +1,6 @@
 ---
 name: tanstack
-description: "TanStack Query, Router, Form, Table, Virtual, and Start: state ownership, query keys, cache invalidation, loaders, search-param validation, server-driven tables, virtualization, and SSR/hydration boundaries. Use when code imports @tanstack/* or when debugging stale/duplicate data, lost form values, table/pagination mismatches, or Start server functions. Not for general React component design (efficient:react) or visual design."
+description: "TanStack Query, Router, Form, Table, Virtual, and Start: state ownership, query keys, cache invalidation, loaders, search-param validation, server-driven tables, virtualization, and SSR/hydration boundaries. Use when code imports @tanstack/* or when debugging stale/duplicate data, lost form values, table/pagination mismatches, or Start server functions. Not for general React component design (efficient:react), Vite configuration (efficient:vite), Vue work outside TanStack (efficient:vue), or visual design."
 ---
 
 # Efficient TanStack

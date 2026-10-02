@@ -39,7 +39,7 @@ Check these only when they affect the requested path:
 
 - Use landmarks, headings in order, native links, buttons, and inputs, `<label>`, `fieldset`/`legend`, and native validation where they fit.
 - Use ARIA only to fill a native gap. When you add ARIA, implement its keyboard, focus, name, state, and update behavior together.
-- Use normal flow, flexible layout, and content-driven breakpoints. Use media queries for viewport and user preferences. Use container queries only when a reusable component must respond to its parent's width.
+- Use normal flow, flexible layout, and content-driven breakpoints. Use media queries for viewport and user preferences. Use container queries only when a reusable component must respond to its parent's width. Read [references/responsive-css.md](references/responsive-css.md) for container-query syntax and pitfalls, fluid type, `svh`/`dvh`, and overflow fixes.
 - Don't add custom controls, client state, dependencies, or API layers unless the existing boundary can't meet the contract.
 
 ## 4. Forms as recoverable operations
@@ -48,6 +48,7 @@ Check these only when they affect the requested path:
 - Keep entered values after a recoverable failure.
 - On submit, prevent duplicate mutations, show a clear pending state, and restore usable controls afterward.
 - Leave focus in place for inline feedback. Move it deliberately to a new context, an error summary, or the first actionable error when that helps the user continue.
+- Don't make people retype information they already gave in the same process. Auto-populate it or let them select it, except where re-entry is essential, a security check (confirming a new password), or the earlier value is no longer valid (WCAG 2.2 SC 3.3.7 Redundant Entry, Level A).
 - Never rely on color alone. Never make a non-control clickable as if it were a control.
 
 ## 5. Server boundary
@@ -77,7 +78,9 @@ Check these only when they affect the requested path:
 
 - Take a baseline for the changed flow with browser tooling (Network, Performance, Lighthouse) under representative conditions.
 - Inspect requests, payload sizes, render-blocking work, image, font, and script delivery, and user-visible timing.
+- Judge field and lab results against the Core Web Vitals "good" thresholds, measured at the 75th percentile: LCP within 2.5 s, INP within 200 ms, and CLS within 0.1 (<https://web.dev/articles/vitals>). TTFB is a diagnostic rather than a Core Web Vital, with a good value of 0.8 s or less (<https://web.dev/articles/ttfb>). Thresholds change, so confirm them at the source when a number decides something.
 - Fix the measured bottleneck with the smallest change, then rerun the same measurement.
+- Record each before and after run in a table (Metric, Before, After, Delta, Verdict) with the same page, device profile, and throttling. Treat bundle-size or timing budgets as examples to compare against, not targets to hit without a measured user impact.
 - Don't add caching, preloading, code splitting, compression, service workers, or telemetry because they are customary. When you change delivery, keep cache correctness, privacy, and invalidation intact.
 
 ## 9. Validate the integrated journey

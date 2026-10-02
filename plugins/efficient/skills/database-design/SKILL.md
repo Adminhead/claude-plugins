@@ -1,6 +1,6 @@
 ---
 name: database-design
-description: "Portable relational schema design and review: entities, keys, relationships, NOT NULL/UNIQUE/CHECK/FK constraints and delete actions, normalization vs justified denormalization, logical access paths, and expand-contract migrations with backfills. Use when adding or changing tables, ORM models, or migrations, or reviewing a data model. Not for PostgreSQL query plans, index types, locking, or ops (efficient:postgres)."
+description: "Portable relational schema design and review: entities, keys, relationships, NOT NULL/UNIQUE/CHECK/FK constraints and delete actions, normalization vs justified denormalization, logical access paths, and expand-contract migrations with backfills. Use when adding or changing tables, ORM models, or migrations, or reviewing a data model. Not for PostgreSQL query plans, index types, locking, or ops (efficient:postgres), MySQL/MariaDB specifics (efficient:mysql), or caching/queues on Redis (efficient:redis)."
 ---
 
 # Efficient Database Design
@@ -11,6 +11,7 @@ Make a relational model enforce its business rules and support its known reads a
 
 - Read the request, the existing schema and migrations (including ORM models such as Prisma, Drizzle, SQLAlchemy, Django, or ActiveRecord), the application writes, representative reads, tests, and retention or privacy rules.
 - List the decision to make, the affected consumers, the deployment order, the existing data to preserve, and the unknowns.
+- Find consumers beyond the obvious ones: SQL objects (views, triggers, functions, procedures), application queries and ORM models, dynamic or string-built SQL, scheduled jobs, and reports. Label each dependency Direct, Indirect, or Uncertain. A text search isn't exhaustive, so say what it can't see.
 - Mark any unestablished workload, ownership, or engine capability as an assumption. Ask when it affects correctness or compatibility.
 - Check ORM and migration-tool APIs through Context7 for the installed version.
 
@@ -51,13 +52,13 @@ For each entity, name its stable identity, its required and optional facts, its 
 ## 6. Logical access paths from real operations
 
 - For each important read, record its filters, joins, ordering, expected result size, frequency, and the write cost of supporting it.
-- Give relationship lookups and parent delete and update paths an intentional access path. Index a foreign key when the workload needs it, not by blanket rule.
+- Give relationship lookups and parent delete and update paths an intentional access path. Index a foreign key when the workload needs it, not by blanket rule. The usual reason is a parent delete or key update that scans the child table, for example under `ON DELETE CASCADE`. Write-heavy tables pay for unused indexes.
 - Tie each proposed index to the query it serves and its write and storage cost. Don't index by column name, guessed selectivity, or future scale.
-- Engine-specific index types and plan inspection belong to `efficient:postgres`.
+- Engine-specific index types and plan inspection belong to `efficient:postgres` (and `efficient:mysql`). Postgres type defaults, such as `timestamptz`, `text`, and identity keys, are in `efficient:postgres` `references/schema-design.md`.
 
 ## 7. Migration plan
 
-**Read [references/migrations.md](references/migrations.md) before writing or reviewing any migration that touches existing data or runs while old code is live.** It covers expand-contract staging, backfills, reversibility, and stop conditions.
+**Read [references/migrations.md](references/migrations.md) before writing or reviewing any migration that touches existing data or runs while old code is live.** It covers expand-contract staging, a pre-apply safety checklist, anti-patterns, per-tool traps, backfills, reversibility, and stop conditions.
 
 ## 8. Maintenance ownership
 
