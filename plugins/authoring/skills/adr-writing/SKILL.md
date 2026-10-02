@@ -14,7 +14,12 @@ The helper script is `${CLAUDE_SKILL_DIR}/scripts/new_adr.py` (below, `new_adr.p
 
 1. **Discover the record set.** Run `new_adr.py --list` to see each ADR's number, status, and title. The script picks the directory in this order: `--dir`, then an adr-tools `.adr-dir` file, then the one existing directory among `docs/adr/`, `docs/adrs/`, `doc/adr/`, `docs/decisions/`, and `docs/architecture/decisions/`, then `docs/adr/`. When ADRs live in several of those, it stops and names them. Ask which one is authoritative, or check CLAUDE.md, AGENTS.md, or CONTRIBUTING, then pass `--dir`.
 
-2. **Decide whether an ADR is warranted.** Write one for a decision that constrains future work, has real alternatives or trade-offs, or would otherwise need rediscovery. Don't write one for an implementation detail. If unsure, summarize the decision, alternatives, and impact, and ask the decision owner whether to record it.
+2. **Decide whether an ADR is warranted.** Write one when the decision passes all three tests:
+   - **Hard to reverse.** Changing course later has a meaningful cost. An easy reversal needs no record.
+   - **Surprising without context.** A future reader would wonder why it was done this way.
+   - **A real trade-off.** There were genuine alternatives and the choice rested on specific reasons.
+
+   Typical qualifiers are architectural shape, integration patterns between components, technology choices with lock-in, ownership and scope boundaries, deliberate deviations from the obvious path, constraints invisible in the code, and rejected alternatives whose rejection is non-obvious. Don't write one for an implementation detail. If a test is unclear, summarize the decision, alternatives, and impact, and ask the decision owner whether to record it.
 
 3. **Generate a proposed record.**
 

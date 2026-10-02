@@ -4,7 +4,7 @@ Read this before drafting a description or responding to a routing failure.
 
 ## How routing works
 
-Claude sees every skill's name and description in its available-skills list and loads a skill when the description matches the task. It tends to skip skills for simple one-step requests it can handle directly, and it tends to under-trigger in general. Specific, slightly assertive descriptions help. Keyword dumps don't.
+Claude sees every skill's name and description in its available-skills list and loads a skill when the description matches the task. It tends to skip skills for simple one-step requests it can handle directly. Specific descriptions with concrete situations help, and keyword dumps don't. Newer models also respond strongly to emphatic wording, so pushy phrases such as "ALWAYS use this" or "use for anything involving X" make a skill over-trigger. State the scope plainly and let a precise "Not for" clause set the boundary.
 
 ## Write a routing contract
 

@@ -35,7 +35,7 @@ Refer to Claude Code tools by name where the skill talks about tooling: Read, Ed
 
 - Use imperative steps in execution order, with the normal path visible.
 - Say exactly when to read each reference ("Read `references/x.md` when …"). A reference with no trigger never gets read.
-- Make strict rules explicit where error is costly, and allow judgment where tasks genuinely vary.
+- Follow the emphasis, reason, and positive-framing rules in `writing-for-agents.md`, and allow judgment where tasks genuinely vary.
 - Add a short realistic example only when it resolves an ambiguous decision.
 - Never bury a critical constraint in an optional reference.
 

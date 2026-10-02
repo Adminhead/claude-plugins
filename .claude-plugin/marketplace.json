@@ -52,8 +52,8 @@
     {
       "name": "authoring",
       "source": "./plugins/authoring",
-      "description": "Skills for authoring Claude Code skills, agent instruction files, and architecture decision records.",
-      "version": "0.1.0",
+      "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config.",
+      "version": "0.2.0",
       "category": "development"
     },
     {

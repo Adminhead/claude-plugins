@@ -1,6 +1,6 @@
 ---
 name: manage-agent-instructions
-description: Create, restructure, prune, or reconcile a repo's agent instruction files (CLAUDE.md, nested CLAUDE.md, .claude/rules/, CLAUDE.local.md, AGENTS.md) from verified repo evidence. Use when setting up or reorganizing project instructions, deciding root vs nested vs path-scoped rules, making CLAUDE.md and AGENTS.md coexist, or removing stale guidance. Not for a quick CLAUDE.md quality audit (claude-md-management:claude-md-improver) or capturing session learnings (claude-md-management:revise-claude-md).
+description: Create, restructure, prune, or reconcile a repo's agent instruction files (CLAUDE.md, nested CLAUDE.md, .claude/rules/, CLAUDE.local.md, AGENTS.md) from verified repo evidence. Use when setting up or reorganizing project instructions, deciding root vs nested vs path-scoped rules, making CLAUDE.md and AGENTS.md coexist, or removing stale guidance. Not for a quick CLAUDE.md quality audit (claude-md-management:claude-md-improver) capturing session learnings (claude-md-management:revise-claude-md), or auditing the whole Claude Code setup for bloat (authoring:config-audit), where the plugin is installed.
 ---
 
 # Manage Agent Instructions
@@ -39,6 +39,8 @@ Read `references/loading.md` before deciding placement or AGENTS.md handling. In
    - When the repo also serves other agents, decide how `AGENTS.md` and `CLAUDE.md` relate. Read `references/hierarchy-and-maintenance.md` for the AGENTS.md patterns, nested-file criteria, reconciliation, and pruning.
 
 4. **Draft or update narrowly.** Keep existing wording, headings, and local detail where they're still true. Make the smallest change that adds, corrects, moves, or removes a verified instruction. Include exact commands only when their source and working directory are verified. Don't add generated dates, technology inventories, directory listings Claude can derive, or generic coding advice. Use `<!-- … -->` block comments for maintainer-only notes, since Claude Code strips them from context.
+   - When the repo repeats an agent mistake, or a high-risk rule has no check, read `references/enforcement-and-failure-memory.md` and move the rule into a script, hook, or CI check, with a failure note when one is warranted.
+   - When rewording instructions, read `${CLAUDE_PLUGIN_ROOT}/skills/create-skill/references/writing-for-agents.md` for pointer wording, emphasis, and pruning.
 
 5. **Reconcile overlaps.** Compare files rule by rule only where scopes overlap. Classify each overlap as compatible, complementary, duplicated, stale, or conflicting, and handle it as the hierarchy reference describes.
 

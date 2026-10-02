@@ -72,6 +72,17 @@ Never bulk-copy, bulk-delete, or sync parallel files.
 
 Don't remove a rule because it looks generic or wasn't exercised in a small sample. Absence of evidence isn't proof of staleness.
 
+## Promote a principle from skills into rules
+
+A principle moves from skills into `CLAUDE.md` or `.claude/rules/` only when it passes all of these tests:
+
+1. It appears in two or more skills, so it is cross-cutting and not one skill's detail.
+2. It can be written as an action ("do X"), not as a value ("X matters").
+3. Ignoring it has a concrete cost you can state in one sentence.
+4. The existing rules do not already cover it in other words.
+
+Give each candidate a verdict (append to a section, revise a rule, add a section or file, already covered, or too specific) with the skills that evidence it. Language and framework detail stays in the skills. A rule that loads every session has a recurring cost, so be strict.
+
 ## Maintenance checklist
 
 - Each file has a clear scope and only rules that apply there.

@@ -54,7 +54,7 @@ The opening `---` must be the first line, or Claude Code treats the whole file a
 
 ## Size budget
 
-The listing shows only name plus description until the skill loads. Once loaded, `SKILL.md` stays in context for the rest of the session, so every line is a recurring cost. Claude Code's hard guidance is under 500 lines; aim for under about 150 and push detail into references.
+The listing shows only name plus description until the skill loads. Once loaded, `SKILL.md` stays in context for the rest of the session, so every line is a recurring cost. Claude Code's guidance is under 500 lines. Stay lean by keeping the procedure in `SKILL.md` and moving rarely needed detail behind a stated trigger; see `progressive-disclosure.md`. Do not split to hit a line count.
 
 ## What the bundled validator checks
 
