@@ -1,6 +1,6 @@
 {
   "name": "git",
   "version": "0.1.0",
-  "description": "Git and GitHub workflow skills: focused commits, worktrees, Actions, Dependabot, and PR review comments.",
+  "description": "Git skills: focused commits and worktrees.",
   "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
 }

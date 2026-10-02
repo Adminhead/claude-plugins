@@ -1,0 +1,6 @@
+{
+  "name": "github",
+  "version": "0.1.0",
+  "description": "GitHub skills: Actions workflows, Dependabot configuration, and PR review comments.",
+  "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
+}

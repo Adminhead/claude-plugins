@@ -15,7 +15,7 @@ Out of scope are identity-provider administration, access-policy decisions (who 
 
 - `efficient:web-development` handles flows beyond the auth boundary.
 - `efficient:testing` handles regression tests.
-- `git:actions`, if installed, handles auth-related CI workflows or their secrets.
+- `github:actions`, if installed, handles auth-related CI workflows or their secrets.
 
 ## 1. Establish the boundary
 

@@ -1,6 +1,6 @@
 ---
 name: actions
-description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run (gh run view). Not for Dependabot config (git:dependabot) or triggering dispatches, releases, or deployments.
+description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run (gh run view). Not for Dependabot config (github:dependabot) or triggering dispatches, releases, or deployments.
 ---
 
 # GitHub Actions

@@ -100,12 +100,13 @@ Checked 2026-10-01 against `claude plugin list` and every `skills/<name>/SKILL.m
 
 ## Plugin map
 
-11 plugins, all local.
+12 plugins, all local.
 
 | Plugin | Skills (new name ← old) | Notes |
 | --- | --- | --- |
 | `efficient` | `coding`, `planning`, `testing`, `e2e-testing`, `problem-solving`, `research`, `auth`, `web-development`, `web-design`, `react`, `tanstack`, `javascript`, `typescript`, `python`, `python-packaging`, `fastapi`, `database-design`, `postgres`, `golang`, `rust` ← `efficient-*`, `problem-solving` | One plugin (confirmed). These skills cite each other densely, and a three-way split leaves 14 cross-plugin edges |
-| `git` | `commit`, `worktree`, `actions`, `dependabot`, `pr-comments` ← `git-*`, `github-*`, `pr-comments` | Needs `git`, `gh`, `jq` |
+| `git` | `commit`, `worktree` ← `git-*` | Needs `git` |
+| `github` | `actions`, `dependabot`, `pr-comments` ← `github-*`, `pr-comments` | Needs `gh`, `jq` |
 | `quality` | `test`, `test-harness`, `audit`, `second-opinion`, `anti-slop` | `test-harness` calls `test`'s runner, so they share a plugin. `audit` needs gitleaks, semgrep, trivy, govulncheck, pip-audit (missing ones report "not scanned"). `second-opinion` needs `codex` or `agy` |
 | `authoring` | `adr-writing`, `create-skill`, `manage-agent-instructions` | Python 3 for the first two |
 | `devenv` | `devenv` | |
@@ -118,7 +119,7 @@ Checked 2026-10-01 against `claude plugin list` and every `skills/<name>/SKILL.m
 
 Cross-plugin references that remain, all soft:
 
-- `efficient:*` → `playwright-cli`, `claude-in-chrome`, `screen-reader-testing`, `ui-styling`/`ui-ux-pro-max` (user-level), `design:accessibility-review`, `exa:*`, `git:actions`
+- `efficient:*` → `playwright-cli`, `claude-in-chrome`, `screen-reader-testing`, `ui-styling`/`ui-ux-pro-max` (user-level), `design:accessibility-review`, `exa:*`, `github:actions`
 - `quality:*` → `efficient:testing`, `efficient:problem-solving`, `efficient:auth`, `avoid-ai-writing:avoid-ai-writing` (upstream), `playwright-cli`
 - `screen-reader-testing` → `efficient:web-development`, `efficient:react`, `efficient:web-design`
 - `playwright-cli` → `pass-cli`, `efficient:e2e-testing`
@@ -128,7 +129,7 @@ Cross-plugin references that remain, all soft:
 | Skill | Fix |
 | --- | --- |
 | `test-harness` | `allowed-tools` and body call `/home/buck/.claude/skills/test/scripts/run_tests.py` (`SKILL.md:8`, `:50`). Point at the sibling skill's script inside the plugin. `SKILL.md:25` reads `efficient-testing/SKILL.md` by path. Replace with "load `efficient:testing`" |
-| `pr-comments` | `SKILL.md:48` names `~/.claude/skills/test/…`. Replace with "`/quality:test` if installed" |
+| `github:pr-comments` | `SKILL.md:48` names `~/.claude/skills/test/…`. Replace with "`quality:test` if installed" |
 | `adr-writing` | Script path at `SKILL.md:10`, `:21`, `:28`. Add `allowed-tools` |
 | `create-skill` | Script paths at `SKILL.md:17`, `:28`. `SKILL.md:14` and `references/specification.md:9`, `:53` teach `~/.claude/skills` as the place to create skills. Add plugin skills (`plugins/<p>/skills/<n>/`, `${CLAUDE_PLUGIN_ROOT}`) as a third location |
 | `second-opinion` | `consult.sh` path at `SKILL.md:39`, `:45` |
@@ -181,17 +182,17 @@ Done when a session can read `~/.claude/skills/` and `claude plugin list` withou
 
 ### Slice 3 — plain-guidance plugins
 
-`efficient`, `git` (minus `pr-comments`), `devenv`, `chezmoi`, `pass-cli`, `sentry`, `playwright-cli`, `termwright`, `screen-reader-testing`.
+`efficient`, `git`, `github`, `devenv`, `chezmoi`, `pass-cli`, `sentry`, `playwright-cli`, `termwright`, `screen-reader-testing`.
 
 - Copy, rename skill dirs and `name:` fields, rewrite cross-references to qualified names.
 - `validate --strict` each plugin.
 
 ### Slice 4 — script plugins
 
-`quality`, `authoring`, `git:pr-comments`.
+`quality`, `authoring`, `github:pr-comments`.
 
 - Apply the path and `allowed-tools` fixes above.
-- Run each script once from the installed plugin (`test` on this repo, `adr-writing` dry run in a temp repo, `create-skill` validate on a plugin skill, `second-opinion` against a tiny diff, `pr-comments` against a real PR).
+- Run each script once from the installed plugin (`test` on this repo, `adr-writing` dry run in a temp repo, `create-skill` validate on a plugin skill, `second-opinion` against a tiny diff, `github:pr-comments` against a real PR).
 
 ### Slice 5 — cutover
 
