@@ -118,6 +118,13 @@
       "description": "Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "observability",
+      "source": "./plugins/observability",
+      "description": "Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

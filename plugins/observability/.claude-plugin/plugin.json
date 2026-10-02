@@ -1,0 +1,6 @@
+{
+  "name": "observability",
+  "version": "0.1.0",
+  "description": "Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems.",
+  "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
+}
