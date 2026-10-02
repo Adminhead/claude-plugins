@@ -90,6 +90,13 @@
       "description": "Drive and test terminal UI apps with the termwright CLI.",
       "version": "0.1.0",
       "category": "testing"
+    },
+    {
+      "name": "screen-reader-testing",
+      "source": "./plugins/screen-reader-testing",
+      "description": "Plan, run, and report manual screen-reader and keyboard tests of web journeys.",
+      "version": "0.1.0",
+      "category": "testing"
     }
   ]
 }

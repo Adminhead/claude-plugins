@@ -1,0 +1,9 @@
+{
+  "name": "screen-reader-testing",
+  "version": "0.1.0",
+  "description": "Plan, run, and report manual screen-reader and keyboard tests of web journeys.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}
