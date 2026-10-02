@@ -1,6 +1,6 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists two plugins: `example`, a template to copy, and `secret-stash`, which keeps secrets out of API requests (see its [README](plugins/secret-stash/README.md)).
+Claude Code plugin marketplace `adminhead`. It lists three plugins: `example`, a template to copy, `secret-stash`, which keeps secrets out of API requests ([docs](docs/plugins/secret-stash.md)), and `ripgrep`, which teaches Claude to search with `rg` ([docs](docs/plugins/ripgrep.md)).
 
 ## Layout
 
