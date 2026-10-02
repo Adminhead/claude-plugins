@@ -83,6 +83,13 @@
       "description": "Drive a headless, isolated browser from Bash with playwright-cli.",
       "version": "0.1.0",
       "category": "testing"
+    },
+    {
+      "name": "termwright",
+      "source": "./plugins/termwright",
+      "description": "Drive and test terminal UI apps with the termwright CLI.",
+      "version": "0.1.0",
+      "category": "testing"
     }
   ]
 }
