@@ -108,8 +108,8 @@
     {
       "name": "quality",
       "source": "./plugins/quality",
-      "description": "Test running, security audit, second-opinion review, and de-slopping skills for verifying code changes.",
-      "version": "0.1.0",
+      "description": "Test running, security and config audits, threat modeling, privacy review, production-readiness and test-gap review, mistake-proofing, second-opinion review, and de-slopping skills for verifying code changes.",
+      "version": "0.2.0",
       "category": "development"
     },
     {

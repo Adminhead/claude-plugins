@@ -8,9 +8,16 @@ Read this when classifying candidates in step 3. Each entry is a prompt to look 
 - Obscures control flow with indirection, compressed cleverness, or hidden state.
 - Adds an abstraction, option, callback, or config surface with no present caller.
 - Keeps dead artifacts: unused functions, flags, imports, assets, or config.
-- Comments that restate the code, narrate an obvious workflow, add decorative separators, or leave a vague TODO with no owner or reason.
+- Comments that restate the code, narrate an obvious workflow, add decorative separators, or leave a vague TODO with no owner or reason. Read `comments.md` in this directory before changing any.
 - Optimizes without a measured need.
 - Wraps errors in defensive fallbacks that hide the real failure.
+- Hidden debt that works on the happy path:
+  - Resources opened with no cleanup: listeners, timers, subscriptions, temp files, connections.
+  - A timeout with no abort or cleanup behind it.
+  - A swallowed error (`catch {}`, or a log with no handling) on a path the contract requires to fail loudly.
+  - An import, package, or API method that does not exist. Check it against the manifest, lockfile, and the library's docs for the pinned version.
+  - Error handling that departs from the repository's local style or skips its shared utilities.
+  Flag only error paths the contract requires. Speculative try/catch is the slop here, not its absence.
 
 Keep comments and docs that explain business rules, security, compatibility, or non-obvious implementation intent.
 

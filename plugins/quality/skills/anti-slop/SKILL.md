@@ -21,7 +21,7 @@ Use it for review-only requests or requested revisions of code, prose, or a buil
    - For web work, render the result when practical (`playwright-cli:playwright-cli` if installed, or the project's dev server). Check task hierarchy, product-specific content, overflow at narrow widths, required loading/empty/error/success/disabled states, keyboard and focus behavior, labels, contrast, text resize, and interaction feedback.
    - If rendering or measurement is unavailable, limit findings to what you can inspect directly and don't claim runtime or visual outcomes.
 
-3. **Classify only material candidates.** Name the concrete evidence and the smallest correction for each. Read `references/candidates.md` for the catalog of common code, prose, and UI candidates and the traps that look like slop but aren't.
+3. **Classify only material candidates.** Name the concrete evidence and the smallest correction for each. Read `references/candidates.md` for the catalog of common code, prose, and UI candidates and the traps that look like slop but aren't. For comments, doc comments, and TODOs in code, also read `references/comments.md`.
    - A smell prompts investigation; it isn't a defect by itself. Don't flag a familiar pattern, a concise sentence, deliberate repetition, or a common visual choice just because it is common.
    - In review-only mode, return at most three material findings, ordered by user impact. If none are supported, say so.
 
