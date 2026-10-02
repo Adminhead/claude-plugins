@@ -48,6 +48,13 @@
       "description": "Skills for authoring Claude Code skills, agent instruction files, and architecture decision records.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "devenv",
+      "source": "./plugins/devenv",
+      "description": "Configure, migrate, debug, and verify devenv.sh developer environments.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

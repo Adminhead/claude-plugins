@@ -1,0 +1,9 @@
+{
+  "name": "devenv",
+  "version": "0.1.0",
+  "description": "Configure, migrate, debug, and verify devenv.sh developer environments.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}
