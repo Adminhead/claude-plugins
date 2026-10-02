@@ -1,4 +1,5 @@
 import type { Detector, Match } from '../types.ts'
+import { looksLikeSecret } from './shape.ts'
 
 // Key-name parts that mark a value as sensitive. Parts split on _ - . and camelCase boundaries.
 // A part matches when it ends with a term (a trailing S is ignored), so apiKey, client_secrets and
@@ -18,14 +19,19 @@ function keyParts(key: string): string[] {
 // Keys that name a credential outright; their values are never dismissed as prose.
 const STRONG = ['PASSWORD', 'PASSWD', 'PASSPHRASE', 'SECRET', 'PWD', 'PRIVATE']
 const strongKey = (parts: string[]) => parts.some(p => STRONG.some(t => p.endsWith(t) || p.replace(/S$/, '').endsWith(t)))
+// A key that ends in PASS or CREDENTIAL(S) (`smtp_pass`, `aws_credentials`) keeps a plain word
+// (`pass: Sunshinedays`) but not prose. As a non-final part it counts for nothing (`pass-cli`).
+const credentialTail = (parts: string[]) => /^(?:PASS|CREDENTIALS?)$/.test(parts.at(-1) ?? '')
 
 function sensitiveKey(parts: string[]): boolean {
   return parts.some(p => TERMS.some(t => p.endsWith(t) || p.replace(/S$/, '').endsWith(t)))
 }
 
 // What tools put before a line: a line number (Read's tab or arrow, cat -n's spaces), grep's
-// path:line: / path-line- / path:, each bounded.
-const PREFIXES = [String.raw`\d{1,7}(?:→|[ \t])`, String.raw`[^\s:]{1,256}[:-]\d{1,7}[:-]`, String.raw`[^\s:]{1,256}:`]
+// path:line: / path-line- / path:, each bounded. A bare `path:` counts only when no space follows
+// the colon (grep prints `file:content`, YAML `key: value`), or `token: x=` would read `token:` as
+// a prefix and `x` as the key.
+const PREFIXES = [String.raw`\d{1,7}(?:→|[ \t])`, String.raw`[^\s:]{1,256}[:-]\d{1,7}[:-]`, String.raw`[^\s:]{1,256}:(?=\S)`]
 const OUTPUT_PREFIX = PREFIXES.join('|')
 // Each prefix form anchored, to strip it from the lines that follow a key line.
 const PREFIX_RES = PREFIXES.map(p => new RegExp(String.raw`^[ \t]*(?:${p})`))
@@ -122,9 +128,10 @@ export function envRuleDetector(): Detector {
             if (body.length) spans = body
           } else if (!quoted && EXPRESSION.test(value)) continue
           const parts = keyParts(m.groups!.key)
-          // `key: some prose` is YAML text, not a secret. Only a colon form skips, never KEY=value or
+          // `key: some prose` is YAML text, and `key: word` an identifier such as a tool or directory
+          // name (`pass-cli:pass-cli`), not a secret. Only a colon form skips, never KEY=value or
           // a key that names a password or secret outright.
-          if (!quoted && m.groups!.sep === ':' && /\s/.test(value) && !strongKey(parts)) continue
+          if (!quoted && m.groups!.sep === ':' && !strongKey(parts) && (/\s/.test(value) || (!credentialTail(parts) && !looksLikeSecret(value)))) continue
           const sensitive = sensitiveKey(parts) || (parts.at(-1) === 'URL' && URL_USERINFO.test(value))
           if (!sensitive) continue
           for (const [from, to] of spans) {

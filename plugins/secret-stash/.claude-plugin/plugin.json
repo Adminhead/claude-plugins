@@ -1,6 +1,6 @@
 {
   "name": "secret-stash",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Replaces secrets in content bound for the model with stable identifiers, and restores them in tool arguments and on-screen text.",
   "author": {
     "name": "Buck Brady"

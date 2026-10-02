@@ -1,6 +1,7 @@
 import { LiteOpenRedaction } from '../vendor/openredaction-lite.mjs'
 import type { ProjectConfig } from '../config.ts'
 import type { Detector } from '../types.ts'
+import { looksLikeSecret } from './shape.ts'
 import { deadlineFromNow, scanPatterns, type Scannable } from './scan.ts'
 
 type OpenRedactionConfig = ProjectConfig['openredaction']
@@ -38,18 +39,6 @@ const KEYWORD_PATTERNS: ReadonlySet<string> = new Set([
   'GENERIC_SECRET', 'GENERIC_API_KEY', 'OAUTH_CLIENT_SECRET', 'OAUTH_TOKEN', 'BEARER_TOKEN',
 ])
 
-// Prose check, applied when whitespace or `:` separates keyword and value (`secret: denied` is an
-// error message); `=` marks an assignment, where the library's match stands. Words, identifiers and
-// call syntax are not secrets. A value passes when it has a digit or a symbol (`-_.` do not count).
-// A long letters-only value passes when it mixes case. This misses a short passphrase made of
-// letters only, and still stashes a prose word with a digit or symbol (`utf8mb4_bin`). The `.env`
-// key rule covers `key: value` lines.
-export function looksLikeSecret(value: string): boolean {
-  if (/[A-Za-z_]\w*\(\)|\]\(/.test(value)) return false
-  if (/[^A-Za-z\-_.]/.test(value)) return true
-  return value.length >= 20 && /[a-z]/.test(value) && /[A-Z]/.test(value)
-}
-
 function proseValue(value: string, context: string, at: number): boolean {
   const before = context.slice(0, at)
   const sep = /[:=\s]+$/.exec(before)?.[0] ?? ''
@@ -71,8 +60,16 @@ function isAwsSecret(value: string, context: string, at: number): boolean {
   return /aws|amazon|secret|access.?key/i.test(context)
 }
 
-// Adds our own check after the library's validator.
+// The library's Heroku pattern matches any UUID and accepts "auth" anywhere in the context, so
+// session ids in paths were stashed. A Heroku or API key word has to sit nearby, or an auth key
+// word directly before the value (`X-Auth-Token: <uuid>`, `--auth-token <uuid>`, `Authorization: Bearer|Token|Basic <uuid>`; not `author`).
+function isHerokuKey(_value: string, context: string, at: number): boolean {
+  return /heroku|api[\s_.-]?key/i.test(context) || /auth(?!or(?!iz))[\w-]*["']?\s*[:=\s]\s*(?:(?:bearer|token|basic)\s+)?["']?$/i.test(context.slice(0, at))
+}
+
+// Adds our own check after the library's validator. The Heroku check replaces it.
 function tightened(p: Scannable): Scannable {
+  if (p.type === 'HEROKU_API_KEY') return { ...p, validator: isHerokuKey }
   const own: Scannable['validator'] =
     p.type === 'AWS_SECRET_KEY' ? isAwsSecret : KEYWORD_PATTERNS.has(p.type) ? proseValue : undefined
   if (!own) return p

@@ -18,7 +18,7 @@
       "name": "secret-stash",
       "source": "./plugins/secret-stash",
       "description": "Replaces secrets with stable IDs before they reach the API, and restores real values in tool arguments and on-screen text.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "security"
     },
     {
