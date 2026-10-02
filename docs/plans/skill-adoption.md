@@ -1,6 +1,6 @@
 # skill-adoption — plan
 
-Status: Slices 1–10 done, 2026-10-03. Slices 11 (evals) and 12 (docs, install, verify) remain.
+Status: done, 2026-10-03. Follow-ups under Progress.
 
 ## Goal
 
@@ -169,6 +169,29 @@ About 20 implementation tasks plus a reviewer for each. Slices 2–10 can run pa
 - **Verification:** claims were checked against official docs, plus local runs where possible: Go 1.27, PostgreSQL 18 with pgvector, Valkey, MySQL 8.4 in Docker, TypeScript, ShellCheck, Bats, the MCP SDKs, and the gh and aws CLIs.
 - **Agent files:** `~/.claude/agents/coder.md` and `architect.md` got the prompting-guidance edits (backups in `~/.claude/skills.migrated/_agents/*.pre-guidance`).
 - **Cleanup:** a coder ran Postgres, pgvector and Valkey from `/tmp/pg` (stopped). The user may delete that directory.
+
+### Slice 12 — docs, install, verify — done
+
+- **Docs:** pages for the six new plugins, the seven changed pages updated, and a README table of all 21 plugins (`c2a3061`, reviewed).
+- **Install:** the six new plugins are installed at user scope, and the seven changed ones are updated to 0.2.0. A fresh session lists all 181 skills, and none from the repo are missing.
+
+### Slice 11 — evals — done
+
+- **Cases:** 28 new cases, 27 routing and 1 quality. Each ran once with and without the plugin (`--no-publish`), at a total cost of about $9.
+- **Pre-flight:** 31 of 32 quality cases were dropped, because the model without the skill already passed them. On self-contained prompts, Sonnet 5.5 already knows the mined traps (Go pitfalls, RFC 9457, idempotency races, webhook signing, MCP security, commit conventions). The one kept case (`efficient/testing-observable-behaviour`) fails in both arms.
+- **Routing:**
+  - 24 of 27 routing cases fired the right skill with the neighbour silent. That covers every new efficient, api, git, github, aws, observability, and tooling boundary.
+  - Misses, single run: `quality:test-gap-audit`, `quality:agent-config-audit`, `infra:terraform`.
+- **Main finding, a trigger gap:**
+  - On short, self-contained prompts, the language and process skills rarely load: `efficient:golang` 0 of 6, `efficient:testing` 0 of 2, `efficient:problem-solving` 0 of 2, `git:commit` 0 of 3, `authoring:create-skill` 0 of 3.
+  - The model answers from its own knowledge, so reference content such as Go pitfalls is never reached. `mcp:design` also missed a token-passthrough prompt.
+
+### Follow-ups
+
+1. Tune the descriptions of `efficient:golang`, `efficient:testing`, `efficient:problem-solving`, `git:commit`, `authoring:create-skill`, `quality:test-gap-audit`, `quality:agent-config-audit`, `infra:terraform`, and `mcp:design` for triggering. Re-run their routing cases with `--runs 3` before and after.
+2. Write quality evals as repo-context tasks (fixture repos via `context.add_dirs`) instead of self-contained questions, so the skill has something to act on and the baseline can fail.
+3. Fix `authoring/evals/create-skill-trigger`, which hits its 5-turn cap.
+4. Delete `/tmp/pg` (scratch Postgres, pgvector, and Valkey from a coder; stopped).
 
 ## Decisions
 
