@@ -88,7 +88,7 @@
       "name": "playwright-cli",
       "source": "./plugins/playwright-cli",
       "description": "Drive a headless, isolated browser from Bash with playwright-cli.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "testing"
     },
     {
@@ -102,7 +102,7 @@
       "name": "accessibility",
       "source": "./plugins/accessibility",
       "description": "Accessibility skills: manual screen-reader and keyboard testing of web journeys.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "testing"
     },
     {

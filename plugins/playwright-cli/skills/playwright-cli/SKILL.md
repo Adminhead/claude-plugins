@@ -49,4 +49,5 @@ For exact flags, run `playwright-cli --help <command>`. The package also ships d
 - **Tabs.** After an action that may open a tab, run `tab-list` and `tab-select <n>`, then snapshot.
 - **Dialogs.** Read the dialog text and consequence before `dialog-accept` or `dialog-dismiss`.
 - **Failures.** Read [failure recovery](references/failure-recovery.md) before retrying or collecting diagnostics. Tracing, video, routes, and `run-code` are diagnostic tools, not normal steps.
+- **Smoke QA.** For a pre-ship browser check with a SHIP or DO NOT SHIP verdict (console and network smoke, interaction, breakpoints, accessibility), read [smoke QA](references/smoke-qa.md).
 - **Recording.** Only when the user wants generated Playwright code, read [recording](references/test-generation.md). For authoring or maintaining a test suite, use the `efficient:e2e-testing` skill if installed.
