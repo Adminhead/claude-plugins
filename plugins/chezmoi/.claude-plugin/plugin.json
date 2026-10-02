@@ -1,0 +1,9 @@
+{
+  "name": "chezmoi",
+  "version": "0.1.0",
+  "description": "Manage, migrate, and troubleshoot chezmoi-managed dotfiles.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

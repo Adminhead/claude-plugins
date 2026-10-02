@@ -55,6 +55,13 @@
       "description": "Configure, migrate, debug, and verify devenv.sh developer environments.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "chezmoi",
+      "source": "./plugins/chezmoi",
+      "description": "Manage, migrate, and troubleshoot chezmoi-managed dotfiles.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
