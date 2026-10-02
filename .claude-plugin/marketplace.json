@@ -62,6 +62,13 @@
       "description": "Manage, migrate, and troubleshoot chezmoi-managed dotfiles.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "pass-cli",
+      "source": "./plugins/pass-cli",
+      "description": "Use the Proton Pass CLI without exposing secrets.",
+      "version": "0.1.0",
+      "category": "security"
     }
   ]
 }

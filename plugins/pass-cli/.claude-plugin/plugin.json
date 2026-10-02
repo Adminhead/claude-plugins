@@ -1,0 +1,9 @@
+{
+  "name": "pass-cli",
+  "version": "0.1.0",
+  "description": "Use the Proton Pass CLI without exposing secrets.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}
