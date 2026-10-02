@@ -1,6 +1,6 @@
 ---
 name: create-skill
-description: Design, write, restructure, or review a Claude Code skill (SKILL.md plus references/ and scripts/) so it triggers on the right requests and stays lean through progressive disclosure. Use when creating a new skill, porting a third-party skill, tightening an existing one, fixing a skill that under- or over-triggers, deciding what belongs in references/, or validating skill frontmatter and links. Not for measured trigger-rate or A/B task evals and automated description tuning (skill-creator:skill-creator, if installed), or for CLAUDE.md and AGENTS.md files (authoring:manage-agent-instructions).
+description: Write, restructure, or review a Claude Code skill (SKILL.md plus references/ and scripts/) so it triggers on the right requests and stays lean through progressive disclosure. Use for "write a skill for X", "create a SKILL.md", "my skill never triggers", "my skill fires on the wrong requests", porting a third-party skill, deciding what belongs in references/, or validating skill frontmatter and links. Not for measured trigger-rate or A/B task evals and automated description tuning (skill-creator:skill-creator, if installed), or for CLAUDE.md and AGENTS.md files (authoring:manage-agent-instructions).
 allowed-tools:
   - Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/scaffold_skill.py *)
   - Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/validate_skill.py *)

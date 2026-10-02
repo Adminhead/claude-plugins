@@ -1,6 +1,6 @@
 {
   "name": "authoring",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config.",
   "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
 }

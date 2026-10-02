@@ -3,7 +3,7 @@ name: create-skill-trigger
 description: Writing a new skill routes to authoring:create-skill.
 tags: [routing]
 runs: 1
-max_turns: 5
+max_turns: 15
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
