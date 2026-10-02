@@ -1,6 +1,6 @@
 ---
 name: worktree
-description: Manage Git worktrees directly with `git worktree` to create a checkout for a branch, list and inspect worktrees, lock or repair them, prune stale metadata, and remove finished ones without losing branches or local work. Use when the user asks to add, list, clean up, or fix git worktrees. Not for isolating your own session (EnterWorktree/ExitWorktree) or a subagent (Agent isolation "worktree").
+description: Manage Git worktrees directly with `git worktree` to create a checkout for a branch, list and inspect worktrees, lock or repair them, prune stale metadata, and remove finished ones without losing branches or local work. Use when the user asks to add, list, clean up, or fix git worktrees. Not for isolating your own session (EnterWorktree/ExitWorktree) or a subagent (Agent isolation "worktree"), or for creating and naming branches (`git:branch`).
 ---
 
 # Git Worktree
@@ -16,7 +16,7 @@ Worktrees are parallel checkouts of one repository. Each has its own files and i
 ## Safety defaults
 
 - Inspect before changing anything. Never switch the main worktree's branch or assume it is clean.
-- `--force`, `-B`, removing a dirty worktree, deleting a branch, bulk cleanup, and `rm -rf` all need explicit approval. Ask with AskUserQuestion and say exactly what would be lost.
+- `--force`, `-B`, removing a dirty worktree, deleting a branch, bulk cleanup, and `rm -rf` all need explicit approval. Ask with AskUserQuestion, show the exact command(s), and say what would be lost.
 - Never create a second checkout of a branch already checked out elsewhere. Pick another branch or ask.
 - Don't copy `.env`, credentials, keys, or other ignored files into a new worktree without authorization.
 - Removing a worktree keeps its branch. Delete a branch only on request, after checking it is merged or otherwise safe to lose.
@@ -37,7 +37,7 @@ git status --short --branch
 
 ## Create
 
-1. Path: honor an explicit safe path. Otherwise follow a project convention (an ignored `.worktrees/` or `worktrees/`), else use a sibling directory such as `../<repo>-<branch>`. Don't add an unignored directory inside the repo. Adding an ignore rule needs approval.
+1. Path: honor an explicit safe path. Otherwise follow a project convention (an ignored `.worktrees/` or `worktrees/`), else use a sibling directory such as `../<repo>-<branch>`. Name the directory after the branch with `/` replaced by `-` (`feat/user-auth` becomes `feat-user-auth`) so `git worktree list` reads against branch names. Keep the word `worktree` out of the branch name itself. Don't add an unignored directory inside the repo. Adding an ignore rule needs approval.
 2. Confirm the path doesn't exist or is empty and isn't already a worktree.
 3. State the branch and start point, then run one of:
    - New branch: `git worktree add -b <branch> <path> <start-point>`

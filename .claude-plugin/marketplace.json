@@ -31,15 +31,15 @@
     {
       "name": "git",
       "source": "./plugins/git",
-      "description": "Git skills: focused commits and worktrees.",
-      "version": "0.1.0",
+      "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
       "name": "github",
       "source": "./plugins/github",
-      "description": "GitHub skills: Actions workflows, Dependabot configuration, and PR review comments.",
-      "version": "0.1.0",
+      "description": "GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot.",
+      "version": "0.2.0",
       "category": "development"
     },
     {

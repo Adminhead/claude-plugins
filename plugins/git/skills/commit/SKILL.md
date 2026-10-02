@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Plan and create focused Git commits that follow the repository's message convention, including release-please and commitlint Conventional Commits. Use when asked to commit work, split changes into commits, or draft or fix a commit message. Not for pushing or opening PRs (commit-commands:commit-push-pr) or for history rewriting.
+description: Plan and create focused Git commits that follow the repository's message convention, including release-please and commitlint Conventional Commits. Use when asked to commit work, split changes into commits, or draft or fix a commit message. Not for pushing or opening PRs (`commit-commands:commit-push-pr`, if installed) or for history rewriting (`git:history`).
 ---
 
 # Git Commit
@@ -62,9 +62,15 @@ Use this structure when release-please is configured or no other convention exis
 - Use `docs`, `refactor`, `test`, `build`, `ci`, `perf`, `style`, `chore`, or `revert` only when accurate. Never label a feature or fix `chore` to dodge a release.
 - Use a scope only when the repo or a stable component supports it. Skip vague scopes like `misc` or `repo`. In a release-please manifest or monorepo, prefer the configured component name.
 - Write an imperative description with no trailing period. Follow repo length rules, otherwise keep the header within about 72 characters.
-- Add a body, after one blank line, only for context or consequences. Never put a second Conventional Commit header in the body, since release-please parses it as another change.
+- Add a body, after one blank line, only for context or consequences. Explain why the change was made (the problem, and any alternative you rejected), since the diff already shows what changed. Never put a second Conventional Commit header in the body, since release-please parses it as another change.
+  - When you lack the reason, ask or leave the body out. Don't invent one.
+  - When many files change for one reason, state that reason once and don't list files. If they are unrelated, split the commit.
+  - A request to keep it short means a header alone, still in convention.
 - For a breaking change, use both `!` and a final `BREAKING CHANGE: <impact and migration>` footer.
 - Add `Release-As: x.y.z` only when the user asks for that exact version.
+- For a `revert:` commit, keep the `This reverts commit <hash>.` line that `git revert` generates, and add why it is being reverted.
+- Reference issues in the footer, never the header. GitHub closes an issue when a commit or PR with `Closes #42` reaches the default branch, and ignores the keyword on any other base. Use one keyword per issue (`Closes #42`, `Closes owner/repo#99`). The keywords are `close`, `fix`, and `resolve` with their `-s` and `-d` forms. Use `Refs #42` when the commit shouldn't close it.
+- Under squash merge, the PR title becomes the commit on the default branch, so the title must follow the same format. Check it before merging.
 - If the repo customizes release-please types or sections, or uses another release system, follow the checked-in config and cite it.
 
 ```text
@@ -74,6 +80,15 @@ feat(api)!: require explicit tenant IDs
 
 BREAKING CHANGE: callers must pass tenant_id when creating a client.
 ```
+
+Common mistakes:
+
+| Written | Fix |
+| --- | --- |
+| `feat: Added login page.` | `feat: add login page`: imperative, lowercase, no period |
+| `feat(adding-auth): ...` | `feat(auth): ...`: a scope is a noun naming the area |
+| `fix: handle empty list, closes #42` | Move `Closes #42` to the footer |
+| Breaking change described only in the body | Add `!` and a `BREAKING CHANGE:` footer, since tools read only those |
 
 ## Stage and commit
 

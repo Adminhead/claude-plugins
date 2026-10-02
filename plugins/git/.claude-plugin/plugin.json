@@ -1,6 +1,9 @@
 {
   "name": "git",
-  "version": "0.1.0",
-  "description": "Git skills: focused commits and worktrees.",
-  "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
+  "version": "0.2.0",
+  "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
 }
