@@ -111,6 +111,13 @@
       "description": "Test running, security audit, second-opinion review, and de-slopping skills for verifying code changes.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "tooling",
+      "source": "./plugins/tooling",
+      "description": "Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
