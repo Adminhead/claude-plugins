@@ -1,6 +1,23 @@
 # third-party-skills-review — plan
 
-Status: ready, 2026-10-02. Not started. All decisions are closed (see Decisions).
+Status: done, 2026-10-02. The deliverable is `docs/research/third-party-skills-review.md`. Follow-ups are under Progress.
+
+## Progress
+
+- **Slice 1.** 876 skills were cataloged from seven repos, and 184 more when `wshobson-agents` was added mid-review. ECC mirrors were excluded.
+- **Slice 2.** Nine triage batches produced 468 candidates. The rest were skipped: 449 out of domain, 113 low quality, 30 already covered.
+- **Slice 3.** Fourteen deep-review groups produced 78 new, 111 enhance, and 129 skip decisions.
+- **Slice 4.** Two eval-mining reports covered about 1,050 cc-skills and cc-skills-golang cases, plus the developer-platform evals and the ECC and awesome-copilot methodology.
+- **Slice 5.** The deliverable has 69 new-skill rows, 29 of them in seven proposed new plugins (`api`, `mcp`, `infra`, `aws`, `observability`, `tooling`, and `agents`, deferred), and 97 enhancement rows. A `review` pass checked over 25 rows against their sources. It found an inverted regex grader, an invalid `arm` value, unbacked "ours" claims, the Docker secrets wording, three overrated values, and duplicated items. All were fixed.
+- **Prompting guidance.** The Sonnet 5.5 and Opus 5.5 guides were reviewed (working notes in the session scratchpad). Their porting checklist is in the deliverable's adaptation rules. Changes to our own files are a separate proposal, still to come.
+
+### Follow-ups
+
+1. Decide which Table 1 skills and Table 2 enhancements to adopt, then plan the adoption, one plugin per slice.
+2. Apply the prompting-guidance changes to our files: `coder.md` verification and scope lines, `efficient:coding` checks, `create-skill` description and emphasis guidance, eval model and effort recording.
+3. Soften `create-skill`'s 150-line cap (user decision; see Decisions).
+4. `secret-stash` false positives found during this review: the word `pass-cli` stashed as an `ENV` secret, a session UUID matched as `HEROKU_API_KEY`, a better-auth directory name, and a wshobson skill directory name matched as `GENERIC_SECRET`.
+5. Gaps no source fills: a good Terraform/OpenTofu skill, Proxmox, mise, prek, and Linux ops.
 
 ## Goal
 
@@ -79,8 +96,9 @@ Anything outside these, such as Java, .NET, Azure, mobile, or marketing, is `ski
 | `cc-skills` | 21 | `evals/evals.json` per skill, adversarial | MIT |
 | `developer-platform-skills` | 32 | `evals/evals.json` per skill | MIT |
 | `better-auth-skills` | 6 (`security`, `better-auth/*`) | None | No LICENSE file. UNCONFIRMED |
+| `wshobson-agents` | 184 under `plugins/*/skills/` (added 2026-10-02 by user request) | 2 files | MIT |
 
-Total: about 876 skills.
+Total: about 1,060 skills. `wshobson-agents` is cataloged separately, with ids starting at 1001, so the first seven repos keep their ids.
 
 ## Already covered (compare against)
 
@@ -172,3 +190,6 @@ Decision: grouped subagents launched in batches, as in the migration (user decis
 | Domain scope | Current stack, plus general practice, plus the in-scope categories listed under the rubric |
 | Execution | Grouped subagents in batches, not a workflow |
 | Eval scope | All plugins, including those with no evals yet, plus Table 1 candidates |
+| Skill size | Keep the lean stance, but soften `authoring:create-skill`'s hard ~150-line cap. Split on a real branching condition or rarely needed detail, not on a line count, and borrow the "splits that do not work" and pointer-hygiene rules from cc-skills `skill-progressive-disclosure-design` (user decision, 2026-10-02) |
+| Added source | `wshobson-agents`, added mid-review. It is triaged and deep-reviewed in its own groups, and reconciled against the earlier groups' decisions |
+| Prompting guidance | The Sonnet 5.5 and Opus 5.5 prompting guides (and the best-practices page they defer to) supply the adaptation rules for ported skills. Changes to our own files are proposed separately |
