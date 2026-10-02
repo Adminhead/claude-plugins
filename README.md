@@ -121,3 +121,18 @@ claude --plugin-dir plugins/<name>
 ```
 
 This loads the plugin for that session without installing it.
+
+## Acknowledgements
+
+Some skills in this marketplace adapt ideas, structure, or text from these open-source skill collections. Each is used under its own license. Thanks to their authors.
+
+| Project | License |
+| --- | --- |
+| [github/awesome-copilot](https://github.com/github/awesome-copilot) | MIT |
+| [better-auth/skills](https://github.com/better-auth/skills) | No license file at the time of review |
+| [samber/cc-skills](https://github.com/samber/cc-skills) | MIT |
+| [samber/cc-skills-golang](https://github.com/samber/cc-skills-golang) | MIT |
+| [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) | MIT |
+| [affaan-m/ECC](https://github.com/affaan-m/ECC) | MIT |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | MIT |
+| [wshobson/agents](https://github.com/wshobson/agents) | MIT |
