@@ -87,7 +87,7 @@ Reuse existing values and names. Define any new decision by its purpose and its 
 ## 8. Review the rendered result
 
 - When the UI runs, drive it with `playwright-cli:playwright-cli` (if installed) or the claude-in-chrome skill. Check a wide width, a narrow width, 200% zoom, and each material state. Walk it by keyboard. Inspect focus, labels, contrast, order, target spacing, overflow, and reduced motion.
-- Treat an automated audit (axe, Lighthouse) as supplemental evidence, not proof. For a full WCAG audit use `design:accessibility-review`. For screen reader behavior use `screen-reader-testing:screen-reader-testing` if installed.
+- Treat an automated audit (axe, Lighthouse) as supplemental evidence, not proof. For a full WCAG audit use `design:accessibility-review`. For screen reader behavior use `accessibility:screen-reader-testing` if installed.
 - Judge the result against the documented hierarchy and system, not taste. Record the viewport, state, and interaction path.
 - Report at most three material findings, ordered by impact on users. Give each one its evidence and the smallest design correction. If nothing material turns up, say so and state the limits of the review.
 - Without a runnable UI, do a source-and-design review only. Mark rendered claims unverified.

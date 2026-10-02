@@ -115,13 +115,13 @@ Checked 2026-10-01 against `claude plugin list` and every `skills/<name>/SKILL.m
 | `sentry` | `sentry` | Refers to `sentry-cli:sentry-cli` (external) |
 | `playwright-cli` | `playwright-cli` | |
 | `termwright` | `termwright` | Pinned to termwright 0.2.0 in the text |
-| `screen-reader-testing` | `screen-reader-testing` | |
+| `accessibility` | `screen-reader-testing` | Home for accessibility skills |
 
 Cross-plugin references that remain, all soft:
 
-- `efficient:*` → `playwright-cli`, `claude-in-chrome`, `screen-reader-testing`, `ui-styling`/`ui-ux-pro-max` (user-level), `design:accessibility-review`, `exa:*`, `github:actions`
+- `efficient:*` → `playwright-cli`, `claude-in-chrome`, `accessibility:screen-reader-testing`, `ui-styling`/`ui-ux-pro-max` (user-level), `design:accessibility-review`, `exa:*`, `github:actions`
 - `quality:*` → `efficient:testing`, `efficient:problem-solving`, `efficient:auth`, `avoid-ai-writing:avoid-ai-writing` (upstream), `playwright-cli`
-- `screen-reader-testing` → `efficient:web-development`, `efficient:react`, `efficient:web-design`
+- `accessibility:screen-reader-testing` → `efficient:web-development`, `efficient:react`, `efficient:web-design`
 - `playwright-cli` → `pass-cli`, `efficient:e2e-testing`
 
 ## Per-skill fixes
@@ -177,12 +177,12 @@ Done when a session can read `~/.claude/skills/` and `claude plugin list` withou
 
 ### Slice 2 — scaffold
 
-- Create the 11 local plugin dirs with `plugin.json` (version `0.1.0`, author as in `ripgrep`).
-- Add 11 marketplace entries. Validate the marketplace with `--strict`.
+- Create the 12 local plugin dirs with `plugin.json` (version `0.1.0`, author as in `ripgrep`).
+- Add 12 marketplace entries. Validate the marketplace with `--strict`.
 
 ### Slice 3 — plain-guidance plugins
 
-`efficient`, `git`, `github`, `devenv`, `chezmoi`, `pass-cli`, `sentry`, `playwright-cli`, `termwright`, `screen-reader-testing`.
+`efficient`, `git`, `github`, `devenv`, `chezmoi`, `pass-cli`, `sentry`, `playwright-cli`, `termwright`, `accessibility`.
 
 - Copy, rename skill dirs and `name:` fields, rewrite cross-references to qualified names.
 - `validate --strict` each plugin.
