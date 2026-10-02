@@ -1,6 +1,6 @@
 # skill-adoption — plan
 
-Status: in progress, 2026-10-02. All decisions are closed.
+Status: Slices 1–10 done, 2026-10-03. Slices 11 (evals) and 12 (docs, install, verify) remain.
 
 ## Goal
 
@@ -136,6 +136,39 @@ About 20 implementation tasks plus a reviewer for each. Slices 2–10 can run pa
 - **Stale claims.** Several sources pin old SDK or tool versions. Mitigation: authoring standard item 2.
 - **Context cost.** More skill descriptions in every session. Mitigation: tight descriptions. Rarely used plugins can stay uninstalled.
 - **`secret-stash` false positives** while reading sources (see the review plan's follow-ups).
+
+## Progress
+
+### Slices 1–10 — done
+
+| Plugin | Commit | Change |
+| --- | --- | --- |
+| `tooling` (new) | `c05b1a2` | editorconfig, pre-commit (prek-first) |
+| `observability` (new) | `b485f30` | instrumentation, promql, dashboards, postmortem |
+| `authoring` 0.2.0 | `e12c0f2` | 5 new skills; softened size cap, porting and writing-for-agents guidance |
+| `quality` 0.2.0 | `d77ea17` | 7 new skills; audit, second-opinion, anti-slop extended |
+| `api` (new) | `1ff5270` | 8 skills |
+| `playwright-cli` 0.2.0 | `924aef9` | smoke-QA reference |
+| `accessibility` 0.2.0 | `3af61bc` | screen-reader command and scenario reference |
+| `infra` (new) | `2462b5a` | 7 skills, including Terraform written fresh |
+| `mcp` (new) | `e1607b8` | design, build, review (2026-07-28 spec, current SDKs) |
+| `git` 0.2.0 | `45dea7b` | branch, history |
+| `github` 0.2.0 | `5d811fd` | 7 new skills; actions, dependabot, pr-comments extended |
+| `aws` (new) | `2a974f9` | resource-query, cloudwatch-investigation, architecture-review |
+| `efficient` 0.2.0 | `c0966e2` | 11 new skills; most existing skills extended |
+
+- **Total:** 58 new skills, plus enhancements across 30-odd existing skills.
+- **Review:** every plugin went through `review` (or `quick-review` for small slices) and a fix round. The reviews caught real defects before commit. Some examples:
+  - an unfenced idempotency lock (double charge);
+  - exponential revert growth in experiment-loop;
+  - AWS describe/list calls that print secrets;
+  - an RLS bypass via table owners;
+  - Go 1.27 json/v2 semantics;
+  - Docker secret files in the build context;
+  - a GitHub ruleset required-reviewer plan requirement.
+- **Verification:** claims were checked against official docs, plus local runs where possible: Go 1.27, PostgreSQL 18 with pgvector, Valkey, MySQL 8.4 in Docker, TypeScript, ShellCheck, Bats, the MCP SDKs, and the gh and aws CLIs.
+- **Agent files:** `~/.claude/agents/coder.md` and `architect.md` got the prompting-guidance edits (backups in `~/.claude/skills.migrated/_agents/*.pre-guidance`).
+- **Cleanup:** a coder ran Postgres, pgvector and Valkey from `/tmp/pg` (stopped). The user may delete that directory.
 
 ## Decisions
 
