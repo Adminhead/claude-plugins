@@ -1,0 +1,54 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "number": 7,
+        "title": "Add feature",
+        "url": "https://github.com/octo/repo/pull/7",
+        "headRefName": "feature",
+        "baseRefName": "main",
+        "reviewThreads": {
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          },
+          "nodes": [
+            {
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "src/long.py",
+              "line": 3,
+              "originalLine": 3,
+              "comments": {
+                "totalCount": 2,
+                "nodes": [
+                  {
+                    "author": {
+                      "login": "gina",
+                      "__typename": "User"
+                    },
+                    "body": "Use this:\n```suggestion\nvalue_0 = compute(0)\nvalue_1 = compute(1)\nvalue_2 = compute(2)\nvalue_3 = compute(3)\nvalue_4 = compute(4)\nvalue_5 = compute(5)\nvalue_6 = compute(6)\nvalue_7 = compute(7)\nvalue_8 = compute(8)\nvalue_9 = compute(9)\nvalue_10 = compute(10)\nvalue_11 = compute(11)\nvalue_12 = compute(12)\nvalue_13 = compute(13)\nvalue_14 = compute(14)\nvalue_15 = compute(15)\nvalue_16 = compute(16)\nvalue_17 = compute(17)\nvalue_18 = compute(18)\nvalue_19 = compute(19)\nvalue_20 = compute(20)\nvalue_21 = compute(21)\nvalue_22 = compute(22)\nvalue_23 = compute(23)\nvalue_24 = compute(24)\nvalue_25 = compute(25)\nvalue_26 = compute(26)\nvalue_27 = compute(27)\nvalue_28 = compute(28)\nvalue_29 = compute(29)\nvalue_30 = compute(30)\nvalue_31 = compute(31)\nvalue_32 = compute(32)\nvalue_33 = compute(33)\nvalue_34 = compute(34)\nvalue_35 = compute(35)\nvalue_36 = compute(36)\nvalue_37 = compute(37)\nvalue_38 = compute(38)\nvalue_39 = compute(39)\nvalue_40 = compute(40)\nvalue_41 = compute(41)\nvalue_42 = compute(42)\nvalue_43 = compute(43)\nvalue_44 = compute(44)\nvalue_45 = compute(45)\nvalue_46 = compute(46)\nvalue_47 = compute(47)\nvalue_48 = compute(48)\nvalue_49 = compute(49)\nvalue_50 = compute(50)\nvalue_51 = compute(51)\nvalue_52 = compute(52)\nvalue_53 = compute(53)\nvalue_54 = compute(54)\nvalue_55 = compute(55)\nvalue_56 = compute(56)\nvalue_57 = compute(57)\nvalue_58 = compute(58)\nvalue_59 = compute(59)\nvalue_60 = compute(60)\nvalue_61 = compute(61)\nvalue_62 = compute(62)\nvalue_63 = compute(63)\nvalue_64 = compute(64)\nvalue_65 = compute(65)\nvalue_66 = compute(66)\nvalue_67 = compute(67)\nvalue_68 = compute(68)\nvalue_69 = compute(69)\nvalue_70 = compute(70)\nvalue_71 = compute(71)\nvalue_72 = compute(72)\nvalue_73 = compute(73)\nvalue_74 = compute(74)\nvalue_75 = compute(75)\nvalue_76 = compute(76)\nvalue_77 = compute(77)\nvalue_78 = compute(78)\nvalue_79 = compute(79)\nvalue_80 = compute(80)\nvalue_81 = compute(81)\nvalue_82 = compute(82)\nvalue_83 = compute(83)\nvalue_84 = compute(84)\nvalue_85 = compute(85)\nvalue_86 = compute(86)\nvalue_87 = compute(87)\nvalue_88 = compute(88)\nvalue_89 = compute(89)\nvalue_90 = compute(90)\nvalue_91 = compute(91)\nvalue_92 = compute(92)\nvalue_93 = compute(93)\nvalue_94 = compute(94)\nvalue_95 = compute(95)\nvalue_96 = compute(96)\nvalue_97 = compute(97)\nvalue_98 = compute(98)\nvalue_99 = compute(99)\nvalue_100 = compute(100)\nvalue_101 = compute(101)\nvalue_102 = compute(102)\nvalue_103 = compute(103)\nvalue_104 = compute(104)\nvalue_105 = compute(105)\nvalue_106 = compute(106)\nvalue_107 = compute(107)\nvalue_108 = compute(108)\nvalue_109 = compute(109)\nvalue_110 = compute(110)\nvalue_111 = compute(111)\nvalue_112 = compute(112)\nvalue_113 = compute(113)\nvalue_114 = compute(114)\nvalue_115 = compute(115)\nvalue_116 = compute(116)\nvalue_117 = compute(117)\nvalue_118 = compute(118)\nvalue_119 = compute(119)\n```",
+                    "url": "u",
+                    "diffHunk": null
+                  },
+                  {
+                    "author": {
+                      "login": "hal",
+                      "__typename": "User"
+                    },
+                    "body": "+1",
+                    "url": "u",
+                    "diffHunk": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "reviews": {
+          "nodes": []
+        }
+      }
+    }
+  }
+}

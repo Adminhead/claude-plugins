@@ -27,6 +27,13 @@
       "description": "Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "git",
+      "source": "./plugins/git",
+      "description": "Git and GitHub workflow skills: focused commits, worktrees, Actions, Dependabot, and PR review comments.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

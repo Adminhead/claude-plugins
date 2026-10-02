@@ -1,0 +1,21 @@
+# Official GitHub Dependabot documentation
+
+Use these GitHub Docs pages as the authority for current option syntax, prerequisites, and product behavior.
+
+## Configuration and supported ecosystems
+
+- [About the `dependabot.yml` file](https://docs.github.com/en/code-security/concepts/supply-chain-security/about-the-dependabot-yml-file) — Store `.github/dependabot.yml` (or `.yaml`) on the default branch. Use top-level `version: 2` and `updates`; each update entry identifies a `package-ecosystem`, manifest `directory` (or supported `directories`), and a version-update `schedule`.
+- [Supported ecosystems and repositories](https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories) — Configure only ecosystems, repository types, manifests/lockfiles, update types, and private-access methods shown in GitHub's matrix. Support and directory/manifest behavior are ecosystem-specific; do not infer support from a file extension or package manager alone.
+- [Dependabot options reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference) — `schedule.interval` controls version-update checks (supported intervals and schedule details are documented here). `allow` narrows candidates and `ignore` is applied afterward, so a dependency matching both is ignored. Version-update and security-update PRs have separate limits (the documented defaults are 5 configurable version-update PRs and 10 security-update PRs).
+- [Dependabot options reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference) — Use `groups` for single-ecosystem dependency groups; specify `applies-to` when grouping security updates, because it otherwise defaults to version updates. Group rules and cross-directory grouping have ecosystem-specific constraints.
+- [Configuring multi-ecosystem updates](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/configuring-multi-ecosystem-updates) — Use top-level `multi-ecosystem-groups` plus `multi-ecosystem-group` and required `patterns` in member update entries to consolidate selected dependencies across ecosystems. The group has its own schedule; verify it in **Insights → Dependency graph → Dependabot** after commit.
+
+## Security updates and prerequisites
+
+- [Dependabot security updates](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-security-updates) — Version updates are scheduled dependency-currency PRs; security updates attempt to remediate a Dependabot alert for a vulnerable dependency. Security updates require the dependency graph, Dependabot alerts, and Dependabot security updates to be enabled, and are triggered only for dependencies specified in a manifest or lockfile.
+- [Configuring Dependabot security updates](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/configure-security-updates) — Enable/disable security updates and their repository/organization grouping settings in GitHub's UI. Those security settings (and Dependabot alerts) are separate from `dependabot.yml`; YAML can customize applicable update PR behavior but does not replace the prerequisites.
+
+## Private registries and troubleshooting
+
+- [Configuring access to private registries](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-access-to-private-registries) — Define named registry access under top-level `registries`, then reference named registries (or `"*"`) from an update entry. Registry types and authentication fields vary by ecosystem; keep credential values in repository or organization Dependabot secrets and reference them as `${{secrets.NAME}}`, never in YAML or logs.
+- [Dependabot errors](https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-errors) — Diagnose from the affected alert and Dependabot job logs, rather than guessing: open **Dependency graph → Dependabot**, then the manifest's **Recent update jobs** and **view logs**. Use the reported error to check configuration, resolution, limits, grouping, or registry access; verify resulting PRs and status in the GitHub UI.
