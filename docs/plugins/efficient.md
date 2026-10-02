@@ -2,7 +2,7 @@
 
 Cost-conscious engineering skills for Claude Code. It covers coding, planning, debugging, testing, research, experiments, prototypes, modernization, web work, and guidance for languages, frameworks, databases, and auth. It adds 31 skills and no hooks, agents, or scripts. Claude loads each skill on demand when its description matches the task.
 
-Version 0.2.0 added 11 skills and extended most existing ones.
+Version 0.2.0 added 11 skills and extended most existing ones. Version 0.2.1 retuned the `golang`, `testing`, `problem-solving`, and `react` descriptions to match the phrasings people type, and added a measure-first rule to `react`.
 
 ## What it adds
 
@@ -22,7 +22,7 @@ Version 0.2.0 added 11 skills and extended most existing ones.
 | `efficient:web-development` | `efficient-web-development` | Build or repair a browser-facing feature end to end |
 | `efficient:web-design` | `efficient-web-design` | Evidence-based visual design for an existing product, including `DESIGN.md` |
 | `efficient:vite` | New | Vite configuration and build behavior: client env exposure, chunking, SSR externals, dev-server problems (Vite 7 and 8) |
-| `efficient:react` | `efficient-react` | React component boundaries, state, effects, and tests |
+| `efficient:react` | `efficient-react` | React component boundaries, state, effects, and tests. With no profile, it gives Profiler steps first and adds no memoization until there are numbers |
 | `efficient:vue` | New | Vue 3 Composition API, Pinia stores, and Nuxt 4 data fetching and hydration |
 | `efficient:tanstack` | `efficient-tanstack` | TanStack Query, Router, Form, Table, Virtual, and Start |
 | `efficient:javascript` | `efficient-javascript` | JavaScript runtime semantics: modules, promises, the event loop |

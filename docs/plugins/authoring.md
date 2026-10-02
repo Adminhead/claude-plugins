@@ -2,7 +2,7 @@
 
 Skills for writing the files that steer Claude Code and the docs around a codebase. It covers Architecture Decision Records, Claude Code skills, agent instruction files such as `CLAUDE.md` and `AGENTS.md`, documentation audits, codebase maps, domain glossaries, agent teams, and audits of your Claude Code setup. It adds eight skills, all loaded on demand.
 
-Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents.
+Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents. Version 0.2.1 retuned the `create-skill` description around the phrasings people use when a skill never triggers or fires on the wrong requests.
 
 ## What it adds
 

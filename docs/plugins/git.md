@@ -1,6 +1,6 @@
 # git
 
-Adds four Git skills. One plans and creates focused commits in the repository's own message convention, one names and creates branches, one edits and repairs history, and one manages `git worktree` checkouts. `git:commit` and `git:worktree` replace the user-level `git-*` skills. Version 0.2.0 added `git:branch` and `git:history`.
+Adds four Git skills. One plans and creates focused commits in the repository's own message convention, one names and creates branches, one edits and repairs history, and one manages `git worktree` checkouts. `git:commit` and `git:worktree` replace the user-level `git-*` skills. Version 0.2.0 added `git:branch` and `git:history`. Version 0.2.1 retuned the `git:commit` description so it also loads for message-only requests.
 
 ## What it adds
 
@@ -48,7 +48,7 @@ claude --plugin-dir plugins/git
 - `git:history` creates a backup ref (`backup/<branch>-<date>`) before a rewrite, never opens an editor, and does not skip hooks or change Git config.
 - `git:worktree` is not for isolating Claude's own session (`EnterWorktree` and `ExitWorktree`) or a subagent (`Agent` with `isolation: "worktree"`). It does cover worktrees you ask for at a chosen path.
 - `git:worktree` removes with `git worktree remove`, never `rm -rf`. It stops and asks if a worktree is dirty, locked, or may hold unmerged work, and it keeps the branch unless you ask to delete it.
-- Overlap with `commit-commands:commit` from the official plugin. The skill descriptions separate their scope, but routing between the two is not settled. In a smoke test, "Commit my work." committed without loading `git:commit`. Evals are still measuring this. To force it, ask for `git:commit` by name.
+- Overlap with `commit-commands:commit` from the official plugin. The skill descriptions separate their scope, but routing between the two is not settled. In a smoke test, "Commit my work." committed without loading `git:commit`. In the 0.2.1 trigger evals, short commit requests loaded `git:commit` in every run. To force it, ask for `git:commit` by name.
 
 ## Disable or uninstall
 
