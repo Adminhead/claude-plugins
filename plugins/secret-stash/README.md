@@ -2,6 +2,8 @@
 
 Keeps secrets out of the Anthropic API. Each secret in content bound for the model is replaced with a stable identifier, and the real value comes back only where it gets used.
 
+User docs: [docs/plugins/secret-stash.md](../../docs/plugins/secret-stash.md).
+
 ```
 __SS_<CATEGORY>_<16 hex>__        e.g. __SS_AWS_ACCESS_KEY_3f9a1c07be52d4a8__
 ```
