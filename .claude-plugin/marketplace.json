@@ -41,6 +41,13 @@
       "description": "Cost-conscious engineering skills for coding, planning, testing, research, web, and language and database work.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "authoring",
+      "source": "./plugins/authoring",
+      "description": "Skills for authoring Claude Code skills, agent instruction files, and architecture decision records.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
