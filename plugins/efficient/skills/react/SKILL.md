@@ -1,6 +1,6 @@
 ---
 name: react
-description: "React component work: boundaries, props vs local state, derived values, effects, keys, render purity, Server Component and Action boundaries, component-level accessibility, measured performance, motion, React 19 upgrades, and focused component tests. Use when adding, changing, reviewing, or debugging React UI behavior (stale state, effect loops, lost state, re-render cost, hydration mismatches). Not for visual design direction (efficient:web-design), JS/TS language issues (efficient:javascript, efficient:typescript), Vite configuration (efficient:vite), Vue component work (efficient:vue), or TanStack routing/data APIs (efficient:tanstack)."
+description: "Change, review, or debug React components: \"this component is slow\", \"this list feels laggy when I type\", \"it re-renders too much\", \"make it faster\", stale state, effect loops, lost state, hydration mismatches. Covers component boundaries, props vs local state, derived values, effects, keys, render purity, Server Component and Action boundaries, component accessibility, measured performance (profile before memoizing), motion, React 19 upgrades, and component tests. Use for .tsx/.jsx UI behavior or render-cost requests. Not for visual design direction (efficient:web-design), JS/TS language issues (efficient:javascript, efficient:typescript), Vite configuration (efficient:vite), Vue component work (efficient:vue), or TanStack routing/data APIs (efficient:tanstack)."
 ---
 
 # Efficient React
@@ -77,6 +77,8 @@ Use an effect only to synchronize with an external system, such as subscriptions
 
 1. Start from a reproducible symptom such as slow input, an expensive update, layout shift, or bundle size.
 2. Record a baseline with React DevTools Profiler, browser performance tools, or the build report.
+   - With no profile or timings, give the Profiler measurement steps first.
+   - Add no `memo`, `useMemo`, `useCallback`, or `useDeferredValue` until there are numbers.
 3. Remove unnecessary work first. Common causes are misplaced state, repeated synchronization, and needless re-renders.
 4. Add `memo`/`useMemo`/`useCallback`, deferral, code splitting, or virtualization only when measurement shows a gain and the invalidation stays correct. If the React Compiler is enabled, manual memoization is usually redundant.
 5. Change one cause at a time and remeasure the same interaction. If the symptom won't reproduce, make no optimization claim.

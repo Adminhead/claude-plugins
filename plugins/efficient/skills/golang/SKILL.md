@@ -1,6 +1,6 @@
 ---
 name: golang
-description: Idiomatic Go for package boundaries, errors, interfaces, context propagation, goroutine lifecycles, stdlib choices, and tests, with references for pitfalls, security, database/sql, gRPC, linting, modernizing, and debugging. Use when writing, reviewing, or debugging *.go files or go.mod modules, including race, leak, or cancellation bugs. Not for generic test strategy (efficient:testing), benchmarks and profiling (efficient:golang-performance), cobra/viper CLIs (efficient:golang-cli), CI configuration, or Postgres schema and query tuning (efficient:postgres).
+description: Write, review, debug, or test Go code: package boundaries, errors, interfaces, context propagation, goroutine lifecycles, stdlib choices, and Go tests, with references for pitfalls, security, database/sql, gRPC, linting, modernizing, and debugging. Use for "write tests for this Go code", "review this Go package", a `go test -race` data race, a goroutine leak, a shutdown hang, or cancellation bugs, or any work in *.go, *_test.go, or go.mod. Not for generic test strategy (efficient:testing), benchmarks and profiling (efficient:golang-performance), cobra/viper CLIs (efficient:golang-cli), CI configuration, or Postgres schema and query tuning (efficient:postgres).
 ---
 
 # Efficient Go

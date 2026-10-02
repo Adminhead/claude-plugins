@@ -32,7 +32,7 @@
       "name": "git",
       "source": "./plugins/git",
       "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -46,14 +46,14 @@
       "name": "efficient",
       "source": "./plugins/efficient",
       "description": "Cost-conscious engineering skills for coding, planning, debugging, testing, research, experiments, prototypes, and modernization, plus web, language (Go, Rust, Python, TypeScript, JavaScript, Bash), framework (React, Vue, Vite, TanStack, FastAPI), database (Postgres, MySQL, Redis), and auth work.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
       "name": "authoring",
       "source": "./plugins/authoring",
       "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
