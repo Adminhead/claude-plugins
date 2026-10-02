@@ -125,6 +125,13 @@
       "description": "Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "api",
+      "source": "./plugins/api",
+      "description": "Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
