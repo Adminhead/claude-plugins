@@ -132,6 +132,13 @@
       "description": "Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "infra",
+      "source": "./plugins/infra",
+      "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, homelab networking, and Terraform.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
