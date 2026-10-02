@@ -1,0 +1,11 @@
+# React component test decisions
+
+Read this when adding or revising a React component test. Use `efficient:testing` for test scope, scenario choice, isolation, and failure diagnosis. This note covers only the React-specific seams.
+
+First inspect the manifest, lockfile, test config and setup files, and nearby tests. Use the installed runner (Vitest, Jest, …), rendering library, interaction helpers, and local wrappers. Check version-specific APIs through Context7. Don't replace the setup or add a dependency for one test.
+
+- **Find elements the way users do.** Prefer role plus accessible name (`getByRole('button', { name: … })`). Next best is the associated label, then visible text, value, or alt text when that is the real contract. Use a test id only when nothing accessible or visible identifies the element. A failing role query then doubles as an accessibility signal.
+- **Finish interactions before asserting.** Use the project's highest-fidelity interaction helper (usually `@testing-library/user-event` over `fireEvent`) and await each call. Wait on the resulting observable condition with `findBy…` or `waitFor` on visible content, accessible state, a callback, or a request. Never sleep, and never assert in the middle of an async update.
+- **Mock at the network boundary.** When behavior depends on requests, use the repo's interception layer (for example MSW) so the real request code runs. Configure only the responses the scenario needs, and make unexpected requests fail when the tooling supports it. Don't mock child components, React internals, or data hooks just to skip the boundary.
+- **Match production providers deliberately.** Wrap in only the router, theme, query client, or store the component really needs, using the repo's test wrapper if one exists. Create fresh mutable provider state per test. A shared query client leaks cache between tests.
+- **Choose the environment by the claim.** jsdom or happy-dom is fine for rendered content, names and states, and ordinary interaction. Use a real browser (Vitest browser mode, Playwright component or e2e tests) when the claim depends on layout, CSS, viewport, scrolling, native browser APIs, hydration, or focus behavior the DOM shim doesn't model. A DOM pass is not evidence for those.

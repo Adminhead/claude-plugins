@@ -34,6 +34,13 @@
       "description": "Git and GitHub workflow skills: focused commits, worktrees, Actions, Dependabot, and PR review comments.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "efficient",
+      "source": "./plugins/efficient",
+      "description": "Cost-conscious engineering skills for coding, planning, testing, research, web, and language and database work.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }
