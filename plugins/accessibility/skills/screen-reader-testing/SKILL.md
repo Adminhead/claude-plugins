@@ -13,7 +13,7 @@ Each combination of screen reader, browser, OS, version, and settings is its own
 
 Claude cannot hear speech output, so a person has to operate the screen reader. Claude's job is to:
 
-1. Write a short, exact test script (the scenarios and steps below) for the user to run.
+1. Write a short, exact test script (the scenarios and steps below) for the user to run. Read [commands and scenarios](references/commands-and-scenarios.md) for each screen reader's keys, expected announcements for a modal, a live region, and tabs, and common fixes.
 2. Record what the user reports, in the report template.
 3. Diagnose failures afterward. Inspect the accessibility tree through `playwright-cli:playwright-cli` (if installed) or the claude-in-chrome skill, then read the DOM and source.
 
