@@ -1,0 +1,14 @@
+{
+  "sentry": {
+    "command": "npx",
+    "args": ["-y", "@sentry/mcp-server@latest"],
+    "env": {
+      "SENTRY_HOST": "${user_config.sentry_host}",
+      "SENTRY_ACCESS_TOKEN": "${user_config.sentry_access_token}",
+      "EMBEDDED_AGENT_PROVIDER": "",
+      "OPENAI_API_KEY": "",
+      "ANTHROPIC_API_KEY": "",
+      "OPENROUTER_API_KEY": ""
+    }
+  }
+}

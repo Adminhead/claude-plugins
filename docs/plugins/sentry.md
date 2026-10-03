@@ -25,7 +25,7 @@ The skill has references for setup, configuration, errors, tracing, logs, metric
 
 - A project that uses, or will use, an official Sentry SDK.
 - The Context7 MCP server or web fetch, for current docs.
-- Optional external `sentry-cli:sentry-cli` plugin. Claude uses it to confirm that a test signal arrived.
+- Optional: the `sentry-mcp` or `sentry-mcp-self-hosted` companion below, or the external `sentry-cli:sentry-cli` plugin. Claude uses either to confirm that a test signal arrived.
 
 Version numbers in the platform references are a snapshot. Claude rechecks them against current docs.
 
@@ -50,9 +50,66 @@ claude --plugin-dir plugins/sentry
    ```
 2. Start a fresh session. The skill list should show `sentry:sentry`.
 
+## Sentry MCP servers (companion plugins)
+
+Two plugins connect Sentry's MCP server so Claude can query issues, events, traces, and releases. Both ship `defaultEnabled: false`, so installing one leaves it off until you enable it. The `sentry` skill routes such queries to these tools when one is enabled, and to `sentry-cli:sentry-cli` otherwise.
+
+| Plugin | Transport | Use for | Auth |
+| --- | --- | --- | --- |
+| `sentry-mcp` | HTTP, `https://mcp.sentry.dev/mcp` | sentry.io | OAuth in `/mcp` |
+| `sentry-mcp-self-hosted` | stdio, `npx -y @sentry/mcp-server@latest` | Self-hosted Sentry | User auth token |
+
+Enable one, not both. They expose identical tool names, so both together duplicate every tool.
+
+### Enable
+
+```
+claude plugin install sentry-mcp@adminhead
+claude plugin enable sentry-mcp@adminhead
+```
+
+Use `sentry-mcp-self-hosted@adminhead` for self-hosted. `/plugin` does the same from a session. Whether `install` itself writes `enabledPlugins` as `true` is UNCONFIRMED, which is why the `enable` step is listed. Start a new session afterward. Once a user's `enabledPlugins` entry exists, later changes to `defaultEnabled` do not alter it.
+
+### sentry-mcp (remote, OAuth)
+
+- Run `/mcp`, pick `plugin:sentry-mcp:sentry`, and complete the browser sign-in. Sentry's server supports dynamic client registration (DCR), so no client ID is needed.
+- Tools are named `mcp__plugin_sentry-mcp_sentry__*`.
+- Grant the scopes the consent screen asks for. Tools that write (for example project or event changes) need the matching write scopes.
+
+### sentry-mcp-self-hosted (stdio, token)
+
+- Enabling prompts for two values. Claude Code keeps them in its secure store, not in `.mcp.json`.
+
+  | Value | Notes |
+  | --- | --- |
+  | Sentry host | Hostname only, for example `sentry.example.com`. A value with `http://` or `https://` is rejected. |
+  | Sentry user auth token | Scopes: `org:read`, `project:read`, `project:write`, `team:read`, `team:write`, `event:write` |
+
+- Requires Node 22.13 or later (the package's `engines` field) and network access to npm on first run.
+- The server's `SENTRY_URL` variable (a full `https://` URL) is an alternative to `SENTRY_HOST`. The plugin does not set it. `--insecure-http` for plain-HTTP hosts is not wired in.
+- The server's AI-powered search tools need an LLM key. The plugin sets `EMBEDDED_AGENT_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENROUTER_API_KEY` to empty strings, so a key in your shell is never inherited and spent, and those tools stay disabled. An empty `env` value does override an inherited one (checked with a stub server on Claude Code 2.1.288).
+- Seer tools are absent for hosts other than sentry.io. The server excludes them by default on self-hosted.
+- The args use `@latest`, so `npx` can pull a new server version on any start. Pin a version in `.mcp.json` if you need reproducibility.
+
+### Verify
+
+```
+claude plugin validate --strict plugins/sentry-mcp
+claude plugin validate --strict plugins/sentry-mcp-self-hosted
+```
+
+After enabling, `/mcp` should list the server. For `sentry-mcp`, it shows as needing sign-in until OAuth completes.
+
+### Disable or uninstall
+
+| Task | Command |
+| --- | --- |
+| Disable | `claude plugin disable sentry-mcp@adminhead` |
+| Uninstall | `claude plugin uninstall sentry-mcp@adminhead` |
+
 ## Limits
 
-- Not for the Sentry CLI or sentry.io API: querying issues, releases, auth, alerts, dashboards, and projects. Use `sentry-cli:sentry-cli` for that.
+- Not for querying issues, releases, alerts, dashboards, or projects. Use the Sentry MCP tools below or `sentry-cli:sentry-cli` for that.
 - SDKs buffer, so a flush or an event ID proves an attempt, not delivery.
 - Without Context7 or web access, Claude has only the snapshot in the references.
 

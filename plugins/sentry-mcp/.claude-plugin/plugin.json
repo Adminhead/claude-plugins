@@ -1,0 +1,10 @@
+{
+  "name": "sentry-mcp",
+  "version": "0.1.0",
+  "description": "Sentry's remote MCP server (OAuth) for querying issues, events, traces, and releases on sentry.io. Off until enabled.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  },
+  "defaultEnabled": false
+}

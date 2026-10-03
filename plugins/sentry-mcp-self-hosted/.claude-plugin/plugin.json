@@ -1,0 +1,25 @@
+{
+  "name": "sentry-mcp-self-hosted",
+  "version": "0.1.0",
+  "description": "Sentry's MCP server over stdio with a user auth token, for self-hosted Sentry. Off until enabled; prompts for host and token.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  },
+  "defaultEnabled": false,
+  "userConfig": {
+    "sentry_host": {
+      "type": "string",
+      "title": "Sentry host",
+      "description": "Hostname only, for example sentry.example.com",
+      "required": true
+    },
+    "sentry_access_token": {
+      "type": "string",
+      "title": "Sentry user auth token",
+      "description": "Scopes: org:read, project:read, project:write, team:read, team:write, event:write",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}
