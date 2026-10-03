@@ -1,9 +1,18 @@
 {
   "name": "code-search",
-  "version": "0.2.0",
-  "description": "Local code search with ripgrep, public GitHub code search via grep.app, and always-on search guidelines in every conversation's context.",
+  "version": "0.3.0",
+  "description": "Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines.",
   "author": {
     "name": "Buck Brady",
     "email": "bbrady145@gmail.com"
+  },
+  "hooks": "./hooks/codegraph-autoinit.json",
+  "userConfig": {
+    "codegraph_auto_init": {
+      "type": "boolean",
+      "title": "Index git repos with CodeGraph",
+      "description": "At session start, run codegraph init in a git repo that has no .codegraph/ index.",
+      "default": true
+    }
   }
 }
