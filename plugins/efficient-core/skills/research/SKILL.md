@@ -1,6 +1,6 @@
 ---
 name: research
-description: Answer an external, decision-relevant question by finding, reading, weighing, and synthesizing sources with traceable citations. Use for "compare X vs Y", "is it true that…", "what's the current policy/state of…", or explaining a topic from authoritative sources. Not for a single library/API docs lookup (Context7), real-world code examples from public GitHub (code-search:grep-app, if installed), large list-building or lead generation (exa:search, exa:exa-agent), implementation plans (efficient-core:planning), or debugging (efficient-core:problem-solving).
+description: Answer an external, decision-relevant question by finding, reading, weighing, and synthesizing sources with traceable citations. Use for "compare X vs Y", "is it true that…", "what's the current policy/state of…", or explaining a topic from authoritative sources. Not for a single library/API docs lookup (code-search:context7, if installed), real-world code examples from public GitHub (code-search:grep-app, if installed), large list-building or lead generation (Exa agent_run or exa:search/exa:exa-agent, if installed), implementation plans (efficient-core:planning), or debugging (efficient-core:problem-solving).
 ---
 
 # Efficient Research
@@ -9,9 +9,9 @@ Run bounded external research that supports a decision or answer with sources. T
 
 ## Tools
 
-- **WebSearch** to discover candidates; **WebFetch** to read them. Search results and snippets are leads, never support.
-- **Context7 MCP** (`resolve-library-id`, then `query-docs`) when a subquestion is about a specific library, framework, SDK, or CLI.
-- **exa:search** or **exa:exa-agent** when the question needs broad coverage, list-building, or enrichment beyond a handful of sources.
+- **Exa web_search_exa / web_fetch_exa** (when connected via the plugin) or **WebSearch/WebFetch** otherwise to discover and read sources. Search results and snippets are leads, never support.
+- **code-search:context7** (`resolve-library-id`, then `query-docs`) when a subquestion is about a specific library, framework, SDK, or CLI, if installed.
+- **Exa agent_run** (when exposed) or **exa:search** / **exa:exa-agent** (if installed) when the question needs broad coverage, list-building, or enrichment beyond a handful of sources.
 - **Agent** subagents (general-purpose) in deep mode to read several independent sources in parallel. Subagents don't see this conversation, so give each a self-contained brief (the subquestion, scope, as-of date, and what to return) and ask for claims, passages, dates, and URLs back, not prose summaries.
 
 ## Normal flow

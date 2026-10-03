@@ -41,6 +41,22 @@ Each description also names what the skill is not for and points to the sibling 
 
 `efficient-core:coding` sends unknown-cause bugs to `efficient-core:problem-solving`.
 
+#### Exa web search MCP server
+
+The plugin ships an HTTP MCP server for Exa's web search API (`https://mcp.exa.ai/mcp`). It exposes three tools: `web_search_exa` (search the web), `web_fetch_exa` (read a URL), and `agent_run` (search with a specified agent). The `efficient-core:research` skill routes web search requests to these tools when connected, and falls back to WebSearch/WebFetch otherwise.
+
+The server is always-loaded by default (alwaysLoad: true), which reserves roughly 600–1,400 tokens per request in the context window (measured across three tools on 2026-10-03 with cache reads). If you don't use the research skill, disable it with `/mcp` in settings:
+
+```
+disabledMcpServers: ["plugin:efficient-core:exa"]
+```
+
+**OAuth sign-in:** The first request to an Exa tool prompts a one-time OAuth sign-in. Go to `/mcp` in settings and sign in as yourself. The Exa connector on claude.ai shares the same endpoint; the plugin copy's sign-in credentials apply to both.
+
+**Dedup:** The plugin server and the claude.ai Exa connector both use the same endpoint. When both are available, the plugin copy runs first and the connector is skipped.
+
+**Limits:** Exa allows up to 10 search requests per month on the free tier.
+
 ### efficient-testing
 
 | Skill | Purpose |
