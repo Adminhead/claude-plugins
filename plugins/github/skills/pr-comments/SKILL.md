@@ -10,6 +10,8 @@ allowed-tools: Bash(${CLAUDE_SKILL_DIR}/fetch.sh), Bash(${CLAUDE_SKILL_DIR}/fetc
 
 Address reviewer feedback on a pull request. Triage first, then fix only what the user picks.
 
+Prefer the `github` MCP server's tools (`mcp__plugin_github_github__*`) for reading and searching PRs and review threads. Do not call its write tools; compose the `gh` command and follow this skill's approval gate for any change.
+
 ## Review feedback
 
 !`${CLAUDE_SKILL_DIR}/fetch.sh $ARGUMENTS`

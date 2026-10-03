@@ -7,7 +7,7 @@ Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one wit
 | `example` | Template plugin showing a skill and a function hook. Copy it to start a new plugin. | [plugins/example](plugins/example) |
 | `ripgrep` | Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context. | [docs](docs/plugins/ripgrep.md) |
 | `git` | Git skills: focused commits, branches, history rewrites and recovery, and worktrees. | [docs](docs/plugins/git.md) |
-| `github` | GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot. | [docs](docs/plugins/github.md) |
+| `github` | GitHub skills (issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, Dependabot) plus the GitHub remote MCP server. | [docs](docs/plugins/github.md) |
 | `efficient-core` | Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, and modernization, plus second-opinion review, anti-slop cleanup, and poka-yoke error-proofing. | [docs](docs/plugins/efficient.md) |
 | `efficient-testing` | Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps. | [docs](docs/plugins/efficient.md) |
 | `efficient-security` | Security skills: threat modeling, privacy review, and a manual security audit scan. | [docs](docs/plugins/efficient.md) |

@@ -11,6 +11,8 @@ Produce a numbered breakdown, get it approved, then publish it in dependency ord
 
 Read the spec, plan, or issue the user points to, including its comments (`gh issue view N --comments`). When the source is the conversation, work from it without interviewing the user. Ask only for facts that change the cut.
 
+Prefer the `github` MCP server's tools (`mcp__plugin_github_github__*`) for reading and searching the source issue and existing issues. Do not call its write tools; compose the `gh` command and follow this skill's approval gate for any change.
+
 Explore the codebase enough to name real modules and to spot prefactoring that makes the change easier. Use the project's own vocabulary and respect ADRs in the area.
 
 ## 2. Check for existing issues

@@ -5,7 +5,9 @@ description: Read, create, edit, close, and label a single GitHub issue with gh,
 
 # GitHub issues with gh
 
-Manage issues through `gh` alone. Reads run freely. Every write needs the user's approval first.
+Make issue changes through `gh`. Reads run freely. Every write needs the user's approval first.
+
+Prefer the `github` MCP server's tools (`mcp__plugin_github_github__*`) for reading and searching issues. Do not call its write tools; compose the `gh` command and follow this skill's approval gate for any change.
 
 ## Approval gate
 

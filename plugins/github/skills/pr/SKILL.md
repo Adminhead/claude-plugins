@@ -9,6 +9,8 @@ Produce a PR a reviewer can judge in minutes. Credit for the body structure goes
 
 Pushing a branch, opening or editing a PR, and merging are shared-state writes. Draft everything locally, show it, and run each write only after the user approves it. A request to "open a PR" is not approval of the command. Before running, show the title, the body, the `git push` remote and branch, and the full `gh pr create` command line, and run them after the user confirms.
 
+Prefer the `github` MCP server's tools (`mcp__plugin_github_github__*`) for reading and searching existing PRs and code. Do not call its write tools; compose the `gh` command and follow this skill's approval gate for any change.
+
 ## Workflow
 
 1. **Inspect.** Run `git status --short --branch`, `git log --oneline <base>..HEAD`, and `git diff <base>...HEAD --stat`. Find the base branch with `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`. List open PRs for the branch (`gh pr list --head <branch>`) so you update instead of duplicating.
