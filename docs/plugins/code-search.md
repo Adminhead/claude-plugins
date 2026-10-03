@@ -39,7 +39,8 @@ Each shows as `plugin:code-search:<server>` in `/mcp`.
 ### context7
 
 - With no key, the header is `Bearer ` and the server answers anonymously. A set key expands into the header. Whether Context7 bills a key sent this way is UNCONFIRMED.
-- The bare URL is the same endpoint as the claude.ai Context7 connector. A plugin server outranks a connector, so the plugin's copy connects and the connector is skipped.
+- The bare URL is the same endpoint as the claude.ai Context7 connector, and the connector wins. While the "claude.ai Context7" connector is present, Claude Code silently drops `plugin:code-search:context7`, and the tools appear as `mcp__claude_ai_Context7__*`. To load the plugin's copy, either remove the connector at claude.ai, or start Claude Code with `ENABLE_CLAUDEAI_MCP_SERVERS=false`, which drops every claude.ai connector from Claude Code. Verified on 2.1.288 (2026-10-03): with that variable set, `plugin:code-search:context7` connects with tools `query-docs` and `resolve-library-id`.
+- The skills use the bare tool names, so either copy works.
 - `context7@claude-plugins-official` uses `?client=claude-code-plugin`, a different endpoint, so it would run as a second copy with its own tool prefix. Uninstall one of the two.
 - The skill tells Claude to use whichever Context7 tools are connected.
 
@@ -55,20 +56,21 @@ Each shows as `plugin:code-search:<server>` in `/mcp`.
 
 ## Auto-init
 
-At session start the plugin indexes the session's git repo so `codegraph_explore` has something to query. The hook is async, so the first response does not wait for it. Until the index exists, the guidelines send Claude to `rg`. Claude itself never runs `init`, `index`, or `uninit` unless asked.
+At session start the plugin indexes the session's git repo so `codegraph_explore` has something to query. The hook is async, so the first response does not wait for it, and the index build runs detached (`setsid`, else `nohup`), so it keeps going after the session ends, including after a short `claude -p` run. Until the index exists, the guidelines send Claude to `rg`. Claude itself never runs `init`, `index`, or `uninit` unless asked.
 
-`scripts/codegraph-autoinit.sh` runs from the plugin data directory, so a repo's mise or direnv cannot swap the `codegraph` binary. It skips, with one line in `${CLAUDE_PLUGIN_DATA}/codegraph-autoinit.log`, when any of these holds:
+`scripts/codegraph-autoinit.sh` runs from the plugin data directory. That defeats a repo-pinned mise shim or a relative `PATH` entry, but not `PATH` entries the launching shell already exported (direnv and `mise activate` need explicit trust for that). It also refuses a `codegraph` binary that resolves inside the repo. It skips, with one line in `${CLAUDE_PLUGIN_DATA}/codegraph-autoinit.log`, when any of these holds:
 
-1. The `codegraph_auto_init` option is `false`.
+1. The `codegraph_auto_init` option is `false`, `0`, `no`, or `off` (any case). How Claude Code serializes a false boolean into `CLAUDE_PLUGIN_OPTION_CODEGRAPH_AUTO_INIT` is UNCONFIRMED.
 2. `codegraph` is not on `PATH`.
 3. The project directory (`CLAUDE_PROJECT_DIR`, else the current directory) is not in a git repo.
-4. The repo is a linked worktree. It resolves to the parent's index.
+4. The repo is a linked worktree, or the installed git is older than 2.31 (no `--path-format=absolute`). Only a worktree nested inside the main checkout resolves to the parent's index, which reflects the parent's branch. A worktree elsewhere gets no index and no auto-init.
 5. The repo's top level is `$HOME` or `/`.
-6. `.codegraph/` exists at the top level or any ancestor.
+6. A `.codegraph/` containing `codegraph.db` exists at the top level or any ancestor below `$HOME`. A `.codegraph/` without the database is a partial index, and `init` rebuilds it. `~/.codegraph/` holds CodeGraph's global state (telemetry, daemons), not an index, so the ancestor walk stops at `$HOME`.
 7. `git config --bool code-search.codegraph` is `false`.
-8. The repo has more than `${CODE_SEARCH_CODEGRAPH_MAX_FILES:-25000}` tracked files.
+8. The repo has more than `${CODE_SEARCH_CODEGRAPH_MAX_FILES:-25000}` tracked files (a submodule counts as one), or the cap is not a number.
+9. Another session holds `${CLAUDE_PLUGIN_DATA}/autoinit.lock.d`. The lock covers the check-and-launch window only, and one older than 10 minutes is treated as stale. The detached init outlives the lock, so a very quick second session can still reach CodeGraph's own lock.
 
-Otherwise it adds `/.codegraph/` to the repo's `info/exclude` (so tracked files stay untouched), then runs `nice codegraph init -y <repo>` and logs the output. The script exits 0 in every case, so it never fails a session. If `CLAUDE_PLUGIN_DATA` is unset it writes one line to stderr and exits.
+Otherwise it adds `/.codegraph/` to the repo's `info/exclude`, then launches `nice codegraph init -y <repo>` detached and appends its output and result to the log. The script exits 0 in every case, so it never fails a session. If `CLAUDE_PLUGIN_DATA` is unset it writes one line to stderr and exits.
 
 Opt-outs:
 
@@ -81,7 +83,7 @@ Opt-outs:
 Notes:
 
 - The hook also fires in `claude -p` runs and eval sandboxes. A non-git directory stops at step 3.
-- Two concurrent sessions in one repo: the second skips because the index exists, or meets CodeGraph's own lock.
+- `init -y` may install git sync hooks when file watching is unavailable (WSL `/mnt` drives, `CODEGRAPH_NO_WATCH=1`). CodeGraph honors `core.hooksPath` there, so in a repo that uses husky this writes tracked files. Opt that repo out with `git config code-search.codegraph false`.
 - CodeGraph telemetry follows your saved CodeGraph setting.
 - Whether plugin hooks wait for the folder-trust dialog is UNCONFIRMED.
 
@@ -124,7 +126,7 @@ Do not keep both installed. Claude Code reports two blocks named `codeSearch` an
 - The text is static, so it keeps the prompt cache warm.
 - Claude loads each skill on demand. The `ripgrep` description matches tasks such as composing an `rg` command, replacing `grep` or `find`, listing files, searching ignored files, or fixing a search with too much or no output. The `codegraph` description matches how-it-works, who-calls, and what-would-break questions. The `context7` description matches library API and migration questions. The `grep-app` description matches requests for real-world usage examples or an exact error string.
 - The three servers start with the plugin. Claude Code defers MCP tool definitions, so most tools add little to each session. `codegraph` sets `alwaysLoad`, so its tools load in full.
-- In a git repo with no index, the SessionStart hook runs `codegraph init` in the background. It writes `.codegraph/` and one line to the repo's `.git/info/exclude`. Nothing else in the project changes, and `~/.claude/CLAUDE.md` is untouched.
+- In a git repo with no index, the SessionStart hook runs `codegraph init` in the background. It writes `.codegraph/` and one line to the repo's `.git/info/exclude`, and `~/.claude/CLAUDE.md` is untouched. Where file watching is unavailable, CodeGraph can also install git hooks (see Auto-init notes). Indexing keeps running after the session ends.
 - `efficient-core:research` routes public code examples to `code-search:grep-app`, if installed.
 
 ## Configuration
