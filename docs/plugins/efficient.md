@@ -43,19 +43,13 @@ Each description also names what the skill is not for and points to the sibling 
 
 #### Exa web search MCP server
 
-The plugin ships an HTTP MCP server for Exa's web search API (`https://mcp.exa.ai/mcp`). It exposes three tools: `web_search_exa` (search the web), `web_fetch_exa` (read a URL), and `agent_run` (search with a specified agent). The `efficient-core:research` skill routes web search requests to these tools when connected, and falls back to WebSearch/WebFetch otherwise.
+The plugin ships an HTTP MCP server for Exa's web search API (`https://mcp.exa.ai/mcp`). It exposes `web_search_exa` (search the web), `web_fetch_exa` (read a URL), and `agent_run` for broad list-building and enrichment when exposed. The `efficient-core:research` skill routes web search requests to these tools when connected, and falls back to WebSearch/WebFetch otherwise. A verification run on 2026-10-03 exposed only `web_search_exa` and `web_fetch_exa`.
 
-The server is always-loaded by default (alwaysLoad: true), which reserves roughly 600–1,400 tokens per request in the context window (measured across three tools on 2026-10-03 with cache reads). If you don't use the research skill, disable it with `/mcp` in settings:
+The server is always-loaded by default (alwaysLoad: true), which reserves roughly 600 tokens per request in the context window (measured on 2026-10-03 with cache reads). If you don't use the research skill, disable it by disabling the server in `/mcp` (per project), disabling the plugin itself with `claude plugin disable`, or setting `ENABLE_CLAUDEAI_MCP_SERVERS=false` in the `env` block of `~/.claude/settings.json` to disable all claude.ai connectors in Claude Code.
 
-```
-disabledMcpServers: ["plugin:efficient-core:exa"]
-```
+**OAuth sign-in:** The first request to an Exa tool may prompt a one-time OAuth sign-in for `plugin:efficient-core:exa` in `/mcp`. If the claude.ai Exa connector shadows the plugin copy, the connector's sign-in applies instead. UNCONFIRMED: a verification run connected without visible sign-in.
 
-**OAuth sign-in:** The first request to an Exa tool prompts a one-time OAuth sign-in. Go to `/mcp` in settings and sign in as yourself. The Exa connector on claude.ai shares the same endpoint; the plugin copy's sign-in credentials apply to both.
-
-**Dedup:** The plugin server and the claude.ai Exa connector both use the same endpoint. When both are available, the plugin copy runs first and the connector is skipped.
-
-**Limits:** Exa allows up to 10 search requests per month on the free tier.
+**Connector shadowing:** When a claude.ai Exa connector exists at the same URL (`https://mcp.exa.ai/mcp`), Claude Code uses the connector and silently drops the plugin copy, so `alwaysLoad` does not apply. To use the plugin copy instead, remove the Exa connector at claude.ai → Settings → Connectors, or set `ENABLE_CLAUDEAI_MCP_SERVERS=false` in the `env` block of `~/.claude/settings.json` (disables all claude.ai connectors in Claude Code).
 
 ### efficient-testing
 
