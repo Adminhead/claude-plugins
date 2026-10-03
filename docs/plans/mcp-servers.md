@@ -366,6 +366,7 @@ Critic: agy gemini-3.1-pro-high/high, one round.
 | D8 | Graft | (a) Ignore for now |
 | D9 | npx/uvx versions | (b) `@latest`. The user chose this over pinning; unreviewed upstream releases run at session start |
 | D10 | Sentry self-hosted AI search | (a) Blank the LLM keys |
+| D11 | claude.ai connectors shadow plugin servers | Set `ENABLE_CLAUDEAI_MCP_SERVERS=false` in `~/.claude/settings.json` `env` at rollout. Verified 2026-10-03: a claude.ai connector at the same URL wins over a plugin server (the plan's "plugin outranks connector" was wrong); with connectors disabled, `plugin:code-search:context7` and `plugin:efficient-core:exa` connect. Side effect: all claude.ai connectors (Gmail, Google Drive/Docs/Sheets/Calendar, Firecrawl, Claude Docs) leave Claude Code |
 
 ## Decision options (as presented)
 
