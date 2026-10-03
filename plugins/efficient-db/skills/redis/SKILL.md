@@ -1,6 +1,6 @@
 ---
 name: redis
-description: "Redis and Valkey usage in applications: choosing data structures, cache-aside and write-through caching, TTL and key design, eviction policy for caches versus queues, SCAN instead of KEYS, cache stampede control, fixed- and sliding-window rate limits, token-checked locks, Streams versus Pub/Sub, and connection handling. Use when adding or reviewing caching, rate limiting, a lock, a queue, or session storage on Redis. Not for relational stores (efficient:postgres, efficient:mysql) or Better Auth's secondary storage settings (efficient:better-auth)."
+description: "Redis and Valkey usage in applications: choosing data structures, cache-aside and write-through caching, TTL and key design, eviction policy for caches versus queues, SCAN instead of KEYS, cache stampede control, fixed- and sliding-window rate limits, token-checked locks, Streams versus Pub/Sub, and connection handling. Use when adding or reviewing caching, rate limiting, a lock, a queue, or session storage on Redis. Not for relational stores (efficient-db:postgres, efficient-db:mysql) or Better Auth's secondary storage settings (efficient-auth:better-auth, if installed)."
 ---
 
 # Efficient Redis

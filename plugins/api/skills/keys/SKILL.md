@@ -1,6 +1,6 @@
 ---
 name: keys
-description: Design the API-key system a platform issues to its own API consumers: key format with prefix and checksum, hash-only storage and lookup, scopes, dual-key rotation, last-used telemetry, service-account ownership, and offboarding. Use when building or hardening key issuance for a public or partner API, deciding keys versus OAuth, or planning key rotation and revocation. Not for logging in to your own app or validating tokens (efficient:auth, if installed), OAuth authorization-server design (api:oauth-provider), webhook signing (api:webhooks), or consuming another vendor's keys.
+description: Design the API-key system a platform issues to its own API consumers: key format with prefix and checksum, hash-only storage and lookup, scopes, dual-key rotation, last-used telemetry, service-account ownership, and offboarding. Use when building or hardening key issuance for a public or partner API, deciding keys versus OAuth, or planning key rotation and revocation. Not for logging in to your own app or validating tokens (efficient-auth:auth, if installed), OAuth authorization-server design (api:oauth-provider), webhook signing (api:webhooks), or consuming another vendor's keys.
 ---
 
 # API keys you issue

@@ -1,6 +1,6 @@
 ---
 name: modernize
-description: Plan the modernization of a legacy system (a runtime, framework, or dependency upgrade, a migration, or a rewrite) with a time-boxed feasibility spike, a testability milestone, a safety ladder, hazard red-teaming of each phase, and phased exit criteria. Use when asked to "modernize this", "plan the migration", "how do we get off this stack", or to plan a major version upgrade. Not for general implementation plans (efficient:planning), mapping a codebase (authoring:map-codebase), executing the migration (efficient:coding), or recording a single decision (authoring:adr-writing).
+description: Plan the modernization of a legacy system (a runtime, framework, or dependency upgrade, a migration, or a rewrite) with a time-boxed feasibility spike, a testability milestone, a safety ladder, hazard red-teaming of each phase, and phased exit criteria. Use when asked to "modernize this", "plan the migration", "how do we get off this stack", or to plan a major version upgrade. Not for general implementation plans (efficient-core:planning), mapping a codebase (authoring:map-codebase), executing the migration (efficient-core:coding), or recording a single decision (authoring:adr-writing).
 ---
 
 # Modernize
@@ -46,4 +46,4 @@ Produce a phased plan to upgrade, migrate, or rewrite a legacy system. This skil
 
 Return the plan in the conversation, and write it to a file only when asked. Include the spike results, the milestone and strategy per component, the target rung, the approach per component, the hazard checks, the phases, and the open decisions that need the user. Keep the plan proportionate to the system. A small service needs a few phases and a short hazard pass.
 
-For the work itself, hand each phase to `efficient:coding` and the tests it needs to `efficient:testing`. For a Postgres major upgrade, `efficient:postgres` covers the database side.
+For the work itself, hand each phase to `efficient-core:coding` and the tests it needs to `efficient-testing:unit`, if installed. For a Postgres major upgrade, `efficient-db:postgres`, if installed, covers the database side.

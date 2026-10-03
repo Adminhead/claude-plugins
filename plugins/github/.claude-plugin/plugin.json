@@ -1,6 +1,6 @@
 {
   "name": "github",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot.",
   "author": {
     "name": "Buck Brady",

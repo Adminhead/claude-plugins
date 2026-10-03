@@ -1,6 +1,6 @@
 # Go security
 
-Read this when Go code handles untrusted input: HTTP handlers, file paths, shell commands, templates, outbound requests, crypto, passwords, or tokens. Trace the data flow from source to sink before reporting a finding, because a sink with no attacker-controlled input is not a vulnerability. Authentication and authorization design belong to `efficient:auth`. For a full review, use `quality:audit` if installed.
+Read this when Go code handles untrusted input: HTTP handlers, file paths, shell commands, templates, outbound requests, crypto, passwords, or tokens. Trace the data flow from source to sink before reporting a finding, because a sink with no attacker-controlled input is not a vulnerability. Authentication and authorization design belong to `efficient-auth:auth`, if installed. For a full review, use `efficient-security:audit` if installed.
 
 ## Injection
 

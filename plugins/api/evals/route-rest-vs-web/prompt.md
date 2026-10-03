@@ -1,6 +1,6 @@
 ---
 name: route-rest-vs-web
-description: Designing a public REST API goes to api:rest-design, not efficient:web-development.
+description: Designing a public REST API goes to api:rest-design, not efficient-web:web-development.
 tags: [routing]
 runs: 1
 max_turns: 6

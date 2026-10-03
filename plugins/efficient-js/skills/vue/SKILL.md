@@ -1,11 +1,11 @@
 ---
 name: vue
-description: "Vue 3 component and state work with the Composition API (script setup), Pinia stores, and Nuxt 4 data fetching and hydration: props, emits and defineModel, composables, ref vs reactive, watchers and cleanup, template refs, SSR safety, and focused component tests. Use when adding, changing, reviewing, or debugging .vue files, Pinia stores, or a Nuxt app (stale state, lost reactivity, hydration mismatches, duplicate fetches). Not for React (efficient:react), Vite configuration (efficient:vite), TanStack's Vue adapters (efficient:tanstack), or visual design (efficient:web-design)."
+description: "Vue 3 component and state work with the Composition API (script setup), Pinia stores, and Nuxt 4 data fetching and hydration: props, emits and defineModel, composables, ref vs reactive, watchers and cleanup, template refs, SSR safety, and focused component tests. Use when adding, changing, reviewing, or debugging .vue files, Pinia stores, or a Nuxt app (stale state, lost reactivity, hydration mismatches, duplicate fetches). Not for React (efficient-js:react), Vite configuration (efficient-js:vite), TanStack's Vue adapters (efficient-js:tanstack), or visual design (efficient-web:web-design, if installed)."
 ---
 
 # Efficient Vue
 
-This skill owns Vue component structure and local state, Pinia stores, and Nuxt page data and hydration. It does not own bundler configuration (`efficient:vite`), visual direction (`efficient:web-design`), language-level concerns (`efficient:javascript`, `efficient:typescript`), or TanStack Query, Router, and Form (`efficient:tanstack`).
+This skill owns Vue component structure and local state, Pinia stores, and Nuxt page data and hydration. It does not own bundler configuration (`efficient-js:vite`), visual direction (`efficient-web:web-design`, if installed), language-level concerns (`efficient-js:javascript`, `efficient-js:typescript`), or TanStack Query, Router, and Form (`efficient-js:tanstack`).
 
 ## Before editing
 
@@ -59,7 +59,7 @@ Classify each value, then place it:
 - Do not put `v-if` and `v-for` on one element. Filter in a `computed` or wrap with `<template v-for>`.
 - Render user-supplied HTML with `v-html` only after sanitizing it. Prefer text interpolation.
 - Use `useId()` (3.5) for ids that must match between server and client.
-- Start with native elements, labels, and keyboard behavior. The accessibility rules in `efficient:web-development` apply unchanged.
+- Start with native elements, labels, and keyboard behavior. The accessibility rules in `efficient-web:web-development`, if installed, apply unchanged.
 
 ## Nuxt and SSR
 

@@ -1,6 +1,6 @@
 ---
 name: tanstack
-description: "TanStack Query, Router, Form, Table, Virtual, and Start: state ownership, query keys, cache invalidation, loaders, search-param validation, server-driven tables, virtualization, and SSR/hydration boundaries. Use when code imports @tanstack/* or when debugging stale/duplicate data, lost form values, table/pagination mismatches, or Start server functions. Not for general React component design (efficient:react), Vite configuration (efficient:vite), Vue work outside TanStack (efficient:vue), or visual design."
+description: "TanStack Query, Router, Form, Table, Virtual, and Start: state ownership, query keys, cache invalidation, loaders, search-param validation, server-driven tables, virtualization, and SSR/hydration boundaries. Use when code imports @tanstack/* or when debugging stale/duplicate data, lost form values, table/pagination mismatches, or Start server functions. Not for general React component design (efficient-js:react), Vite configuration (efficient-js:vite), Vue work outside TanStack (efficient-js:vue), or visual design."
 ---
 
 # Efficient TanStack
@@ -16,7 +16,7 @@ Each package owns one kind of state. Keep that ownership explicit.
 | Virtual | visible-range calculation and item measurement |
 | Start | server functions, server/API routes, middleware, SSR, streaming |
 
-For component structure and effects, use `efficient:react`. For regression test scope, use `efficient:testing`.
+For component structure and effects, use `efficient-js:react`. For regression test scope, use `efficient-testing:unit`, if installed.
 
 ## 1. Establish the contract and versions
 

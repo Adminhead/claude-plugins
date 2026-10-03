@@ -46,7 +46,7 @@ Then, for each chosen row:
 
 1. Read only the code around the location, plus what the change touches.
 2. Make the smallest change that satisfies the request. Don't fix neighboring issues the reviewer didn't raise; list them in the report.
-3. Run the cheapest check that covers the change, such as a focused test, a type check, or a linter on the file. `/quality:test`, if installed, picks targets for you.
+3. Run the cheapest check that covers the change, such as a focused test, a type check, or a linter on the file. `/efficient-testing:run`, if installed, picks targets for you.
 
 If a fix turns out larger or riskier than the triage suggested, stop and ask before continuing.
 

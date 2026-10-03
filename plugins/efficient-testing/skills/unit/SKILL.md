@@ -1,6 +1,6 @@
 ---
 name: unit
-description: Write, update, and run focused unit or regression tests for changed behavior or a confirmed bug, in any language, and decide which tests to run after a change. Use for "add a test for this", "write a regression test for this fix", "write tests for this function", "which tests should I run?", or "is this change covered?". Not for E2E/browser suites (efficient:e2e-testing), auditing a codebase's or diff's test gaps (quality:test-gap-audit), coverage chasing, test-framework setup, fuzz/property testing, or broad suite refactors.
+description: Write, update, and run focused unit or regression tests for changed behavior or a confirmed bug, in any language, and decide which tests to run after a change. Use for "add a test for this", "write a regression test for this fix", "write tests for this function", "which tests should I run?", or "is this change covered?". Not for E2E/browser suites (efficient-testing:e2e), auditing a codebase's or diff's test gaps (efficient-testing:gap-audit), coverage chasing, test-framework setup, fuzz/property testing, or broad suite refactors.
 ---
 
 # Efficient Testing

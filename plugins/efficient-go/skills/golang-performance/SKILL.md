@@ -1,6 +1,6 @@
 ---
 name: golang-performance
-description: Measurement-first Go performance work: benchmarks compared with benchstat, pprof and execution-trace reading, escape analysis and inlining checks, GC and GOMEMLIMIT tuning, a bottleneck-to-fix table, and CI regression checks. Use when a Go program is slow, allocates too much, or uses too much memory, when writing or comparing benchmarks, reading a profile, or claiming a speedup. Not for idiomatic Go or correctness (`efficient:golang`), general test strategy (`efficient:testing`), production metrics and dashboards (`observability:instrumentation`, if installed), or CI workflow authoring (`github:actions`, if installed).
+description: Measurement-first Go performance work: benchmarks compared with benchstat, pprof and execution-trace reading, escape analysis and inlining checks, GC and GOMEMLIMIT tuning, a bottleneck-to-fix table, and CI regression checks. Use when a Go program is slow, allocates too much, or uses too much memory, when writing or comparing benchmarks, reading a profile, or claiming a speedup. Not for idiomatic Go or correctness (`efficient-go:golang`), general test strategy (`efficient-testing:unit`, if installed), production metrics and dashboards (`observability:instrumentation`, if installed), or CI workflow authoring (`github:actions`, if installed).
 ---
 
 # Go performance

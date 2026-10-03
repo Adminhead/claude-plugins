@@ -1,6 +1,6 @@
 ---
 name: code-security
-description: Configure and triage GitHub's security features with gh. Covers secret scanning, push protection and blocked-push recovery, paths-ignore exclusions, delegated bypass, private vulnerability reporting, and alert triage for secret scanning, code scanning, and Dependabot. Use when enabling these features, a push is blocked for a secret, or an alert needs a decision. Not for Dependabot config files (`github:dependabot`), CodeQL workflow setup (`github:actions`), or local scans before commit (`quality:audit`, if installed).
+description: Configure and triage GitHub's security features with gh. Covers secret scanning, push protection and blocked-push recovery, paths-ignore exclusions, delegated bypass, private vulnerability reporting, and alert triage for secret scanning, code scanning, and Dependabot. Use when enabling these features, a push is blocked for a secret, or an alert needs a decision. Not for Dependabot config files (`github:dependabot`), CodeQL workflow setup (`github:actions`), or local scans before commit (`efficient-security:audit`, if installed).
 ---
 
 # GitHub Code Security

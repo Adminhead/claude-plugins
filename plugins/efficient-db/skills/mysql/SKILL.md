@@ -1,13 +1,13 @@
 ---
 name: mysql
-description: "Measured MySQL and MariaDB diagnosis and change: engine and version checks, EXPLAIN risk signals, composite index choice, upsert syntax differences, keyset pagination, InnoDB lock waits and deadlocks, SKIP LOCKED queue claims, online DDL, connection-pool timeouts, replica lag, and least-privilege grants. Use for slow queries, lock stalls, schema defaults, or MySQL/MariaDB-specific SQL and ops. Not for PostgreSQL (efficient:postgres), portable schema modeling or migration staging (efficient:database-design), or caches and queues in Redis (efficient:redis)."
+description: "Measured MySQL and MariaDB diagnosis and change: engine and version checks, EXPLAIN risk signals, composite index choice, upsert syntax differences, keyset pagination, InnoDB lock waits and deadlocks, SKIP LOCKED queue claims, online DDL, connection-pool timeouts, replica lag, and least-privilege grants. Use for slow queries, lock stalls, schema defaults, or MySQL/MariaDB-specific SQL and ops. Not for PostgreSQL (efficient-db:postgres), portable schema modeling or migration staging (efficient-db:database-design), or caches and queues in Redis (efficient-db:redis)."
 ---
 
 # Efficient MySQL
 
 Make a measured MySQL or MariaDB change or investigation. Establish the workload and failure mode before changing SQL, indexes, schema, or config. Prefer the smallest reversible change that improves an observed outcome.
 
-For portable tables, keys, constraints, and migration staging, use `efficient:database-design`. MySQL and MariaDB have diverged in syntax and features, so never assume which engine or version runs, or that you have production access. Verify on the target, and check that version's manual. The sources for this skill are the MySQL 8.4 manual and the MariaDB documentation. It was not run against a live MySQL server.
+For portable tables, keys, constraints, and migration staging, use `efficient-db:database-design`. MySQL and MariaDB have diverged in syntax and features, so never assume which engine or version runs, or that you have production access. Verify on the target, and check that version's manual. The sources for this skill are the MySQL 8.4 manual and the MariaDB documentation. It was not run against a live MySQL server.
 
 ## 1. Set the boundary
 
@@ -106,5 +106,5 @@ Soft deletes (`deleted_at`) need an index that includes the column, or every que
 ## 9. Verify
 
 - Rerun the same query or workload after the single change and compare plan shape, estimated and actual rows, time, lock waits, and write overhead.
-- Confirm results are semantically unchanged with focused tests (`efficient:testing`).
+- Confirm results are semantically unchanged with focused tests (`efficient-testing:unit`, if installed).
 - Stop when the completion condition is met or missing evidence blocks a safe conclusion. Don't add indexes, config changes, or maintenance for hypothetical scale. Treat configuration values you find in examples as prompts for review, not presets, and size memory, connections, and durability settings from workload, hardware, and recovery objectives.

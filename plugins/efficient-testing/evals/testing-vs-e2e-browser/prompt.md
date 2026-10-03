@@ -1,6 +1,6 @@
 ---
 name: testing-vs-e2e-browser
-description: A Playwright journey spec routes to efficient:e2e-testing, not testing.
+description: A Playwright journey spec routes to efficient-testing:e2e, not testing.
 tags: [routing]
 runs: 1
 max_turns: 5

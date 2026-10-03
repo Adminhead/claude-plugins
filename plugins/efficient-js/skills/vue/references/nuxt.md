@@ -37,7 +37,7 @@ Declare every key in `runtimeConfig` in `nuxt.config`, because an environment va
 
 ## Server routes
 
-Handlers go in `server/api/` (prefixed `/api`) or `server/routes/`, as `defineEventHandler`. Suffix a file with the method (`.post.ts`). Validate input with the h3 helpers and the repo's schema library: `getValidatedRouterParams`, `getValidatedQuery`, and `readValidatedBody`. Authorize inside the handler, because every route is reachable directly (see `efficient:auth`).
+Handlers go in `server/api/` (prefixed `/api`) or `server/routes/`, as `defineEventHandler`. Suffix a file with the method (`.post.ts`). Validate input with the h3 helpers and the repo's schema library: `getValidatedRouterParams`, `getValidatedQuery`, and `readValidatedBody`. Authorize inside the handler, because every route is reachable directly (see `efficient-auth:auth`, if installed).
 
 ## Route rules and lazy hydration
 

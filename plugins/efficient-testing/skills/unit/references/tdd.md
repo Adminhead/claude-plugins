@@ -25,4 +25,4 @@ A seam is the public boundary where behavior is observable. Decide where tests w
 - **Design for injection.** Pass external dependencies in, so a test can substitute them at the boundary. Substitute only at real boundaries: things you don't own (third-party services, time, randomness) and your own services across a network. Don't mock in-process modules.
 - **Expected values come from outside the code.** Use a known literal or a worked example, never a recomputation with the production algorithm, since that passes by construction.
 
-For the shape of the interface and the seam itself, see `efficient:coding` (`references/design-seams.md`).
+For the shape of the interface and the seam itself, see `efficient-core:coding`, if installed (`references/design-seams.md`).

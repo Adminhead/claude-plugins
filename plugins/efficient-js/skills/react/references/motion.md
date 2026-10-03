@@ -1,6 +1,6 @@
 # Motion in React
 
-Read this when adding or fixing animation in React code. For the design rules (when to animate, durations, easing), see `efficient:web-design` section 5. Check the installed version first: Motion for React is published as `motion` (import from `motion/react`), and the older `framer-motion` package has the same API under its own name. Don't mix the two in one tree, and follow the one the repo already uses.
+Read this when adding or fixing animation in React code. For the design rules (when to animate, durations, easing), see `efficient-web:web-design`, if installed, section 5. Check the installed version first: Motion for React is published as `motion` (import from `motion/react`), and the older `framer-motion` package has the same API under its own name. Don't mix the two in one tree, and follow the one the repo already uses.
 
 ## Presence and layout
 

@@ -1,6 +1,6 @@
 ---
 name: research
-description: Answer an external, decision-relevant question by finding, reading, weighing, and synthesizing sources with traceable citations. Use for "compare X vs Y", "is it true that…", "what's the current policy/state of…", or explaining a topic from authoritative sources. Not for a single library/API docs lookup (Context7), large list-building or lead generation (exa:search, exa:exa-agent), implementation plans (efficient:planning), or debugging (efficient:problem-solving).
+description: Answer an external, decision-relevant question by finding, reading, weighing, and synthesizing sources with traceable citations. Use for "compare X vs Y", "is it true that…", "what's the current policy/state of…", or explaining a topic from authoritative sources. Not for a single library/API docs lookup (Context7), large list-building or lead generation (exa:search, exa:exa-agent), implementation plans (efficient-core:planning), or debugging (efficient-core:problem-solving).
 ---
 
 # Efficient Research

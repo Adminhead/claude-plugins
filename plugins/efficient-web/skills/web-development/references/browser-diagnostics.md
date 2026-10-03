@@ -6,7 +6,7 @@ Read this when the changed journey needs live browser evidence or a failure need
 
 - **`playwright-cli:playwright-cli` (if installed).** A scriptable headless or headed browser. Use it for repeatable navigation, screenshots at set viewports, console and network capture, and accessibility snapshots. It is the best choice when the evidence should be reproducible.
 - **claude-in-chrome skill.** Drives the user's real Chrome. Use it when the journey needs their session, extensions, or a state that is hard to script.
-- **The repo's own e2e runner.** Use it when a test already covers the journey (see `efficient:e2e-testing`).
+- **The repo's own e2e runner.** Use it when a test already covers the journey (see `efficient-testing:e2e`, if installed).
 
 Use whichever is available. Don't add a dependency just to diagnose.
 

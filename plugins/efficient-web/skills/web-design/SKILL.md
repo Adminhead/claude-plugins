@@ -1,6 +1,6 @@
 ---
 name: web-design
-description: "Evidence-based visual design for an existing product: extend its visual system, set hierarchy and responsive/state/accessibility intent, write or revise DESIGN.md, and review rendered UI against it. Use for redesigning a screen, documenting design standards, or a design handoff with acceptance criteria. Not for bold aesthetic exploration of new UI (frontend-design), style/palette lookup (ui-ux-pro-max), component styling code (ui-styling), or throwaway prototypes (efficient:prototype)."
+description: "Evidence-based visual design for an existing product: extend its visual system, set hierarchy and responsive/state/accessibility intent, write or revise DESIGN.md, and review rendered UI against it. Use for redesigning a screen, documenting design standards, or a design handoff with acceptance criteria. Not for bold aesthetic exploration of new UI (frontend-design), style/palette lookup (ui-ux-pro-max), component styling code (ui-styling), or throwaway prototypes (efficient-core:prototype, if installed)."
 ---
 
 # Efficient Web Design
@@ -9,8 +9,8 @@ This skill owns the product's visual direction and the evidence behind it. Make 
 
 It produces design intent and acceptance criteria. Implementation belongs elsewhere:
 
-- `efficient:web-development` handles HTML, CSS, browser behavior, and performance.
-- `efficient:react` and `efficient:tanstack` handle framework composition and state.
+- `efficient-web:web-development` handles HTML, CSS, browser behavior, and performance.
+- `efficient-js:react` and `efficient-js:tanstack`, if installed, handle framework composition and state.
 - `ui-styling` handles shadcn/Tailwind code.
 - `ui-ux-pro-max` is a searchable catalog of styles, palettes, and font pairings. Use it when the product has no system and needs a starting palette.
 
@@ -36,7 +36,7 @@ It produces design intent and acceptance criteria. Implementation belongs elsewh
 - Show relationships with grouping, alignment, spacing, type roles, and semantic color. Prefer real product terms over decorative icons, vague copy, or color alone.
 - Keep familiar web conventions unless product evidence justifies breaking them. Align reading order, visual order, and keyboard order.
 - Remove competing elements before adding effects, gradients, shadows, or motion.
-- Add motion only when it guides attention, communicates a state change, or keeps spatial continuity. Otherwise leave it out. Keep feedback to about 100 to 150 ms, small transitions to about 200 to 300 ms, and larger ones to about 300 to 500 ms. Ease out for entrances and ease in for exits. Don't animate high-frequency or keyboard-initiated actions. Specify a reduced-motion behavior that drops movement and keeps short fades. For React implementation, use `efficient:react` references/motion.md, and consider the View Transitions API for page-level transitions.
+- Add motion only when it guides attention, communicates a state change, or keeps spatial continuity. Otherwise leave it out. Keep feedback to about 100 to 150 ms, small transitions to about 200 to 300 ms, and larger ones to about 300 to 500 ms. Ease out for entrances and ease in for exits. Don't animate high-frequency or keyboard-initiated actions. Specify a reduced-motion behavior that drops movement and keeps short fades. For React implementation, use `efficient-js:react`, if installed, references/motion.md, and consider the View Transitions API for page-level transitions.
 
 ## 4. Foundations
 

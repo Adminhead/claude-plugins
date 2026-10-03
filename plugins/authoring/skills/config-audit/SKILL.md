@@ -1,6 +1,6 @@
 ---
 name: config-audit
-description: Audit the installed Claude Code setup for bloat and rot (skills, plugins, memory, hooks, permissions, MCP servers, caches), measure each item's context cost, and propose Keep, Improve, Update, Retire, or Merge verdicts with evidence. Cleanup is soft-delete only, confirmed one item at a time. Use for "clean up my config", "too many skills", "my setup is bloated", or a periodic hygiene review. Not for security review of config (quality:agent-config-audit), a single CLAUDE.md (claude-md-management:claude-md-improver), or rewriting instruction files (authoring:manage-agent-instructions), where the plugins are installed.
+description: Audit the installed Claude Code setup for bloat and rot (skills, plugins, memory, hooks, permissions, MCP servers, caches), measure each item's context cost, and propose Keep, Improve, Update, Retire, or Merge verdicts with evidence. Cleanup is soft-delete only, confirmed one item at a time. Use for "clean up my config", "too many skills", "my setup is bloated", or a periodic hygiene review. Not for security review of config (authoring:agent-config-audit), a single CLAUDE.md (claude-md-management:claude-md-improver, if installed), or rewriting instruction files (authoring:manage-agent-instructions).
 ---
 
 # Config Audit

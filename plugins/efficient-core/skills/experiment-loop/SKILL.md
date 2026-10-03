@@ -1,6 +1,6 @@
 ---
 name: experiment-loop
-description: Run a bounded autonomous optimize-and-measure loop on a dedicated git branch, with one hypothesis per commit, a fixed metric command, keep-or-revert decisions, and a results log. Use when the user wants many unattended experiments against a measurable goal such as benchmark time, bundle size, memory, or test pass rate. Not for a single optimization (efficient:coding, efficient:problem-solving), planning the surrounding work (efficient:planning), pure polling or scheduling (the /loop and /schedule built-ins), or goals with no command that measures them.
+description: Run a bounded autonomous optimize-and-measure loop on a dedicated git branch, with one hypothesis per commit, a fixed metric command, keep-or-revert decisions, and a results log. Use when the user wants many unattended experiments against a measurable goal such as benchmark time, bundle size, memory, or test pass rate. Not for a single optimization (efficient-core:coding, efficient-core:problem-solving), planning the surrounding work (efficient-core:planning), pure polling or scheduling (the /loop and /schedule built-ins), or goals with no command that measures them.
 ---
 
 # Experiment Loop

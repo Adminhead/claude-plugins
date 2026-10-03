@@ -32,7 +32,7 @@
       "name": "github",
       "source": "./plugins/github",
       "description": "GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -115,7 +115,7 @@
     {
       "name": "authoring",
       "source": "./plugins/authoring",
-      "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config.",
+      "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security.",
       "version": "0.3.0",
       "category": "development"
     },
@@ -151,7 +151,7 @@
       "name": "playwright-cli",
       "source": "./plugins/playwright-cli",
       "description": "Drive a headless, isolated browser from Bash with playwright-cli.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "testing"
     },
     {
@@ -165,7 +165,7 @@
       "name": "accessibility",
       "source": "./plugins/accessibility",
       "description": "Accessibility skills: manual screen-reader and keyboard testing of web journeys.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "testing"
     },
     {
@@ -186,13 +186,13 @@
       "name": "api",
       "source": "./plugins/api",
       "description": "Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "infra",
       "source": "./plugins/infra",
-      "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, homelab networking, and Terraform.",
+      "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform.",
       "version": "0.2.0",
       "category": "development"
     },
@@ -207,7 +207,7 @@
       "name": "aws",
       "source": "./plugins/aws",
       "description": "AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     }
   ]

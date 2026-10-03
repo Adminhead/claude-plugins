@@ -1,6 +1,6 @@
 ---
 name: privacy-review
-description: Privacy and data-handling review of a codebase or change. Inventories personal data across models, DTOs, logs, telemetry, and third-party calls, traces where it flows and rests, and checks minimization, retention, erasure, export, and PII in URLs and logs. Reports findings with file:line evidence and a gaps list. Use when adding a feature that collects or moves personal data, before a launch or data-protection review, or when asked where personal data goes and whether deletion reaches it. Not legal advice. Not for authorization bugs (efficient:auth), PII scrubbing in Sentry (sentry:sentry, if installed), or threat modeling (quality:threat-model).
+description: Privacy and data-handling review of a codebase or change. Inventories personal data across models, DTOs, logs, telemetry, and third-party calls, traces where it flows and rests, and checks minimization, retention, erasure, export, and PII in URLs and logs. Reports findings with file:line evidence and a gaps list. Use when adding a feature that collects or moves personal data, before a launch or data-protection review, or when asked where personal data goes and whether deletion reaches it. Not legal advice. Not for authorization bugs (efficient-auth:auth, if installed), PII scrubbing in Sentry (sentry:sentry, if installed), or threat modeling (efficient-security:threat-model).
 ---
 
 # Privacy Review

@@ -7,4 +7,4 @@ Read this when the discrepancy is latency, throughput, or another measured cost.
 - Don't skip validation or serve stale data to win a number.
 - Measure like workloads and record the baseline, the measurement, and the variance. One noisy run proves nothing.
 - With several optimization variants, keep a table (variant, hypothesis, command, result, correct?) and compare each against the last accepted version, not only the previous run. A variant counts only if the correctness checks still pass.
-- An unattended multi-variant search belongs in `efficient:experiment-loop`.
+- An unattended multi-variant search belongs in `efficient-core:experiment-loop`.

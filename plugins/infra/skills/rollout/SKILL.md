@@ -1,6 +1,6 @@
 ---
 name: rollout
-description: Plan and verify a production rollout, from strategy choice (rolling, blue-green, canary) through preflight go/no-go, phased verification signals, rollback criteria, and post-deploy follow-up. Use when preparing a release, infrastructure change, or migration that needs a written plan, when judging whether a deploy is healthy, or when deciding whether to roll back. Plans only; it does not run deploys. Not for CI/CD pipeline YAML (github:actions, if installed), schema migration design (efficient:database-design, if installed), or release-readiness code review (quality:production-readiness, if installed).
+description: Plan and verify a production rollout, from strategy choice (rolling, blue-green, canary) through preflight go/no-go, phased verification signals, rollback criteria, and post-deploy follow-up. Use when preparing a release, infrastructure change, or migration that needs a written plan, when judging whether a deploy is healthy, or when deciding whether to roll back. Plans only; it does not run deploys. Not for CI/CD pipeline YAML (github:actions, if installed), schema migration design (efficient-db:database-design, if installed), or release-readiness code review (infra:production-readiness).
 ---
 
 # Production rollout planning
@@ -54,7 +54,7 @@ Watch metrics, not only logs. A log that stays quiet can mean the service stoppe
 
 ## Rules that prevent common failures
 
-- Keep migrations additive for one release. Rollback restores old code but leaves the migration applied, so the old code must run against the new schema. Drop or tighten columns in a later release (expand-contract, see `efficient:database-design`, if installed).
+- Keep migrations additive for one release. Rollback restores old code but leaves the migration applied, so the old code must run against the new schema. Drop or tighten columns in a later release (expand-contract, see `efficient-db:database-design`, if installed).
 - Set rollback triggers before the deploy, as thresholds (for example error rate above the baseline by a stated margin for five minutes). Deciding mid-incident invites hesitation.
 - Give every feature flag an owner, an expiry, and a rollback trigger, and remove the flag and its dead code after the rollout completes.
 - Make the readiness check test real dependencies, and the liveness check shallow. A pipeline that only calls a shallow `/ping` will pass while the database is unreachable.

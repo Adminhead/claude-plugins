@@ -58,7 +58,7 @@ Check the docs for the installed major version, because migration tooling change
 - Treat a migration as immutable once it has run in a shared environment. A fix is a new migration.
 - Don't combine an irreversible data rewrite, an application behavior change, and a destructive drop in one step without a tested recovery plan.
 - Make migrations reversible where feasible. When reversal would lose data, say so plainly, keep a restorable backup or export as the environment requires, and get approval before running it.
-- Don't assume DDL locking, transactional DDL, online index builds, or backfill behavior carries across engines. Check the target engine's docs, or `efficient:postgres` for PostgreSQL (its online DDL section covers staging a `NOT NULL` column) and `efficient:mysql` for MySQL and MariaDB.
+- Don't assume DDL locking, transactional DDL, online index builds, or backfill behavior carries across engines. Check the target engine's docs, or `efficient-db:postgres` for PostgreSQL (its online DDL section covers staging a `NOT NULL` column) and `efficient-db:mysql` for MySQL and MariaDB.
 - Test the migration up, and down where it exists, on a disposable database seeded with a realistic pre-change sample.
 
 ## Stop and preserve evidence

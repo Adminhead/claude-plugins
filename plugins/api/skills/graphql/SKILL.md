@@ -1,6 +1,6 @@
 ---
 name: graphql
-description: Design and review a public GraphQL API: whether GraphQL fits at all, schema naming and nullability, the Node interface, input and payload types, Relay cursor connections, typed error results, depth, breadth and cost ceilings, introspection, the federation trust boundary, and persisted-query policy. Use when designing or reviewing a GraphQL schema that third-party developers will query, setting query limits, or exposing a federated graph. Not for gqlgen or other server code (efficient:golang, if installed), REST contracts (api:rest-design), rate-limit headers (api:rest-design), or deprecation policy (api:versioning).
+description: Design and review a public GraphQL API: whether GraphQL fits at all, schema naming and nullability, the Node interface, input and payload types, Relay cursor connections, typed error results, depth, breadth and cost ceilings, introspection, the federation trust boundary, and persisted-query policy. Use when designing or reviewing a GraphQL schema that third-party developers will query, setting query limits, or exposing a federated graph. Not for gqlgen or other server code (efficient-go:golang, if installed), REST contracts (api:rest-design), rate-limit headers (api:rest-design), or deprecation policy (api:versioning).
 ---
 
 # Public GraphQL API design

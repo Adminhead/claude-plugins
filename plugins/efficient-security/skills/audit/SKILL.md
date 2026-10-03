@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Security audit of the current branch's changes and dependencies. Runs gitleaks, semgrep, trivy, govulncheck, and pip-audit through one script, has a subagent verify the findings and review the diff, then reports a ranked table and asks which findings to fix. Not for a model-only read of the branch diff (built-in /security-review). Manual only (/quality:audit [base-ref]).
+description: Security audit of the current branch's changes and dependencies. Runs gitleaks, semgrep, trivy, govulncheck, and pip-audit through one script, has a subagent verify the findings and review the diff, then reports a ranked table and asks which findings to fix. Not for a model-only read of the branch diff (built-in /security-review). Manual only (/efficient-security:audit [base-ref]).
 disable-model-invocation: true
 argument-hint: "[base-ref]"
 allowed-tools:
@@ -45,4 +45,4 @@ Spawn one Agent with `subagent_type: general-purpose` and `model: sonnet`. Give 
 
 - **Secrets:** never display the value. Tell the user to rotate the credential first. Deleting it from the diff is not enough once it is committed or pushed, since it stays in history and any clone; history rewriting is a separate, explicit decision.
 - **Dependencies:** bump to the reported fixed version with the project's package manager so the lockfile updates, then run the project's tests.
-- **Auth fixes:** load `efficient:auth` and follow it.
+- **Auth fixes:** load `efficient-auth:auth`, if installed, and follow it.

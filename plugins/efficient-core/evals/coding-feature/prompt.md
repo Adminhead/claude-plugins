@@ -1,6 +1,6 @@
 ---
 name: coding-feature
-description: A clear feature addition routes to efficient:coding, not problem-solving.
+description: A clear feature addition routes to efficient-core:coding, not problem-solving.
 tags: [routing]
 runs: 1
 max_turns: 5

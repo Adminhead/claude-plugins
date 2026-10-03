@@ -1,6 +1,6 @@
 ---
 name: web-development
-description: "Build or repair a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard/focus behavior, request/response contracts, server-side validation, error mapping, and measured delivery performance, verified in a real browser. Use for a form, page, or flow that must work for real users, HTTP API contract changes, or browser/network bugs. Not for React/TanStack internals, visual design decisions, or auth/session logic (efficient:auth)."
+description: "Build or repair a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard/focus behavior, request/response contracts, server-side validation, error mapping, and measured delivery performance, verified in a real browser. Use for a form, page, or flow that must work for real users, HTTP API contract changes, or browser/network bugs. Not for React/TanStack internals, visual design decisions, or auth/session logic (efficient-auth:auth, if installed)."
 ---
 
 # Efficient Web Development
@@ -9,11 +9,11 @@ Deliver a small working vertical slice, from the browser entry point through its
 
 Hand off what this skill does not own:
 
-- React component and state mechanics go to `efficient:react`.
-- TanStack routing and server state go to `efficient:tanstack`.
-- Visual hierarchy, variants, and interaction intent go to `efficient:web-design`. Implement its acceptance criteria rather than inventing them.
-- Login, sessions, tokens, and authorization rules go to `efficient:auth`.
-- Unit and regression test scope goes to `efficient:testing`. Browser suites go to `efficient:e2e-testing`.
+- React component and state mechanics go to `efficient-js:react`, if installed.
+- TanStack routing and server state go to `efficient-js:tanstack`, if installed.
+- Visual hierarchy, variants, and interaction intent go to `efficient-web:web-design`. Implement its acceptance criteria rather than inventing them.
+- Login, sessions, tokens, and authorization rules go to `efficient-auth:auth`, if installed.
+- Unit and regression test scope goes to `efficient-testing:unit`. Browser suites go to `efficient-testing:e2e`, both if installed.
 
 ## 1. Establish the user contract
 

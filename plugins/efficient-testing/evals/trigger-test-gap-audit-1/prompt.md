@@ -1,6 +1,6 @@
 ---
 name: trigger-test-gap-audit-1
-description: A realistic request that should load quality:test-gap-audit.
+description: A realistic request that should load efficient-testing:gap-audit.
 tags: [trigger]
 runs: 1
 max_turns: 6

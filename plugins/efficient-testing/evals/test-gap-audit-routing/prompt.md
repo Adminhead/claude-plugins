@@ -1,6 +1,6 @@
 ---
 name: test-gap-audit-routing
-description: Asking what tests are missing routes to quality:test-gap-audit.
+description: Asking what tests are missing routes to efficient-testing:gap-audit.
 tags: [routing]
 runs: 1
 max_turns: 6

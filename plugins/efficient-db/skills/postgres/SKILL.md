@@ -1,13 +1,13 @@
 ---
 name: postgres
-description: "Measured PostgreSQL diagnosis and change: EXPLAIN/ANALYZE, index choice (B-tree, GIN, BRIN, partial, expression, INCLUDE), statistics, locks and wait events, MVCC/vacuum, isolation and serialization retries, SKIP LOCKED queues, partitioning, CREATE INDEX CONCURRENTLY, online DDL, row-level security policy cost, pgvector indexes, and backup/restore checks. Use for slow queries, lock stalls, bloat, Postgres-specific schema choices, or vector search. Not for portable schema modeling or migration staging (efficient:database-design), MySQL/MariaDB (efficient:mysql), or caching/queues on Redis (efficient:redis)."
+description: "Measured PostgreSQL diagnosis and change: EXPLAIN/ANALYZE, index choice (B-tree, GIN, BRIN, partial, expression, INCLUDE), statistics, locks and wait events, MVCC/vacuum, isolation and serialization retries, SKIP LOCKED queues, partitioning, CREATE INDEX CONCURRENTLY, online DDL, row-level security policy cost, pgvector indexes, and backup/restore checks. Use for slow queries, lock stalls, bloat, Postgres-specific schema choices, or vector search. Not for portable schema modeling or migration staging (efficient-db:database-design), MySQL/MariaDB (efficient-db:mysql), or caching/queues on Redis (efficient-db:redis)."
 ---
 
 # Efficient PostgreSQL
 
 Make a measured PostgreSQL change or investigation. Establish the workload and failure mode before changing SQL, config, indexes, layout, or maintenance. Prefer the smallest reversible change that improves an observed outcome.
 
-For portable tables, keys, constraints, relationships, and migration staging, use `efficient:database-design`. Never assume Postgres is deployed, what version it runs, or that an extension, replica, superuser, or production access exists. Verify each fact on the target. Behavior and syntax vary by major version, so check the Postgres docs for that version through Context7.
+For portable tables, keys, constraints, relationships, and migration staging, use `efficient-db:database-design`. Never assume Postgres is deployed, what version it runs, or that an extension, replica, superuser, or production access exists. Verify each fact on the target. Behavior and syntax vary by major version, so check the Postgres docs for that version through Context7.
 
 ## 1. Set the operational boundary
 
@@ -54,7 +54,7 @@ Two further references apply only to their own branch:
 ## 7. Verify outcome and guardrails
 
 - Rerun the same query, transaction, or workload after the single change. Compare plan shape, estimated vs. actual rows, time, buffers, lock waits, error rate, and write overhead.
-- Confirm results are semantically unchanged with focused tests. Use `efficient:testing` when an application contract changed.
+- Confirm results are semantically unchanged with focused tests. Use `efficient-testing:unit`, if installed, when an application contract changed.
 - For operational work, also watch connection health, replication lag, backup signals, invalid indexes, lock waits, and error spikes through an agreed observation window.
 
 ## 8. Handle failure without improvising

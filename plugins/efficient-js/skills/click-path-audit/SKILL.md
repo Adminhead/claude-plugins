@@ -1,6 +1,6 @@
 ---
 name: click-path-audit
-description: Behavioral audit of UI event handlers. Maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths, and effects that reset what a handler just set. Use when a button or control does nothing or leaves the wrong state although each function works alone, or after a refactor of shared state. Not for building or fixing React components (efficient:react), API or data-shape bugs (efficient:problem-solving), styling, or performance profiling.
+description: Behavioral audit of UI event handlers. Maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths, and effects that reset what a handler just set. Use when a button or control does nothing or leaves the wrong state although each function works alone, or after a refactor of shared state. Not for building or fixing React components (efficient-js:react), API or data-shape bugs (efficient-core:problem-solving, if installed), styling, or performance profiling.
 ---
 
 # Click-Path Audit

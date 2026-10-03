@@ -49,7 +49,7 @@ The accessibility tree, emulators, and automated audits are diagnostic aids. **T
 
    Don't extrapolate one widget's result to unrelated widgets.
 
-8. **Separate observation from diagnosis.** Record the exact steps, the actual speech (a faithful short transcription), the focus location, and the visible result. Repeat an unexpected result once from a clean state. Only then inspect the accessibility tree, DOM, or code to form a falsifiable explanation. If installed, hand fixes to `efficient:web-development`, or to `efficient:react` for React component faults, and leave hierarchy and interaction-intent decisions to `efficient:web-design`.
+8. **Separate observation from diagnosis.** Record the exact steps, the actual speech (a faithful short transcription), the focus location, and the visible result. Repeat an unexpected result once from a clean state. Only then inspect the accessibility tree, DOM, or code to form a falsifiable explanation. If installed, hand fixes to `efficient-web:web-development`, or to `efficient-js:react` for React component faults, and leave hierarchy and interaction-intent decisions to `efficient-web:web-design`.
 
 9. **Report bounded results.** Mark each scenario pass, fail, blocked, or inconclusive for the recorded environment. Name the untested environments and scenarios. Never claim cross-browser, cross-screen-reader, legal, or conformance coverage from one run. Strip test-account data and other sensitive content from transcripts.
 

@@ -1,6 +1,6 @@
 {
   "name": "infra",
   "version": "0.2.0",
-  "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, homelab networking, and Terraform.",
+  "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform.",
   "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
 }

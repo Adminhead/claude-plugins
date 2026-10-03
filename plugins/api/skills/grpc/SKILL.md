@@ -1,6 +1,6 @@
 ---
 name: grpc
-description: Design and review gRPC and protobuf contracts: whether gRPC belongs at the edge at all, AIP package and versioning conventions, buf lint and breaking gates, compatibility review of .proto diffs across wire, ProtoJSON, generated code, and behavior, unary-by-default streaming, google.rpc.Status errors, and gateway mapping traps. Use when adding or changing .proto files or RPC methods, reviewing a proto diff for rollout safety, setting up buf, or exposing gRPC through Envoy, grpc-gateway, or Connect. Not for Go server code (efficient:golang, if installed), REST contracts (api:rest-design), retry and backoff policy (api:idempotency-retry), or version-sunset policy (api:versioning).
+description: Design and review gRPC and protobuf contracts: whether gRPC belongs at the edge at all, AIP package and versioning conventions, buf lint and breaking gates, compatibility review of .proto diffs across wire, ProtoJSON, generated code, and behavior, unary-by-default streaming, google.rpc.Status errors, and gateway mapping traps. Use when adding or changing .proto files or RPC methods, reviewing a proto diff for rollout safety, setting up buf, or exposing gRPC through Envoy, grpc-gateway, or Connect. Not for Go server code (efficient-go:golang, if installed), REST contracts (api:rest-design), retry and backoff policy (api:idempotency-retry), or version-sunset policy (api:versioning).
 ---
 
 # gRPC and protobuf contracts
@@ -87,7 +87,7 @@ Expose unary RPCs by default and record every streaming method as a decision. Se
 
 ## Report
 
-State the verdict or design decisions, the buf commands you ran with their results, and which risks stayed unverified. Go server mechanics (interceptors, `status.Error`, context cancellation) belong to `efficient:golang` if installed.
+State the verdict or design decisions, the buf commands you ran with their results, and which risks stayed unverified. Go server mechanics (interceptors, `status.Error`, context cancellation) belong to `efficient-go:golang` if installed.
 
 ## Sources checked
 

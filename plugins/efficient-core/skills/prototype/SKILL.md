@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: Build a throwaway prototype that answers one design question, either a single-file HTML demo that drives a state model through hard cases (logic) or several structurally different UI variants on one route switched by a URL parameter (look). Use when the user wants to sanity-check a state model, data shape, or API feel, or to compare layouts before committing. Not for production UI work (efficient:web-development, efficient:react), visual design systems (efficient:web-design), a design review of existing screens, or planning the real implementation once the question is answered (efficient:planning).
+description: Build a throwaway prototype that answers one design question, either a single-file HTML demo that drives a state model through hard cases (logic) or several structurally different UI variants on one route switched by a URL parameter (look). Use when the user wants to sanity-check a state model, data shape, or API feel, or to compare layouts before committing. Not for production UI work (efficient-web:web-development, efficient-js:react, if installed), visual design systems (efficient-web:web-design, if installed), a design review of existing screens, or planning the real implementation once the question is answered (efficient-core:planning).
 ---
 
 # Prototype

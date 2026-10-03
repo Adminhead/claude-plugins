@@ -1,6 +1,6 @@
 ---
 name: route-oauth-vs-auth
-description: Building an authorization server goes to api:oauth-provider, not efficient:auth.
+description: Building an authorization server goes to api:oauth-provider, not efficient-auth:auth.
 tags: [routing]
 runs: 1
 max_turns: 6

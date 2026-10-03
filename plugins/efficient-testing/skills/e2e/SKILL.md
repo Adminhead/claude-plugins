@@ -1,6 +1,6 @@
 ---
 name: e2e
-description: "Write, run, and diagnose browser end-to-end tests (Playwright, Cypress, etc.) for critical user journeys: accessible locators, condition-based waits, isolated test data and accounts, trace/screenshot artifacts, and flake classification. Use when adding or fixing an e2e spec, triaging a flaky or CI-only browser failure, or proving a journey works in a real browser. Not for installing a runner, unit/API tests (efficient:testing), or ad-hoc browser driving (playwright-cli:playwright-cli)."
+description: "Write, run, and diagnose browser end-to-end tests (Playwright, Cypress, etc.) for critical user journeys: accessible locators, condition-based waits, isolated test data and accounts, trace/screenshot artifacts, and flake classification. Use when adding or fixing an e2e spec, triaging a flaky or CI-only browser failure, or proving a journey works in a real browser. Not for installing a runner, unit/API tests (efficient-testing:unit), or ad-hoc browser driving (playwright-cli:playwright-cli, if installed)."
 ---
 
 # Efficient E2E Testing
@@ -11,9 +11,9 @@ Use the repo's installed runner and browser matrix. Don't install a runner, add 
 
 Related skills:
 
-- `efficient:testing` covers non-browser tests.
-- `efficient:web-development` covers fixing the browser-facing behavior itself.
-- `efficient:react` covers component-level issues.
+- `efficient-testing:unit` covers non-browser tests.
+- `efficient-web:web-development`, if installed, covers fixing the browser-facing behavior itself.
+- `efficient-js:react`, if installed, covers component-level issues.
 - `playwright-cli:playwright-cli`, if installed, covers driving a browser interactively without writing a spec.
 
 ## 1. Define the journey and harness

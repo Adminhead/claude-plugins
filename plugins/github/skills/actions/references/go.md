@@ -1,6 +1,6 @@
 # Go projects
 
-Read when a workflow builds, tests, or releases a Go module. Action versions and refs follow the policy in SKILL.md, and permissions and triggers follow [security](security.md). Language-level testing practice lives in `efficient:golang`, if installed.
+Read when a workflow builds, tests, or releases a Go module. Action versions and refs follow the policy in SKILL.md, and permissions and triggers follow [security](security.md). Language-level testing practice lives in `efficient-go:golang`, if installed.
 
 ## Test job
 

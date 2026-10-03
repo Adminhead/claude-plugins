@@ -43,7 +43,7 @@ Read this at step 4 of the review. Each item is a question to answer from code, 
 ## Access and security (Art. 5(1)(f), Art. 25, 32)
 
 - Is personal data encrypted in transit, and at rest where the store supports it?
-- Does every endpoint returning personal data authenticate the caller and check ownership of the record? Hand deeper authorization review to `efficient:auth`.
+- Does every endpoint returning personal data authenticate the caller and check ownership of the record? Hand deeper authorization review to `efficient-auth:auth`, if installed.
 - Are field-level secrets such as tokens or national ids hashed or encrypted, not stored in plain columns?
 - Do non-production environments use synthetic or masked data?
 

@@ -1,11 +1,11 @@
 ---
 name: python-packaging
-description: Build and validate installable Python distributions, covering pyproject.toml build config, metadata and versions, runtime vs optional dependencies, package data, entry points, wheel/sdist clean-install checks, uv project workflows, and PyPI release workflows with trusted publishing. Use when changing [build-system] or [project] tables, console scripts, package discovery, uv locking or CI and Docker installs, or preparing a release artifact or publish workflow. Not for general Python code (efficient:python), choosing libraries, or registry accounts and credentials.
+description: Build and validate installable Python distributions, covering pyproject.toml build config, metadata and versions, runtime vs optional dependencies, package data, entry points, wheel/sdist clean-install checks, uv project workflows, and PyPI release workflows with trusted publishing. Use when changing [build-system] or [project] tables, console scripts, package discovery, uv locking or CI and Docker installs, or preparing a release artifact or publish workflow. Not for general Python code (efficient-python:python), choosing libraries, or registry accounts and credentials.
 ---
 
 # Efficient Python Packaging
 
-Keep the repository's build backend (hatchling, setuptools, flit-core, pdm-backend, poetry-core, maturin, uv_build), resolver, layout, and release process. Don't migrate package managers or backends as part of packaging work. Use `efficient:python` for code and import behavior.
+Keep the repository's build backend (hatchling, setuptools, flit-core, pdm-backend, poetry-core, maturin, uv_build), resolver, layout, and release process. Don't migrate package managers or backends as part of packaging work. Use `efficient-python:python` for code and import behavior.
 
 ## Establish the distribution contract
 

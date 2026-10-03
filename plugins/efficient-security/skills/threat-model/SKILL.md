@@ -1,6 +1,6 @@
 ---
 name: threat-model
-description: STRIDE threat model of a system or repo, built from the code. Draws trust boundaries and a data-flow diagram, applies STRIDE per element, verifies each gap against the code and platform defaults before flagging it, tiers findings by exploitability, and turns threats into testable requirements and mapped controls. Reruns incrementally against a baseline report. Use when asked for a threat model, trust-boundary or attack-surface review of a design, or what changed security-wise since the last model. Not for scanner runs on a branch (`quality:audit`), a model-only review of a diff (built-in /security-review), or auth implementation (`efficient:auth`).
+description: STRIDE threat model of a system or repo, built from the code. Draws trust boundaries and a data-flow diagram, applies STRIDE per element, verifies each gap against the code and platform defaults before flagging it, tiers findings by exploitability, and turns threats into testable requirements and mapped controls. Reruns incrementally against a baseline report. Use when asked for a threat model, trust-boundary or attack-surface review of a design, or what changed security-wise since the last model. Not for scanner runs on a branch (`efficient-security:audit`), a model-only review of a diff (built-in /security-review), or auth implementation (`efficient-auth:auth`, if installed).
 ---
 
 # Threat model

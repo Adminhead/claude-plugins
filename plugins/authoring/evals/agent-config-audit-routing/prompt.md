@@ -1,6 +1,6 @@
 ---
 name: agent-config-audit-routing
-description: Reviewing .claude config for security routes to quality:agent-config-audit.
+description: Reviewing .claude config for security routes to authoring:agent-config-audit.
 tags: [routing]
 runs: 1
 max_turns: 6

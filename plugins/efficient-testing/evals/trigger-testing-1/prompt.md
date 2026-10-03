@@ -1,6 +1,6 @@
 ---
 name: trigger-testing-1
-description: A realistic request that should load efficient:testing.
+description: A realistic request that should load efficient-testing:unit.
 tags: [trigger]
 runs: 1
 max_turns: 6

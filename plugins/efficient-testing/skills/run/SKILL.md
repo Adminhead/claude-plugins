@@ -1,6 +1,6 @@
 ---
 name: run
-description: Run the project's tests, show only compact failures, and fix them in a bounded loop. Manual command (/quality:test).
+description: Run the project's tests, show only compact failures, and fix them in a bounded loop. Manual command (/efficient-testing:run).
 disable-model-invocation: true
 argument-hint: "[path|pattern] [--all] [--cmd \"…\"]"
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/run_tests.py *)
@@ -51,7 +51,7 @@ Stop and ask the user with AskUserQuestion, explaining each option, when:
 - the test itself looks wrong (say what it asserts and why that seems incorrect);
 - the failure is environmental or flaky (missing service, credentials, network, timing, or a failure that changes between identical runs).
 
-For deeper method, use `efficient:problem-solving` for hard diagnoses and `efficient:testing` for test-quality questions.
+For deeper method, use `efficient-core:problem-solving`, if installed, for hard diagnoses and `efficient-testing:unit` for test-quality questions.
 
 ## 3. Confirm
 

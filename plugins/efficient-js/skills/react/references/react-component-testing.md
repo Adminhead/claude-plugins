@@ -1,6 +1,6 @@
 # React component test decisions
 
-Read this when adding or revising a React component test. Use `efficient:testing` for test scope, scenario choice, isolation, and failure diagnosis. This note covers only the React-specific seams.
+Read this when adding or revising a React component test. Use `efficient-testing:unit`, if installed, for test scope, scenario choice, isolation, and failure diagnosis. This note covers only the React-specific seams.
 
 First inspect the manifest, lockfile, test config and setup files, and nearby tests. Use the installed runner (Vitest, Jest, …), rendering library, interaction helpers, and local wrappers. Check version-specific APIs through Context7. Don't replace the setup or add a dependency for one test.
 

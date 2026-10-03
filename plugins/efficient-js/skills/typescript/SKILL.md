@@ -1,6 +1,6 @@
 ---
 name: typescript
-description: TypeScript type-level and compiler work covering tsconfig strictness, narrowing, generics, discriminated unions, declarations and module resolution, public type APIs, runtime validation of unknown data, and type tests. Use when editing *.ts/*.tsx types or tsconfig.json, or fixing tsc errors. Not for JS runtime behavior like modules, async, or event loop (efficient:javascript), or React components (efficient:react).
+description: TypeScript type-level and compiler work covering tsconfig strictness, narrowing, generics, discriminated unions, declarations and module resolution, public type APIs, runtime validation of unknown data, and type tests. Use when editing *.ts/*.tsx types or tsconfig.json, or fixing tsc errors. Not for JS runtime behavior like modules, async, or event loop (efficient-js:javascript), or React components (efficient-js:react).
 ---
 
 # Efficient TypeScript
@@ -80,7 +80,7 @@ To restrict which files a package may import (entry points only, no deep imports
 
 - Run the narrowest type check that reaches the owning config, such as `npx tsc --noEmit -p <tsconfig>` or `tsc -b` for project references, or the repo's `typecheck` script.
 - When config, public types, imports, or declarations changed, also run the build or declaration emit.
-- Run lint only when it checks the affected boundary. Use `efficient:testing` for runtime tests.
+- Run lint only when it checks the affected boundary. Use `efficient-testing:unit`, if installed, for runtime tests.
 - Add a type test only for public, subtle, or previously regressed relationships. Cover an accepted use and a rejected one (`// @ts-expect-error`, `expectTypeOf`, or `tsd`, whichever the repo uses). Keep type tests apart from runtime tests when their runners differ.
 - Measure type-check cost (`tsc --extendedDiagnostics`, `--generateTrace`) before simplifying types for performance.
 

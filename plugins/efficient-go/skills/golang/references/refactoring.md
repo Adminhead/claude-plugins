@@ -1,6 +1,6 @@
 # Go refactoring
 
-Read this when restructuring Go code: renaming, moving, extracting, inlining, or changing a signature across packages. The general rules (preserve observable behavior, keep the change set small) are in `efficient:coding`. This file covers the Go tooling.
+Read this when restructuring Go code: renaming, moving, extracting, inlining, or changing a signature across packages. The general rules (preserve observable behavior, keep the change set small) are in `efficient-core:coding`, if installed. This file covers the Go tooling.
 
 ## Prefer tools over hand edits
 

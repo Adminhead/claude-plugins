@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"efficient:golang"'
+input_match: '"skill"\s*:\s*"efficient-go:golang"'
 ---

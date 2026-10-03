@@ -1,11 +1,11 @@
 ---
 name: react
-description: "Change, review, or debug React components: \"this component is slow\", \"this list feels laggy when I type\", \"it re-renders too much\", \"make it faster\", stale state, effect loops, lost state, hydration mismatches. Covers component boundaries, props vs local state, derived values, effects, keys, render purity, Server Component and Action boundaries, component accessibility, measured performance (profile before memoizing), motion, React 19 upgrades, and component tests. Use for .tsx/.jsx UI behavior or render-cost requests. Not for visual design direction (efficient:web-design), JS/TS language issues (efficient:javascript, efficient:typescript), Vite configuration (efficient:vite), Vue component work (efficient:vue), or TanStack routing/data APIs (efficient:tanstack)."
+description: "Change, review, or debug React components: \"this component is slow\", \"this list feels laggy when I type\", \"it re-renders too much\", \"make it faster\", stale state, effect loops, lost state, hydration mismatches. Covers component boundaries, props vs local state, derived values, effects, keys, render purity, Server Component and Action boundaries, component accessibility, measured performance (profile before memoizing), motion, React 19 upgrades, and component tests. Use for .tsx/.jsx UI behavior or render-cost requests. Not for visual design direction (efficient-web:web-design, if installed), JS/TS language issues (efficient-js:javascript, efficient-js:typescript), Vite configuration (efficient-js:vite), Vue component work (efficient-js:vue), or TanStack routing/data APIs (efficient-js:tanstack)."
 ---
 
 # Efficient React
 
-This skill owns component composition and local UI behavior. It does not own visual direction (`efficient:web-design`), language-level concerns (`efficient:javascript`, `efficient:typescript`), bundler configuration (`efficient:vite`), or routing and server state (`efficient:tanstack` when the project uses TanStack; otherwise follow the installed library's conventions).
+This skill owns component composition and local UI behavior. It does not own visual direction (`efficient-web:web-design`, if installed), language-level concerns (`efficient-js:javascript`, `efficient-js:typescript`), bundler configuration (`efficient-js:vite`), or routing and server state (`efficient-js:tanstack` when the project uses TanStack; otherwise follow the installed library's conventions).
 
 ## Before editing
 
@@ -88,7 +88,7 @@ Use an effect only to synchronize with an external system, such as subscriptions
 
 - Add the smallest test that proves the changed behavior. Render with only the providers production needs, act through accessible controls, and assert visible output, accessible state, or an observable callback.
 - Read [references/react-component-testing.md](references/react-component-testing.md) when writing or revising a component test. It covers query priority, interaction helpers, network mocking, providers, DOM vs. browser environment, an axe smoke test, boundary tests, and `renderHook`.
-- Use a real browser check (`playwright-cli:playwright-cli` if installed, the claude-in-chrome skill, or `efficient:e2e-testing`) when layout, focus, scrolling, CSS, browser APIs, or hydration matter. A DOM-only test is not evidence for those.
+- Use a real browser check (`playwright-cli:playwright-cli` if installed, the claude-in-chrome skill, or `efficient-testing:e2e` if installed) when layout, focus, scrolling, CSS, browser APIs, or hydration matter. A DOM-only test is not evidence for those.
 - Run the narrowest formatter, typecheck, lint, and targeted test that reach the change. Don't install a runner or test library just for this.
 - When a check fails, classify it before fixing. It is a product defect, a wrong expectation, a test-setup problem, a build issue, or an environment gap.
 

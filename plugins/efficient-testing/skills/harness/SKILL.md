@@ -1,11 +1,11 @@
 ---
 name: harness
-description: Generate unit and integration tests for functions added or changed on the current branch (or a given path or symbol), run them with the /quality:test runner, and return a compact report. Manual command (/quality:test-harness).
+description: Generate unit and integration tests for functions added or changed on the current branch (or a given path or symbol), run them with the /efficient-testing:run runner, and return a compact report. Manual command (/efficient-testing:harness).
 disable-model-invocation: true
 argument-hint: "[path|symbol]"
 context: fork
 model: sonnet
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scope.sh), Bash(${CLAUDE_SKILL_DIR}/scope.sh *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/test/scripts/run_tests.py *)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scope.sh), Bash(${CLAUDE_SKILL_DIR}/scope.sh *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/run/scripts/run_tests.py *)
 ---
 
 # Test Harness
@@ -22,7 +22,7 @@ Each changed file lists its hunks as new-file line ranges. The name after `in` i
 
 - If `.codegraph/` exists at the repo root, call `codegraph_explore` with the changed symbol names. One call returns their source, callers, and existing tests.
 - Otherwise, read only the functions around the listed line ranges, then find the nearest existing test for each module (same directory, or the mirrored path under the test root).
-- Load `efficient:testing` and follow it for choosing cases and writing discriminating tests.
+- Load `efficient-testing:unit` and follow it for choosing cases and writing discriminating tests.
 - Learn the conventions from the nearest test file: framework, fixtures, factories, naming, and placement.
 
 ## 2. Plan cases
@@ -47,7 +47,7 @@ Skip trivial code (getters, pure pass-through, plain delegation) and note it for
 From the repo root, with a Bash timeout of 600000 ms, target only the test files or ids you touched:
 
 ```sh
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/test/scripts/run_tests.py <test files or ids>
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/run/scripts/run_tests.py <test files or ids>
 ```
 
 Exit 0 means pass, 1 means test failures, and 2 means a collection, compile, or runner error. Work from its compact failure blocks; open the logged raw output only when a block isn't enough.

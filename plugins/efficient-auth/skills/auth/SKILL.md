@@ -1,6 +1,6 @@
 ---
 name: auth
-description: "Application-side authentication and server-side authorization: login/logout, sessions, password and recovery flows, OAuth/OIDC callbacks, JWT/bearer validation, per-resource ownership and tenant checks, rate limits on credential endpoints, step-up for sensitive actions, cookie flags, CSRF/origin, and redirect validation. Use when changing or debugging login, protected endpoints, tokens, or identity callbacks, or reviewing for IDOR. Not for identity-provider admin, deciding who should have access, generic web work, or Better Auth library setup (efficient:better-auth). Also not for building an OAuth authorization server (`api:oauth-provider`, if installed)."
+description: "Application-side authentication and server-side authorization: login/logout, sessions, password and recovery flows, OAuth/OIDC callbacks, JWT/bearer validation, per-resource ownership and tenant checks, rate limits on credential endpoints, step-up for sensitive actions, cookie flags, CSRF/origin, and redirect validation. Use when changing or debugging login, protected endpoints, tokens, or identity callbacks, or reviewing for IDOR. Not for identity-provider admin, deciding who should have access, generic web work, or Better Auth library setup (efficient-auth:better-auth). Also not for building an OAuth authorization server (`api:oauth-provider`, if installed)."
 ---
 
 # Efficient Auth
@@ -13,10 +13,10 @@ Authentication establishes who the actor is. Authorization decides whether that 
 
 Out of scope are identity-provider administration, access-policy decisions (who *should* have access), and generic browser work. Related skills:
 
-- `efficient:better-auth`, for projects that use the Better Auth library, covers its setup, CLI, and plugins. Use this skill for the policy.
+- `efficient-auth:better-auth`, for projects that use the Better Auth library, covers its setup, CLI, and plugins. Use this skill for the policy.
 - `api:oauth-provider`, if installed, covers building an OAuth authorization server. This skill covers an application as an OAuth client or resource server.
-- `efficient:web-development` handles flows beyond the auth boundary.
-- `efficient:testing` handles regression tests.
+- `efficient-web:web-development`, if installed, handles flows beyond the auth boundary.
+- `efficient-testing:unit`, if installed, handles regression tests.
 - `github:actions`, if installed, handles auth-related CI workflows or their secrets.
 
 ## 1. Establish the boundary

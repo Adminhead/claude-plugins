@@ -1,6 +1,6 @@
 ---
 name: golang-cli
-description: Build and review Go command-line tools with cobra and viper: command tree and hook order, flag-to-config binding and precedence, env var and key-replacer pitfalls, stdout/stderr discipline, exit codes, signal-driven shutdown, version embedding, and testable commands. Use when adding or changing a cobra or viper CLI, debugging a flag, env var, or config file that is ignored, or writing CLI tests. Not for general Go idiom or error design (`efficient:golang`), benchmarks and profiling (`efficient:golang-performance`), or service config that no CLI reads.
+description: Build and review Go command-line tools with cobra and viper: command tree and hook order, flag-to-config binding and precedence, env var and key-replacer pitfalls, stdout/stderr discipline, exit codes, signal-driven shutdown, version embedding, and testable commands. Use when adding or changing a cobra or viper CLI, debugging a flag, env var, or config file that is ignored, or writing CLI tests. Not for general Go idiom or error design (`efficient-go:golang`), benchmarks and profiling (`efficient-go:golang-performance`), or service config that no CLI reads.
 ---
 
 # Go CLIs with cobra and viper

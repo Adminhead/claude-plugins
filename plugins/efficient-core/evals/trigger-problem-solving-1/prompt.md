@@ -1,6 +1,6 @@
 ---
 name: trigger-problem-solving-1
-description: A realistic request that should load efficient:problem-solving.
+description: A realistic request that should load efficient-core:problem-solving.
 tags: [trigger]
 runs: 1
 max_turns: 6

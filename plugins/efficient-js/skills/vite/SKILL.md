@@ -1,11 +1,11 @@
 ---
 name: vite
-description: "Vite configuration and build behavior: env variables and what reaches the client bundle, dev vs build vs preview, chunking, library mode, SSR externals, dependency pre-bundling, dev-server proxy, Docker and monorepo access, and slow dev servers, for Vite 7 and 8. Use when editing vite.config.*, debugging a build that differs from dev, a missing or leaked env value, stale chunks after a deploy, or a slow or unreachable dev server. Not for React component behavior (efficient:react), Vue components (efficient:vue), TanStack Start (efficient:tanstack), or ESM/CJS runtime semantics (efficient:javascript)."
+description: "Vite configuration and build behavior: env variables and what reaches the client bundle, dev vs build vs preview, chunking, library mode, SSR externals, dependency pre-bundling, dev-server proxy, Docker and monorepo access, and slow dev servers, for Vite 7 and 8. Use when editing vite.config.*, debugging a build that differs from dev, a missing or leaked env value, stale chunks after a deploy, or a slow or unreachable dev server. Not for React component behavior (efficient-js:react), Vue components (efficient-js:vue), TanStack Start (efficient-js:tanstack), or ESM/CJS runtime semantics (efficient-js:javascript)."
 ---
 
 # Efficient Vite
 
-This skill owns build and dev-server configuration. Framework code belongs to the framework skill: `efficient:react`, `efficient:vue`, or `efficient:tanstack` when the project uses TanStack Start. Module-format semantics belong to `efficient:javascript`.
+This skill owns build and dev-server configuration. Framework code belongs to the framework skill: `efficient-js:react`, `efficient-js:vue`, or `efficient-js:tanstack` when the project uses TanStack Start. Module-format semantics belong to `efficient-js:javascript`.
 
 ## 1. Establish the version and the setup
 

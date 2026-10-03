@@ -1,6 +1,6 @@
 # Vue, Pinia, and Nuxt test decisions
 
-Read this when adding or revising a Vue component, composable, store, or Nuxt test. Use `efficient:testing` for scope, scenario choice, and failure diagnosis. This note covers the Vue-specific seams, and it mirrors the stance in `efficient:react` references/react-component-testing.md.
+Read this when adding or revising a Vue component, composable, store, or Nuxt test. Use `efficient-testing:unit`, if installed, for scope, scenario choice, and failure diagnosis. This note covers the Vue-specific seams, and it mirrors the stance in `efficient-js:react` references/react-component-testing.md.
 
 First inspect the manifest, lockfile, test config, setup files, and nearby tests. Use the installed runner (Vitest or Jest), the mounting library (Vue Test Utils or `@testing-library/vue`), and local wrappers. Check version-sensitive APIs on <https://test-utils.vuejs.org>, <https://pinia.vuejs.org/cookbook/testing.html>, and <https://nuxt.com/docs/4.x/getting-started/testing>. Don't add a dependency for one test.
 
@@ -46,7 +46,7 @@ Test a composable that uses no lifecycle hooks as a plain function. For one that
 - Install `@nuxt/test-utils`, `vitest`, `@vue/test-utils`, and `happy-dom` or `jsdom`. Use `defineVitestProject` in a Vitest `projects` list, so plain unit tests keep `environment: 'node'` and Nuxt-aware tests use `environment: 'nuxt'` (or a `// @vitest-environment nuxt` comment per file).
 - `mountSuspended` mounts a component with Nuxt's context and async `setup`. `renderSuspended` does the same for Testing Library queries. `registerEndpoint` fakes a Nitro endpoint so `useFetch` runs for real against a controlled response. `mockNuxtImport` replaces an auto-import. All come from `@nuxt/test-utils/runtime`.
 - Use `mockNuxtImport` once per import per file, or wrap the mock in `vi.hoisted` to change it between tests.
-- For SSR and hydration claims, use a real server and browser through `@nuxt/test-utils/e2e` (`setup`, `$fetch`, `createPage`) or `efficient:e2e-testing`. A DOM-environment pass is not evidence about hydration.
+- For SSR and hydration claims, use a real server and browser through `@nuxt/test-utils/e2e` (`setup`, `$fetch`, `createPage`) or `efficient-testing:e2e`, if installed. A DOM-environment pass is not evidence about hydration.
 
 ## Environment
 

@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"quality:agent-config-audit"'
+input_match: '"skill"\s*:\s*"authoring:agent-config-audit"'
 ---

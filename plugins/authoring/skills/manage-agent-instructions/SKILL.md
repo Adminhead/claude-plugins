@@ -1,6 +1,6 @@
 ---
 name: manage-agent-instructions
-description: Create, restructure, prune, or reconcile a repo's agent instruction files (CLAUDE.md, nested CLAUDE.md, .claude/rules/, CLAUDE.local.md, AGENTS.md) from verified repo evidence. Use when setting up or reorganizing project instructions, deciding root vs nested vs path-scoped rules, making CLAUDE.md and AGENTS.md coexist, or removing stale guidance. Not for a quick CLAUDE.md quality audit (claude-md-management:claude-md-improver) capturing session learnings (claude-md-management:revise-claude-md), or auditing the whole Claude Code setup for bloat (authoring:config-audit), where the plugin is installed.
+description: Create, restructure, prune, or reconcile a repo's agent instruction files (CLAUDE.md, nested CLAUDE.md, .claude/rules/, CLAUDE.local.md, AGENTS.md) from verified repo evidence. Use when setting up or reorganizing project instructions, deciding root vs nested vs path-scoped rules, making CLAUDE.md and AGENTS.md coexist, or removing stale guidance. Not for a quick CLAUDE.md quality audit (claude-md-management:claude-md-improver, if installed) capturing session learnings (claude-md-management:revise-claude-md, if installed), or auditing the whole Claude Code setup for bloat (authoring:config-audit).
 ---
 
 # Manage Agent Instructions

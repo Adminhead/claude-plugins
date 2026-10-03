@@ -1,6 +1,6 @@
 ---
 name: golang
-description: Write, review, debug, or test Go code: package boundaries, errors, interfaces, context propagation, goroutine lifecycles, stdlib choices, and Go tests, with references for pitfalls, security, database/sql, gRPC, linting, modernizing, and debugging. Use for "write tests for this Go code", "review this Go package", a `go test -race` data race, a goroutine leak, a shutdown hang, or cancellation bugs, or any work in *.go, *_test.go, or go.mod. Not for generic test strategy (efficient:testing), benchmarks and profiling (efficient:golang-performance), cobra/viper CLIs (efficient:golang-cli), CI configuration, or Postgres schema and query tuning (efficient:postgres).
+description: Write, review, debug, or test Go code: package boundaries, errors, interfaces, context propagation, goroutine lifecycles, stdlib choices, and Go tests, with references for pitfalls, security, database/sql, gRPC, linting, modernizing, and debugging. Use for "write tests for this Go code", "review this Go package", a `go test -race` data race, a goroutine leak, a shutdown hang, or cancellation bugs, or any work in *.go, *_test.go, or go.mod. Not for generic test strategy (efficient-testing:unit, if installed), benchmarks and profiling (efficient-go:golang-performance), cobra/viper CLIs (efficient-go:golang-cli), CI configuration, or Postgres schema and query tuning (efficient-db:postgres, if installed).
 ---
 
 # Efficient Go
@@ -21,7 +21,7 @@ Keep the existing observable contract (API, error behavior, cancellation, concur
 - Keep code in the package that owns its behavior and data.
 - `main` handles startup, config, wiring, and exit codes. Reusable behavior lives in ordinary packages.
 - Use `internal/` only to enforce repository-private imports.
-- For CLI and flag work, use `efficient:golang-cli`; a trivial tool can use stdlib `flag`.
+- For CLI and flag work, use `efficient-go:golang-cli`; a trivial tool can use stdlib `flag`.
 - Put multiple binaries under `cmd/<name>`, each with a `main` that only parses flags, wires dependencies, and calls `Run`. Keep the module path equal to the repository URL, and use `go.work` only for local multi-module development.
 - Add a package, exported identifier, module, or `go.work` only when current callers need that boundary.
 - Break import cycles by moving the shared type to the narrowest package that can own it, never to a catch-all `util` or `common`.
@@ -115,7 +115,7 @@ Point a new graph at manual wiring, or `dig`/`fx` if a framework is justified. O
 
 ## Performance
 
-Use `efficient:golang-performance` for benchmarks, profiling, and optimization. Optimize only against a measured bottleneck.
+Use `efficient-go:golang-performance` for benchmarks, profiling, and optimization. Optimize only against a measured bottleneck.
 
 ## Validate
 

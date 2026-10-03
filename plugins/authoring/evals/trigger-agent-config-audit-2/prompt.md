@@ -1,6 +1,6 @@
 ---
 name: trigger-agent-config-audit-2
-description: A realistic request that should load quality:agent-config-audit.
+description: A realistic request that should load authoring:agent-config-audit.
 tags: [trigger]
 runs: 1
 max_turns: 6

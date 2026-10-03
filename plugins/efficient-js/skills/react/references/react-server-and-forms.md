@@ -30,7 +30,7 @@ React's docs state: "Arguments to Server Functions are fully client-controlled. 
 - Validate on the server and return field errors in the state. Keep the submitted values in the state so the form can refill them after a failure.
 - `useFormStatus()` reads the pending state of the nearest parent form, so a submit button can disable itself without prop drilling.
 - `useOptimistic(value, reducer?)` shows a temporary value while an async action runs and reverts to the real value when it settles. Update it inside a transition or form action, and make the server result the source of truth.
-- For multi-step forms or large dynamic field arrays, use the repo's form library (`efficient:tanstack` covers TanStack Form).
+- For multi-step forms or large dynamic field arrays, use the repo's form library (`efficient-js:tanstack` covers TanStack Form).
 
 ## `useSyncExternalStore`
 

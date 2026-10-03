@@ -54,7 +54,7 @@ CMD ["python", "-m", "myapp"]
 ```
 
 - Build wheels or the virtualenv in the build stage so compilers stay out of the runtime image.
-- For a uv project, copy `pyproject.toml` and `uv.lock` first and install from the lockfile, then copy source. See `efficient:python-packaging` if installed.
+- For a uv project, copy `pyproject.toml` and `uv.lock` first and install from the lockfile, then copy source. See `efficient-python:python-packaging` if installed.
 
 ## Go
 

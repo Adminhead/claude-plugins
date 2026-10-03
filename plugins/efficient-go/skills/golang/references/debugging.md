@@ -1,6 +1,6 @@
 # Go debugging
 
-Read this when a Go program crashes, hangs, leaks, runs slowly, or fails intermittently and the cause isn't obvious. For the general method (reproduce, one hypothesis at a time), use `efficient:problem-solving`. This file holds the Go-specific tools and traps.
+Read this when a Go program crashes, hangs, leaks, runs slowly, or fails intermittently and the cause isn't obvious. For the general method (reproduce, one hypothesis at a time), use `efficient-core:problem-solving`, if installed. This file holds the Go-specific tools and traps.
 
 ## Symptom to first tool
 

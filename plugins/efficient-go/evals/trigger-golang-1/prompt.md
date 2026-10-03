@@ -1,6 +1,6 @@
 ---
 name: trigger-golang-1
-description: A realistic request that should load efficient:golang.
+description: A realistic request that should load efficient-go:golang.
 tags: [trigger]
 runs: 1
 max_turns: 6

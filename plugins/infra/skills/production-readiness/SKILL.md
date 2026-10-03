@@ -1,6 +1,6 @@
 ---
 name: production-readiness
-description: Evidence-based ship or block review of an application before launch or after a merge, built only from local repo evidence and any deployed URL the user names. Covers the release surface, CI, migrations, rollback, webhook idempotency, env validation, health checks, observability, and end-to-end coverage of critical paths. Reports Blocked, Risky, or Caveats with blockers, evidence checked, and evidence missing. Use when asked whether something is ready to ship or what would break in production. Not for scanner-based security audits (`quality:audit`), rollout mechanics (`infra:rollout` if installed), or compliance certification.
+description: Evidence-based ship or block review of an application before launch or after a merge, built only from local repo evidence and any deployed URL the user names. Covers the release surface, CI, migrations, rollback, webhook idempotency, env validation, health checks, observability, and end-to-end coverage of critical paths. Reports Blocked, Risky, or Caveats with blockers, evidence checked, and evidence missing. Use when asked whether something is ready to ship or what would break in production. Not for scanner-based security audits (`efficient-security:audit`, if installed), rollout mechanics (`infra:rollout`), or compliance certification.
 ---
 
 # Production readiness
@@ -10,7 +10,7 @@ Decide whether the application can ship, using evidence you read yourself. Repor
 ## Ground rules
 
 - Use local evidence: the checkout, git history, CI config, and CI results the user can show you with `gh`. Touch a deployed URL only if the user names it, and send it unauthenticated or test-account requests only.
-- Run no remote scanners and upload no repo contents to third parties. Scanner-based security work belongs to `quality:audit`.
+- Run no remote scanners and upload no repo contents to third parties. Scanner-based security work belongs to `efficient-security:audit`, if installed.
 - Every claim names the file, command, or run behind it. A finding with no evidence goes under "Evidence missing", not under blockers.
 - Green CI shows the tests passed, not that the release is safe. Check what CI covers before crediting it.
 

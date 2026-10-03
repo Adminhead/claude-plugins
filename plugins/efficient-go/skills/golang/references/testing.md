@@ -25,7 +25,7 @@ Read this when adding or reviewing Go tests, benchmarks, fuzz targets, or concur
 ## Benchmarks
 
 - Benchmark only a requested or measured performance question.
-- For benchmark statistics, profiling, and optimization, use `efficient:golang-performance`.
+- For benchmark statistics, profiling, and optimization, use `efficient-go:golang-performance`.
 - Keep setup outside the timed loop, or call `b.ResetTimer()` after it. On Go 1.24+, `for b.Loop()` handles this and keeps results alive.
 - Otherwise assign results to a package-level sink so the compiler can't discard the work.
 - Use `b.Run` for materially different workloads. Add `-benchmem` when allocations matter, and compare with `benchstat` across `-count=10` runs.

@@ -1,6 +1,6 @@
 ---
 name: fastapi
-description: Bounded changes to existing FastAPI apps involving lifespan, dependency injection, Pydantic request/response models, async handler boundaries, auth dependencies, service transactions, and TestClient/dependency_overrides tests. Use when a task touches `from fastapi import` code, routers, Depends providers, or FastAPI tests. Not for Python language mechanics (efficient:python), auth policy (efficient:auth), or schema/ORM design (efficient:database-design).
+description: Bounded changes to existing FastAPI apps involving lifespan, dependency injection, Pydantic request/response models, async handler boundaries, auth dependencies, service transactions, and TestClient/dependency_overrides tests. Use when a task touches `from fastapi import` code, routers, Depends providers, or FastAPI tests. Not for Python language mechanics (efficient-python:python), auth policy (efficient-auth:auth, if installed), or schema/ORM design (efficient-db:database-design, if installed).
 ---
 
 # Efficient FastAPI
@@ -9,10 +9,10 @@ Preserve the application factory, router registration, dependency graph, and wir
 
 Related skills:
 
-- `efficient:python` for typing, resource lifetimes, and asyncio mechanics.
-- `efficient:auth` for token formats, permission models, cookies/CSRF, and cryptography.
-- `efficient:web-development` for general HTTP API and browser-facing decisions.
-- `efficient:database-design` / `efficient:postgres` for ORM choice, schemas, and constraints.
+- `efficient-python:python` for typing, resource lifetimes, and asyncio mechanics.
+- `efficient-auth:auth`, if installed, for token formats, permission models, cookies/CSRF, and cryptography.
+- `efficient-web:web-development`, if installed, for general HTTP API and browser-facing decisions.
+- `efficient-db:database-design` / `efficient-db:postgres`, if installed, for ORM choice, schemas, and constraints.
 
 ## Orient
 
@@ -55,7 +55,7 @@ Related skills:
 
 - Get a validated principal through the established security dependency, and pass only the trusted identity the service needs.
 - Keep 401-versus-403 mapping and `WWW-Authenticate` headers consistent with existing policy.
-- A JWT `sub` claim is a string (RFC 7519). Convert it to the key type at the dependency and treat a failed conversion like any other invalid token (401). FastAPI's current JWT tutorial uses PyJWT. Keep the repo's library unless `efficient:auth` says to change it.
+- A JWT `sub` claim is a string (RFC 7519). Convert it to the key type at the dependency and treat a failed conversion like any other invalid token (401). FastAPI's current JWT tutorial uses PyJWT. Keep the repo's library unless `efficient-auth:auth`, if installed, says to change it.
 - Never treat a client-supplied ID, role, or claim as authorization. Authorize the action and resource before any durable mutation or sensitive response.
 
 ## Transactions
@@ -73,7 +73,7 @@ Related skills:
 - `with TestClient(app) as client:` runs lifespan. A bare `TestClient(app)` does not.
 - `httpx.AsyncClient(transport=ASGITransport(app=app))` does not run lifespan. Test a seam that doesn't need it, or use the repo's existing lifespan arrangement. Don't add a package just for this.
 - Test persistence against the same database engine production uses (a throwaway Postgres container or the repo's test database), not in-memory SQLite. SQLite differs on constraints, types, and locking, so green tests can hide production failures. Create the schema in the fixture the way the repo does, using its migrations when it has them.
-- Use `efficient:testing` to pick the smallest meaningful set of cases (success, validation, 401/403, conflict, cleanup).
+- Use `efficient-testing:unit`, if installed, to pick the smallest meaningful set of cases (success, validation, 401/403, conflict, cleanup).
 
 ## Validate
 
