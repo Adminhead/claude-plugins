@@ -1,6 +1,6 @@
 # infra
 
-Adds seven infrastructure skills: Docker and Compose, Kubernetes, Helm, GitOps with Argo CD or Flux, rollout planning, homelab networking, and Terraform or OpenTofu. Most are read-only by default and ask before any step that changes a cluster, registry, network, or state.
+Adds eight infrastructure skills: Docker and Compose, Kubernetes, Helm, GitOps with Argo CD or Flux, rollout planning, production-readiness review, homelab networking, and Terraform or OpenTofu. Most are read-only by default and ask before any step that changes a cluster, registry, network, or state.
 
 ## What it adds
 
@@ -11,6 +11,7 @@ Adds seven infrastructure skills: Docker and Compose, Kubernetes, Helm, GitOps w
 | `infra:helm` | Author, validate, and release Helm charts, with a bundled validation script and upgrade, OCI, and troubleshooting guidance |
 | `infra:gitops` | Set up and review Argo CD or Flux delivery: repo layout, sync policy per environment, health checks, and secrets with External Secrets, Sealed Secrets, or SOPS |
 | `infra:rollout` | Plan and verify a production rollout: strategy choice, preflight go/no-go, verification signals, rollback criteria, and post-deploy follow-up. Plans only |
+| `infra:production-readiness` | Ship-or-block review from local repo evidence and any deployed URL you name. Reports Blocked, Risky, or Caveats with evidence checked and evidence missing. Moved here from the former `quality` plugin; see the [old-to-new table](efficient.md#old-to-new-names) |
 | `infra:homelab-network` | Plan and stage home or homelab network changes: inventory, VLAN and trust zones, default-deny rules, Pi-hole or AdGuard cutover, WireGuard, and link diagnosis |
 | `infra:terraform` | Write, review, and change Terraform or OpenTofu: module layout, version pinning, state and backends, plan review, `import`, `moved` and `removed` blocks, and secrets in state |
 
@@ -27,6 +28,7 @@ Each skill uses only the tools its task needs. None is required just to install 
 | `infra:helm` | `helm` (3 or 4). Optional: `kubeconform`, the `helm-diff` plugin |
 | `infra:gitops` | `argocd` or `flux`, plus `kubectl`. Optional: `kubeconform` |
 | `infra:rollout` | None |
+| `infra:production-readiness` | None. Optional: `gh`, to read CI results |
 | `infra:homelab-network` | None. Platform tools depend on your gateway and firewall |
 | `infra:terraform` | `terraform` or `tofu`. Optional: `trivy` or Checkov for scanning |
 
@@ -35,6 +37,12 @@ Each skill uses only the tools its task needs. None is required just to install 
 ```
 claude plugin marketplace add /path/to/claude-plugins
 claude plugin install infra@adminhead
+```
+
+To enable it for one project only, add `--scope local`.
+
+```
+claude plugin install infra@adminhead --scope local
 ```
 
 To try it without installing:
@@ -49,7 +57,7 @@ claude --plugin-dir plugins/infra
    ```
    claude plugin validate --strict plugins/infra
    ```
-2. Start a fresh session. The skill list should show `infra:docker`, `infra:kubernetes`, `infra:helm`, `infra:gitops`, `infra:rollout`, `infra:homelab-network`, and `infra:terraform`.
+2. Start a fresh session. The skill list should show `infra:docker`, `infra:kubernetes`, `infra:helm`, `infra:gitops`, `infra:rollout`, `infra:production-readiness`, `infra:homelab-network`, and `infra:terraform`.
 3. Optionally check the Helm script's usage text. It needs `helm` only for real runs.
    ```
    bash plugins/infra/skills/helm/scripts/validate-chart.sh --help
@@ -67,6 +75,7 @@ What each skill does without asking, and what it does only after approval.
 | `infra:terraform` | `init`, `validate`, `fmt -check`, `plan` | `apply`, `destroy`, `state rm`, `state mv`, `force-unlock`, and the `import` command, each needing an explicit instruction naming the target workspace |
 | `infra:docker` | `docker compose ps`, `logs`, `config --quiet`, `inspect`, `stats` | `docker compose down -v`, `docker system prune`, `docker rm`, and `docker compose up --build` on shared hosts |
 | `infra:rollout` | Everything. It writes a plan and runs no deploys | Not applicable |
+| `infra:production-readiness` | Reading the checkout, git history, CI config, and CI results through `gh`. It sends only unauthenticated or test-account requests, and only to a URL you name | Nothing. It reports and fixes nothing until you pick items |
 | `infra:homelab-network` | Inspecting and planning | Any firewall, NAT, VLAN, DHCP, or VPN change |
 
 Rules that apply across skills:
@@ -84,7 +93,7 @@ Rules that apply across skills:
 - Helm 4 renamed some flags (`--atomic` to `--rollback-on-failure`, `--force` to `--force-replace`). The skill writes commands for the installed major version.
 - `infra:terraform` was checked against Terraform 1.16 and OpenTofu 1.13 docs. It uses whichever CLI the repo already uses.
 - `infra:kubernetes` schema checks with `kubeconform` cannot catch what the API server enforces. The server-side dry run covers that.
-- Scope boundaries: Helm charts belong to `infra:helm`, GitOps controllers to `infra:gitops`, and rollout strategy to `infra:rollout`. AWS service questions go to `aws:architecture-review` or `aws:resource-query`, if installed.
+- Scope boundaries: Helm charts belong to `infra:helm`, GitOps controllers to `infra:gitops`, rollout strategy to `infra:rollout`, and ship-or-block review of an application to `infra:production-readiness`. AWS service questions go to `aws:architecture-review` or `aws:resource-query`, if installed.
 
 ## Disable or uninstall
 

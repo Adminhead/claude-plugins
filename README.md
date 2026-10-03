@@ -1,6 +1,6 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 20 plugins. Install one with `claude plugin install <plugin>@adminhead`.
+Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one with `claude plugin install <plugin>@adminhead`.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
@@ -8,8 +8,18 @@ Claude Code plugin marketplace `adminhead`. It lists 20 plugins. Install one wit
 | `ripgrep` | Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context. | [docs](docs/plugins/ripgrep.md) |
 | `git` | Git skills: focused commits, branches, history rewrites and recovery, and worktrees. | [docs](docs/plugins/git.md) |
 | `github` | GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot. | [docs](docs/plugins/github.md) |
-| `efficient` | Cost-conscious engineering skills for coding, planning, debugging, testing, research, experiments, prototypes, and modernization, plus web, language (Go, Rust, Python, TypeScript, JavaScript, Bash), framework (React, Vue, Vite, TanStack, FastAPI), database (Postgres, MySQL, Redis), and auth work. | [docs](docs/plugins/efficient.md) |
-| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config. | [docs](docs/plugins/authoring.md) |
+| `efficient-core` | Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, and modernization, plus second-opinion review, anti-slop cleanup, and poka-yoke error-proofing. | [docs](docs/plugins/efficient.md) |
+| `efficient-testing` | Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps. | [docs](docs/plugins/efficient.md) |
+| `efficient-security` | Security skills: threat modeling, privacy review, and a manual security audit scan. | [docs](docs/plugins/efficient.md) |
+| `efficient-go` | Go skills: the language, CLI tools, and performance work. | [docs](docs/plugins/efficient.md) |
+| `efficient-python` | Python skills: the language, packaging, and FastAPI services. | [docs](docs/plugins/efficient.md) |
+| `efficient-js` | JavaScript and TypeScript skills: the languages, React, Vue, Vite, TanStack, and click-path audits of UI flows. | [docs](docs/plugins/efficient.md) |
+| `efficient-rust` | Rust skills: the language and its tooling. | [docs](docs/plugins/efficient.md) |
+| `efficient-shell` | Shell skills: Bash scripting practice. | [docs](docs/plugins/efficient.md) |
+| `efficient-web` | Web skills: front-end web development and web design. | [docs](docs/plugins/efficient.md) |
+| `efficient-auth` | Authentication skills: login, sessions, and token validation for your own app, plus Better Auth. | [docs](docs/plugins/efficient.md) |
+| `efficient-db` | Database skills: schema design, Postgres, MySQL, and Redis. | [docs](docs/plugins/efficient.md) |
+| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config, including its security. | [docs](docs/plugins/authoring.md) |
 | `devenv` | Configure, migrate, debug, and verify devenv.sh developer environments. | [docs](docs/plugins/devenv.md) |
 | `chezmoi` | Manage, migrate, and troubleshoot chezmoi-managed dotfiles. | [docs](docs/plugins/chezmoi.md) |
 | `pass-cli` | Use the Proton Pass CLI without exposing secrets. | [docs](docs/plugins/pass-cli.md) |
@@ -17,11 +27,10 @@ Claude Code plugin marketplace `adminhead`. It lists 20 plugins. Install one wit
 | `playwright-cli` | Drive a headless, isolated browser from Bash with playwright-cli. | [docs](docs/plugins/playwright-cli.md) |
 | `termwright` | Drive and test terminal UI apps with the termwright CLI. | [docs](docs/plugins/termwright.md) |
 | `accessibility` | Accessibility skills: manual screen-reader and keyboard testing of web journeys. | [docs](docs/plugins/accessibility.md) |
-| `quality` | Test running, security and config audits, threat modeling, privacy review, production-readiness and test-gap review, mistake-proofing, second-opinion review, and de-slopping skills for verifying code changes. | [docs](docs/plugins/quality.md) |
 | `tooling` | Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit. | [docs](docs/plugins/tooling.md) |
 | `observability` | Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems. | [docs](docs/plugins/observability.md) |
 | `api` | Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers. | [docs](docs/plugins/api.md) |
-| `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
+| `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness review, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
 | `aws` | AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review. | [docs](docs/plugins/aws.md) |
 
