@@ -88,6 +88,6 @@ Check these only when they affect the requested path:
 - Run the narrowest checks that reach the change, then exercise the real journey in a browser. Cover the success path and each required failure or recovery state.
 - For accessibility or responsive changes, also walk the keyboard path, inspect the accessibility tree, and check the narrow and zoomed layouts.
 - For a bug, reproduce the symptom before fixing it when practical. Keep a regression test or durable reproduction.
-- **When browser evidence or failure diagnosis is needed, read [references/browser-diagnostics.md](references/browser-diagnostics.md).** It covers `playwright-cli:playwright-cli` (if installed), the claude-in-chrome skill, and what to capture.
+- **When browser evidence or failure diagnosis is needed, read [references/browser-diagnostics.md](references/browser-diagnostics.md).** It covers the Playwright MCP (efficient-web, if installed), `playwright-cli:playwright-cli` (if installed), the claude-in-chrome skill, and what to capture.
 
 Stop when the requested journey has direct evidence at the affected boundaries. Don't broaden the change into a framework migration, redesign, cleanup, or unmeasured optimization.

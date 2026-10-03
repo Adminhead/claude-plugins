@@ -1,6 +1,6 @@
 ---
 name: e2e
-description: "Write, run, and diagnose browser end-to-end tests (Playwright, Cypress, etc.) for critical user journeys: accessible locators, condition-based waits, isolated test data and accounts, trace/screenshot artifacts, and flake classification. Use when adding or fixing an e2e spec, triaging a flaky or CI-only browser failure, or proving a journey works in a real browser. Not for installing a runner, unit/API tests (efficient-testing:unit), or ad-hoc browser driving (playwright-cli:playwright-cli, if installed)."
+description: "Write, run, and diagnose browser end-to-end tests (Playwright, Cypress, etc.) for critical user journeys: accessible locators, condition-based waits, isolated test data and accounts, trace/screenshot artifacts, and flake classification. Use when adding or fixing an e2e spec, triaging a flaky or CI-only browser failure, or proving a journey works in a real browser. Not for installing a runner, unit/API tests (efficient-testing:unit), or ad-hoc browser driving (playwright-cli:playwright-cli or efficient-web's Playwright MCP tools, if installed)."
 ---
 
 # Efficient E2E Testing

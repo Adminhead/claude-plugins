@@ -116,6 +116,18 @@ Installing `efficient-js` also installs the `vtsls` LSP plugin, which covers `.t
 
 Installing `efficient-rust` also installs the `rust-analyzer` LSP plugin. Installing `efficient-shell` also installs the `bash-language-server` LSP plugin, which covers `.sh`, `.bash`, `.zsh`, and `.ksh`. Rust has a weaker auto-install (see [LSP servers](#lsp-servers)).
 
+### efficient-web MCP server
+
+| Server | Endpoint | Browser | Run in | Download |
+| --- | --- | --- | --- | --- |
+| `@playwright/mcp@latest` | stdio | Headless, isolated session | Node ≥18 | On first run via `npx` |
+
+The Playwright MCP server gives interactive inspection tools for the browser: navigate, take accessibility snapshots, click and type, capture console and network logs, and take screenshots at a set viewport. Use it for ad-hoc browser diagnostics alongside the `playwright-cli:playwright-cli` skill (for scriptable, repeatable runs) and the claude-in-chrome skill (for the user's real browser). Do not enable the `playwright@claude-plugins-official` Playwright MCP server at the same time.
+
+### efficient-testing e2e browser routing
+
+For ad-hoc browser driving (interactive inspection, one-off clicks and captures), use the Playwright MCP server (efficient-web, if installed), `playwright-cli:playwright-cli` (if installed), or the claude-in-chrome skill. The `efficient-testing:e2e` skill is for writing, running, and diagnosing repeatable test suites.
+
 ### efficient-auth, efficient-db
 
 | Skill | Purpose |

@@ -1,6 +1,6 @@
 # Rendered review checklist
 
-Read this when reviewing a running UI, before reporting findings in section 8 of the skill. It is a menu of defects to look for, so skip the items the surface does not have. Drive the page with `playwright-cli:playwright-cli` (if installed) or the claude-in-chrome skill, and judge it against the product's documented system.
+Read this when reviewing a running UI, before reporting findings in section 8 of the skill. It is a menu of defects to look for, so skip the items the surface does not have. Drive the page with the Playwright MCP (efficient-web, if installed), `playwright-cli:playwright-cli` (if installed), or the claude-in-chrome skill, and judge it against the product's documented system.
 
 ## Loop
 
