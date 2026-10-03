@@ -1,0 +1,9 @@
+{
+  "name": "efficient-shell",
+  "version": "0.1.0",
+  "description": "Shell skills: Bash scripting practice.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

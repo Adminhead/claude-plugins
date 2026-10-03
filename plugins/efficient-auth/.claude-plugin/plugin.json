@@ -1,0 +1,9 @@
+{
+  "name": "efficient-auth",
+  "version": "0.1.0",
+  "description": "Authentication skills: login, sessions, and token validation for your own app, plus Better Auth.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

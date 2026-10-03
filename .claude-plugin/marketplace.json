@@ -36,17 +36,87 @@
       "category": "development"
     },
     {
-      "name": "efficient",
-      "source": "./plugins/efficient",
-      "description": "Cost-conscious engineering skills for coding, planning, debugging, testing, research, experiments, prototypes, and modernization, plus web, language (Go, Rust, Python, TypeScript, JavaScript, Bash), framework (React, Vue, Vite, TanStack, FastAPI), database (Postgres, MySQL, Redis), and auth work.",
-      "version": "0.2.1",
+      "name": "efficient-core",
+      "source": "./plugins/efficient-core",
+      "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, and modernization, plus second-opinion review, anti-slop cleanup, and poka-yoke error-proofing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-shell",
+      "source": "./plugins/efficient-shell",
+      "description": "Shell skills: Bash scripting practice.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-go",
+      "source": "./plugins/efficient-go",
+      "description": "Go skills: the language, CLI tools, and performance work.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-python",
+      "source": "./plugins/efficient-python",
+      "description": "Python skills: the language, packaging, and FastAPI services.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-js",
+      "source": "./plugins/efficient-js",
+      "description": "JavaScript and TypeScript skills: the languages, React, Vue, Vite, TanStack, and click-path audits of UI flows.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-rust",
+      "source": "./plugins/efficient-rust",
+      "description": "Rust skills: the language and its tooling.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-web",
+      "source": "./plugins/efficient-web",
+      "description": "Web skills: front-end web development and web design.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-auth",
+      "source": "./plugins/efficient-auth",
+      "description": "Authentication skills: login, sessions, and token validation for your own app, plus Better Auth.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-db",
+      "source": "./plugins/efficient-db",
+      "description": "Database skills: schema design, Postgres, MySQL, and Redis.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-testing",
+      "source": "./plugins/efficient-testing",
+      "description": "Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-security",
+      "source": "./plugins/efficient-security",
+      "description": "Security skills: threat modeling, privacy review, and a manual security audit scan.",
+      "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "authoring",
       "source": "./plugins/authoring",
       "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config.",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "category": "development"
     },
     {
@@ -99,13 +169,6 @@
       "category": "testing"
     },
     {
-      "name": "quality",
-      "source": "./plugins/quality",
-      "description": "Test running, security and config audits, threat modeling, privacy review, production-readiness and test-gap review, mistake-proofing, second-opinion review, and de-slopping skills for verifying code changes.",
-      "version": "0.2.0",
-      "category": "development"
-    },
-    {
       "name": "tooling",
       "source": "./plugins/tooling",
       "description": "Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit.",
@@ -130,7 +193,7 @@
       "name": "infra",
       "source": "./plugins/infra",
       "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, homelab networking, and Terraform.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
