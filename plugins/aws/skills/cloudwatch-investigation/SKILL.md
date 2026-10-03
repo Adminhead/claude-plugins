@@ -16,6 +16,10 @@ Work from a symptom to a supported cause using alarm history, metrics, logs, and
 - Logs Insights bills per volume scanned. Use the narrowest time range and the fewest log groups (at most 50 per query), and cancel a query you no longer need with `aws logs stop-query --query-id <id>`.
 - Mutating remediation (changing concurrency, rebooting a database, rolling back a deploy) runs only after the user approves the exact command, which you show first. Every other call is a read.
 
+## AWS MCP Server
+
+When the `aws-mcp` tools are loaded (`mcp__plugin_aws_aws-mcp__*`), the ground rules above take precedence over the server's instruction to prefer its tools and avoid the AWS CLI. Keep running the CLI calls in this skill. If you use `aws___run_script`, make only read-only calls, project fields inside the script, and never return a whole Lambda, ECS, or CloudFormation response. Do not call `GetLogEvents`, `FilterLogEvents`, or any secret-reading, data-reading, or mutating operation unless the user asked for it. Read logs through Logs Insights. Each `run_script` call shows the user a permission prompt with the code. The documentation tools are fine for looking up metric names or service behavior. See `aws:resource-query` `references/aws-mcp.md`.
+
 ## Procedure
 
 1. **Frame the incident.** Get the symptom, the affected resource or service, the first-seen time, the region, and the profile. Work in UTC. When an alarm is the entry point, pull its transitions:

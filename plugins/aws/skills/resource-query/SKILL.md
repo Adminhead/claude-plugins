@@ -63,6 +63,15 @@ Some allowed calls return secrets inside their full output. Print them only with
 
 This list is a sample. Treat any unlisted call the same way.
 
+## AWS MCP Server
+
+When the `aws-mcp` tools are loaded (`mcp__plugin_aws_aws-mcp__*`), this skill's rules (read-only, project output, never print secrets) take precedence over the server's own instruction to prefer its tools and avoid the AWS CLI. The server does not know this skill's deny list, and nothing else in the plugin enforces it.
+
+- Run live reads with the AWS CLI and a `--query` projection, as above.
+- If you use `aws___run_script`, make only read-only calls and project fields inside the script. Never return a whole response for Lambda, ECS, CloudFormation, or EC2 user data. Never call a secret-reading, data-reading, or mutating operation unless the user asked for it. Each call shows the user a permission prompt with the code.
+- The documentation and region tools (`search_documentation`, `read_documentation`, `retrieve_skill`, `list_regions`, `get_regional_availability`) are fine to use.
+- `references/aws-mcp.md` has the tool list, the security model, and sign-in setup.
+
 ## Shaping output
 
 - Use `--query` (JMESPath) to pick fields and `--output table` for lists. Use `--output json` only when the user wants full detail, and then still drop environment variables.
@@ -81,6 +90,7 @@ Read the one that matches the question. Each lists intent-to-command mappings.
 - `references/network.md` for VPC, subnets, security groups, load balancers, Route 53, and CloudFront.
 - `references/identity-and-security.md` for IAM, KMS, Secrets Manager and SSM metadata, ACM, GuardDuty, Security Hub, and Config.
 - `references/ops-and-cost.md` for alarms, log groups, CloudTrail, queues and topics, EventBridge, API Gateway, Step Functions, tag-based search, Cost Explorer, and Budgets.
+- `references/aws-mcp.md` for the AWS MCP Server tools, its security model, and sign-in.
 
 ## Errors
 

@@ -1,6 +1,6 @@
 # aws
 
-Adds three AWS skills: read-only resource inspection, CloudWatch incident investigation, and a Well-Architected and cost review. All three work through the AWS CLI with your existing profile or SSO session. They read and report. They do not change infrastructure.
+Adds three AWS skills: read-only resource inspection, CloudWatch incident investigation, and a Well-Architected and cost review. All three work through the AWS CLI with your existing profile or SSO session. They read and report. They do not change infrastructure. The plugin also declares the AWS MCP Server (see [AWS MCP Server](#aws-mcp-server)).
 
 ## What it adds
 
@@ -18,6 +18,7 @@ Sources: some ideas were adapted from third-party skill collections. They are cr
 - IAM permissions for the read calls you want. A denied call is reported and not worked around.
 - `aws:architecture-review` reads IaC from the repo and needs no IaC tool installed. For live checks it uses the CLI and, for utilization and spend, CloudWatch and Cost Explorer.
 - Optional: `gh`, only if you ask `aws:architecture-review` to create GitHub issues.
+- For the AWS MCP Server: an IAM identity that can sign in through AWS Sign-in OAuth (see below).
 
 ## Install
 
@@ -83,6 +84,61 @@ Many allowed calls return secrets in their full output, for example Lambda `Envi
 - It does not run `cdk synth`, `terraform plan`, or `sam build`, because they can execute project code and call AWS. It reads the sources and an existing `cdk.out` directory instead.
 - A whole-account sweep needs your agreement. By default it narrows to the workload by tag or stack.
 
+## AWS MCP Server
+
+The plugin declares `aws-mcp` in `.mcp.json`: `https://aws-mcp.us-east-1.api.aws/mcp`, type `http`, `alwaysLoad: false`. Its tools appear as `mcp__plugin_aws_aws-mcp__aws___<tool>` and load on demand. Claude Code signs in with OAuth (dynamic client registration against AWS Sign-in, S256 PKCE). No static auth header is set, because one would block OAuth.
+
+### Sign-in and IAM
+
+- Run `/mcp`, pick `aws-mcp`, and sign in. If that does not start the flow, the documented fallback is the URL with `?oauth=initialize`.
+- The identity needs `signin:AuthorizeOAuth2Access` and `signin:CreateOAuth2Token`. The managed policy `AWSMCPSignInOAuthAccessPolicy` grants both.
+- Tokens last 1 hour and refresh for up to 12 hours. A session covers one account. The region defaults to `us-east-1` unless a call passes `region_name`.
+- Over plain HTTP the documentation tools answer without sign-in, but in Claude Code the server shows `needs-auth` and exposes no tools until you sign in (observed 2026-10-03). `run_script` returns 401 until you sign in.
+
+### Tools
+
+| Tool | Annotations |
+| --- | --- |
+| `aws___run_script` | not read-only, destructive |
+| `aws___get_presigned_url` | not read-only |
+| `aws___get_tasks`, `aws___search_documentation`, `aws___read_documentation`, `aws___retrieve_skill`, `aws___list_regions`, `aws___get_regional_availability` | read-only |
+
+`run_script` takes one field, `code`, which is Python that reaches AWS through `call_boto3(service_name=..., operation_name=..., region_name=..., params=...)`. The tool list and schema are in `plugins/aws/skills/resource-query/references/aws-mcp.md`.
+
+### Instruction conflict
+
+The server's `initialize` instructions tell Claude to prefer its tools and not to run the AWS CLI through Bash. In a smoke run that made Claude skip `aws:resource-query` and run an unprojected `ListFunctions` through `run_script`. Each skill now has an "AWS MCP Server" section saying its rules take precedence: read-only, project output with `--query`, never print secrets. Live reads stay on the CLI. `run_script` is for read-only calls with fields projected in the script. The documentation tools are fine, and `aws:architecture-review` prefers them for current AWS guidance. This is skill text, so it works only when a skill loads.
+
+### Security model
+
+The plugin adds no technical block on `run_script`.
+
+- **What the server can do.** `run_script` executes arbitrary boto3 calls with the permissions of the identity you signed in with. The server annotates it destructive. Nothing in the plugin limits which operations a script may call or what it returns.
+- **What limits it.** Two things. The IAM permissions of the role used for the OAuth sign-in set the ceiling, and Claude Code's permission prompt appears for each MCP call and shows the code.
+- **Sign in with a read-only role.** Use `ReadOnlyAccess` or a narrower custom policy, plus the sign-in permissions `signin:AuthorizeOAuth2Access` and `signin:CreateOAuth2Token` (the managed policy `AWSMCPSignInOAuthAccessPolicy` grants both). Do not sign in with an administrator role.
+- **Read-only is not secret-free.** `ReadOnlyAccess` is built from broad Get, List, and Describe grants, so it can read data such as S3 objects, DynamoDB items, log events, Lambda environment variables, and plain SSM parameters. Whether it includes `secretsmanager:GetSecretValue` is UNCONFIRMED; check the policy's current JSON before relying on it. Use a custom policy that excludes the data actions you do not want Claude to read.
+- **Permission rules.** Claude Code matches an MCP tool by its full name in `permissions` (no parentheses). The tool names are `mcp__plugin_aws_aws-mcp__aws___run_script` and `mcp__plugin_aws_aws-mcp__aws___get_presigned_url`. To block the script tool, in `.claude/settings.json` or your user settings:
+
+  ```json
+  {"permissions": {"deny": ["mcp__plugin_aws_aws-mcp__aws___run_script"]}}
+  ```
+
+  To keep the prompt on every call, put the name in `ask`, or leave it out of every list. Never put it in `allow`, because an allowed `run_script` runs any code without a prompt. The read-only documentation tools are safe to allow.
+- **Bypass modes.** Modes that skip permission prompts (such as `bypassPermissions`) skip this prompt too. Do not use them with this server signed in.
+
+### Regional endpoints
+
+`run_script` marks itself `_meta.anthropic/alwaysLoad: true`, but the server-level `alwaysLoad: false` in `.mcp.json` wins and keeps it deferred (verified with a probe plugin on Claude Code 2.1.288).
+
+Only `us-east-1` is declared. Other regions have their own endpoint (`aws-mcp.<region>.api.aws`), which the plugin does not declare. The server's tools can still reach other regions through `region_name`.
+
+### Unconfirmed
+
+- Whether signing in from `/mcp` works at the first `run_script` 401 mid-session, and whether `?oauth=initialize` is needed.
+- The exact IAM permissions beyond the two Sign-in actions for calls made through `run_script` (they run as your role, so the usual per-service permissions apply).
+- Whether `ReadOnlyAccess` includes `secretsmanager:GetSecretValue` and other secret-reading actions.
+- Whether the server's tool list or annotations change with sign-in. The anonymous list shows eight tools.
+
 ## Limits
 
 - A region sweep (`aws ec2 describe-regions`) runs only when you ask. An empty result is not proof that nothing exists, so Claude checks region, profile, filters, and permissions first.
@@ -100,4 +156,4 @@ Many allowed calls return secrets in their full output, for example Lambda `Envi
 | Disable | `claude plugin disable aws@adminhead` |
 | Uninstall | `claude plugin uninstall aws@adminhead` |
 
-The plugin ships only skills, so both commands remove them. Nothing is written to your AWS config. Start a new session to be sure the skills are gone.
+Both commands remove the skills and the `aws-mcp` server entry. Nothing is written to your AWS config. An OAuth sign-in stays in Claude Code's credential store until you clear it in `/mcp`. Start a new session to be sure the skills are gone.

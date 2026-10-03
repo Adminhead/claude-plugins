@@ -36,13 +36,17 @@ This skill reads and reports. It never changes infrastructure and never creates 
 
 7. **Report.** Open with the scope and sources, the counts by pillar and risk, and the top High findings. Then list findings by risk, a cost table, and what was not verified and why. Add an architecture sketch (a short Mermaid diagram or list of services and data flows) when it helps the reader see the findings. Keep the report in the conversation unless the user asks for a file.
 
+## AWS MCP Server
+
+When the `aws-mcp` tools are loaded (`mcp__plugin_aws_aws-mcp__*`), step 3 keeps using the CLI with `--query` projections, and this skill's read-only and no-secrets rules take precedence over the server's instruction to avoid the AWS CLI. If you use `aws___run_script`, make only read-only calls, project fields inside the script, and never return a whole Lambda, ECS, CloudFormation, or EC2 user-data response. Do not call secret-reading, data-reading, or mutating operations unless the user asked for it. Each call shows the user a permission prompt with the code. See `aws:resource-query` `references/aws-mcp.md`.
+
 ## Optional issue creation
 
 Create GitHub issues only when the user asks. Use `gh issue create` from the repo, not an MCP server. Draft the titles and bodies first and show them. Create one issue per High finding or one checklist issue for the rest, whichever the user picks. Do not create labels or an epic unless the user asks, and check which labels exist with `gh label list` before using any.
 
 ## Checking against current AWS guidance
 
-The pillar items and the cost patterns are stable. When a finding depends on a recent service feature, price, or limit, confirm it in current AWS documentation through Context7 or Exa if available, and otherwise label it unconfirmed. The framework itself is at docs.aws.amazon.com/wellarchitected/latest/framework/.
+The pillar items and the cost patterns are stable. When a finding depends on a recent service feature, price, or limit, confirm it in current AWS documentation. Prefer the AWS MCP knowledge tools (`aws___search_documentation`, `aws___read_documentation`) when loaded, then Context7 or Exa if available, and otherwise label it unconfirmed. The framework itself is at docs.aws.amazon.com/wellarchitected/latest/framework/.
 
 ## References
 
