@@ -5,7 +5,7 @@ Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one wit
 | Plugin | Description | Docs |
 | --- | --- | --- |
 | `example` | Template plugin showing a skill and a function hook. Copy it to start a new plugin. | [plugins/example](plugins/example) |
-| `ripgrep` | Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context. | [docs](docs/plugins/ripgrep.md) |
+| `code-search` | Local code search with ripgrep, public GitHub code search via grep.app, and always-on search guidelines in every conversation's context. | [docs](docs/plugins/code-search.md) |
 | `git` | Git skills: focused commits, branches, history rewrites and recovery, and worktrees. | [docs](docs/plugins/git.md) |
 | `github` | GitHub skills (issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, Dependabot) plus the GitHub remote MCP server. | [docs](docs/plugins/github.md) |
 | `efficient-core` | Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, and modernization, plus second-opinion review, anti-slop cleanup, and poka-yoke error-proofing. | [docs](docs/plugins/efficient.md) |

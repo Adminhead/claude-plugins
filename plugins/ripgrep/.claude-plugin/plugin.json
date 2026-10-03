@@ -1,9 +1,0 @@
-{
-  "name": "ripgrep",
-  "version": "0.1.0",
-  "description": "Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context.",
-  "author": {
-    "name": "Buck Brady",
-    "email": "bbrady145@gmail.com"
-  }
-}

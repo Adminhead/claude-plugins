@@ -180,7 +180,7 @@ Install at user scope what every project uses. Enable the rest per project with 
 | Scope | Plugins | Why |
 | --- | --- | --- |
 | User | `efficient-core`, `efficient-testing`, `authoring` | Used in every project. `efficient-core` must be present because the `architect`, `review`, and `quick-review` agents preload `efficient-core:second-opinion` |
-| User (already) | `git`, `ripgrep`, `github` | Unchanged |
+| User (already) | `git`, `code-search`, `github` | Unchanged |
 | Per project | `efficient-go`, `efficient-python`, `efficient-js`, `efficient-rust`, `efficient-shell` | Only for the languages the project uses |
 | Per project | `efficient-web`, `efficient-auth`, `efficient-db` | Only for projects with a UI, login, or a database |
 | Per project | `efficient-security` | Projects that want threat models, privacy review, or `/efficient-security:audit` |
@@ -265,7 +265,7 @@ Install each efficient plugin and its LSP plugin as a pair, at the same scope.
 - For `efficient-core:second-opinion`, `codex` (OpenAI) or `agy` (Google). The agy path also needs `jq`, because `consult.sh` writes a hook config that limits agy to file-reading tools. The local two-reviewer gate uses Agent subagents and needs neither CLI.
 - `bash` on `PATH` for `harness` and `second-opinion`, which use bash scripts.
 - Some skills name tools the project supplies, such as ShellCheck and Bats (`efficient-shell:bash`) or benchstat (`efficient-go:golang-performance`). The plugins install none of them.
-- References to skills in other plugins say "if installed" or name the plugin, such as `playwright-cli:playwright-cli`, `github:actions`, `tooling:pre-commit`, or `api:oauth-provider`. `efficient-core:anti-slop` points to `avoid-ai-writing:avoid-ai-writing` for prose cleanup, if installed.
+- References to skills in other plugins say "if installed" or name the plugin, such as `playwright-cli:playwright-cli`, `github:actions`, `tooling:pre-commit`, or `api:oauth-provider`. `efficient-core:anti-slop` points to `avoid-ai-writing:avoid-ai-writing` for prose cleanup, and `efficient-core:research` points to `code-search:grep-app` for real-world code examples, both if installed.
 
 ## Install
 

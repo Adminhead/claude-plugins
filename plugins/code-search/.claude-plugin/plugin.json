@@ -1,0 +1,9 @@
+{
+  "name": "code-search",
+  "version": "0.2.0",
+  "description": "Local code search with ripgrep, public GitHub code search via grep.app, and always-on search guidelines in every conversation's context.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

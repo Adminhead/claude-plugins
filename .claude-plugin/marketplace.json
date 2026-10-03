@@ -18,10 +18,10 @@
       "category": "development"
     },
     {
-      "name": "ripgrep",
-      "source": "./plugins/ripgrep",
-      "description": "Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context.",
-      "version": "0.1.0",
+      "name": "code-search",
+      "source": "./plugins/code-search",
+      "description": "Local code search with ripgrep, public GitHub code search via grep.app, and always-on search guidelines in every conversation's context.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -42,7 +42,7 @@
       "name": "efficient-core",
       "source": "./plugins/efficient-core",
       "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, and modernization, plus second-opinion review, anti-slop cleanup, and poka-yoke error-proofing.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -243,5 +243,8 @@
       "version": "0.1.1",
       "category": "development"
     }
-  ]
+  ],
+  "renames": {
+    "ripgrep": "code-search"
+  }
 }
