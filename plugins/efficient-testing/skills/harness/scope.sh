@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Print the /test-harness scope: changed source files with their hunks, covering
+# Print the /efficient-testing:harness scope: changed source files with their hunks, covering
 # branch commits since the default branch plus uncommitted and untracked changes.
 # An argument overrides the computed scope. Always exits 0 so the skill loads;
 # any fallback is stated in the output.

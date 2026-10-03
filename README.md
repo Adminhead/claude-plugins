@@ -19,7 +19,7 @@ Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one wit
 | `efficient-web` | Web skills: front-end web development and web design. | [docs](docs/plugins/efficient.md) |
 | `efficient-auth` | Authentication skills: login, sessions, and token validation for your own app, plus Better Auth. | [docs](docs/plugins/efficient.md) |
 | `efficient-db` | Database skills: schema design, Postgres, MySQL, and Redis. | [docs](docs/plugins/efficient.md) |
-| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and Claude Code config, including its security. | [docs](docs/plugins/authoring.md) |
+| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security. | [docs](docs/plugins/authoring.md) |
 | `devenv` | Configure, migrate, debug, and verify devenv.sh developer environments. | [docs](docs/plugins/devenv.md) |
 | `chezmoi` | Manage, migrate, and troubleshoot chezmoi-managed dotfiles. | [docs](docs/plugins/chezmoi.md) |
 | `pass-cli` | Use the Proton Pass CLI without exposing secrets. | [docs](docs/plugins/pass-cli.md) |
@@ -30,7 +30,7 @@ Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one wit
 | `tooling` | Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit. | [docs](docs/plugins/tooling.md) |
 | `observability` | Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems. | [docs](docs/plugins/observability.md) |
 | `api` | Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers. | [docs](docs/plugins/api.md) |
-| `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness review, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
+| `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
 | `aws` | AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review. | [docs](docs/plugins/aws.md) |
 

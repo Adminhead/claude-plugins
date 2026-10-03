@@ -121,7 +121,6 @@ The old `efficient` and `quality` names no longer resolve. Update agent files th
 
 | Old | New | Slash command |
 | --- | --- | --- |
-| --- | --- | --- |
 | `efficient:coding` | `efficient-core:coding` | |
 | `efficient:planning` | `efficient-core:planning` | |
 | `efficient:problem-solving` | `efficient-core:problem-solving` | |

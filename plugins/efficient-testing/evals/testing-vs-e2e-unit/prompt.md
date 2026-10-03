@@ -1,6 +1,6 @@
 ---
 name: testing-vs-e2e-unit
-description: A pure-function regression test routes to efficient-testing:unit, not e2e-testing.
+description: A pure-function regression test routes to efficient-testing:unit, not e2e.
 tags: [routing]
 runs: 1
 max_turns: 5

@@ -1,6 +1,6 @@
 ---
 name: modernize
-description: Plan the modernization of a legacy system (a runtime, framework, or dependency upgrade, a migration, or a rewrite) with a time-boxed feasibility spike, a testability milestone, a safety ladder, hazard red-teaming of each phase, and phased exit criteria. Use when asked to "modernize this", "plan the migration", "how do we get off this stack", or to plan a major version upgrade. Not for general implementation plans (efficient-core:planning), mapping a codebase (authoring:map-codebase), executing the migration (efficient-core:coding), or recording a single decision (authoring:adr-writing).
+description: Plan the modernization of a legacy system (a runtime, framework, or dependency upgrade, a migration, or a rewrite) with a time-boxed feasibility spike, a testability milestone, a safety ladder, hazard red-teaming of each phase, and phased exit criteria. Use when asked to "modernize this", "plan the migration", "how do we get off this stack", or to plan a major version upgrade. Not for general implementation plans (efficient-core:planning), mapping a codebase (authoring:map-codebase, if installed), executing the migration (efficient-core:coding), or recording a single decision (authoring:adr-writing, if installed).
 ---
 
 # Modernize
