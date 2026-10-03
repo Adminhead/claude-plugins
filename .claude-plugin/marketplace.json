@@ -20,8 +20,8 @@
     {
       "name": "code-search",
       "source": "./plugins/code-search",
-      "description": "Local code search with ripgrep, public GitHub code search via grep.app, and always-on search guidelines in every conversation's context.",
-      "version": "0.2.0",
+      "description": "Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines.",
+      "version": "0.3.0",
       "category": "development"
     },
     {
@@ -41,8 +41,8 @@
     {
       "name": "efficient-core",
       "source": "./plugins/efficient-core",
-      "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, and modernization, plus second-opinion review, anti-slop cleanup, and poka-yoke error-proofing.",
-      "version": "0.1.1",
+      "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, modernization, second-opinion review, anti-slop cleanup, and poka-yoke error-proofing, plus the Exa web search MCP server.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -113,8 +113,8 @@
     {
       "name": "efficient-web",
       "source": "./plugins/efficient-web",
-      "description": "Web skills: front-end web development and web design.",
-      "version": "0.1.0",
+      "description": "Web skills: front-end web development and web design, plus a headless Playwright MCP browser.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -135,7 +135,7 @@
       "name": "efficient-testing",
       "source": "./plugins/efficient-testing",
       "description": "Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -177,6 +177,20 @@
       "name": "sentry",
       "source": "./plugins/sentry",
       "description": "Instrument apps with official Sentry SDKs.",
+      "version": "0.1.1",
+      "category": "development"
+    },
+    {
+      "name": "sentry-mcp",
+      "source": "./plugins/sentry-mcp",
+      "description": "Sentry's remote MCP server (OAuth) for querying issues, events, traces, and releases on sentry.io. Off until enabled.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "sentry-mcp-self-hosted",
+      "source": "./plugins/sentry-mcp-self-hosted",
+      "description": "Sentry's MCP server over stdio with a user auth token, for self-hosted Sentry. Off until enabled; prompts for host and token.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -239,8 +253,8 @@
     {
       "name": "aws",
       "source": "./plugins/aws",
-      "description": "AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review.",
-      "version": "0.1.1",
+      "description": "AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server.",
+      "version": "0.2.0",
       "category": "development"
     }
   ],

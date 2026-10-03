@@ -1,14 +1,14 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one with `claude plugin install <plugin>@adminhead`.
+Claude Code plugin marketplace `adminhead`. It lists 31 plugins. Install one with `claude plugin install <plugin>@adminhead`.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
 | `example` | Template plugin showing a skill and a function hook. Copy it to start a new plugin. | [plugins/example](plugins/example) |
-| `code-search` | Local code search with ripgrep, public GitHub code search via grep.app, and always-on search guidelines in every conversation's context. | [docs](docs/plugins/code-search.md) |
+| `code-search` | Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines. | [docs](docs/plugins/code-search.md) |
 | `git` | Git skills: focused commits, branches, history rewrites and recovery, and worktrees. | [docs](docs/plugins/git.md) |
 | `github` | GitHub skills (issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, Dependabot) plus the GitHub remote MCP server. | [docs](docs/plugins/github.md) |
-| `efficient-core` | Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, and modernization, plus second-opinion review, anti-slop cleanup, and poka-yoke error-proofing. | [docs](docs/plugins/efficient.md) |
+| `efficient-core` | Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, modernization, second-opinion review, anti-slop cleanup, and poka-yoke error-proofing, plus the Exa web search MCP server. | [docs](docs/plugins/efficient.md) |
 | `efficient-testing` | Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps. | [docs](docs/plugins/efficient.md) |
 | `efficient-security` | Security skills: threat modeling, privacy review, and a manual security audit scan. | [docs](docs/plugins/efficient.md) |
 | `efficient-go` | Go skills: the language, CLI tools, and performance work. | [docs](docs/plugins/efficient.md) |
@@ -16,7 +16,7 @@ Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one wit
 | `efficient-js` | JavaScript and TypeScript skills: the languages, React, Vue, Vite, TanStack, and click-path audits of UI flows. | [docs](docs/plugins/efficient.md) |
 | `efficient-rust` | Rust skills: the language and its tooling. | [docs](docs/plugins/efficient.md) |
 | `efficient-shell` | Shell skills: Bash scripting practice. | [docs](docs/plugins/efficient.md) |
-| `efficient-web` | Web skills: front-end web development and web design. | [docs](docs/plugins/efficient.md) |
+| `efficient-web` | Web skills: front-end web development and web design, plus a headless Playwright MCP browser. | [docs](docs/plugins/efficient.md) |
 | `efficient-auth` | Authentication skills: login, sessions, and token validation for your own app, plus Better Auth. | [docs](docs/plugins/efficient.md) |
 | `efficient-db` | Database skills: schema design, Postgres, MySQL, and Redis. | [docs](docs/plugins/efficient.md) |
 | `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security. | [docs](docs/plugins/authoring.md) |
@@ -24,6 +24,8 @@ Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one wit
 | `chezmoi` | Manage, migrate, and troubleshoot chezmoi-managed dotfiles. | [docs](docs/plugins/chezmoi.md) |
 | `pass-cli` | Use the Proton Pass CLI without exposing secrets. | [docs](docs/plugins/pass-cli.md) |
 | `sentry` | Instrument apps with official Sentry SDKs. | [docs](docs/plugins/sentry.md) |
+| `sentry-mcp` | Sentry's remote MCP server (OAuth) for querying issues, events, traces, and releases on sentry.io. Off until enabled. | [docs](docs/plugins/sentry.md) |
+| `sentry-mcp-self-hosted` | Sentry's MCP server over stdio with a user auth token, for self-hosted Sentry. Off until enabled; prompts for host and token. | [docs](docs/plugins/sentry.md) |
 | `playwright-cli` | Drive a headless, isolated browser from Bash with playwright-cli. | [docs](docs/plugins/playwright-cli.md) |
 | `termwright` | Drive and test terminal UI apps with the termwright CLI. | [docs](docs/plugins/termwright.md) |
 | `accessibility` | Accessibility skills: manual screen-reader and keyboard testing of web journeys. | [docs](docs/plugins/accessibility.md) |
@@ -32,7 +34,7 @@ Claude Code plugin marketplace `adminhead`. It lists 29 plugins. Install one wit
 | `api` | Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers. | [docs](docs/plugins/api.md) |
 | `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
-| `aws` | AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review. | [docs](docs/plugins/aws.md) |
+| `aws` | AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
 
 ## Layout
 

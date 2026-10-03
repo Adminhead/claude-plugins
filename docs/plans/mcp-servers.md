@@ -1,6 +1,6 @@
 # MCP servers for adminhead plugins
 
-Status: plan, 2026-10-03. Claude Code 2.1.288. Not implemented. Decisions D1–D10 settled 2026-10-03 (see Settled decisions).
+Status: implemented on branch mcp-integration, 2026-10-03. Claude Code 2.1.288. Rollout pending. Decisions D1–D10 settled 2026-10-03 (see Settled decisions).
 
 ## Goal
 
@@ -357,7 +357,7 @@ Critic: agy gemini-3.1-pro-high/high, one round.
 | # | Decision | Choice |
 | --- | --- | --- |
 | D1 | Sentry off by default | (a) Two companion plugins, `sentry-mcp` and `sentry-mcp-self-hosted`, each `defaultEnabled: false` |
-| D2 | AWS auth and capability | (b) OAuth direct URL, `alwaysLoad: false`, `PreToolUse` guard hook on `run_script`, skills rewrite. The user chose this over the recommended read-only proxy. Slice D gets a security review |
+| D2 | AWS auth and capability | (b) OAuth direct URL, `alwaysLoad: false`. The `run_script` guard hook was built and then removed by the user after three security-review rounds kept finding gaps in its auto-allow path; protection is the signed-in IAM role plus Claude Code's per-call MCP permission prompt. Skills keep read-only, projection, and no-secrets rules as guidance |
 | D3 | CodeGraph auto-init | (a) As specified |
 | D4 | `~/.claude/CLAUDE.md` CodeGraph section | (a) Remove it at rollout |
 | D5 | Context7 copies | (a) Uninstall `context7@claude-plugins-official` |
