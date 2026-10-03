@@ -1,6 +1,86 @@
 # efficient-split — spec and plan
 
-Status: planned, 2026-10-03. Decisions D1–D17 settled 2026-10-03. Slices 1–4 in progress. Pre-split SHA: `a1efff3` (main, in sync with `origin/main`).
+Status: done, 2026-10-03. Follow-ups under Progress. Decisions D1–D17 settled 2026-10-03. Pre-split SHA: `a1efff3` (main, in sync with `origin/main`).
+
+## Progress
+
+### Commits
+
+Merged to main with `--ff-only` and pushed. Branch `efficient-split` is deleted.
+
+| SHA | Subject | Notes |
+| --- | --- | --- |
+| `7bb2c72` | docs: plan efficient and quality split | |
+| `a91848c` | refactor: split efficient and quality into per-domain plugins (structure) | 258 renames |
+| `a71917f` | refactor: rename efficient and quality skill references and eval graders | About 283 references renamed, about 85 "if installed" added. The collateral bumps (`accessibility` 0.2.1, `api` 0.1.1, `github` 0.2.1, `playwright-cli` 0.2.1, `aws` 0.1.1) landed here, not in Slice 1 |
+| `ee102ec` | docs: document the efficient-* plugin family and retire quality docs | |
+| `7013a17` | fix: address split review findings | README rows matched to the marketplace; duplicate table separator removed; `not-config-audit` negative added to `agent-config-audit-routing`; "if installed" on the `modernize` → `authoring` references; grader files renamed to `unit`, `e2e`, `gap-audit` |
+
+### Slice 4 verification
+
+- **Done-when checks.**
+  - The marketplace has 29 plugins, 11 of them `efficient-*`, and no `efficient` or `quality`.
+  - Both `rg` checks match only the old-to-new tables in `docs/plugins/efficient.md`.
+  - `validate --strict` passed for the marketplace and every touched plugin.
+- **Script tests.** `run` 45 passed, `gap-audit` 9, `audit` 36. `harness` and `second-opinion` `check.sh` pass. The plan's "36 pass" counted `audit` alone.
+- **Review.** The `review` agent found no blockers, 2 must-fix, and 4 nice-to-have. All were fixed in `7013a17`.
+- **Eval smoke.** `--runs 1 --ablation none`, 29 cases. No trace has `plugin_errors`. The former `quality` skills fired for the first time ever, which confirms Finding 1.
+- **Failures that match history, not regressions.**
+  - `trigger-testing-1` `fires-unit`: 0/15 historically.
+  - `testing-observable-behaviour` criteria: 0/9 historically.
+  - `coding-feature` `fires-coding`: 2/6 historically.
+  - `trigger-agent-config-audit-2`: no baseline.
+- **`stance-react-measure-first`.** `no-blind-memo` appeared to flip. The case builds `src/ProductList.tsx`, so it needs `--scaffold`. With `--scaffold` it passed 3/3. Pass `--scaffold` for scaffold cases (`stance-react-measure-first`, git `stance-commit-convention`).
+
+### Slice 6 re-measure
+
+`--runs 3`. These are the first measurements of the former `quality` skills.
+
+| Case | Positive | Negative |
+| --- | --- | --- |
+| `agent-config-audit-routing` | fires 3/3 | `not-config-audit` 3/3 |
+| `trigger-agent-config-audit-1` | fires 3/3 | `not-config-audit` 3/3 |
+| `trigger-agent-config-audit-2` | fires 1/3 | `not-config-audit` 3/3 |
+| `test-gap-audit-routing` | `fires-gap-audit` 3/3 | `not-unit` 3/3 |
+| `trigger-test-gap-audit-1` | `fires-gap-audit` 3/3 | `not-unit` 3/3 |
+| `trigger-test-gap-audit-2` | `fires-gap-audit` 3/3 | `not-unit` 3/3 |
+| `click-path-audit-vs-react` | 3/3 | 3/3 |
+| `production-readiness-vs-rollout` | 3/3 | 3/3 |
+
+Total paid eval spend was $4.15 of the $5 cap (D16).
+
+### Cutover
+
+- **Uninstalls.** `quality` and `efficient` at user scope and rovitracker local scope, before the merge. No dependency refusal occurred. `quality`'s uninstall noted `efficient` as an auto-installed dependency.
+- **User scope now.** `authoring`, `efficient-core`, `efficient-testing`, `git`, `github`, `ripgrep`. `api`, `aws`, `infra`, `observability`, `sentry`, and `tooling` are uninstalled from user scope.
+- **Inventory.** rovitracker is the only project that enables adminhead plugins. It already had all six situational plugins locally. Installed there with `--scope local`: `efficient-go`, `-js`, `-web`, `-db`, `-auth`, `-shell`, `-security`. The user chose all four optional ones.
+- **Agents.** 12 lines edited: 4 `efficient-core` preloads in `architect`, `coder`, and `coder-max`, and 8 `quality:second-opinion` → `efficient-core:second-opinion` in `architect`, `review`, and `quick-review`. Backups are in `~/.claude/skills.migrated/_agents/*.pre-split`.
+- **Preloads.** Verified in fresh sessions.
+  - `coder`, `coder-max`, and `review` quoted their H1s.
+  - `quick-review` quoted `second-opinion`'s first three `## ` lines verbatim.
+  - A probe agent preloading `efficient-core:planning` printed "# Efficient Planning".
+  - Subagents spawned from the long-running orchestrator session reported none, apparently from a stale agent registry. Use fresh-session probes as the check.
+- **Commands.**
+  - `/efficient-security:audit` raised no permission denials, and `scan.py` ran in rovitracker without changing files.
+  - `/efficient-testing:run` raised no permission denials. In a bare repo (no `pyproject` or `pytest.ini`) it found no runner. That is a pre-existing detection limit, not a split issue.
+- **`claude plugin details`.** See the plugin map for measured figures. All are within ±10% of the estimate except `efficient-shell` (+23%) and `efficient-db` (+15%). The estimates summed rounded per-skill figures, and the longer qualified names add tokens. The skill sets are correct.
+- **`/context` Skills row.** Recorded as a measurement, per Done-when.
+
+  | `skillListingBudgetFraction` | Empty dir | rovitracker | Descriptions dropped |
+  | --- | --- | --- | --- |
+  | 0.01 (default) | ~10k | 9.9k | Saturated. Nearly all `efficient-*` descriptions were bare names; `authoring`'s stayed (key order) |
+  | 0.025 | 14.9k | 23.4k | 1 bare name each |
+  | 0.05 (set in `~/.claude/settings.json`) | not measured | not measured | Cap is ~50k on Opus 1M and ~10k on 200k models |
+
+- **Eval results archived.** 65 `efficient` runs and 5 `quality` runs moved to `~/.claude/skills.migrated/_eval-results/{efficient,quality}/`. The empty `plugins/efficient` and `plugins/quality` dirs were removed.
+
+### Open
+
+- **`/skill-doctor` on 2026-10-04.** Check whether agent preloads count as uses and how renamed skills' usage history behaves (Finding 10).
+- **`trigger-agent-config-audit-2` fires 1/3.** A description-tuning candidate, now measurable.
+- **`trigger-testing-1` and `testing-observable-behaviour` have never passed.** Pre-existing; worth a look.
+- **Two prefix-agnostic graders** remain in untouched plugins: `authoring` `agent-instructions-trigger/not-create-skill.md` and `git` `commit-near-miss/not-commit.md`. Neither is vacuous, since their targets were not renamed.
+- **Cross-plugin pointers without "if installed"** remain in untouched plugins (`git`, `github`, `observability`, `tooling`).
 
 ## Goal
 
@@ -81,32 +161,32 @@ Split `efficient` (0.2.1, 31 skills) into `efficient-core` plus language and dom
 | D11 | production-readiness | `infra`. Its competitor `infra:rollout` becomes a same-plugin eval pair |
 | D12 | agent-config-audit | `authoring`. Its competitor `authoring:config-audit` becomes a same-plugin eval pair. `authoring` stays at user scope |
 | D13 | click-path-audit | `efficient-js`. Its competitor `react` becomes a same-plugin eval pair |
-| D14 | Listing budget | Of the levers, only move situational plugins to local scope. `api`, `aws`, `infra`, `observability`, `sentry`, and `tooling` move from user scope to per-project `--scope local`. `github` stays at user scope. Declined levers are under Rejected alternatives |
+| D14 | Listing budget | Of the levers, only move situational plugins to local scope. `api`, `aws`, `infra`, `observability`, `sentry`, and `tooling` move from user scope to per-project `--scope local`. `github` stays at user scope. Declined levers are under Rejected alternatives. Later change: at cutover the user chose the budget lever after all and set `skillListingBudgetFraction` to 0.05 (see Progress) |
 | D15 | Other installers of the GitHub remote | None; only the user installs. No `efficient` bundle alias |
 | D16 | Paid evals | Approved within a $5 total cap for Slices 4 and 6, with `--trust-plugin` for new adminhead plugin dirs |
 | D17 | Plan commit | First commit on branch `efficient-split`; main untouched until cutover |
 
 ## Plugin map
 
-Token figures are always-on estimates summed from today's per-skill `claude plugin details` figures. Figures marked `~` are derived, not measured.
+Estimates are summed from the pre-split per-skill `claude plugin details` figures. Figures marked `~` are derived. The measured column is `claude plugin details` after cutover, 2026-10-03.
 
-| Plugin | Skills | ~tok (details) | ~tok (listing) |
-| --- | --- | --- | --- |
-| `efficient-core` | coding, planning, problem-solving, research, prototype, experiment-loop, modernize, second-opinion, anti-slop, poka-yoke | ~2,100 (1,530 + 170 + 160 + 240) | ~2,100 |
-| `efficient-shell` | bash | 210 | 210 |
-| `efficient-go` | golang, golang-cli, golang-performance | 680 | 680 |
-| `efficient-python` | python, python-packaging, fastapi | 520 | 520 |
-| `efficient-js` | javascript, typescript, react, vue, vite, tanstack, click-path-audit | ~1,440 | ~1,440 |
-| `efficient-rust` | rust | 150 | 150 |
-| `efficient-web` | web-development, web-design | 350 | 350 |
-| `efficient-auth` | auth, better-auth | 460 | 460 |
-| `efficient-db` | database-design, postgres, mysql, redis | 810 | 810 |
-| `efficient-testing` | unit, e2e, run, harness, gap-audit | 690 | 560 |
-| `efficient-security` | threat-model, privacy-review, audit | ~590 (230 + 230 + ~130) | ~460 (audit lists at 0) |
-| `authoring` 0.3.0 | 8 existing + agent-config-audit | ~1,873 | ~1,770 |
-| `infra` 0.2.0 | 7 existing + production-readiness | ~1,741 | ~1,740 |
+| Plugin | Skills | ~tok (details) | ~tok (listing) | Measured (details) |
+| --- | --- | --- | --- | --- |
+| `efficient-core` | coding, planning, problem-solving, research, prototype, experiment-loop, modernize, second-opinion, anti-slop, poka-yoke | ~2,100 (1,530 + 170 + 160 + 240) | ~2,100 | 2,113 |
+| `efficient-shell` | bash | 210 | 210 | 258 |
+| `efficient-go` | golang, golang-cli, golang-performance | 680 | 680 | 738 |
+| `efficient-python` | python, python-packaging, fastapi | 520 | 520 | not measured |
+| `efficient-js` | javascript, typescript, react, vue, vite, tanstack, click-path-audit | ~1,440 | ~1,440 | 1,529 |
+| `efficient-rust` | rust | 150 | 150 | not measured |
+| `efficient-web` | web-development, web-design | 350 | 350 | 361 |
+| `efficient-auth` | auth, better-auth | 460 | 460 | 470 |
+| `efficient-db` | database-design, postgres, mysql, redis | 810 | 810 | 934 |
+| `efficient-testing` | unit, e2e, run, harness, gap-audit | 690 | 560 | 747 |
+| `efficient-security` | threat-model, privacy-review, audit | ~590 (230 + 230 + ~130) | ~460 (audit lists at 0) | 617 |
+| `authoring` 0.3.0 | 8 existing + agent-config-audit | ~1,873 | ~1,770 | 1,894 |
+| `infra` 0.2.0 | 7 existing + production-readiness | ~1,741 | ~1,740 | 1,731 |
 
-Today every project pays about 8,445 tokens (efficient 6,349 + quality 2,096). The user-scope baseline after the split is `efficient-core` + `efficient-testing` + `authoring`, about 4,660 by details. `git` (710), `ripgrep` (90), and `github` are already at user scope and are not recomputed here. The profiles below add local plugins to the baseline and leave out those three and the D14 plugins unless named.
+Today every project pays about 8,445 tokens (efficient 6,349 + quality 2,096). The user-scope baseline after the split is `efficient-core` + `efficient-testing` + `authoring`, about 4,660 by details (4,754 measured). `git` (710), `ripgrep` (90), and `github` are already at user scope and are not recomputed here. The profiles below add local plugins to the baseline and leave out those three and the D14 plugins unless named.
 
 | Profile | Plugins | After (details) |
 | --- | --- | --- |
@@ -219,7 +299,7 @@ Apart from `bash-vs-coding`'s negative, no existing routing case spans two plugi
 | 1 | Create the 11 `plugin.json` files; `git mv` skill and eval dirs per the tables, including the 9 non-testing quality skills and their eval dirs; rename the 5 `efficient-testing` skill dirs and `name:` fields; delete `plugins/efficient` and `plugins/quality`. In `marketplace.json`, remove `efficient` and `quality`, add 11 entries, bump `authoring` to 0.3.0, `infra` to 0.2.0, `aws` to 0.1.1, and patch-bump `accessibility`, `api`, `github`, `playwright-cli` | `plugins/**`, `.claude-plugin/marketplace.json` | Skill counts: core 10, shell 1, go 3, python 3, js 7, rust 1, web 2, auth 2, db 4, testing 5, security 3, authoring 9, infra 8. `git diff -M --stat` shows renames | `claude plugin validate --strict .` and `--strict plugins/<p>` for each of the 11 new plugins plus `authoring` and `infra` | coder-light |
 | 2 | Apply the old-to-new map across skills, references, graders, and descriptions in all plugins, including the collateral plugins (`aws` included) and their bumps. Add "if installed" to every cross-plugin reference, including those listed above. Change `harness`'s `allowed-tools` and line 50 to `${CLAUDE_PLUGIN_ROOT}/skills/run/scripts/run_tests.py`. Change `/quality:test*` to `/efficient-testing:*` and `/quality:audit` to `/efficient-security:audit`. Soften `audit:48`. Rewrite graders and add the two new eval cases per the Evals section. Update `plugin.json` descriptions | `plugins/**` | Both Done-when `rg` checks return nothing. Every grader's `plugin:skill` resolves to an existing `SKILL.md`. Every description ≤ 1024 characters | One-off script for grader-name existence and description length; `rg` for cross-plugin mentions without "if installed", reviewed by hand | coder |
 | 3 | Docs, in parallel with 2 on disjoint files. Delete `docs/plugins/quality.md`, carrying second-opinion data-egress limits, scanner requirements, and script-permission rows to the efficient family page. Update `authoring.md` (agent-config-audit row and its `Read(~/.claude/**)` grant), `infra.md` (production-readiness), `api.md`, `playwright-cli.md`. README rows: add `efficient-security`; refresh `authoring`, `infra`, `efficient-core`, `efficient-js` | `docs/plugins/{efficient,quality,authoring,infra,api,playwright-cli}.md`, `README.md` | Every marketplace plugin has a README row (29 plugins). Old-to-new and per-profile install tables present. No old names remain | `rg` for old names, relative-link check | scribe |
-| 4 | Verify in the worktree. Run `uvx pytest -p no:cacheprovider` for `efficient-testing/skills/{run,gap-audit}/tests` and `efficient-security/skills/audit/tests` (36 pass); `bash efficient-testing/skills/harness/tests/check.sh`; `bash efficient-core/skills/second-opinion/tests/check.sh`. Eval smoke on all moved and new cases, covering `authoring`, `infra`, and `efficient-js` too: `--tag routing --tag trigger --runs 1 --ablation none --no-publish --keep-temp --max-cost-usd 3`. Read `plugin_errors` from each kept `out/trace.jsonl`. Record first `agent-config-audit` measurements. Run `review` on the full diff against this plan | — | No `plugin_errors`. No previously firing positive stops firing; flips re-run with `--runs 3`. `review` findings fixed. Kept temp dirs removed | As listed, about $1–3 | orchestrator + `review` |
+| 4 | Verify in the worktree. Run `uvx pytest -p no:cacheprovider` for `efficient-testing/skills/{run,gap-audit}/tests` and `efficient-security/skills/audit/tests` (run 45, gap-audit 9, audit 36); `bash efficient-testing/skills/harness/tests/check.sh`; `bash efficient-core/skills/second-opinion/tests/check.sh`. Eval smoke on all moved and new cases, covering `authoring`, `infra`, and `efficient-js` too: `--tag routing --tag trigger --runs 1 --ablation none --no-publish --keep-temp --max-cost-usd 3`. Read `plugin_errors` from each kept `out/trace.jsonl`. Record first `agent-config-audit` measurements. Run `review` on the full diff against this plan | — | No `plugin_errors`. No previously firing positive stops firing; flips re-run with `--runs 3`. `review` findings fixed. Kept temp dirs removed | As listed, about $1–3 | orchestrator + `review` |
 | 5 | Cutover (below) | `~/.claude/agents/*`, settings | Step 9 checks pass | As listed | orchestrator, after the user's go-ahead |
 | 6 | Record results here. Append a dated note to `adoption-followups.md` that the two `quality` open items were never measured. Re-measure `authoring:agent-config-audit`, `efficient-testing:gap-audit`, and the two new cases with `--runs 3` (about $2). Record the `/context` Skills row per profile. Run `/skill-doctor` a day after cutover. Archive both `evals/results/` dirs | `docs/plans/*` | Progress section filled in | — | scribe |
 
@@ -308,7 +388,7 @@ Run as one sequence, with no other Claude sessions open.
 | `click-path-audit` in `efficient-web` or `accessibility` | `react` is its real competitor (D13) |
 | Reorder `enabledPlugins` keys | Declined (D14). Key order does set listing order, but the user chose not to manage it |
 | Design skills name-only | Declined (D14) |
-| Raise `skillListingBudgetFraction` | Declined (D14) |
+| Raise `skillListingBudgetFraction` | Declined at planning (D14). Adopted after cutover, at 0.05 |
 | Cap description length | Declined (D14) |
 
 ## Critique log

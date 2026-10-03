@@ -110,5 +110,20 @@ Fixed in `e75f24f` (0.3.0). All four strings now pass through, 331 tests pass, a
 
 ### Open
 
-- `quality:test-gap-audit` and `quality:agent-config-audit` don't load from short prompts.
+- `quality:test-gap-audit` and `quality:agent-config-audit` don't load from short prompts. Re-scoped on 2026-10-03; see the note below.
 - `efficient:testing` doesn't load for "add a regression test after a fix".
+
+### Note, 2026-10-03: `quality` open items were never measured
+
+- **Cause.** `quality` declared `dependencies: ["efficient"]`, and the eval sandbox loads only the plugin under test. It failed `quality` with `dependency-unsatisfied`, so none of its skills were in the skill list. Across every stored result its positive graders fired 0 of 81 times.
+- **Effect on item 1.** The 0/6 baselines and the "tuning didn't help, reverted" results for `quality:test-gap-audit` and `quality:agent-config-audit` were measured against an unloaded plugin. They say nothing about those descriptions.
+- **After the split.** `efficient-split` removed `quality` and all dependencies (`docs/plans/efficient-split.md`). With `--runs 3`:
+
+  | Skill (new name) | Cases | Fire rate |
+  | --- | --- | --- |
+  | `efficient-testing:gap-audit` | `test-gap-audit-routing`, `trigger-test-gap-audit-1`, `trigger-test-gap-audit-2` | 3/3 on each |
+  | `authoring:agent-config-audit` | `agent-config-audit-routing`, `trigger-agent-config-audit-1` | 3/3 on each |
+  | `authoring:agent-config-audit` | `trigger-agent-config-audit-2` | 1/3 |
+
+- **Status.** The `gap-audit` item is resolved. The `agent-config-audit` item is re-scoped to `trigger-agent-config-audit-2`, a description-tuning candidate that is now measurable.
+- **Still open.** The `efficient:testing` item, now `efficient-testing:unit`. `trigger-testing-1` has never passed (0/15 historically).
