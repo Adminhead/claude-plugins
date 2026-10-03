@@ -1,4 +1,15 @@
 {
+  "context7": {
+    "type": "http",
+    "url": "https://mcp.context7.com/mcp",
+    "headers": { "Authorization": "Bearer ${CONTEXT7_API_KEY:-}" }
+  },
+  "codegraph": {
+    "type": "stdio",
+    "command": "codegraph",
+    "args": ["serve", "--mcp"],
+    "alwaysLoad": true
+  },
   "grep-app": {
     "type": "http",
     "url": "https://mcp.grep.app"
