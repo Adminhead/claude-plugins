@@ -6,6 +6,9 @@
     "name": "Buck Brady",
     "email": "bbrady145@gmail.com"
   },
+  "allowCrossMarketplaceDependenciesOn": [
+    "claude-code-lsps"
+  ],
   "plugins": [
     {
       "name": "example",
@@ -46,36 +49,66 @@
       "name": "efficient-shell",
       "source": "./plugins/efficient-shell",
       "description": "Shell skills: Bash scripting practice.",
-      "version": "0.1.0",
-      "category": "development"
+      "version": "0.1.1",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "bash-language-server",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
     },
     {
       "name": "efficient-go",
       "source": "./plugins/efficient-go",
       "description": "Go skills: the language, CLI tools, and performance work.",
-      "version": "0.1.0",
-      "category": "development"
+      "version": "0.1.1",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "gopls",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
     },
     {
       "name": "efficient-python",
       "source": "./plugins/efficient-python",
       "description": "Python skills: the language, packaging, and FastAPI services.",
-      "version": "0.1.0",
-      "category": "development"
+      "version": "0.1.1",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "pyright",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
     },
     {
       "name": "efficient-js",
       "source": "./plugins/efficient-js",
       "description": "JavaScript and TypeScript skills: the languages, React, Vue, Vite, TanStack, and click-path audits of UI flows.",
-      "version": "0.1.0",
-      "category": "development"
+      "version": "0.1.1",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "vtsls",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
     },
     {
       "name": "efficient-rust",
       "source": "./plugins/efficient-rust",
       "description": "Rust skills: the language and its tooling.",
-      "version": "0.1.0",
-      "category": "development"
+      "version": "0.1.1",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "rust-analyzer",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
     },
     {
       "name": "efficient-web",

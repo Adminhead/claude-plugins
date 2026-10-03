@@ -74,6 +74,23 @@ Total paid eval spend was $4.15 of the $5 cap (D16).
 
 - **Eval results archived.** 65 `efficient` runs and 5 `quality` runs moved to `~/.claude/skills.migrated/_eval-results/{efficient,quality}/`. The empty `plugins/efficient` and `plugins/quality` dirs were removed.
 
+### LSP dependencies (2026-10-03)
+
+- **Change.** `efficient-go`, `-rust`, `-python`, `-js`, and `-shell` go 0.1.0 → 0.1.1. Each marketplace entry depends on an LSP plugin: `gopls`, `rust-analyzer`, `pyright`, `vtsls`, `bash-language-server`. The marketplace sets `allowCrossMarketplaceDependenciesOn: ["claude-code-lsps"]`.
+- **Source history.** The dependencies were first wired to `claude-plugins-official` (`gopls-lsp`, `rust-analyzer-lsp`, `pyright-lsp`, `typescript-lsp`), with no Bash LSP and `efficient-shell` unchanged. The user then switched to `claude-code-lsps` (third-party, github.com/boostvolt/claude-code-lsps), whose SessionStart hooks auto-install the servers. That added `efficient-shell`.
+- **Tracking.** The user chose to track the marketplace's `main` branch. It was reviewed at commit `0395648`.
+- **Hook behavior.** Runs every session start, exits silently if the server is on `PATH`, installs the latest unpinned version otherwise, 30 s timeout (60 s for `rust-analyzer`). Installs land in whatever `pip`, `npm`, or `go` is on `PATH`, not in mise config, so a Node LTS upgrade drops `npm -g` installs and the hook reinstalls them. `rust-analyzer` auto-installs only through brew.
+- **Security.** Third-party hooks run shell commands at session start and install unpinned packages from PyPI, npm, and the Go proxy. Review the marketplace diff on each update.
+- **Conflict.** Enabling the official `gopls-lsp`, `pyright-lsp`, or `typescript-lsp` in the same project puts two servers on the same files.
+- **Why the marketplace entry.** A `dependencies` field in `plugin.json` makes `claude plugin eval` fail with `dependency-unsatisfied`, the same failure as Finding 1. Entry-level dependencies leave path-based evals alone. `efficient-go` `trigger-golang-1` loaded with no `plugin_errors` (probed against the official source).
+- **Probe: install.** `claude plugin install efficient-go@adminhead --scope local` also installed the LSP plugin at the same scope. Dependencies are required. Verified against `claude-code-lsps` (rovitracker, local scope).
+- **Probe: missing binary.** The efficient plugin still loaded and its skills still listed. Only the language server failed to start.
+- **Probe: uninstall.** Uninstalling the efficient plugin left the LSP plugin installed.
+- **Probe: prune (rovitracker, local scope).** `claude plugin prune` does not see marketplace-entry dependencies. Right after installing `efficient-go`, `prune --scope local` listed `gopls` as "no longer needed", and `-y` would remove it. The install itself printed "auto-installed dependency no longer needed".
+- **Workaround.** Install the LSP plugin explicitly at the same scope after the efficient plugin, for example `claude plugin install gopls@claude-code-lsps --scope local`. The CLI reports "already installed — marked as manually installed", and prune reports "Nothing to prune". Removing the LSP plugin then takes `claude plugin uninstall <lsp>@claude-code-lsps --scope <scope>`.
+- **Rejected alternative.** Declaring the dependency in `plugin.json` fixes prune but makes `claude plugin eval` fail with `dependency-unsatisfied: Dependency "gopls@claude-code-lsps" is not installed`. Marketplace-entry dependencies stay, and the explicit install step is the cost.
+- **Rollout.** Users must run `claude plugin marketplace add boostvolt/claude-code-lsps` first. Install each LSP plugin explicitly (go→`gopls`, python→`pyright`, js→`vtsls`, rust→`rust-analyzer`, shell→`bash-language-server`). Existing installs need a reinstall to pull the dependency. Verified: uninstall and reinstall of `efficient-go`, `-js`, and `-shell` in rovitracker pulled `gopls`, `vtsls`, and `bash-language-server`. This revisits the "Dependencies: None anywhere" decision for these five plugins only.
+
 ### Open
 
 - **`/skill-doctor` on 2026-10-04.** Check whether agent preloads count as uses and how renamed skills' usage history behaves (Finding 10).

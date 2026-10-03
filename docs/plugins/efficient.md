@@ -2,7 +2,7 @@
 
 Cost-conscious engineering skills for Claude Code, split into 11 `efficient-*` plugins so a project enables only what it uses. The family covers coding, planning, debugging, testing, security review, research, experiments, prototypes, modernization, web work, and guidance for languages, frameworks, databases, and auth. It adds 41 skills and no hooks or agents. Five skills ship scripts. Claude loads each skill on demand when its description matches the task, except three manual-only commands.
 
-The family replaces the former `efficient` and `quality` plugins, which no longer exist. Two former `quality` skills moved outside the family: `agent-config-audit` to [authoring](authoring.md) and `production-readiness` to [infra](infra.md). The plugins have no dependencies on each other. A skill that mentions a skill in another plugin says "if installed".
+The family replaces the former `efficient` and `quality` plugins, which no longer exist. Two former `quality` skills moved outside the family: `agent-config-audit` to [authoring](authoring.md) and `production-readiness` to [infra](infra.md). The plugins have no dependencies on each other. Five language plugins depend on an LSP plugin from the third-party `claude-code-lsps` marketplace (see [LSP servers](#lsp-servers)). A skill that mentions a skill in another plugin says "if installed".
 
 ## Plugins
 
@@ -69,6 +69,8 @@ Each description also names what the skill is not for and points to the sibling 
 | `efficient-go:golang-cli` | Go command-line tools with cobra and viper: flag and config precedence, exit codes, signal shutdown |
 | `efficient-go:golang-performance` | Measurement-first Go performance: benchmarks with benchstat, pprof, escape analysis, GC tuning |
 
+Installing `efficient-go` also installs the `gopls` LSP plugin, which installs `gopls` if it is missing.
+
 ### efficient-python
 
 | Skill | Purpose |
@@ -76,6 +78,8 @@ Each description also names what the skill is not for and points to the sibling 
 | `efficient-python:python` | Python typing, exceptions, asyncio, profiling, and pytest |
 | `efficient-python:python-packaging` | Build and validate installable Python distributions |
 | `efficient-python:fastapi` | Bounded changes to existing FastAPI apps |
+
+Installing `efficient-python` also installs the `pyright` LSP plugin, which installs `pyright-langserver` if it is missing.
 
 ### efficient-js
 
@@ -89,6 +93,8 @@ Each description also names what the skill is not for and points to the sibling 
 | `efficient-js:tanstack` | TanStack Query, Router, Form, Table, Virtual, and Start |
 | `efficient-js:click-path-audit` | Trace UI event handlers and state side effects to find sequential undo, async races, stale closures, and dead paths |
 
+Installing `efficient-js` also installs the `vtsls` LSP plugin, which covers `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, and `.cjs` and installs `vtsls` if it is missing.
+
 ### efficient-rust, efficient-shell, efficient-web
 
 | Skill | Purpose |
@@ -97,6 +103,8 @@ Each description also names what the skill is not for and points to the sibling 
 | `efficient-shell:bash` | Defensive Bash scripts: strict mode, quoting, traps, ShellCheck, and Bats tests |
 | `efficient-web:web-development` | Build or repair a browser-facing feature end to end |
 | `efficient-web:web-design` | Evidence-based visual design for an existing product, including `DESIGN.md` |
+
+Installing `efficient-rust` also installs the `rust-analyzer` LSP plugin. Installing `efficient-shell` also installs the `bash-language-server` LSP plugin, which covers `.sh`, `.bash`, `.zsh`, and `.ksh`. Rust has a weaker auto-install (see [LSP servers](#lsp-servers)).
 
 ### efficient-auth, efficient-db
 
@@ -189,10 +197,68 @@ Example profiles, each added on top of the user-scope plugins.
 
 A missing plugin is harmless. Pointers to its skills say "if installed", and Claude falls back to its own judgment. Without `efficient-security`, use the built-in `/security-review` for a model-only read of the branch diff.
 
+## LSP servers
+
+Five plugins declare a required dependency on an LSP plugin from the `claude-code-lsps` marketplace ([github.com/boostvolt/claude-code-lsps](https://github.com/boostvolt/claude-code-lsps)). Installing the plugin installs the LSP plugin at the same scope, and the CLI prints `+ 1 dependency: <name>`. Each LSP plugin has a SessionStart hook that installs its server when it is missing.
+
+| Plugin | LSP plugin | Server | Hook install when the server is missing |
+| --- | --- | --- | --- |
+| `efficient-go` | `gopls` | `gopls` | `go install golang.org/x/tools/gopls@latest` (needs Go) |
+| `efficient-python` | `pyright` | `pyright-langserver` | `pip install pyright` (needs pip) |
+| `efficient-js` | `vtsls` | `vtsls` | `npm install -g @vtsls/language-server typescript` (needs npm) |
+| `efficient-rust` | `rust-analyzer` | `rust-analyzer` | `brew install rust-analyzer`. Without brew it prints instructions (`rustup component add rust-analyzer`) |
+| `efficient-shell` | `bash-language-server` | `bash-language-server` | `brew install`, else `npm install -g bash-language-server` |
+
+### Hook behavior
+
+- The hook runs at every session start and exits silently if the server is on `PATH`.
+- Otherwise it installs the latest version, unpinned.
+- The hook times out at 30 seconds (60 for `rust-analyzer`). A slow `npm install` can be cut off and retries next session.
+- Installs go to whichever `pip`, `npm`, or `go` is first on `PATH`. A version manager such as mise does not record them. When the manager upgrades its Node or Python, the `-g` installs are dropped and the hook reinstalls them.
+
+### Install and removal
+
+- The dependency is required. You cannot install `efficient-js` without `vtsls`.
+- Add the marketplace first, or the dependency cannot resolve.
+  ```
+  claude plugin marketplace add boostvolt/claude-code-lsps
+  ```
+- A missing server binary breaks only the language server. The efficient plugin still loads and its skills still list.
+
+Install each efficient plugin and its LSP plugin as a pair, at the same scope.
+
+| Efficient plugin | LSP plugin |
+| --- | --- |
+| `efficient-go` | `gopls@claude-code-lsps` |
+| `efficient-python` | `pyright@claude-code-lsps` |
+| `efficient-js` | `vtsls@claude-code-lsps` |
+| `efficient-rust` | `rust-analyzer@claude-code-lsps` |
+| `efficient-shell` | `bash-language-server@claude-code-lsps` |
+
+- Install the LSP plugin explicitly after the efficient plugin, at the same scope. See the pairing table above.
+- `claude plugin prune` does not see dependencies declared on marketplace entries. Right after `claude plugin install efficient-go@adminhead --scope local`, `claude plugin prune --scope local` lists `gopls` as "no longer needed", and `-y` would remove it. The install also prints "auto-installed dependency no longer needed".
+- The explicit install fixes this. The CLI reports "already installed — marked as manually installed", and prune then reports "Nothing to prune".
+- Uninstalling the efficient plugin leaves the LSP plugin installed. Remove it explicitly with `claude plugin uninstall <lsp>@claude-code-lsps --scope <scope>`.
+- An install made before the dependency was added (0.1.0) needs a reinstall to pull the LSP plugin. Reinstalling `efficient-go`, `efficient-js`, and `efficient-shell` pulled `gopls`, `vtsls`, and `bash-language-server`.
+- Do not also enable the official `gopls-lsp`, `pyright-lsp`, or `typescript-lsp` from `claude-plugins-official` in the same project. Two servers would handle the same files.
+
+### Security
+
+- `claude-code-lsps` is a third-party marketplace. Its hooks run shell commands at every session start.
+- Those hooks install unpinned packages from the Go proxy, PyPI, and npm.
+- The marketplace is tracked at its `main` branch by choice. It was reviewed at commit `0395648`. Review its diff when you update it.
+
+### Maintainers
+
+- Declare the dependency on the plugin's entry in `.claude-plugin/marketplace.json`, never in `plugin.json`. A `dependencies` field in `plugin.json` makes `claude plugin eval` fail to load the plugin (`dependency-unsatisfied`). Marketplace-entry dependencies leave path-based evals alone.
+- The marketplace sets `allowCrossMarketplaceDependenciesOn: ["claude-code-lsps"]`. That allowlist is what permits the cross-marketplace dependency.
+- Declaring the dependency in `plugin.json` would fix `claude plugin prune`, but `claude plugin eval` then fails with `dependency-unsatisfied: Dependency "gopls@claude-code-lsps" is not installed`. Marketplace-entry dependencies stay, and the explicit LSP install step is the cost.
+
 ## Requirements
 
 - Claude Code with plugin support.
 - Most skills are guidance only and need no local tools.
+- For LSP support, the `claude-code-lsps` marketplace added first, and the toolchain its hook installs with: Go, pip, npm, or brew (rustup for Rust). See [LSP servers](#lsp-servers).
 - Python 3 for the `efficient-testing` `run`, `harness`, and `gap-audit` scripts and the `efficient-security` `audit` script. `coverage_map.py` uses only the standard library and runs no tests. It writes nothing and calls only `git ls-files` and `git rev-parse`.
 - `git` for `harness` scope detection, `gap-audit`, and `efficient-core:experiment-loop`, which commits on a dedicated branch. The loop also needs a command that measures the goal and that you can run in the environment.
 - For `efficient-security:audit`, the scanners `gitleaks`, `semgrep`, `trivy`, `govulncheck`, and `pip-audit`. A missing one is reported as "not scanned" and the rest still run.
@@ -223,6 +289,16 @@ In each project, install what it needs with `--scope local`.
 claude plugin install efficient-go@adminhead --scope local
 claude plugin install efficient-db@adminhead --scope local
 ```
+
+The Go, Rust, Python, JS, and shell plugins pull in their LSP plugin at the same scope. Add the `claude-code-lsps` marketplace first, then install the LSP plugin explicitly so `claude plugin prune` keeps it.
+
+```
+claude plugin marketplace add boostvolt/claude-code-lsps
+claude plugin install efficient-go@adminhead --scope local
+claude plugin install gopls@claude-code-lsps --scope local
+```
+
+The other pairs are in [LSP servers](#install-and-removal).
 
 To try one plugin without installing:
 
@@ -280,3 +356,5 @@ For a directory marketplace, `${CLAUDE_SKILL_DIR}` resolves to the marketplace s
 | Uninstall | `claude plugin uninstall efficient-core@adminhead` |
 
 Use the plugin name you want to remove, and add `--scope local` for a per-project install. The plugins ship only skills and a few scripts, so both commands remove everything. Start a new session to be sure they are gone.
+
+For `efficient-go`, `-rust`, `-python`, `-js`, and `-shell`, the LSP plugin stays installed. Remove it explicitly, for example `claude plugin uninstall gopls@claude-code-lsps --scope local`. Do not rely on `claude plugin prune`, which skips an LSP plugin that was installed explicitly.
