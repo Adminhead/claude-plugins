@@ -1,12 +1,12 @@
 # aws
 
-Adds three AWS skills: read-only resource inspection, CloudWatch incident investigation, and a Well-Architected and cost review. All three work through the AWS CLI with your existing profile or SSO session. They read and report. They do not change infrastructure. The plugin also declares the AWS MCP Server (see [AWS MCP Server](#aws-mcp-server)).
+Adds three AWS skills: resource inspection, CloudWatch incident investigation, and a Well-Architected and cost review. All three work through the AWS CLI with your existing profile or SSO session, or through the AWS MCP Server when loaded. They read and report by default. They change infrastructure only when you ask, with explicit confirmation. The plugin also declares the AWS MCP Server (see [AWS MCP Server](#aws-mcp-server)).
 
 ## What it adds
 
 | Skill | Purpose |
 | --- | --- |
-| `aws:resource-query` | Answer questions about live resources (EC2, Lambda, ECS/EKS, S3, RDS, DynamoDB, IAM, VPC, and related services) with read-only `describe`, `list`, and named `get` calls. Secret-reading and mutating calls are denied |
+| `aws:resource-query` | Answer questions about live resources (EC2, Lambda, ECS/EKS, S3, RDS, DynamoDB, IAM, VPC, and related services) with read-only `describe`, `list`, and named `get` calls. Reads by default; mutating calls run only when you ask for the change, and secret values are never printed |
 | `aws:cloudwatch-investigation` | Investigate an incident from alarms, metrics, Logs Insights, and CloudTrail: scope the blast radius, correlate with recent changes, rebuild a timeline, and check per-resource health for EC2, RDS, Lambda, ECS, ALB, DynamoDB, and SQS |
 | `aws:architecture-review` | Review a workload against the six Well-Architected pillars and find cost savings, from its IaC (Terraform, CloudFormation, SAM, CDK) and, when asked or when no IaC exists, the live account. Findings are rated High, Medium, or Low |
 
@@ -65,7 +65,7 @@ Never run, with a metadata call offered instead:
 | `ssm get-command-invocation`; `logs get-log-events`, `filter-log-events`, `tail` | `aws:cloudwatch-investigation` for scoped, filtered log reads |
 | `s3api get-object`, `s3 cp`; `dynamodb get-item`, `query`, `scan`; `sqs receive-message` | Counts and configuration, such as `describe-table` and `get-queue-attributes` |
 
-Also denied: output-expanding flags (`--with-decryption`, `--details`, `--include-value`, `--include-values`, `--attribute userData`) and every state-changing verb (`create-`, `delete-`, `put-`, `update-`, `modify-`, `run-`, `start-`, `stop-`, `terminate-`, `invoke`, and others), plus `s3 mv/rm/sync/presign`, `ssm start-session`, and `ecs execute-command`. If you want a denied value anyway, you run the command yourself.
+Also denied by default: output-expanding flags (`--with-decryption`, `--details`, `--include-value`, `--include-values`, `--attribute userData`) and every state-changing verb (`create-`, `delete-`, `put-`, `update-`, `modify-`, `run-`, `start-`, `stop-`, `terminate-`, `invoke`, and others), plus `s3 mv/rm/sync/presign`, `ssm start-session`, and `ecs execute-command`. State-changing commands run only when you ask for the change, with explicit confirmation for destructive or irreversible operations.
 
 ### The `--query` projection rule
 
@@ -107,24 +107,24 @@ The plugin declares `aws-mcp` in `.mcp.json`: `https://aws-mcp.us-east-1.api.aws
 
 ### Instruction conflict
 
-The server's `initialize` instructions tell Claude to prefer its tools and not to run the AWS CLI through Bash. In a smoke run that made Claude skip `aws:resource-query` and run an unprojected `ListFunctions` through `run_script`. Each skill now has an "AWS MCP Server" section saying its rules take precedence: read-only, project output with `--query`, never print secrets. Live reads stay on the CLI. `run_script` is for read-only calls with fields projected in the script. The documentation tools are fine, and `aws:architecture-review` prefers them for current AWS guidance. This is skill text, so it works only when a skill loads.
+The server's `initialize` instructions tell Claude to prefer its tools and not to run the AWS CLI through Bash. In a smoke run that made Claude skip `aws:resource-query` and run an unprojected `ListFunctions` through `run_script`. Each skill now has an "AWS MCP Server" section saying its rules take precedence: read-only by default, project output with `--query`, never print secrets, allow writes only when the user asks. Live reads stay on the CLI. `run_script` is for read-only calls with fields projected in the script, or for writes when you ask. The documentation tools are fine, and `aws:architecture-review` prefers them for current AWS guidance. This is skill text, so it works only when a skill loads.
 
 ### Security model
 
-The plugin adds no technical block on `run_script`.
+The plugin adds no technical block on `run_script`. Write (mutating) calls are bounded by the signed-in IAM role and Claude Code's per-call permission prompt.
 
 - **What the server can do.** `run_script` executes arbitrary boto3 calls with the permissions of the identity you signed in with. The server annotates it destructive. Nothing in the plugin limits which operations a script may call or what it returns.
-- **What limits it.** Two things. The IAM permissions of the role used for the OAuth sign-in set the ceiling, and Claude Code's permission prompt appears for each MCP call and shows the code.
-- **Sign in with a read-only role.** Use `ReadOnlyAccess` or a narrower custom policy, plus the sign-in permissions `signin:AuthorizeOAuth2Access` and `signin:CreateOAuth2Token` (the managed policy `AWSMCPSignInOAuthAccessPolicy` grants both). Do not sign in with an administrator role.
+- **What limits it.** Three things. The IAM permissions of the role used for the OAuth sign-in set the ceiling. Claude Code's permission prompt appears for each MCP call and shows the code. The skills require explicit approval for writes (the user asks for the change), and confirm destructive or irreversible steps even when writes are allowed.
+- **Sign in with the right role.** For read-only work, use `ReadOnlyAccess` or a narrower custom policy, plus the sign-in permissions `signin:AuthorizeOAuth2Access` and `signin:CreateOAuth2Token` (the managed policy `AWSMCPSignInOAuthAccessPolicy` grants both). Do not sign in with an administrator role. When writes are intended, ensure the role has write permissions only where intended.
 - **Read-only is not secret-free.** `ReadOnlyAccess` is built from broad Get, List, and Describe grants, so it can read data such as S3 objects, DynamoDB items, log events, Lambda environment variables, and plain SSM parameters. Whether it includes `secretsmanager:GetSecretValue` is UNCONFIRMED; check the policy's current JSON before relying on it. Use a custom policy that excludes the data actions you do not want Claude to read.
-- **Permission rules.** Claude Code matches an MCP tool by its full name in `permissions` (no parentheses). The tool names are `mcp__plugin_aws_aws-mcp__aws___run_script` and `mcp__plugin_aws_aws-mcp__aws___get_presigned_url`. To block the script tool, in `.claude/settings.json` or your user settings:
+- **Permission rules.** Claude Code matches an MCP tool by its full name in `permissions` (no parentheses). The tool names are `mcp__plugin_aws_aws-mcp__aws___run_script` and `mcp__plugin_aws_aws-mcp__aws___get_presigned_url`. To block the script tool entirely, in `.claude/settings.json` or your user settings:
 
   ```json
   {"permissions": {"deny": ["mcp__plugin_aws_aws-mcp__aws___run_script"]}}
   ```
 
-  To keep the prompt on every call, put the name in `ask`, or leave it out of every list. Never put it in `allow`, because an allowed `run_script` runs any code without a prompt. The read-only documentation tools are safe to allow.
-- **Bypass modes.** Modes that skip permission prompts (such as `bypassPermissions`) skip this prompt too. Do not use them with this server signed in.
+  To keep the prompt on every call (recommended for safety), put the name in `ask`, or leave it out of every list. Never put it in `allow`, because an allowed `run_script` runs any code without a prompt. The read-only documentation tools are safe to allow.
+- **Bypass modes.** Modes that skip permission prompts (such as `bypassPermissions`) skip this prompt too. Do not use them with this server signed in when writes are possible.
 
 ### Regional endpoints
 

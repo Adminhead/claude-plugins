@@ -253,8 +253,8 @@
     {
       "name": "aws",
       "source": "./plugins/aws",
-      "description": "AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server.",
-      "version": "0.2.0",
+      "description": "AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server.",
+      "version": "0.2.1",
       "category": "development"
     }
   ],

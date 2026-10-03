@@ -1,6 +1,6 @@
 ---
 name: resource-query
-description: Answer questions about live AWS resources with read-only AWS CLI commands (describe, list, and named get calls) across EC2, Lambda, ECS/EKS, S3, RDS, DynamoDB, IAM, VPC, and related services, using the user's existing profile or SSO session. Secret-reading and mutating calls are denied. Use when asked what exists in an AWS account or region, how a resource is configured, or what state it is in now. Not for incident triage from logs and metrics (aws:cloudwatch-investigation), Well-Architected or cost review (aws:architecture-review), or creating, changing, or deleting resources.
+description: Answer questions about live AWS resources with read-only AWS CLI commands (describe, list, and named get calls) across EC2, Lambda, ECS/EKS, S3, RDS, DynamoDB, IAM, VPC, and related services, using the user's existing profile or SSO session. Reads by default; mutating calls run only when the user asks for the change, and secret values are never printed. Use when asked what exists in an AWS account or region, how a resource is configured, or what state it is in now. Not for incident triage from logs and metrics (aws:cloudwatch-investigation), Well-Architected or cost review (aws:architecture-review), or creating, changing, or deleting resources.
 ---
 
 # AWS resource query
@@ -65,10 +65,10 @@ This list is a sample. Treat any unlisted call the same way.
 
 ## AWS MCP Server
 
-When the `aws-mcp` tools are loaded (`mcp__plugin_aws_aws-mcp__*`), this skill's rules (read-only, project output, never print secrets) take precedence over the server's own instruction to prefer its tools and avoid the AWS CLI. The server does not know this skill's deny list, and nothing else in the plugin enforces it.
+When the `aws-mcp` tools are loaded (`mcp__plugin_aws_aws-mcp__*`), this skill's rules (read-only by default, project output, never print secrets) take precedence over the server's own instruction to prefer its tools and avoid the AWS CLI. The server does not know this skill's deny list, and nothing else in the plugin enforces it.
 
 - Run live reads with the AWS CLI and a `--query` projection, as above.
-- If you use `aws___run_script`, make only read-only calls and project fields inside the script. Never return a whole response for Lambda, ECS, CloudFormation, or EC2 user data. Never call a secret-reading, data-reading, or mutating operation unless the user asked for it. Each call shows the user a permission prompt with the code.
+- If you use `aws___run_script`, make read-only calls and project fields inside the script. Never return a whole response for Lambda, ECS, CloudFormation, or EC2 user data. Never call a secret-reading or data-reading operation unless the user asked for it. Write (mutating) calls through `aws___run_script` are allowed when the user asks for that change, or has allowed the tool for writes (e.g. an `allow` rule for `mcp__plugin_aws_aws-mcp__aws___run_script`, or tells you to proceed). Rules for writes: scope to exactly the requested change; state the account/profile, region, and resources first; show the exact operations (the script) before running; use DryRun where the API supports it (EC2) for risky changes; confirm destructive or irreversible steps (delete, terminate, overwrite, IAM/permission changes, public exposure) explicitly even if writes are allowed in general; afterwards verify with a read and report what changed. Never print secrets in output regardless. Each call shows the user a permission prompt with the code.
 - The documentation and region tools (`search_documentation`, `read_documentation`, `retrieve_skill`, `list_regions`, `get_regional_availability`) are fine to use.
 - `references/aws-mcp.md` has the tool list, the security model, and sign-in setup.
 
