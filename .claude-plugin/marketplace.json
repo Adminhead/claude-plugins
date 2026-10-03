@@ -15,13 +15,6 @@
       "category": "development"
     },
     {
-      "name": "secret-stash",
-      "source": "./plugins/secret-stash",
-      "description": "Replaces secrets with stable IDs before they reach the API, and restores real values in tool arguments and on-screen text.",
-      "version": "0.3.0",
-      "category": "security"
-    },
-    {
       "name": "ripgrep",
       "source": "./plugins/ripgrep",
       "description": "Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context.",

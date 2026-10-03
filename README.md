@@ -1,11 +1,10 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 21 plugins. Install one with `claude plugin install <plugin>@adminhead`.
+Claude Code plugin marketplace `adminhead`. It lists 20 plugins. Install one with `claude plugin install <plugin>@adminhead`.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
 | `example` | Template plugin showing a skill and a function hook. Copy it to start a new plugin. | [plugins/example](plugins/example) |
-| `secret-stash` | Replaces secrets with stable IDs before they reach the API, and restores real values in tool arguments and on-screen text. | [docs](docs/plugins/secret-stash.md) |
 | `ripgrep` | Teaches Claude Code to search with ripgrep, and adds code-search guidelines to every conversation's context. | [docs](docs/plugins/ripgrep.md) |
 | `git` | Git skills: focused commits, branches, history rewrites and recovery, and worktrees. | [docs](docs/plugins/git.md) |
 | `github` | GitHub skills: issues, issue breakdown, triage, pull requests and review comments, releases, repository setup, code security, Actions, and Dependabot. | [docs](docs/plugins/github.md) |

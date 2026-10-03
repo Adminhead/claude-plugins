@@ -1,6 +1,6 @@
 # secret-stash — spec and plan
 
-Status: implemented and smoke-tested, 2026-10-01. Built on Claude Code function hooks, engine 2.1.285.
+Status: removed from the repo 2026-10-03 (false positives on ordinary source code outweighed the benefit; see git history). Previously implemented and smoke-tested, 2026-10-01. Built on Claude Code function hooks, engine 2.1.285.
 
 ## Goal
 

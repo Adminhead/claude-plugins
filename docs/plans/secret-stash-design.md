@@ -1,6 +1,6 @@
 # secret-stash — design
 
-Status: records the pre-implementation design. The code supersedes its signatures (windowing was removed, `putAll` now accepts short values, and `VAULT` is local to each hook file).
+Status: plugin removed from the repo 2026-10-03; kept as history. Records the pre-implementation design. The removed code superseded its signatures (windowing was removed, `putAll` now accepts short values, and `VAULT` is local to each hook file).
 
 Companion to `secret-stash.md`. `T` means the engine's `claude-code.d.ts` (2.1.285) at
 `/tmp/claude-1000/bundled-skills/2.1.285/d2470fe1888144f9727974749c457873/plugin-authoring/types/claude-code.d.ts`.
