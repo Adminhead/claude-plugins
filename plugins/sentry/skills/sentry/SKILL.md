@@ -1,11 +1,11 @@
 ---
 name: sentry
-description: Instrument apps with official Sentry SDKs. Use when adding or reviewing Sentry.init / sentry_sdk.init / sentry.Init, DSN config, @sentry/* or sentry-sdk / sentry-go packages, error capture, tracing (spans, sampling, propagation, OpenTelemetry), structured logs, application metrics, cron monitors and check-ins, source maps, or SDK upgrades. Not for querying issues, events, or releases, or other Sentry API work; use the Sentry MCP tools (from sentry-mcp or sentry-mcp-self-hosted, if enabled) or sentry-cli:sentry-cli for that.
+description: Instrument apps with official Sentry SDKs. Use when adding or reviewing Sentry.init / sentry_sdk.init / sentry.Init, DSN config, @sentry/* or sentry-sdk / sentry-go packages, error capture, tracing (spans, sampling, propagation, OpenTelemetry), structured logs, application metrics, cron monitors and check-ins, source maps, or SDK upgrades. Not for querying issues, events, or releases, or other Sentry API work; use the Sentry MCP tools (from sentry-mcp or sentry-mcp-self-hosted, if enabled) or sentry-cli:sentry-cli, if installed, for that.
 ---
 
 # Sentry SDK instrumentation
 
-Application-side work with official Sentry SDKs. It covers setup, configuration, errors, tracing, structured Logs, application metrics, and Crons. Querying issues or events, managing releases, alerts, dashboards, and projects belong to the Sentry MCP tools (`mcp__plugin_sentry-mcp_sentry__*` or `mcp__plugin_sentry-mcp-self-hosted_sentry__*`, from the `sentry-mcp` or `sentry-mcp-self-hosted` plugin, if enabled) or, otherwise, the `sentry-cli:sentry-cli` skill.
+Application-side work with official Sentry SDKs. It covers setup, configuration, errors, tracing, structured Logs, application metrics, and Crons. Querying issues or events, managing releases, alerts, dashboards, and projects belong to the Sentry MCP tools (`mcp__plugin_sentry-mcp_sentry__*` or `mcp__plugin_sentry-mcp-self-hosted_sentry__*`, from the `sentry-mcp` or `sentry-mcp-self-hosted` plugin, if enabled) or, otherwise, the `sentry-cli:sentry-cli` skill, if installed.
 
 ## Get current docs first
 
