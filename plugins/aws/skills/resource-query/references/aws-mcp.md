@@ -7,7 +7,7 @@ The plugin declares the official AWS MCP Server as `aws-mcp` (`https://aws-mcp.u
 The server's `initialize` response says to prefer its tools and "Do NOT use the Bash tool to run the AWS CLI". That instruction does not know the deny list or the `--query` rule in `SKILL.md`. In this plugin the skills win:
 
 - Live reads use the AWS CLI with `--profile`, `--region` and a `--query` projection.
-- `aws___run_script` is for read-only operations, with the script returning only the fields needed. See the security model below.
+- `aws___run_script` is read-only by default, with the script returning only the fields needed. Writes (mutating calls) run only when the user asks for that change, under the rules in `SKILL.md` Changes section. See the security model below.
 - The documentation and region tools need no special care.
 
 ## Tools

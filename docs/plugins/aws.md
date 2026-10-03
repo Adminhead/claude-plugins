@@ -80,7 +80,7 @@ Many allowed calls return secrets in their full output, for example Lambda `Envi
 
 ### `aws:architecture-review`
 
-- It never changes infrastructure and never creates GitHub issues unless you ask. It drafts issue titles and bodies for your review first.
+- It changes infrastructure only when you ask. It never creates GitHub issues unless you ask. It drafts issue titles and bodies for your review first.
 - It does not run `cdk synth`, `terraform plan`, or `sam build`, because they can execute project code and call AWS. It reads the sources and an existing `cdk.out` directory instead.
 - A whole-account sweep needs your agreement. By default it narrows to the workload by tag or stack.
 

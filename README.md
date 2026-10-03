@@ -34,7 +34,7 @@ Claude Code plugin marketplace `adminhead`. It lists 31 plugins. Install one wit
 | `api` | Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers. | [docs](docs/plugins/api.md) |
 | `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
-| `aws` | AWS skills: read-only resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
+| `aws` | AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
 
 ## Layout
 

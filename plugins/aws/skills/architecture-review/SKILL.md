@@ -7,7 +7,7 @@ description: Review a workload against the six AWS Well-Architected pillars and 
 
 Assess a workload's design against the Well-Architected Framework (operational excellence, security, reliability, performance efficiency, cost optimization, sustainability) and find where it spends more than it needs to. The review is a conversation about trade-offs, not a compliance audit, so report evidence and cost of each finding and let the owner decide.
 
-This skill reads and reports. It never changes infrastructure and never creates issues unless the user asks.
+This skill reads and reports. It changes infrastructure only when the user asks (following `aws:resource-query` Changes rules). It never creates issues unless the user asks.
 
 ## Procedure
 
