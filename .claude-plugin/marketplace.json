@@ -256,6 +256,13 @@
       "description": "AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server.",
       "version": "0.2.1",
       "category": "development"
+    },
+    {
+      "name": "usage-band",
+      "source": "./plugins/usage-band",
+      "description": "A band above the prompt showing context usage by category and the 5-hour and weekly plan limits, collapsible to one line. Requires Claude Code 2.1.289 or later.",
+      "version": "0.1.0",
+      "category": "productivity"
     }
   ],
   "renames": {

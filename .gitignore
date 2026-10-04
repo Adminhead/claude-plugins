@@ -3,3 +3,5 @@
 __pycache__/
 .pytest_cache/
 plugins/*/evals/results/
+plugins/*/.claude-plugin/types/
+plugins/*/tsconfig.json

@@ -1,6 +1,6 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 31 plugins. Install one with `claude plugin install <plugin>@adminhead`.
+Claude Code plugin marketplace `adminhead`. It lists 32 plugins. Install one with `claude plugin install <plugin>@adminhead`.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
@@ -35,6 +35,7 @@ Claude Code plugin marketplace `adminhead`. It lists 31 plugins. Install one wit
 | `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
 | `aws` | AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
+| `usage-band` | A band above the prompt showing context usage by category and the 5-hour and weekly plan limits, collapsible to one line. Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/usage-band.md) |
 
 ## Layout
 
