@@ -263,6 +263,13 @@
       "description": "A band above the prompt showing context usage by category and the 5-hour and weekly plan limits, collapsible to one line. Requires Claude Code 2.1.289 or later.",
       "version": "0.1.0",
       "category": "productivity"
+    },
+    {
+      "name": "git-line",
+      "source": "./plugins/git-line",
+      "description": "A status line under the prompt showing the working directory, git branch, and git status. Requires Claude Code 2.1.289 or later.",
+      "version": "0.1.0",
+      "category": "productivity"
     }
   ],
   "renames": {
