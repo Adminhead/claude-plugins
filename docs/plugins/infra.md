@@ -89,24 +89,82 @@ Rules that apply across skills:
 
 ## Ops guard
 
-The plugin registers a `PreToolUse` hook on Bash (`scripts/cloud-ops-guard.py`, Python 3 standard library only). It parses each command, splits compound commands into segments, and sees through `VAR=` prefixes, `env`, `sudo`, `mise exec --`, and `mise run tofu <env> <subcommand>`. It covers `tofu`, `terraform`, `terragrunt` (including `run --all`), and `aws`.
+The plugin registers a `PreToolUse` hook on Bash (`scripts/cloud-ops-guard.py`, Python 3 standard library only, 10-second timeout). It covers `tofu`, `terraform`, `terragrunt`, and `aws`.
+
+| Decision | When |
+| --- | --- |
+| allow | The whole command is one of the exact forms in the allowlist |
+| deny | A best-effort parse finds an unsafe apply, a destroy, an import, or state surgery, or a subagent runs a credentialed command without the brief marker |
+| ask | The parse finds a guarded tool it cannot check |
+| no output | Anything else, so the normal permission flow applies |
+
+### Allowlist
+
+An allow skips the permission prompt, so it rests on an exact grammar instead of a parser. The command may use only letters, digits, and `_ . / = : @ , + -`, with single spaces between words. Quotes, `$`, backticks, redirects, separators, globs, comments, and newlines all rule allow out.
+
+| Prefix | Then |
+| --- | --- |
+| `tofu` or `terraform`, optionally `-chdir=<path>` | a subcommand from the next table |
+| `mise exec -- tofu` or `mise exec -- terraform`, optionally `-chdir=<path>` | a subcommand |
+| `mise run tofu <env>`, with one lowercase environment word | a subcommand |
+| `aws` | `--version`, or `help` as the last of at most three lowercase words (`aws ec2 help`) |
+
+| Subcommand | Arguments |
+| --- | --- |
+| `plan`, `validate`, `fmt`, `init` | Single-word flags only (`-flag` or `-flag=value`). `-out=` must name `tfplan` or `<name>.tfplan` |
+| `state list`, `state show` | Flags, then resource addresses. `state show` takes exactly one |
+| `version`, `-version`, `--version` | Flags only |
+
+Never allowed:
+
+- `-migrate-state`, `-force-copy`, `-from-module`, `-generate-config-out`, and `-show-sensitive`.
+- `VAR=` prefixes, since `PATH=` or `LD_PRELOAD=` can change what runs.
+- `terragrunt`, whose flags take separate values, so no exact grammar fits it.
+- `mise run` flags and `:::` task chains.
+
+### Deny and ask
+
+The deny check is best-effort. It splits compound commands and sees through `VAR=` prefixes, `env`, `sudo`, `mise`, shell keywords such as `if` and `do`, and the wrappers Claude Code strips before matching allow rules (`timeout`, `time`, `nice`, `nohup`, `stdbuf`, `command`, `builtin`, and `noglob`).
 
 | Command | Decision |
 | --- | --- |
-| `apply <file>` (a saved plan), `plan`, `validate`, `fmt`, `init`, `output`, `state list`, `state show` | allow, only when every segment is safe and the command has no `$()`, backticks, redirects, or heredocs |
-| `apply` without a saved plan, interactive or `-auto-approve` | deny: save a plan with `-out`, then apply that file |
+| `apply` with `-auto-approve` or `-destroy`, or without one literal plan file as its last argument | deny: save a plan, review it, then apply that file |
 | `destroy`, `import`, `state rm`, `state mv`, `state push`, `state replace-provider` | deny, with the safe alternative in the reason |
-| `aws` (except `--version` and `help`) or `tofu`/`terragrunt plan`, inside a subagent | deny unless the subagent's brief has a whole line `ALLOW: cloud-ops` |
-| A guarded tool inside `$()`, backticks, `bash -c`, `eval`, `xargs`, or a command the guard cannot classify | ask |
-| Anything that does not mention these tools | no output, so the normal permission flow applies |
+| Any of those subcommand words anywhere in a segment, so a flag value cannot hide the real one (`--working-dir plan destroy`) | deny |
+| `taint`, `refresh`, `workspace`, `console`, `test`, `show`, an unknown subcommand, or a never-allowed flag | ask |
+| A guarded tool inside `$()`, backticks, `bash -c`, `eval`, `xargs`, `env -S`, or `mise exec -c`, or after a command the guard does not know (`op run --`) | ask |
+| A variable as the command or in a guarded command's arguments, an operator such as `>\|` or `<(`, or a second guarded tool in one segment | ask |
 
-The strictest result wins: any deny denies the whole command, then any ask. A command that mixes a safe segment with an unrelated one (`cd infra && tofu plan`) gets no decision, because an allow would approve the whole string. If the guard crashes or gets malformed input, it answers `ask`.
+The strictest result wins. Any deny denies the whole command, then any ask asks. If the guard crashes or gets malformed input, it answers `ask`.
 
-The `ALLOW: cloud-ops` line is a marker the model writes into a subagent brief. It is not user consent, and a model can write it for any task. The guard finds the subagent by `agent_id` and reads the first user message from its transcript (`<session>/subagents/agent-<id>.jsonl` beside the main transcript). If that file cannot be read, the guard asks instead.
+### Heredocs
 
-The guard is a guardrail, not a sandbox. An encoded payload, a script file, or a variable that expands to a command can evade it, and a mod's `tool.check` can override a hook block.
+A heredoc body is data, so the guard drops it before parsing. A runbook written with `cat > runbook.md <<'EOF'`, or a commit message passed through `"$(cat <<'EOF' ...)"`, gets no decision even when it mentions `tofu destroy`. Three cases are still checked:
 
-Replace the blanket `Bash(mise run tofu:*)` allow rule in the project's `settings.local.json`. That rule approves `-auto-approve` too. A hook decision takes precedence over a settings allow rule, so the guard still denies it, but a narrower rule such as `Bash(mise run tofu * plan:*)` states the intent. Edit that file yourself. The plugin never changes settings.
+- A body that mentions a guarded tool and reaches a shell or interpreter (`cat <<EOF | sh`, `bash <<EOF`, `python3 - <<EOF`) gets ask.
+- A body under an unquoted delimiter that holds `$(` or a backtick runs code, so the guard parses it as commands.
+- A body whose delimiter line never comes is parsed as commands.
+
+### Subagents
+
+Inside a subagent, `aws` (except `--version` and the help forms), `plan`, and `apply` of a saved plan are denied unless the brief has a whole line `ALLOW: cloud-ops`.
+
+- The marker is something the model writes into a brief. It is not user consent, and a model can write it for any task.
+- The guard finds the brief by `agent_id` in `<session>/subagents/agent-<id>.jsonl` beside the main transcript. It skips `isMeta` lines, reads the first plain user message, and reads at most 1 MB per line.
+- If the brief cannot be read or found, the guard asks.
+
+### Guard limits
+
+- Allow is strict, and deny is best-effort. The guard is a guardrail, not a sandbox.
+- An encoded payload, a script file, a variable or alias that expands to a command, or a wrapper the guard does not know can evade the deny check. A mod's `tool.check` can override a hook block.
+- If the hook times out or fails to start, the normal permission flow decides.
+- `plan`, `init`, and `validate` run provider plugins and `external` data sources from the configuration, so allowing them trusts the code in that directory. An allowed `mise run tofu` command likewise trusts the `tofu` task in `mise.toml`.
+- `apply` of a saved plan and `output` are never allowed, so both reach your normal permission prompt. Applying changes infrastructure, and `output -json` or `-raw` prints sensitive values. A saved plan can hold a `plan -destroy`, so review it before you approve the apply.
+- Settings deny and ask rules still apply over the guard's allow.
+
+### Settings
+
+Replace blanket allow rules such as `Bash(mise run tofu:*)` in the project's `settings.local.json`. The guard already allows the safe `mise run tofu` forms. A blanket rule approves every command the deny check misses, because a hook's ask or deny overrides an allow rule but its silence does not. Edit that file yourself. The plugin never changes settings.
 
 ## Limits
 
