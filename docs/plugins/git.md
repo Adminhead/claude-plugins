@@ -1,6 +1,6 @@
 # git
 
-Adds four Git skills. One plans and creates focused commits in the repository's own message convention, one names and creates branches, one edits and repairs history, and one manages `git worktree` checkouts. `git:commit` and `git:worktree` replace the user-level `git-*` skills. Version 0.2.0 added `git:branch` and `git:history`. Version 0.2.1 retuned the `git:commit` description so it also loads for message-only requests.
+Adds four Git skills. One plans and creates focused commits in the repository's own message convention, one names and creates branches, one edits and repairs history, and one manages `git worktree` checkouts. `git:commit` and `git:worktree` replace the user-level `git-*` skills. Version 0.2.0 added `git:branch` and `git:history`. Version 0.2.1 retuned the `git:commit` description so it also loads for message-only requests. Version 0.2.2 points push, PR, and merge requests to `github:ship`.
 
 ## What it adds
 
@@ -41,7 +41,7 @@ claude --plugin-dir plugins/git
 ## Limits
 
 - `git:commit` creates commits only. It does not push, amend, rebase, reset, stash, skip hooks, or change Git config. A dry-run or message-only request stages nothing.
-- `git:commit` is not for pushing or opening PRs (use `commit-commands:commit-push-pr`, if installed) or for rewriting history (use `git:history`).
+- `git:commit` is not for pushing, opening PRs, or merging (use `github:ship`, if installed) or for rewriting history (use `git:history`).
 - `git:branch` creates local branches freely. Pushing, renaming a shared branch, and deleting a branch need your approval. Uncommitted changes carry over to the new branch, so it asks before stashing or committing them.
 - `git:history` rewrites only commits that exist on your local or personal branch. It never rewrites `main`, a release branch, or anything others may have pulled, and uses `git revert` there.
 - `git:history` asks for explicit approval, with the exact command and what would be lost, before `git reset --hard`, `git clean`, `git restore` over changes, `git branch -D`, any force push, `git reflog expire`, `git gc --prune`, or a rebase of pushed commits. Approved force pushes use `--force-with-lease` with the expected sha, never bare `--force`.
