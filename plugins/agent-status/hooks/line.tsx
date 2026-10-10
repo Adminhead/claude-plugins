@@ -69,16 +69,19 @@ export function buildView(agents: AgentLike[], seen: Seen, tasks: Tasks, now: nu
   return { rows, more: live.length - rows.length, tasks: countTasks(tasks) }
 }
 
-// Applies one finished Task* tool call to the id -> status map. A failed call
-// changes nothing, and TaskList is the full truth, so it replaces the map.
+// Applies one finished Task* tool call to the id -> status map. A failed or
+// malformed call changes nothing, an update for an id not yet seen is
+// ignored, and TaskList is the full truth, so it replaces the map.
 export function applyTask(tasks: Tasks, tool: string, input: any, result: any): Tasks {
-  if (tool === 'TaskCreate' && result?.task?.id) return { ...tasks, [result.task.id]: 'pending' }
+  if (tool === 'TaskCreate' && typeof result?.task?.id === 'string') return { ...tasks, [result.task.id]: 'pending' }
   if (tool === 'TaskList' && Array.isArray(result?.tasks)) {
-    return Object.fromEntries(result.tasks.map((t: any) => [t.id, t.status]))
+    const ok = result.tasks.filter((t: any) => typeof t?.id === 'string' && typeof t.status === 'string')
+    return Object.fromEntries(ok.map((t: any) => [t.id, t.status]))
   }
-  if (tool === 'TaskUpdate' && result?.success && input?.taskId && input.status) {
-    const { [input.taskId]: _drop, ...rest } = tasks
-    return input.status === 'deleted' ? rest : { ...tasks, [input.taskId]: input.status }
+  const id = input?.taskId
+  if (tool === 'TaskUpdate' && result?.success && typeof id === 'string' && Object.hasOwn(tasks, id) && input.status) {
+    const { [id]: _drop, ...rest } = tasks
+    return input.status === 'deleted' ? rest : { ...tasks, [id]: input.status }
   }
   return tasks
 }

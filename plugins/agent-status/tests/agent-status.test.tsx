@@ -29,6 +29,7 @@ async function mountLine($: any, on: any, agents: () => unknown[], over: Record<
   on('tool.call', async (_$: any, e: any) => {
     if (e.tool === 'TaskCreate') return { result: { task: { id: e.subject, subject: e.subject } } }
     if (e.tool === 'TaskUpdate') return { result: { success: true, taskId: e.taskId, updatedFields: ['status'] } }
+    if (e.tool === 'TaskList') return { result: { tasks: [null, { id: 7 }, 'x'] } }
     return { result: {} }
   })
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -81,6 +82,12 @@ describe('applyTask', () => {
     expect(t).toEqual({ 1: 'completed', 2: 'pending' })
     t = applyTask(t, 'TaskUpdate', { taskId: '2', status: 'deleted' }, { success: true })
     expect(t).toEqual({ 1: 'completed' })
+  })
+
+  test('an update for an unseen id is ignored', async () => {
+    const t = { 1: 'pending' as const }
+    expect(applyTask(t, 'TaskUpdate', { taskId: '9', status: 'completed' }, { success: true })).toBe(t)
+    expect(applyTask(t, 'TaskUpdate', { taskId: 'constructor', status: 'completed' }, { success: true })).toBe(t)
   })
 
   test('a failed update changes nothing; TaskList replaces the map', async () => {
@@ -137,6 +144,14 @@ describe('line', () => {
     await $.tool.call({ tool: 'TaskUpdate', taskId: '2', status: 'deleted' })
     await clock.settle()
     expect(await text(ui)).toBe('agents w running <1m  tasks 1/1')
+  })
+
+  test('a malformed TaskList result passes through and the line still draws', async ($, on) => {
+    const { ui, clock } = await mountLine($, on, () => [agent('a', 'running', { name: 'w' })])
+    const out = await $.tool.call({ tool: 'TaskList' })
+    expect(out.result).toEqual({ tasks: [null, { id: 7 }, 'x'] })
+    await clock.settle()
+    expect(await text(ui)).toBe('agents w running <1m')
   })
 
   test('an untrusted description is cleaned and the line truncates', async ($, on) => {
