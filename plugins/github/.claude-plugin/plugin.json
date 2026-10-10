@@ -1,7 +1,7 @@
 {
   "name": "github",
-  "version": "0.4.0",
-  "description": "GitHub skills (issues, issue breakdown, triage, pull requests and review comments, shipping commits through merge, releases, repository setup, code security, Actions, Dependabot) plus the GitHub remote MCP server.",
+  "version": "0.5.0",
+  "description": "GitHub skills (issues, issue breakdown, triage, pull requests and review comments, shipping commits through merge, releases, repository setup, code security, Actions, Dependabot and its PR sweeps) plus the GitHub remote MCP server.",
   "author": {
     "name": "Buck Brady",
     "email": "bbrady145@gmail.com"

@@ -1,6 +1,6 @@
 ---
 name: dependabot
-description: Configure, review, and troubleshoot GitHub Dependabot version and security updates. Use when editing .github/dependabot.yml, adding ecosystems, groups, ignore/allow rules, or private registries, or diagnosing missing or unexpected Dependabot PRs and alerts. Not for general GitHub Actions workflows (github:actions) or merging Dependabot PRs.
+description: Configure, review, and troubleshoot GitHub Dependabot version and security updates. Use when editing .github/dependabot.yml, adding ecosystems, groups, ignore/allow rules, or private registries, or diagnosing missing or unexpected Dependabot PRs and alerts. Not for general GitHub Actions workflows (github:actions) or merging Dependabot PRs (`github:dependabot-prs`).
 ---
 
 # GitHub Dependabot

@@ -34,7 +34,7 @@ Use the argument if given. Otherwise infer it from the wording and take the lowe
    - Pick the method from `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`, preferring squash.
    - Run `gh pr merge --<method> --delete-branch`. A branch-protection refusal is a stop, not a reason to retry with flags.
    - Switch to the default branch and fast-forward it (`git switch <default>`, `git pull --ff-only`). In a linked worktree where the default branch is checked out elsewhere, skip the switch and report it. Don't remove the worktree.
-6. **On failed checks,** stop. Summarize `gh run view <id> --log-failed` and offer to fix it (`github:actions`, if installed, for workflow problems).
+6. **On failed checks,** stop shipping. Hand the failed run to the failed-run procedure in `github:actions` (if installed), which classifies the failure and fixes, reruns, and watches it. Without it, summarize `gh run view <id> --log-failed` and offer to fix it. Resume at step 5 once checks pass.
 
 ## Report
 
