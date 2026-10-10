@@ -1,5 +1,5 @@
 import type { Register } from 'claude-code'
-import { parseStatus, placeOf, renderLine, type Snapshot } from './line'
+import { parseNumstat, parseStatus, placeOf, renderLine, type Snapshot } from './line'
 
 let snap: Snapshot | null = null
 let lastError: string | null = null
@@ -13,7 +13,14 @@ async function refresh($: any) {
     } else {
       const status = await $.process.run(['git', 'status', '--porcelain=v2', '--branch'])
       if (status.exitCode !== 0) throw new Error(status.stderr.trim())
-      snap = { place: placeOf(cwd, top.stdout.trim()), git: parseStatus(status.stdout) }
+      // An unborn branch has no HEAD to diff against.
+      let lines = { added: 0, deleted: 0 }
+      if (!status.stdout.includes('# branch.oid (initial)')) {
+        const diff = await $.process.run(['git', 'diff', 'HEAD', '--numstat'])
+        if (diff.exitCode !== 0) throw new Error(diff.stderr.trim())
+        lines = parseNumstat(diff.stdout)
+      }
+      snap = { place: placeOf(cwd, top.stdout.trim()), git: { ...parseStatus(status.stdout), ...lines } }
     }
     lastError = null
   } catch (err) {

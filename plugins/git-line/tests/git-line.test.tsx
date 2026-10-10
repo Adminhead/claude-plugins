@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { parseStatus, placeOf } from '../hooks/line'
+import { parseNumstat, parseStatus, placeOf } from '../hooks/line'
 
 const TOP = '/home/u/src/repo'
 
@@ -18,10 +18,12 @@ const STATUS = [
   '',
 ].join('\n')
 
+const NUMSTAT = '10\t2\thooks/a.ts\n3\t0\thooks/b.ts\n-\t-\tlogo.png\n'
+
 const CLEAN = '# branch.oid 0123456789abcdef\n# branch.head main\n'
 const DETACHED = '# branch.oid 0123456789abcdef\n# branch.head (detached)\n'
 
-type Git = { top: number; status?: string; statusExit?: number } | Error
+type Git = { top: number; status?: string; statusExit?: number; diff?: string } | Error
 
 // Mounts the line on a session in `cwd` whose git answers per `git`.
 async function mountLine($: any, on: any, cwd: string, git: () => Git, logs: string[] = []) {
@@ -32,6 +34,7 @@ async function mountLine($: any, on: any, cwd: string, git: () => Git, logs: str
     if (e.argv[1] === 'rev-parse') {
       return { value: { exitCode: g.top, stdout: g.top === 0 ? `${TOP}\n` : '', stderr: g.top ? 'fatal: not a git repository' : '' } }
     }
+    if (e.argv[1] === 'diff') return { value: { exitCode: 0, stdout: g.diff ?? '', stderr: '' } }
     return { value: { exitCode: g.statusExit ?? 0, stdout: g.status ?? '', stderr: g.statusExit ? 'fatal: bad index' : '' } }
   })
   // Stands in for the engine's hint line beneath the mod.
@@ -78,6 +81,13 @@ describe('parseStatus', () => {
   })
 })
 
+describe('parseNumstat', () => {
+  test('sums added and deleted lines, skipping binary files', async () => {
+    expect(parseNumstat(NUMSTAT)).toEqual({ added: 13, deleted: 2 })
+    expect(parseNumstat('')).toEqual({ added: 0, deleted: 0 })
+  })
+})
+
 describe('placeOf', () => {
   test('repo root, subdirectory, and outside a repo', async () => {
     expect(placeOf(TOP, TOP)).toBe('repo')
@@ -89,10 +99,10 @@ describe('placeOf', () => {
 
 describe('line', () => {
   test('draws under the engine hint with place, branch, and counts', async ($, on) => {
-    const ui = await mountLine($, on, `${TOP}/hooks`, () => ({ top: 0, status: STATUS }))
+    const ui = await mountLine($, on, `${TOP}/hooks`, () => ({ top: 0, status: STATUS, diff: NUMSTAT }))
     const r = await rows(ui)
     expect(r.length).toBe(2)
-    expect(r[1]).toBe('repo/hooks  ⎇ main ↑2 ↓1  !1 +3 ~2 ?2')
+    expect(r[1]).toBe('repo/hooks  ⎇ main ↑2 ↓1  conflict 1 staged 3 mod 2 new 2  lines +13 -2')
   })
 
   test('a clean repo shows a check', async ($, on) => {
