@@ -21,7 +21,7 @@ Never port an API, option, or flush call from one SDK to another. Go's metrics A
 
 ## Check the project profile first
 
-Before choosing signals, scrubbing, breadcrumbs, sample rates, or DSN handling, look for a `## Sentry` section in the project's `CLAUDE.md` or `AGENTS.md`, and follow it. Without one, use the generic defaults and offer to write the section. See [references/profile.md](references/profile.md).
+Before writing any Sentry code, search the project's `CLAUDE.md` and `AGENTS.md` files for a `## Sentry` heading, for example with Grep on `^## Sentry`, and read the section. It sets signals, scrubbing, breadcrumbs, sample rates, and DSN handling, and it overrides the generic defaults, because it records choices the project already made. Without one, use the generic defaults and offer to write the section. See [references/profile.md](references/profile.md).
 
 ## Rules for every topic
 
