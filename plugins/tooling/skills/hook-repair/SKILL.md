@@ -37,7 +37,7 @@ Fix at the cause. A type error means fixing the types, and a failing test means 
 
 ## Do not
 
-- Suppress a rule: no `# noqa`, `# type: ignore`, `eslint-disable`, `#[allow]`, `nolint`, or entries in `ignore`, `exclude`, or `per-file-ignores`. Add one only when the user asks, or when the finding is a false positive you can explain, and then state it in the report.
+- Suppress a rule: no `# noqa`, `# type: ignore`, `eslint-disable`, `#[allow]`, `nolint`, or entries in `ignore`, `exclude`, or `per-file-ignores`. Add one only when the user asks for it, and then name it in the report. If a finding looks like a false positive, say why and ask.
 - Weaken a test (loosened assertion, skip, deleted case) to turn a hook green.
 - Bulk-reformat. Run formatters on the reported files, not the repo, because unrelated churn buries the real change and breaks blame.
 - Skip the hook: no `--no-verify`, `SKIP=<id>`, or edits to the hook config to disable or loosen it.
