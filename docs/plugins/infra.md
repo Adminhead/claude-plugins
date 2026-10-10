@@ -87,6 +87,27 @@ Rules that apply across skills:
 - `infra:docker` does not print `docker inspect` or `docker compose config` output wholesale, and never writes a secret literal into a Dockerfile, committed Compose file, or command line.
 - `infra:homelab-network` requires console or out-of-band access before changing management VLANs, trunk ports, default firewall policy, or DHCP and DNS. It gives vendor syntax only for a confirmed platform and firmware, and never prints or stores private keys, preshared keys, or admin passwords.
 
+## Ops guard
+
+The plugin registers a `PreToolUse` hook on Bash (`scripts/cloud-ops-guard.py`, Python 3 standard library only). It parses each command, splits compound commands into segments, and sees through `VAR=` prefixes, `env`, `sudo`, `mise exec --`, and `mise run tofu <env> <subcommand>`. It covers `tofu`, `terraform`, `terragrunt` (including `run --all`), and `aws`.
+
+| Command | Decision |
+| --- | --- |
+| `apply <file>` (a saved plan), `plan`, `validate`, `fmt`, `init`, `output`, `state list`, `state show` | allow, only when every segment is safe and the command has no `$()`, backticks, redirects, or heredocs |
+| `apply` without a saved plan, interactive or `-auto-approve` | deny: save a plan with `-out`, then apply that file |
+| `destroy`, `import`, `state rm`, `state mv`, `state push`, `state replace-provider` | deny, with the safe alternative in the reason |
+| `aws` (except `--version` and `help`) or `tofu`/`terragrunt plan`, inside a subagent | deny unless the subagent's brief has a whole line `ALLOW: cloud-ops` |
+| A guarded tool inside `$()`, backticks, `bash -c`, `eval`, `xargs`, or a command the guard cannot classify | ask |
+| Anything that does not mention these tools | no output, so the normal permission flow applies |
+
+The strictest result wins: any deny denies the whole command, then any ask. A command that mixes a safe segment with an unrelated one (`cd infra && tofu plan`) gets no decision, because an allow would approve the whole string. If the guard crashes or gets malformed input, it answers `ask`.
+
+The `ALLOW: cloud-ops` line is a marker the model writes into a subagent brief. It is not user consent, and a model can write it for any task. The guard finds the subagent by `agent_id` and reads the first user message from its transcript (`<session>/subagents/agent-<id>.jsonl` beside the main transcript). If that file cannot be read, the guard asks instead.
+
+The guard is a guardrail, not a sandbox. An encoded payload, a script file, or a variable that expands to a command can evade it, and a mod's `tool.check` can override a hook block.
+
+Replace the blanket `Bash(mise run tofu:*)` allow rule in the project's `settings.local.json`. That rule approves `-auto-approve` too. A hook decision takes precedence over a settings allow rule, so the guard still denies it, but a narrower rule such as `Bash(mise run tofu * plan:*)` states the intent. Edit that file yourself. The plugin never changes settings.
+
 ## Limits
 
 - `infra:helm` has one tool grant. Its `allowed-tools` entry covers only `bash ${CLAUDE_SKILL_DIR}/scripts/validate-chart.sh *`. The script runs `helm lint --strict`, renders the chart per values file, and runs `kubeconform` if installed. Without `kubeconform` it prints `SKIP`. It changes nothing.
@@ -102,4 +123,4 @@ Rules that apply across skills:
 | Disable | `claude plugin disable infra@adminhead` |
 | Uninstall | `claude plugin uninstall infra@adminhead` |
 
-The plugin ships skills and one script inside the Helm skill, so both commands remove everything. Start a new session to be sure they are gone.
+The plugin ships skills, a script inside the Helm skill, and the ops guard hook, so both commands remove everything. Start a new session to be sure they are gone.

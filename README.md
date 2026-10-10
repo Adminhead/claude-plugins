@@ -33,7 +33,7 @@ Claude Code plugin marketplace `adminhead`. It lists 33 plugins. Install one wit
 | `tooling` | Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit. | [docs](docs/plugins/tooling.md) |
 | `observability` | Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems. | [docs](docs/plugins/observability.md) |
 | `api` | Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers. | [docs](docs/plugins/api.md) |
-| `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform. | [docs](docs/plugins/infra.md) |
+| `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, and Terraform, plus a guard hook for unsafe `tofu` and `aws` commands. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
 | `aws` | AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
 | `usage-band` | A band above the prompt showing context usage by category and the 5-hour and weekly plan limits, collapsible to one line. Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/usage-band.md) |
