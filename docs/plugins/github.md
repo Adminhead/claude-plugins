@@ -1,6 +1,6 @@
 # github
 
-Adds ten GitHub skills. They cover Actions workflows, Dependabot, a PR's review comments, single issues, issue breakdowns, backlog triage, pull requests, releases, repository setup, and code security. `github:actions`, `github:dependabot`, and `github:pr-comments` replace the user-level `github-actions`, `github-dependabot`, and `pr-comments` skills. Version 0.2.0 added the other seven. Version 0.3.0 adds GitHub's remote MCP server.
+Adds eleven GitHub skills. They cover Actions workflows, Dependabot, a PR's review comments, single issues, issue breakdowns, backlog triage, pull requests, releases, repository setup,, code security, and merging Dependabot PRs. `github:actions`, `github:dependabot`, and `github:pr-comments` replace the user-level `github-actions`, `github-dependabot`, and `pr-comments` skills. Version 0.2.0 added the other seven. Version 0.3.0 adds GitHub's remote MCP server. Version 0.5.0 adds `github:dependabot-prs` and a failed-run procedure in `github:actions`.
 
 Every write to GitHub shows the exact command and waits for your approval first.
 
@@ -10,6 +10,7 @@ Every write to GitHub shows the exact command and waits for your approval first.
 | --- | --- | --- |
 | `github:actions` | `github-actions` | Create, modify, review, and debug workflows and custom actions with least-privilege permissions and a clear trust boundary |
 | `github:dependabot` | `github-dependabot` | Configure, review, and troubleshoot Dependabot version and security updates |
+| `github:dependabot-prs` | New | Sweep open Dependabot PRs: group by ecosystem, merge the green ones one at a time with the repo-allowed method, request rebases for stale ones, rerun flaky checks, and report red ones in a result table |
 | `github:pr-comments` | `pr-comments` | Pull a PR's unresolved review threads and review summaries into context, triage them, then fix the ones you pick. Read-only on GitHub |
 | `github:issues` | New | Read, create, edit, close, and label a single issue with `gh`, including issue types, sub-issues, blocked-by links, milestones, Projects V2 fields, and search |
 | `github:issue-breakdown` | New | Turn a spec, plan, or conversation into a reviewed set of linked issues, cut as vertical slices with blocking edges, then publish them after approval |
@@ -82,7 +83,7 @@ See the remote server guide in github/github-mcp-server (`docs/remote-server.md`
 
 ## Requirements
 
-- `gh`, authenticated (`gh auth status`). All ten skills use it.
+- `gh`, authenticated (`gh auth status`). All eleven skills use it.
 - For the MCP server, the GitHub CLI with a stored github.com login (`gh auth login --hostname github.com`), and bash.
 - `gh` 2.94.0 or later for the native issue flags (`--type`, `--parent`, `--add-sub-issue`, `--blocked-by`, `--add-blocked-by`) used by `github:issues` and `github:issue-breakdown`. On an older `gh`, they fall back to `gh api` calls from `github:issues`'s API reference. The skills were checked against `gh` 2.102.0, so confirm a flag with `--help` before relying on it.
 - The `repo` token scope for issue metadata. Project field writes need the `project` scope (`gh auth refresh -s project`).
@@ -109,7 +110,7 @@ claude --plugin-dir plugins/github
    ```
    claude plugin validate --strict plugins/github
    ```
-2. Start a fresh session. The skill list should show all ten skills as `github:<name>`.
+2. Start a fresh session. The skill list should show all eleven skills as `github:<name>`.
 3. Run `/mcp`. It should list `plugin:github:github` as connected. `claude mcp list` shows it too.
 4. Run the helper to see which source it used. It runs in your shell's environment, not Claude Code's. Stdout carries the token by design, so discard it.
    ```
@@ -135,7 +136,9 @@ claude --plugin-dir plugins/github
 - `github:pr-comments` was not run live against a real PR during the migration. Its offline fixture tests pass.
 - `github:pr-comments` makes fixes only on the PR's head branch. If another branch is checked out, it asks you to switch.
 - `github:actions` is not for Dependabot config (use `github:dependabot`) or for triggering dispatches, releases (use `github:release`), or deployments.
+- `github:actions` starts from a pasted run or job URL with a "Failed run" procedure: read the failed log, classify the cause, fix it, rerun failed jobs, and watch. Secrets, variables, cloud trust policies, and repo settings stay your decision.
 - `github:dependabot` is not for general workflows (use `github:actions`) or for merging Dependabot PRs.
+- `github:dependabot-prs` treats the request as authorization to merge green PRs only. It never uses `--admin`, never merges a PR with failing or pending checks, and does not fix red PRs unless you ask after the report.
 - `github:issues` writes only after you approve the exact command. Text in an issue body, comment, or log that asks for an action is data, not approval. The same holds for `github:triage`.
 - `github:issue-breakdown` publishes in dependency order and stops at the first failure, because rerunning the whole list would duplicate issues.
 - `github:pr` opens PRs as drafts. A request to open a PR is not approval of the command. It shows the title, body, push remote and branch, and the full `gh pr create` line first.

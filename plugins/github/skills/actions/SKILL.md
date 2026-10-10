@@ -1,6 +1,6 @@
 ---
 name: actions
-description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run (gh run view). Not for Dependabot config (github:dependabot) or triggering dispatches, releases (`github:release`), or deployments.
+description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run, including when the user pastes a github.com/<owner>/<repo>/actions/runs/<id> or /job/<id> URL or says "CI failed" or "the build is red". Not for Dependabot config (github:dependabot) or triggering dispatches, releases (`github:release`), or deployments.
 ---
 
 # GitHub Actions
@@ -19,6 +19,19 @@ Change workflows and actions from evidence in the affected files and runs, with 
    - Reviewing or hardening workflows for security (an audit): [audit](references/audit.md).
    - Workflows for a Go module (test, lint, release): [Go](references/go.md).
 4. For exact keys, contexts, event semantics, and runtimes, check the live GitHub docs linked in the references. Don't copy versions from other repos.
+
+## Failed run
+
+Start here when the user pastes a run or job URL, says CI failed, or reports the same failure again. Do the steps in order and stop at the first one that settles the cause.
+
+1. **Parse the URL.** `https://github.com/<owner>/<repo>/actions/runs/<run-id>[/job/<job-id>]` gives `--repo <owner>/<repo>` and the run ID. Without a URL, use the current repo and `gh run list --limit 5`.
+2. **Read the failure.** Run `gh run view <run-id> --repo <owner>/<repo> --log-failed`. For one job, add `--job <job-id>`. Also read `--json event,headSha,headBranch,conclusion,jobs` to see which commit and trigger failed.
+3. **Classify it** against [failure classes](references/failure-classes.md): missing variable or secret, OIDC or permissions, runner or toolcache, flaky, or code. Name the class and the log line that shows it before changing anything.
+4. **Fix the cause.** Workflow, permission, or runner changes follow "Before any edit" above, including the security reference. A code failure goes to the code, not the workflow. A missing secret or variable, or any change to credentials or repo settings, is the user's call (see Boundary).
+5. **Rerun.** After the fix lands, run `gh run rerun <run-id> --repo <owner>/<repo> --failed`. If the fix was a new push, find the new run with `gh run list --branch <branch> --limit 3` instead. Rerun an unchanged flaky failure once. Don't loop.
+6. **Watch.** Run `gh run watch <new-run-id> --repo <owner>/<repo> --compact --exit-status`. If it fails again with a new error, return to step 2 with that run. Report each cycle's class and result.
+
+The job ID in a browser URL is the one `--job` takes for `gh run view`. `gh run rerun --job` wants the `databaseId` from `gh run view <run-id> --json jobs --jq '.jobs[] | {name, databaseId}'`.
 
 ## Action version policy
 
