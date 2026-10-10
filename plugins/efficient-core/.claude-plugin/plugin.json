@@ -1,7 +1,7 @@
 {
   "name": "efficient-core",
-  "version": "0.3.0",
-  "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, modernization, second-opinion review, anti-slop cleanup, and poka-yoke error-proofing, plus the Exa web search MCP server.",
+  "version": "0.4.0",
+  "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, modernization, second-opinion review, review-fix loops, plan execution, anti-slop cleanup, and poka-yoke error-proofing, plus the Exa web search MCP server.",
   "author": {
     "name": "Buck Brady",
     "email": "bbrady145@gmail.com"
