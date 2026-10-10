@@ -1,8 +1,8 @@
 # github
 
-Adds eleven GitHub skills. They cover Actions workflows, Dependabot, a PR's review comments, single issues, issue breakdowns, backlog triage, pull requests, releases, repository setup,, code security, and merging Dependabot PRs. `github:actions`, `github:dependabot`, and `github:pr-comments` replace the user-level `github-actions`, `github-dependabot`, and `pr-comments` skills. Version 0.2.0 added the other seven. Version 0.3.0 adds GitHub's remote MCP server. Version 0.5.0 adds `github:dependabot-prs` and a failed-run procedure in `github:actions`.
+Adds eleven GitHub skills. They cover Actions workflows, Dependabot, a PR's review comments, single issues, issue breakdowns, backlog triage, pull requests, releases, repository setup, code security, and merging Dependabot PRs. `github:actions`, `github:dependabot`, and `github:pr-comments` replace the user-level `github-actions`, `github-dependabot`, and `pr-comments` skills. Version 0.2.0 added the other seven. Version 0.3.0 adds GitHub's remote MCP server. Version 0.5.0 adds `github:dependabot-prs` and a failed-run procedure in `github:actions`.
 
-Every write to GitHub shows the exact command and waits for your approval first.
+Every write to GitHub shows the exact command and waits for your approval first. The one exception is `github:dependabot-prs`, which merges green Dependabot PRs on your request alone.
 
 ## What it adds
 

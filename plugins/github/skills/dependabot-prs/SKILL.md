@@ -16,11 +16,13 @@ Merge the open Dependabot PRs that are safe to merge, and report the rest. The u
 
 ## Steps
 
-1. **List.** Run `gh pr list --author "app/dependabot" --state open --json number,title,headRefName,mergeable,statusCheckRollup,url --limit 100`. Group by ecosystem, read from the title or branch (`dependabot/npm_and_yarn/...`, `dependabot/github_actions/...`, `dependabot/pip/...`). Show the grouped list before merging.
+1. **List.** Run `gh pr list --app dependabot --state open --json number,title,headRefName,mergeable,statusCheckRollup,url --limit 100`. Group by ecosystem, read from the title or branch (`dependabot/npm_and_yarn/...`, `dependabot/github_actions/...`, `dependabot/pip/...`). Show the grouped list before merging.
 2. **Pick the merge method.** Run `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed` and use the first allowed of squash, merge, rebase. Use it for every merge.
 3. **Merge one at a time.** For each PR, oldest first, security updates before version updates:
    - Re-read it just before merging: `gh pr view <n> --json state,mergeable,statusCheckRollup`. Earlier merges change the base.
-   - If every check passed (no checks configured counts as passing), run `gh pr merge <n> --<method> --delete-branch`. A refusal is a stop for that PR, not a reason to retry with other flags.
+   - Count `SUCCESS`, `NEUTRAL`, and `SKIPPED` conclusions as passing. `FAILURE`, `CANCELLED`, `TIMED_OUT`, or a check still running is not.
+   - If `mergeable` is `UNKNOWN`, GitHub is still computing it. Wait a few seconds, re-check, and don't merge until it reads `MERGEABLE`.
+   - If every check passed (no checks configured counts as passing) and the PR is `MERGEABLE`, run `gh pr merge <n> --<method> --delete-branch`. A refusal is a stop for that PR, not a reason to retry with other flags.
    - After each merge, go on to the next PR and re-check it from scratch. Don't merge from the initial listing.
 4. **Handle the rest, per PR:**
    - **Stale** (`mergeable` is `CONFLICTING`, or the branch is behind and the repo requires up-to-date branches): comment `@dependabot rebase` with `gh pr comment <n> --body "@dependabot rebase"`. Re-check it after the other PRs. If it is still not ready, report it.
