@@ -1,6 +1,6 @@
 ---
 name: pre-commit
-description: Set up and maintain commit-time hooks with prek (preferred) or pre-commit, using a pinned .pre-commit-config.yaml, installed Git shims, all-files runs, hook updates, and CI parity. Use when adding or fixing pre-commit hooks, running hooks across a repo, updating hook revisions, or wiring hooks into CI. Node repos that want Husky and lint-staged get a reference. Not for repos where devenv manages hooks (devenv:devenv), GitHub Actions authoring (github:actions), or deciding which linter to adopt.
+description: Set up and maintain commit-time hooks with prek (preferred) or pre-commit, using a pinned .pre-commit-config.yaml, installed Git shims, all-files runs, hook updates, and CI parity. Use when adding or configuring pre-commit hooks, running hooks across a repo, updating hook revisions, or wiring hooks into CI. Node repos that want Husky and lint-staged get a reference. Not for repairing a failing hook (`tooling:hook-repair`), repos where devenv manages hooks (devenv:devenv), GitHub Actions authoring (github:actions), or deciding which linter to adopt.
 ---
 
 # Commit-time hooks with prek or pre-commit

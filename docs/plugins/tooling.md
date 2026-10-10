@@ -1,6 +1,6 @@
 # tooling
 
-Adds two repo-tooling skills: creating or auditing an `.editorconfig` that agrees with the repo's formatters, and setting up commit-time hooks with prek or pre-commit.
+Adds three repo-tooling skills: creating or auditing an `.editorconfig` that agrees with the repo's formatters, setting up commit-time hooks with prek or pre-commit, and repairing a failing hook.
 
 ## What it adds
 
@@ -8,6 +8,7 @@ Adds two repo-tooling skills: creating or auditing an `.editorconfig` that agree
 | --- | --- |
 | `tooling:editorconfig` | Create or audit `.editorconfig` so it matches the formatters already in use (Prettier, ruff, gofmt, rustfmt), and add `.gitattributes` line-ending rules where needed |
 | `tooling:pre-commit` | Set up and maintain commit-time hooks with prek (preferred) or pre-commit: a pinned `.pre-commit-config.yaml`, installed Git shims, all-files runs, hook updates, and CI parity. Node repos that want Husky and lint-staged get a reference |
+| `tooling:hook-repair` | Repair a failing pre-commit or prek hook: rerun the exact hook, fix only what it reports (re-staging files a formatter rewrote), and rerun to confirm. Leaves the fix uncommitted |
 
 Sources: some ideas were adapted from third-party skill collections. They are credited in the Acknowledgements section of the repository README.
 
@@ -17,6 +18,7 @@ Sources: some ideas were adapted from third-party skill collections. They are cr
 | --- | --- |
 | `tooling:editorconfig` | `git`. Optional: the `editorconfig` CLI, and the repo's formatter in check mode (`prettier`, `ruff`, `gofmt`, `cargo fmt`) |
 | `tooling:pre-commit` | `prek` (preferred) or `pre-commit`, and `git`. The skill lists install options (`uv`, Homebrew, mise, npm, Nix) and says to pin a version |
+| `tooling:hook-repair` | `prek` or `pre-commit`, and `git` |
 
 ## Install
 
@@ -37,12 +39,13 @@ claude --plugin-dir plugins/tooling
    ```
    claude plugin validate --strict plugins/tooling
    ```
-2. Start a fresh session. The skill list should show `tooling:editorconfig` and `tooling:pre-commit`.
+2. Start a fresh session. The skill list should show `tooling:editorconfig`, `tooling:hook-repair`, and `tooling:pre-commit`.
 
 ## Safety
 
 - `tooling:pre-commit` does not commit unless you ask. It reports the tool and version used, the hooks added, whether `--all-files` passed, and anything left uncommitted.
 - It does not use `--no-verify` or `SKIP=<id>` to get past a failing hook unless you ask. It fixes the cause instead.
+- `tooling:hook-repair` fixes the code a hook reports. It does not add `noqa` or other ignores, weaken tests, bulk-reformat unrelated files, edit the hook config, or use `--no-verify` or `SKIP=`. It does not commit, and it leaves the staged set as it found it, apart from re-staging files a formatter rewrote.
 - It installs a pinned version and does not pipe an unpinned script into a shell.
 - It pins every hook `rev` to a tag, or to a full commit SHA with a `# frozen: <tag>` comment. Hooks the project does not already run in CI are new policy, so it lists them for you before adding them.
 - It stops if devenv owns the hooks (a `git-hooks` block in `devenv.nix`), because a second `prek install` would fight it. Use `devenv:devenv`, if installed.

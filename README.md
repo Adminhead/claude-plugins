@@ -30,7 +30,7 @@ Claude Code plugin marketplace `adminhead`. It lists 33 plugins. Install one wit
 | `playwright-cli` | Drive a headless, isolated browser from Bash with playwright-cli. | [docs](docs/plugins/playwright-cli.md) |
 | `termwright` | Drive and test terminal UI apps with the termwright CLI. | [docs](docs/plugins/termwright.md) |
 | `accessibility` | Accessibility skills: manual screen-reader and keyboard testing of web journeys. | [docs](docs/plugins/accessibility.md) |
-| `tooling` | Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit. | [docs](docs/plugins/tooling.md) |
+| `tooling` | Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit, and repairing failing hooks. | [docs](docs/plugins/tooling.md) |
 | `observability` | Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems. | [docs](docs/plugins/observability.md) |
 | `api` | Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers. | [docs](docs/plugins/api.md) |
 | `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, Terraform, OpenTofu, Terragrunt, and Ansible. | [docs](docs/plugins/infra.md) |

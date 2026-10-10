@@ -19,13 +19,17 @@ Sentry APIs, option names, defaults, and version gates change often. The referen
 
 Never port an API, option, or flush call from one SDK to another. Go's metrics API is `sentry.NewMeter(ctx)`, not `Sentry.metrics`. Zerolog sends events, not Logs. Absence from the docs means "undocumented", not "impossible", so say so and stop rather than invent.
 
+## Check the project profile first
+
+Before choosing signals, scrubbing, breadcrumbs, sample rates, or DSN handling, look for a `## Sentry` section in the project's `CLAUDE.md` or `AGENTS.md`, and follow it. Without one, use the generic defaults and offer to write the section. See [references/profile.md](references/profile.md).
+
 ## Rules for every topic
 
 - **Initialize once per runtime**, as early as the platform guide says, and merge changes into the existing initializer. A second client, provider, or tracer is the usual cause of duplicates and missing data.
 - **One owner per signal.** Each error, span root, log record, metric, or check-in is emitted from exactly one place. Manual capture plus an automatic integration for the same failure is a duplicate.
 - **Telemetry never changes app behavior.** Don't swallow, rethrow, retry, or exit differently because of reporting, and let a missing DSN fail open.
 - **Keep data bounded.** Names, tags, and attributes should be stable, low-cardinality values like route templates, enums, and outcomes. IDs, emails, raw URLs, query strings, headers, bodies, and user input don't belong there.
-- **Scrubbing is server-side by default.** Keep sensitive values out at the call site and rely on Sentry's server-side scrubbing rules. Add client-side `beforeSend*` privacy filters only when the user asks. Noise and volume filters are a separate concern and fine to add.
+- **Scrubbing is server-side by default.** Keep sensitive values out at the call site and rely on Sentry's server-side scrubbing rules. Add client-side `beforeSend*` privacy filters only when the user or the project profile asks. Noise and volume filters are a separate concern and fine to add.
 - **Scope lifetime.** The global scope holds immutable deployment metadata only. Request, user, and job data go on the request, isolation, or event scope.
 - **No delivery guarantee.** SDKs buffer. A flush returning true, an event ID, or debug output proves an attempt only. Use flush/close only where the platform documents it, such as short-lived processes and shutdown.
 - **DSN vs tokens.** A DSN is a public routing identifier, and browser bundles ship it. `SENTRY_AUTH_TOKEN` (used for source-map and debug-symbol upload) is a real secret, so keep it server-side and out of client bundles.
@@ -38,6 +42,7 @@ Read only the references the task needs.
 
 | Task | Read |
 |---|---|
+| Project profile (`## Sentry` section), generic defaults, writing the section | [references/profile.md](references/profile.md) |
 | Install, init, framework routing, release/environment, source maps, debug symbols, upgrades, OTel coexistence, "no events arrive" | [references/setup.md](references/setup.md) |
 | Integrations, scopes and enrichment, sampling vs filtering, draining/shutdown | [references/configuration.md](references/configuration.md) |
 | Capturing exceptions or crashes, boundaries and middleware, expected errors, duplicates, fingerprints | [references/errors.md](references/errors.md) |

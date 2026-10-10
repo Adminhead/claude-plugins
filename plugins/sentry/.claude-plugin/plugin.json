@@ -1,6 +1,6 @@
 {
   "name": "sentry",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Instrument apps with official Sentry SDKs.",
   "author": {
     "name": "Buck Brady",

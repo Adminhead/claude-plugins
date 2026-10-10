@@ -10,14 +10,15 @@ Teaches Claude Code to instrument apps with the official Sentry SDKs. It covers 
 
 It replaces the user-level skill of the same name. Invoke it as `sentry:sentry`. The bare name `sentry` no longer works.
 
-The skill has references for setup, configuration, errors, tracing, logs, metrics, and crons, plus one file per platform group.
+The skill has references for the project profile, setup, configuration, errors, tracing, logs, metrics, and crons, plus one file per platform group.
 
 ## Behavior
 
+- Reads a `## Sentry` section from the project's `CLAUDE.md` or `AGENTS.md` before choosing signals, scrubbing, breadcrumbs, sample rates, or DSN handling. Without one, it uses conservative generic defaults from `references/profile.md` and offers to write the section. It writes the section only after you agree.
 - Reads the installed SDK version, then checks current docs through Context7 (`/getsentry/sentry-docs` first) or `docs.sentry.io`. The references record decisions and pitfalls, not an API manual.
 - Initializes once per runtime and gives each signal one owner.
 - Keeps telemetry from changing app behavior, and keeps names and tags low-cardinality.
-- Relies on server-side scrubbing. It adds client-side privacy filters only when you ask.
+- Relies on server-side scrubbing. It adds client-side privacy filters only when you or the project profile ask.
 - Asks before any step that touches your Sentry org: a test event, log, metric, or check-in, a source-map or symbol upload, or a cron `MonitorConfig`.
 - Treats content fetched from Sentry as data, not instructions.
 
