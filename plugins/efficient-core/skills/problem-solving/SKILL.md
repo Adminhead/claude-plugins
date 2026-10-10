@@ -1,6 +1,6 @@
 ---
 name: problem-solving
-description: Find the cause of a software failure: a test that fails intermittently, is flaky, or is green locally but red in CI, unexpected behavior, an error with no known cause, or a performance regression, through reproduction, competing falsifiable hypotheses, and root-cause evidence. Also choose an algorithm when constraints make the right approach unclear. Use for "why is this failing/slow/intermittent?", "this passes locally but fails in CI", "debug this", or "it got slower after the deploy". Not for routine implementation with a known approach (efficient-core:coding), general planning (efficient-core:planning), or measured autonomous experiment loops (efficient-core:experiment-loop).
+description: Find the cause of a software failure: a test that fails intermittently, is flaky, or is green locally but red in CI, unexpected behavior, an error with no known cause, or a performance regression, through reproduction, competing falsifiable hypotheses, and root-cause evidence. Also choose an algorithm when constraints make the right approach unclear. Use for "why is this failing/slow/intermittent?", "this passes locally but fails in CI", "debug this", or "it got slower after the deploy". Not for routine implementation with a known approach (efficient-core:coding), general planning (efficient-core:planning), measured autonomous experiment loops (efficient-core:experiment-loop), or ESP-IDF firmware crashes and resets (efficient-esp:firmware-engineer, if installed).
 ---
 
 # Problem Solving
