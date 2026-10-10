@@ -20,7 +20,7 @@ Claude Code plugin marketplace `adminhead`. It lists 33 plugins. Install one wit
 | `efficient-auth` | Authentication skills: login, sessions, and token validation for your own app, plus Better Auth. | [docs](docs/plugins/efficient.md) |
 | `efficient-db` | Database skills: schema design, Postgres, MySQL, and Redis. | [docs](docs/plugins/efficient.md) |
 | `efficient-esp` | ESP32 skills: ESP-IDF firmware engineering. | [docs](docs/plugins/efficient.md) |
-| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security. | [docs](docs/plugins/authoring.md) |
+| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security. Includes a Stop hook that nudges you to check docs after code changes. | [docs](docs/plugins/authoring.md) |
 | `devenv` | Configure, migrate, debug, and verify devenv.sh developer environments. | [docs](docs/plugins/devenv.md) |
 | `chezmoi` | Manage, migrate, and troubleshoot chezmoi-managed dotfiles. | [docs](docs/plugins/chezmoi.md) |
 | `pass-cli` | Use the Proton Pass CLI without exposing secrets. | [docs](docs/plugins/pass-cli.md) |
