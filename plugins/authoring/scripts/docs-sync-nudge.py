@@ -14,26 +14,41 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 DOC_EXTS = (".md", ".mdx", ".rst", ".adoc", ".txt")
 DOC_GLOBS = ["*.md", "*.mdx", "*.rst", "*.adoc"]
 MAX_DOCS = 10
 MAX_PATTERNS = 50
+PRUNE_DAYS = 30
 MIN_NAME = 4  # shorter basenames match too much prose
 
 
 def git(cwd, *args):
-    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, timeout=20)
+    r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, timeout=20)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip())
     return r.stdout
 
 
+def nul_list(text):
+    return [p for p in text.split("\0") if p]
+
+
+def toplevel(cwd):
+    """Repo root, or None outside a git repo or before the first commit."""
+    r = subprocess.run(
+        ["git", "-C", cwd, "rev-parse", "--show-toplevel", "--verify", "-q", "HEAD"],
+        capture_output=True, text=True, timeout=20,
+    )
+    return r.stdout.splitlines()[0] if r.returncode == 0 else None
+
+
 def state_dir():
     d = os.environ.get("CLAUDE_PLUGIN_DATA")
     if not d:
-        raise RuntimeError("CLAUDE_PLUGIN_DATA is unset")
+        return None
     p = Path(d) / "docs-sync"
     p.mkdir(parents=True, exist_ok=True)
     return p
@@ -43,30 +58,44 @@ def safe_id(session_id):
     return re.sub(r"[^A-Za-z0-9_-]", "_", session_id)
 
 
+def prune(sdir):
+    cutoff = time.time() - PRUNE_DAYS * 86400
+    for f in sdir.iterdir():
+        if f.is_file() and f.stat().st_mtime < cutoff:
+            f.unlink()
+
+
 def start(data):
-    head_file = state_dir() / f"{safe_id(data['session_id'])}.head"
+    sdir = state_dir()
+    top = toplevel(data["cwd"])
+    if not sdir or not top:
+        return
+    prune(sdir)
+    head_file = sdir / f"{safe_id(data['session_id'])}.head"
     if not head_file.exists():  # resume and compact keep the original baseline
-        head_file.write_text(git(data["cwd"], "rev-parse", "HEAD").strip())
+        head_file.write_text(git(top, "rev-parse", "HEAD").strip())
 
 
-def changed_paths(cwd, base):
-    out = set(git(cwd, "diff", "--name-only", "HEAD").splitlines())
-    out |= set(git(cwd, "ls-files", "--others", "--exclude-standard").splitlines())
+def changed_paths(top, base):
+    out = set(nul_list(git(top, "diff", "--name-only", "-z", "HEAD")))
+    out |= set(nul_list(git(top, "ls-files", "-z", "--others", "--exclude-standard")))
     if base:
-        out |= set(git(cwd, "diff", "--name-only", base, "HEAD").splitlines())
-    return sorted(p for p in out if p)
+        out |= set(nul_list(git(top, "diff", "--name-only", "-z", base, "HEAD")))
+    return sorted(out)
 
 
 def stop(data):
     if data.get("stop_hook_active"):
         return
-    cwd = data["cwd"]
-    sid = safe_id(data["session_id"])
     sdir = state_dir()
+    top = toplevel(data["cwd"])
+    if not sdir or not top:
+        return
+    sid = safe_id(data["session_id"])
     head_file = sdir / f"{sid}.head"
     base = head_file.read_text().strip() if head_file.exists() else None
 
-    paths = changed_paths(cwd, base)
+    paths = changed_paths(top, base)
     code = [p for p in paths if not p.lower().endswith(DOC_EXTS)]
     if not code:
         return
@@ -75,16 +104,17 @@ def stop(data):
     if seen_file.exists() and seen_file.read_text().strip() == digest:
         return
 
-    names = {p for p in code} | {os.path.basename(p) for p in code}
-    patterns = sorted(n for n in names if len(n) >= MIN_NAME)[:MAX_PATTERNS]
+    # Full paths first, so the cap drops generic basenames before specific paths.
+    names = [n for n in code + sorted({os.path.basename(p) for p in code}) if len(n) >= MIN_NAME]
+    patterns = list(dict.fromkeys(names))[:MAX_PATTERNS]
     if not patterns:
         return
-    args = ["grep", "-l", "-F"]
+    args = ["grep", "-l", "-z", "-F"]
     for n in patterns:
         args += ["-e", n]
     args += ["--", *DOC_GLOBS]
     try:
-        hits = git(cwd, *args).splitlines()
+        hits = nul_list(git(top, *args))
     except RuntimeError:  # git grep exits 1 when nothing matches
         return
     docs = [d for d in hits if d not in paths][:MAX_DOCS]

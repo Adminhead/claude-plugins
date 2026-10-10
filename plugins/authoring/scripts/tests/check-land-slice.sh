@@ -67,6 +67,24 @@ check "concurrent landings run their checks one at a time" $?
 [ -f "$main/e.txt" ] && [ -f "$main/f.txt" ]
 check "both concurrent slices landed" $?
 
+# A check that leaves a background process must not keep the lock.
+slice g g.txt G
+slice h h.txt H
+(cd "$root/g" && "$script" main 'sleep 5 >/dev/null 2>&1 &' >/dev/null 2>&1)
+start=$SECONDS
+(cd "$root/h" && "$script" main true >/dev/null 2>&1)
+check "background child of a check does not hold the lock" $(( SECONDS - start < 3 ? 0 : 1 ))
+
+# A parent that cannot fast-forward is refused with exit 1.
+echo tracked >"$main/x.txt"; git -C "$main" add -A; git -C "$main" commit -qm x
+slice i x.txt I
+echo dirty >"$main/x.txt"
+before=$(git -C "$main" rev-parse main)
+(cd "$root/i" && "$script" main true >/dev/null 2>"$root/err"); rc=$?
+check "failed fast-forward exits 1" $(( rc == 1 ? 0 : 1 ))
+grep -q REFUSED "$root/err"; check "failed fast-forward says why" $?
+[ "$(git -C "$main" rev-parse main)" = "$before" ]; check "parent ref is untouched after failed fast-forward" $?
+
 echo
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]

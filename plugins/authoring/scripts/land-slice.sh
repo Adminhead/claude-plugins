@@ -19,15 +19,15 @@ git rev-parse --verify -q "refs/heads/$parent" >/dev/null || { echo "land-slice:
 
 lock=$(git rev-parse --path-format=absolute --git-common-dir)/slice-land.lock
 exec 9>"$lock"
-flock 9 # released when the script exits
+flock 9 # released when the script exits; children get fd 9 closed so none can keep the lock
 
-if ! git rebase -q "$parent"; then
-  git rebase --abort
+if ! git rebase -q "$parent" 9>&-; then
+  git rebase --abort 9>&-
   echo "land-slice: REFUSED, $slice conflicts with $parent; rebase aborted" >&2
   exit 1
 fi
 
-if ! bash -c "$check"; then
+if ! bash -c "$check" 9>&-; then
   echo "land-slice: REFUSED, check failed: $check" >&2
   exit 1
 fi
@@ -36,8 +36,12 @@ fi
 parent_wt=$(git worktree list --porcelain | awk -v b="refs/heads/$parent" '
   $1 == "worktree" { wt = substr($0, 10) } $1 == "branch" && $2 == b { print wt }')
 if [ -n "$parent_wt" ]; then
-  git -C "$parent_wt" merge -q --ff-only "$slice"
+  ff=(git -C "$parent_wt" merge -q --ff-only "$slice")
 else
-  git fetch -q . "$slice:$parent"
+  ff=(git fetch -q . "$slice:$parent")
+fi
+if ! "${ff[@]}" 9>&-; then
+  echo "land-slice: REFUSED, $parent is not a fast-forward of $slice (parent moved or has local changes)" >&2
+  exit 1
 fi
 echo "land-slice: landed $slice on $parent at $(git rev-parse --short "$slice")"
