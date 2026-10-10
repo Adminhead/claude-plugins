@@ -38,6 +38,7 @@ Claude Code plugin marketplace `adminhead`. It lists 33 plugins. Install one wit
 | `aws` | AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
 | `usage-band` | A band above the prompt showing context usage by category and the 5-hour and weekly plan limits, collapsible to one line. Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/usage-band.md) |
 | `git-line` | A status line under the prompt showing the working directory, git branch, and git status. Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/git-line.md) |
+| `agent-status` | A line above the prompt listing live subagents with their status and time in that status, plus done/total task counts. Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/agent-status.md) |
 
 ## Layout
 
