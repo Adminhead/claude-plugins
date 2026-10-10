@@ -1,0 +1,11 @@
+menu "Service console"
+
+    config APP_CONSOLE_ENABLE
+        bool "Enable the on-device service console"
+        default n
+        help
+            Starts an interactive console on the configured console
+            transport. Leave this off in production builds unless the
+            console is gated by authentication.
+
+endmenu

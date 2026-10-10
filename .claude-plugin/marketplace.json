@@ -42,7 +42,7 @@
       "name": "efficient-core",
       "source": "./plugins/efficient-core",
       "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, modernization, second-opinion review, anti-slop cleanup, and poka-yoke error-proofing, plus the Exa web search MCP server.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -128,6 +128,13 @@
       "name": "efficient-db",
       "source": "./plugins/efficient-db",
       "description": "Database skills: schema design, Postgres, MySQL, and Redis.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "efficient-esp",
+      "source": "./plugins/efficient-esp",
+      "description": "ESP32 skills: ESP-IDF firmware engineering.",
       "version": "0.1.0",
       "category": "development"
     },

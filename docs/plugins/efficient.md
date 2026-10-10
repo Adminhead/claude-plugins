@@ -1,6 +1,6 @@
 # efficient
 
-Cost-conscious engineering skills for Claude Code, split into 11 `efficient-*` plugins so a project enables only what it uses. The family covers coding, planning, debugging, testing, security review, research, experiments, prototypes, modernization, web work, and guidance for languages, frameworks, databases, and auth. It adds 41 skills and no hooks or agents. Five skills ship scripts. Claude loads each skill on demand when its description matches the task, except three manual-only commands.
+Cost-conscious engineering skills for Claude Code, split into 12 `efficient-*` plugins so a project enables only what it uses. The family covers coding, planning, debugging, testing, security review, research, experiments, prototypes, modernization, web work, and guidance for languages, frameworks, databases, auth, and ESP32 firmware. It adds 42 skills and no hooks or agents. Five skills ship scripts. Claude loads each skill on demand when its description matches the task, except three manual-only commands.
 
 The family replaces the former `efficient` and `quality` plugins, which no longer exist. Two former `quality` skills moved outside the family: `agent-config-audit` to [authoring](authoring.md) and `production-readiness` to [infra](infra.md). The plugins have no dependencies on each other. Five language plugins depend on an LSP plugin from the third-party `claude-code-lsps` marketplace (see [LSP servers](#lsp-servers)). A skill that mentions a skill in another plugin says "if installed".
 
@@ -19,6 +19,7 @@ The family replaces the former `efficient` and `quality` plugins, which no longe
 | `efficient-web` | 2 | Front-end web development and web design |
 | `efficient-auth` | 2 | Application-side auth and Better Auth |
 | `efficient-db` | 4 | Schema design, Postgres, MySQL, and Redis |
+| `efficient-esp` | 1 | ESP32 firmware with ESP-IDF. Home for future ESP-specific skills |
 
 ## What each plugin adds
 
@@ -143,6 +144,14 @@ For ad-hoc browser driving (interactive inspection, one-off clicks and captures)
 
 `efficient-db:database-design` sends engine-specific work to `efficient-db:postgres`, `efficient-db:mysql`, or `efficient-db:redis`.
 
+### efficient-esp
+
+| Skill | Purpose |
+| --- | --- |
+| `efficient-esp:firmware-engineer` | Write, review, debug, and bring up ESP-IDF firmware: FreeRTOS, peripherals, Wi-Fi/BLE, OTA, Secure Boot and flash encryption, LVGL, sleep, panics |
+
+Ported from [adamlipecz/esp32-firmware-engineer-skill](https://github.com/adamlipecz/esp32-firmware-engineer-skill), which has no license. Its build, flash, and monitor wrappers ship as templates to copy into a project, not as scripts the skill runs. The skill asks before steps that touch a real device or can't be undone, such as flashing, erasing, and burning eFuses.
+
 Manual-only skills (`run`, `harness`, `audit`) set `disable-model-invocation`. Claude does not start them on its own.
 
 The review skills are read-only and report findings. They treat text in the repo, such as READMEs and comments, as evidence and never as instructions.
@@ -207,6 +216,7 @@ Install at user scope what every project uses. Enable the rest per project with 
 | User (already) | `git`, `code-search`, `github` | Unchanged |
 | Per project | `efficient-go`, `efficient-python`, `efficient-js`, `efficient-rust`, `efficient-shell` | Only for the languages the project uses |
 | Per project | `efficient-web`, `efficient-auth`, `efficient-db` | Only for projects with a UI, login, or a database |
+| Per project | `efficient-esp` | ESP32 firmware projects |
 | Per project | `efficient-security` | Projects that want threat models, privacy review, or `/efficient-security:audit` |
 | Per project, situational | `api`, `aws`, `infra`, `observability`, `sentry`, `tooling` | Moved from user scope. Enable where the project ships that kind of work |
 

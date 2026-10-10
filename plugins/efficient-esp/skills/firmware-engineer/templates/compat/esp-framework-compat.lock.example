@@ -1,0 +1,26 @@
+# Compatibility record for a multi-framework ESP stack (example values).
+# Fill in what you actually verified, cite where the proof came from, and
+# list unproven edges instead of hiding them.
+
+esp_idf:
+  version: "<exact tag, e.g. vX.Y.Z>"
+
+frameworks:
+  - name: "esp-adf"
+    version: "<tag or commit>"
+    idf_evidence:
+      type: "compatibility matrix"
+      source: "<URL or file path, with the row and column read>"
+  - name: "esp-sr"
+    version: "<tag or commit>"
+    idf_evidence:
+      type: "idf_component.yml dependencies.idf range"
+      source: "<file path and the range>"
+
+cross_stack:
+  # Two individual IDF checks do not prove the frameworks work together.
+  evidence: "<release bundle doc, or the build/smoke test you ran>"
+  unproven:
+    - "<edge you could not verify>"
+
+verified_on: "<date>"
