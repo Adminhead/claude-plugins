@@ -40,7 +40,8 @@ Commit the plugin's changes to local `main` following `git:commit` (if installed
 The `adminhead` marketplace is a folder source pointing at this repo, so the local commit is enough. A push isn't needed.
 
 1. `claude plugin marketplace update adminhead`
-2. `claude plugin update <name>@adminhead`, or `claude plugin install <name>@adminhead` when it isn't installed yet.
+2. Find every install of the plugin in `~/.claude/plugins/installed_plugins.json`. One plugin can be installed at user scope and in several project or local scopes, and `claude plugin update` changes one scope per run.
+3. For each install, run `claude plugin update <name>@adminhead --scope <scope>` from its project directory (any directory for user scope). Use `claude plugin install <name>@adminhead` when it isn't installed anywhere yet.
 
 Then tell the user to run `/reload-plugins`.
 
