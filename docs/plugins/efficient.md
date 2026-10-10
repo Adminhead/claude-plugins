@@ -8,7 +8,7 @@ The family replaces the former `efficient` and `quality` plugins, which no longe
 
 | Plugin | Skills | Holds |
 | --- | --- | --- |
-| `efficient-core` | 10 | Process skills used in every project, plus the reviewers the `architect`, `review`, and `quick-review` agents preload |
+| `efficient-core` | 12 | Process skills used in every project, plus the reviewers the `architect`, `review`, and `quick-review` agents preload |
 | `efficient-testing` | 5 | Unit, end-to-end, and regression tests; the test runner; the test harness; test-gap audits |
 | `efficient-security` | 3 | Threat models, privacy review, and a manual security scan |
 | `efficient-go` | 3 | The Go language, CLI tools, and performance |
@@ -39,8 +39,12 @@ Each description also names what the skill is not for and points to the sibling 
 | `efficient-core:second-opinion` | Read-only review of a diff or plan by a different model family (codex or agy), or a local two-reviewer gate |
 | `efficient-core:anti-slop` | Cut unsupported complexity, speculative additions, dead artifacts, and filler from code, docs, or UI |
 | `efficient-core:poka-yoke` | Design or audit code so a mistake cannot be expressed. Ranks hazards on a ladder from control to docs-only |
+| `efficient-core:review-loop` | Review, fix, re-review loop on a diff with a findings file, capped at three rounds |
+| `efficient-core:implement-plan` | Execute an approved multi-slice plan file: parallel worktrees, check, review, commit, and update Status per slice |
 
 `efficient-core:coding` sends unknown-cause bugs to `efficient-core:problem-solving`.
+
+`efficient-core:review-loop` and `efficient-core:implement-plan` act on code, unlike read-only `efficient-core:second-opinion` and plan-writing `efficient-core:planning`. `implement-plan` runs an approved plan, committing each slice after its checks and review, and uses `review-loop` for non-trivial slices.
 
 #### Exa web search MCP server
 
