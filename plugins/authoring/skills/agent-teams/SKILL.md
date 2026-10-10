@@ -36,7 +36,8 @@ Common compositions are in `references/team-patterns.md`. Read it when choosing 
 1. **One owner per file.** Two teammates editing one file overwrite each other. Assign ownership by directory, module, or layer, and give barrel and index files to one owner.
 2. **Contract files.** When teammates meet at an interface, write the types or schema first, give the lead ownership, and let teammates read it but not change it. A contract change goes through the lead.
 3. **Vertical or horizontal.** A vertical slice (UI, API, tests for one feature) is easier to test alone. A horizontal layer keeps patterns consistent but adds integration points and makes later layers wait. Mix the two when shared infrastructure exists.
-4. **Brief completely.** A teammate loads CLAUDE.md, MCP servers, and skills, but it does not inherit the lead's conversation. Put the goal, files owned, contract files, and how to report back in the spawn prompt.
+4. **Land slices one at a time.** When slices live in separate worktrees, read `references/slice-landing.md` for the contract-file template and the locked rebase-check-fast-forward script.
+5. **Brief completely.** A teammate loads CLAUDE.md, MCP servers, and skills, but it does not inherit the lead's conversation. Put the goal, files owned, contract files, and how to report back in the spawn prompt.
 
 ## Communicate
 

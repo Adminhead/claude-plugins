@@ -1,8 +1,8 @@
 # authoring
 
-Skills for writing the files that steer Claude Code and the docs around a codebase. It covers Architecture Decision Records, Claude Code skills, agent instruction files such as `CLAUDE.md` and `AGENTS.md`, documentation audits, codebase maps, domain glossaries, agent teams, and audits of your Claude Code setup, including its security. It adds nine skills, all loaded on demand.
+Skills for writing the files that steer Claude Code and the docs around a codebase. It covers Architecture Decision Records, Claude Code skills, agent instruction files such as `CLAUDE.md` and `AGENTS.md`, documentation audits, codebase maps, domain glossaries, agent teams, and audits of your Claude Code setup, including its security. It adds nine skills, all loaded on demand, and a hook pair that nudges you to check docs after code changes.
 
-Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents. Version 0.2.1 retuned the `create-skill` description around the phrasings people use when a skill never triggers or fires on the wrong requests. Version 0.3.0 added `authoring:agent-config-audit`, which moved here from the former `quality` plugin.
+Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents. Version 0.2.1 retuned the `create-skill` description around the phrasings people use when a skill never triggers or fires on the wrong requests. Version 0.3.0 added `authoring:agent-config-audit`, which moved here from the former `quality` plugin. Version 0.4.0 added the docs-sync nudge hook, plus a slice-landing reference and script for `authoring:agent-teams`.
 
 ## What it adds
 
@@ -20,8 +20,21 @@ Version 0.2.0 added five skills. `authoring:create-skill` also gained references
 
 Each description names its neighbors. `create-skill` hands measured trigger evals to `skill-creator:skill-creator`. `manage-agent-instructions` hands quick audits to `claude-md-management:claude-md-improver`. `docs-audit` hands `CLAUDE.md` and `AGENTS.md` to `manage-agent-instructions` and codebase maps to `map-codebase`. `config-audit` hands security review of config to `agent-config-audit`, and `agent-config-audit` hands bloat and rot review back to `config-audit`.
 
+## Docs-sync nudge
+
+A SessionStart hook records `HEAD` for the session, and a Stop hook (`scripts/docs-sync-nudge.py`) compares against it. When non-doc files changed (working tree plus commits since the recorded `HEAD`), it runs `git grep -l` for those paths and basenames in `*.md`, `*.mdx`, `*.rst`, and `*.adoc` files. If docs that you did not also edit mention them, it blocks the stop once with a reason that lists up to 10 docs and asks Claude to check them or offer `authoring:docs-audit`.
+
+- It fires once per change set. A hash of the sorted changed paths is kept per session in `${CLAUDE_PLUGIN_DATA}`, so the same set never blocks twice. Another changed file makes a new set.
+- It exits quietly when `stop_hook_active` is set, outside a git repo, or on any error, so it never traps a session.
+- To turn it off, disable the plugin. There is no per-hook setting.
+
+## Slice landing
+
+`authoring:agent-teams` has a `references/slice-landing.md` with a contract-file template and the land protocol. `scripts/land-slice.sh <parent-branch> "<check command>"` runs from a slice's worktree. Under an exclusive `flock` on `<git-common-dir>/slice-land.lock`, it rebases the slice on the parent, runs the check, and fast-forwards the parent. It exits 1 without moving the parent on a rebase conflict (the rebase is aborted) or a failed check.
+
 ## Requirements
 
+- `git` and Python 3 for the docs-sync hook. `git` and `flock` (util-linux) for `land-slice.sh`.
 - Python 3 for `adr-writing`, `create-skill`, `docs-audit`, and `map-codebase`. Their scripts are `new_adr.py`, `scaffold_skill.py`, `validate_skill.py`, `docs_drift.py`, and `detect_stack.py`. `docs_drift.py` and `detect_stack.py` use only the standard library and change nothing.
 - `git` for `docs_drift.py`, which resolves the commit in a doc's `Fingerprint: git:<sha>` header to flag stale docs.
 - `agent-teams` needs an interactive session and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Split panes need tmux or iTerm2 with the `it2` CLI. See Limits.
@@ -74,6 +87,15 @@ For a directory marketplace, `${CLAUDE_SKILL_DIR}` resolves to the marketplace s
 2. Start a fresh session and check the skill list. It should show all nine skills as `authoring:<name>`.
 3. Ask Claude to "Write an ADR" for a sample decision. It should load `authoring:adr-writing`.
 
+## Tests
+
+```
+bash plugins/authoring/scripts/tests/check-docs-sync.sh
+bash plugins/authoring/scripts/tests/check-land-slice.sh
+```
+
+Both use temporary repos and need no network.
+
 ## Limits
 
 - Checked in the migration: an `adr-writing` dry run, and the `create-skill` validator on a plugin skill. Both ran with no permission denials. The scaffolder and `manage-agent-instructions` were not run.
@@ -93,4 +115,4 @@ For a directory marketplace, `${CLAUDE_SKILL_DIR}` resolves to the marketplace s
 | Disable | `claude plugin disable authoring@adminhead` |
 | Uninstall | `claude plugin uninstall authoring@adminhead` |
 
-The plugin ships only skills, so both commands remove them. Start a new session to be sure they are gone.
+Both commands remove the skills and the docs-sync hooks. Start a new session to be sure they are gone.
