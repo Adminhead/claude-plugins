@@ -1,6 +1,6 @@
 # Stress-test mode
 
-Use this only when the user asks to be grilled or to stress-test a plan or design. Planning normally proceeds on stated assumptions, and this mode deliberately asks questions first, so don't start it on your own.
+Use this only when the user asks to be grilled or to stress-test a plan or design. The default closing review (`closing-review.md`) already checks gaps and asks only the blocking questions. This mode goes further, walking every decision in the design tree and asking even where an assumption would hold, so don't start it on your own.
 
 ## Procedure
 

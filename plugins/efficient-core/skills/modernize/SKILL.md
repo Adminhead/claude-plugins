@@ -44,6 +44,6 @@ Produce a phased plan to upgrade, migrate, or rewrite a legacy system. This skil
 
 ## Output
 
-Return the plan in the conversation, and write it to a file only when asked. Include the spike results, the milestone and strategy per component, the target rung, the approach per component, the hazard checks, the phases, and the open decisions that need the user. Keep the plan proportionate to the system. A small service needs a few phases and a short hazard pass.
+Before presenting the plan, run the closing review in `efficient-core:planning` (`references/closing-review.md`): gap review, then blocking decisions through AskUserQuestion. Return the plan in the conversation, and write it to a file only when asked. Include the spike results, the milestone and strategy per component, the target rung, the approach per component, the hazard checks, the phases, and the open decisions that need the user. Keep the plan proportionate to the system. A small service needs a few phases and a short hazard pass.
 
 For the work itself, hand each phase to `efficient-core:coding` and the tests it needs to `efficient-testing:unit`, if installed. For a Postgres major upgrade, `efficient-db:postgres`, if installed, covers the database side.

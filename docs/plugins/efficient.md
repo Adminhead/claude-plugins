@@ -30,7 +30,7 @@ Each description also names what the skill is not for and points to the sibling 
 | Skill | Purpose |
 | --- | --- |
 | `efficient-core:coding` | Smallest correct change for a bounded feature, fix, or behavior-preserving refactor |
-| `efficient-core:planning` | Write or review a plan whose scope and verification are proportionate to risk |
+| `efficient-core:planning` | Write or review a plan whose scope and verification are proportionate to risk; reviews it for gaps, asks blocking questions, and saves it before finalizing |
 | `efficient-core:problem-solving` | Diagnose a failure through reproduction and root-cause evidence, or pick an algorithm under constraints |
 | `efficient-core:research` | Answer an external question from weighed sources with citations |
 | `efficient-core:prototype` | Throwaway prototype that answers one design question: a single-file HTML logic demo, or UI variants on one route |
