@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Prepare and open a GitHub pull request with gh. Plans commits that follow the repo's convention, drafts a reviewer-ready body (summary as pseudocode, call tree or diff; before/after evidence; merge danger), opens the PR as a draft after approval, and never merges without it. Includes contributing to someone else's repo. Use when asked to open, write, or improve a PR or its description. Not for acting on review feedback (`github:pr-comments`), or a one-shot commit, push, and open flow (`commit-commands:commit-push-pr`, if installed).
+description: Prepare and open a GitHub pull request with gh. Plans commits that follow the repo's convention, drafts a reviewer-ready body (summary as pseudocode, call tree or diff; before/after evidence; merge danger), opens the PR as a draft after approval, and never merges without it. Includes contributing to someone else's repo. Use when asked to open, write, or improve a PR or its description. Not for acting on review feedback (`github:pr-comments`), or a one-shot commit, push, open, and merge flow (`github:ship`).
 ---
 
 # Pull Request

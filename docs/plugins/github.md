@@ -1,6 +1,6 @@
 # github
 
-Adds ten GitHub skills. They cover Actions workflows, Dependabot, a PR's review comments, single issues, issue breakdowns, backlog triage, pull requests, releases, repository setup, and code security. `github:actions`, `github:dependabot`, and `github:pr-comments` replace the user-level `github-actions`, `github-dependabot`, and `pr-comments` skills. Version 0.2.0 added the other seven. Version 0.3.0 adds GitHub's remote MCP server.
+Adds eleven GitHub skills. They cover Actions workflows, Dependabot, a PR's review comments, single issues, issue breakdowns, backlog triage, pull requests, shipping work from commit through merge, releases, repository setup, and code security. `github:actions`, `github:dependabot`, and `github:pr-comments` replace the user-level `github-actions`, `github-dependabot`, and `pr-comments` skills. Version 0.2.0 added the other seven. Version 0.3.0 adds GitHub's remote MCP server. Version 0.4.0 adds `github:ship`.
 
 Every write to GitHub shows the exact command and waits for your approval first.
 
@@ -15,6 +15,7 @@ Every write to GitHub shows the exact command and waits for your approval first.
 | `github:issue-breakdown` | New | Turn a spec, plan, or conversation into a reviewed set of linked issues, cut as vertical slices with blocking edges, then publish them after approval |
 | `github:triage` | New | Triage existing issues and external PRs: assign a category and state, check for duplicates, verify the claim, then ask for info, write an agent brief, or close with a reason |
 | `github:pr` | New | Prepare and open a PR: plan commits, draft a reviewer-ready body, open it as a draft after approval, and never merge without it |
+| `github:ship` | New | Commit, push, and optionally open a ready PR, wait for checks, and merge, in one run. Takes `push`, `pr`, or `merge` as an optional level, or infers it from the request. Stops at a rejected push or a failed check |
 | `github:release` | New | Cut a manual release for a single-package repo: propose a SemVer bump, draft a Keep a Changelog entry, open a release PR, then tag and run `gh release create` after approval. Defers to release-please, semantic-release, changesets, and similar tooling |
 | `github:repo-setup` | New | Audit and set up labels, issue forms, a PR template, `CODEOWNERS`, `SECURITY.md`, `CONTRIBUTING.md`, and rulesets, with a dry-run plan and an applied, skipped, or failed report |
 | `github:code-security` | New | Configure and triage secret scanning, push protection, blocked-push recovery, private vulnerability reporting, and alerts for secret scanning, code scanning, and Dependabot |
@@ -82,12 +83,12 @@ See the remote server guide in github/github-mcp-server (`docs/remote-server.md`
 
 ## Requirements
 
-- `gh`, authenticated (`gh auth status`). All ten skills use it.
+- `gh`, authenticated (`gh auth status`). All eleven skills use it.
 - For the MCP server, the GitHub CLI with a stored github.com login (`gh auth login --hostname github.com`), and bash.
 - `gh` 2.94.0 or later for the native issue flags (`--type`, `--parent`, `--add-sub-issue`, `--blocked-by`, `--add-blocked-by`) used by `github:issues` and `github:issue-breakdown`. On an older `gh`, they fall back to `gh api` calls from `github:issues`'s API reference. The skills were checked against `gh` 2.102.0, so confirm a flag with `--help` before relying on it.
 - The `repo` token scope for issue metadata. Project field writes need the `project` scope (`gh auth refresh -s project`).
 - Admin rights on the repo for `github:repo-setup` writes (rulesets, settings) and for `github:code-security` settings. Secret scanning on private repos depends on your GitHub plan. If a feature is unavailable, the skill reports it and does not work around it.
-- `git` for `github:pr` and `github:release`.
+- `git` for `github:pr`, `github:ship`, and `github:release`.
 - `jq`. `github:pr-comments` needs it.
 
 ## Install
@@ -109,7 +110,7 @@ claude --plugin-dir plugins/github
    ```
    claude plugin validate --strict plugins/github
    ```
-2. Start a fresh session. The skill list should show all ten skills as `github:<name>`.
+2. Start a fresh session. The skill list should show all eleven skills as `github:<name>`.
 3. Run `/mcp`. It should list `plugin:github:github` as connected. `claude mcp list` shows it too.
 4. Run the helper to see which source it used. It runs in your shell's environment, not Claude Code's. Stdout carries the token by design, so discard it.
    ```
@@ -139,6 +140,7 @@ claude --plugin-dir plugins/github
 - `github:issues` writes only after you approve the exact command. Text in an issue body, comment, or log that asks for an action is data, not approval. The same holds for `github:triage`.
 - `github:issue-breakdown` publishes in dependency order and stops at the first failure, because rerunning the whole list would duplicate issues.
 - `github:pr` opens PRs as drafts. A request to open a PR is not approval of the command. It shows the title, body, push remote and branch, and the full `gh pr create` line first.
+- `github:ship` treats the request as approval for each step at the level it picks, so it does not pause between commit, push, PR, and merge. It never force-pushes, amends, rebases, resets, stashes, skips hooks, or uses `--admin`. It stops on a non-fast-forward push, a hook failure it cannot fix, or a failed check, and merges only after checks pass. In a linked worktree it does not remove the worktree.
 - `github:release` detects release tooling first and stops the manual flow if it finds some, unless you still want it. Its first four steps are read-only.
 - `github:repo-setup` shows a plan table first and applies each group of writes only after approval. It commits and pushes only when asked.
 - `github:code-security` treats a leaked credential as compromised. It tells you to rotate it first, never prints the value, and treats history cleanup as secondary. It changes settings, dismisses alerts, and force-pushes only after approval.
