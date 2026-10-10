@@ -184,7 +184,7 @@
       "name": "sentry",
       "source": "./plugins/sentry",
       "description": "Instrument apps with official Sentry SDKs.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -225,8 +225,8 @@
     {
       "name": "tooling",
       "source": "./plugins/tooling",
-      "description": "Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit.",
-      "version": "0.1.0",
+      "description": "Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit, and repairing failing hooks.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
