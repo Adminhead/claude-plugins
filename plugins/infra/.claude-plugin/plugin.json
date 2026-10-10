@@ -1,6 +1,6 @@
 {
   "name": "infra",
-  "version": "0.3.0",
-  "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, Terraform, OpenTofu, Terragrunt, and Ansible.",
+  "version": "0.4.0",
+  "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, Terraform, OpenTofu, Terragrunt, and Ansible, plus a guard hook for unsafe `tofu` and `aws` commands.",
   "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
 }
