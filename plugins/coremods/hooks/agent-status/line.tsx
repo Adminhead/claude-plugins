@@ -11,11 +11,15 @@ export type Seen = Record<string, { status: string; since: number }>
 export type TaskStatus = 'pending' | 'in_progress' | 'completed'
 export type Tasks = Record<string, TaskStatus>
 
-export type Row = { label: string; status: string; idle: string }
-export type View = { rows: Row[]; more: number; tasks: { done: number; total: number } | null }
+export type Row = { id: string; label: string; status: string; idle: string; desc: string }
+export type View = { rows: Row[]; counts: [string, number][]; tasks: { done: number; total: number } | null }
 
-export const MAX_AGENTS = 4
 export const MAX_LABEL = 24
+export const MAX_DESC = 200
+export const PANE_ID = 'agents'
+export const PANE_COLUMNS = 40
+
+const ORDER = ['running', 'waiting', 'idle', 'pending']
 
 const LIVE = new Set(['pending', 'running', 'waiting', 'idle'])
 const COLORS: Record<string, string> = { running: 'success', waiting: 'warning', idle: 'inactive', pending: 'inactive' }
@@ -57,17 +61,26 @@ export function countTasks(tasks: Tasks): { done: number; total: number } | null
   return { done: all.filter(s => s === 'completed').length, total: all.length }
 }
 
-// The line's content, or null while no agent is live.
+// The content, or null while no agent is live.
 export function buildView(agents: AgentLike[], seen: Seen, tasks: Tasks, now: number): View | null {
   const live = agents.filter(a => seen[a.id])
   if (live.length === 0) return null
-  const rows = live.slice(0, MAX_AGENTS).map(a => ({
-    label: clean(a.name || a.description || a.type) || a.type,
-    status: a.status,
-    idle: fmtIdle(now - seen[a.id]!.since),
-  }))
-  return { rows, more: live.length - rows.length, tasks: countTasks(tasks) }
+  const rows = live.map(a => {
+    const name = clean(a.name || '')
+    return {
+      id: a.id,
+      label: name || clean(a.description || a.type) || a.type,
+      status: a.status,
+      idle: fmtIdle(now - seen[a.id]!.since),
+      desc: name ? clean(a.description || '', MAX_DESC) : '',
+    }
+  })
+  const counts = ORDER.map(s => [s, rows.filter(r => r.status === s).length] as [string, number]).filter(([, n]) => n > 0)
+  return { rows, counts, tasks: countTasks(tasks) }
 }
+
+// Inline pane rows wanted: two lines per agent, a tasks line, and the collapse button.
+export const paneRows = (view: View | null) => Math.min(2 * (view?.rows.length ?? 0) + 3, 16)
 
 // Applies one finished Task* tool call to the id -> status map. A failed or
 // malformed call changes nothing, an update for an id not yet seen is
@@ -86,19 +99,47 @@ export function applyTask(tasks: Tasks, tool: string, input: any, result: any): 
   return tasks
 }
 
-export function renderLine(Text: any, view: View) {
-  const parts: any[] = [<Text dimColor>{'agents '}</Text>]
-  view.rows.forEach((r, i) => {
-    if (i) parts.push(<Text dimColor>{' · '}</Text>)
-    parts.push(
-      <Text>{r.label}</Text>,
-      <Text color={COLORS[r.status] ?? 'inactive'}>{` ${r.status}`}</Text>,
-      <Text dimColor>{` ${r.idle}`}</Text>,
-    )
+const tasksParts = (view: View, Text: any, lead: string) =>
+  view.tasks
+    ? [<Text dimColor>{lead}</Text>, <Text color="success">{`${view.tasks.done}/${view.tasks.total}`}</Text>]
+    : []
+
+// Collapsed: a count by status and the done/total tasks, with the button that toggles the pane.
+export function renderLine({ Box, Text, Button }: any, view: View, open: boolean, onToggle: () => void) {
+  const parts: any[] = [<Text dimColor>{`agents ${view.rows.length} (`}</Text>]
+  view.counts.forEach(([status, n], i) => {
+    if (i) parts.push(<Text dimColor>{', '}</Text>)
+    parts.push(<Text color={COLORS[status] ?? 'inactive'}>{`${n} ${status}`}</Text>)
   })
-  if (view.more) parts.push(<Text dimColor>{` · +${view.more} more`}</Text>)
-  if (view.tasks) {
-    parts.push(<Text dimColor>{'  tasks '}</Text>, <Text color="success">{`${view.tasks.done}/${view.tasks.total}`}</Text>)
-  }
-  return <Text wrap="truncate-end">{parts}</Text>
+  parts.push(<Text dimColor>{')'}</Text>, ...tasksParts(view, Text, '  tasks '))
+  return (
+    <Box flexDirection="row" gap={1}>
+      <Text wrap="truncate-end">{parts}</Text>
+      <Button key="agents-toggle" plain dimColor label={open ? '▾' : '▸'} onPress={onToggle} />
+    </Box>
+  )
+}
+
+// Expanded: one block per agent (name, status, time; description beneath) and the tasks summary.
+export function renderPane({ Box, Text, Button }: any, view: View | null, onCollapse: () => void) {
+  return (
+    <Box flexDirection="column">
+      {view ? (
+        view.rows.map(r => (
+          <Box key={r.id} flexDirection="column">
+            <Text wrap="truncate-end">
+              <Text>{r.label}</Text>
+              <Text color={COLORS[r.status] ?? 'inactive'}>{` ${r.status}`}</Text>
+              <Text dimColor>{` ${r.idle}`}</Text>
+            </Text>
+            {r.desc ? <Text dimColor wrap="truncate-end">{r.desc}</Text> : null}
+          </Box>
+        ))
+      ) : (
+        <Text dimColor>no live agents</Text>
+      )}
+      {view?.tasks ? <Text>{tasksParts(view, Text, 'tasks ')}</Text> : null}
+      <Button key="agents-collapse" plain dimColor hotkey="c" label="collapse" onPress={onCollapse} />
+    </Box>
+  )
 }

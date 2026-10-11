@@ -130,6 +130,6 @@ describe('line', () => {
     await $.session.measure({ context: {} as any, rateLimits: [], changed: [] })
     await ui.redraw({ isDraft: false, isWorking: false, hint: '? for shortcuts' })
     expect((await rows(ui))[1]).toBe('repo  ⎇ main  ✓')
-    expect(logs.filter(l => l.includes('bad index')).length).toBe(1)
+    expect(logs.filter(l => l.includes('git-line: fatal: bad index')).length).toBe(1)
   })
 })

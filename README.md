@@ -36,7 +36,7 @@ Claude Code plugin marketplace `adminhead`. It lists 33 plugins. Install one wit
 | `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, Terraform, OpenTofu, Terragrunt, and Ansible, plus a guard hook for unsafe `tofu` and `aws` commands. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
 | `aws` | AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
-| `coremods` | A home for the core Claude Code mods: a git status line under the prompt, a usage band above it, an agent status line, and read-only git tools (`git_log`, `git_blame`, `git_show`) for Bash-less agents. Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/coremods.md) |
+| `coremods` | A home for the core Claude Code mods: a git status line under the prompt, a usage band above it, an agent status line with an expandable panel, read-only git tools (`git_log`, `git_blame`, `git_show`) for Bash-less agents, and `tool-mgr`, which blocks `sed` file reads and heredoc file writes in Bash and logs every tool call with DuckDB metrics (`/tool-mgr`; hooks need `bun` and `node`). Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/coremods.md) |
 
 ## Layout
 

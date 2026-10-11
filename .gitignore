@@ -6,3 +6,4 @@ plugins/*/evals/results/
 plugins/*/.claude-plugin/types/
 plugins/*/tsconfig.json
 hooks/*.log
+plugins/*/node_modules/

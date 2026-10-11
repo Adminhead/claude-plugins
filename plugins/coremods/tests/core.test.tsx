@@ -43,6 +43,7 @@ describe('AbovePrompt', () => {
     const root = await ui.drawn()
     expect(root.props.flexDirection).toBe('column')
     expect(walk(root.children[0])).toMatch(/ctx .* 30%/)
-    expect(walk(root.children[1])).toBe('agents explorer running <1m')
+    expect(walk(root.children[1])).toBe('agents 1 (1 running)')
+    expect(await ui.find({ type: 'Button', key: 'agents-toggle' })).toBeDefined()
   })
 })
