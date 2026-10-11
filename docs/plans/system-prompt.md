@@ -358,7 +358,7 @@ hooks:
 - **Final audit (QS7-4, ledger-based).** When every ledger task is completed and this snapshot hasn't been audited yet, it blocks once with R4 and marks the snapshot audited. A later stop with the same snapshot passes.
 - **Otherwise it blocks with R1** and saves the snapshot. Every allowed stop saves the snapshot as the new rest point. When `stop_hook_active` is false, the chain count resets.
 - **Stagnation limit.** It is 1, not upstream's 3. Upstream wakes an idle session, but here the model has read R1 and chosen to stop again, which the CLAUDE.md stop-and-report rules allow. Both limits are constants.
-- It runs alongside the authoring plugin's docs-sync Stop hook, and both may block the same stop.
+- It runs alongside the authoring plugin's docs-sync Stop hook. Since authoring 0.4.1 that hook only adds non-error `additionalContext` and never blocks, so only this guard can block a stop.
 
 **Behavior 2: `prompt` mode (QS7-2, hook only)**
 
