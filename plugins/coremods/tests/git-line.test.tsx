@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { parseNumstat, parseStatus, placeOf } from '../hooks/line'
+import { parseNumstat, parseStatus, placeOf } from '../hooks/git-line/line'
 
 const TOP = '/home/u/src/repo'
 
@@ -50,7 +50,7 @@ async function mountLine($: any, on: any, cwd: string, git: () => Git, logs: str
   })
   await $.session.start({ cwd, surface: 'terminal', isInteractive: true })
   return $.ui.mount({
-    plugin: 'git-line',
+    plugin: 'coremods',
     surface: 'terminal',
     component: 'PromptHint',
     props: { isDraft: false, isWorking: false, hint: '? for shortcuts' },

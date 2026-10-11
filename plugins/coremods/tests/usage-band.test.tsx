@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
-import { allocate, fmtReset, limitColor } from '../hooks/band'
+import { allocate, fmtReset, limitColor } from '../hooks/usage-band/band'
 
 const cat = (name: string, tokens: number, color: string, kind: string) => ({
   name,
@@ -74,7 +74,7 @@ async function mountBand($: any, on: any, answer: () => unknown, over = {}, logs
   mock.clock(on, { now: NOW })
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   return $.ui.mount({
-    plugin: 'usage-band',
+    plugin: 'coremods',
     surface: 'terminal',
     component: 'AbovePrompt',
     props: props(over),

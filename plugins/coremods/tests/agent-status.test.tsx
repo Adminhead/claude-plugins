@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
-import { applyTask, buildView, clean, fmtIdle, MAX_AGENTS, track, type Seen } from '../hooks/line'
+import { applyTask, buildView, clean, fmtIdle, MAX_AGENTS, track, type Seen } from '../hooks/agent-status/line'
 
 const agent = (id: string, status: string, over: Record<string, unknown> = {}) => ({
   id,
@@ -33,7 +33,7 @@ async function mountLine($: any, on: any, agents: () => unknown[], over: Record<
     return { result: {} }
   })
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount({ plugin: 'agent-status', surface: 'terminal', component: 'AbovePrompt', props: { ...props, ...over } })
+  const ui = await $.ui.mount({ plugin: 'coremods', surface: 'terminal', component: 'AbovePrompt', props: { ...props, ...over } })
   return { ui, clock, lists }
 }
 

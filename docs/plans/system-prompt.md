@@ -240,6 +240,7 @@ Second opinion: skipped, to keep the reconstruction and CLAUDE.md off external m
 - Q4. Resolved: teammates and background jobs don't get the flag. Subagents never see the main prompt, so each `agents/*.md` carries what it needs itself (S4).
 - Q5. Resolved: trimmed. Drop only "Finish the whole task, not just easy parts — report completion only when fully done", which CLAUDE.md Scope already says.
 - Q6. Resolved: `prompts/system_override.md` in this repo, with `~/.claude/prompts` symlinked to `prompts/` the same way as `agents/`.
+- Q9. Resolved 2026-10-10: `agents/`, `prompts/` and `hooks/` stay as repo folders symlinked into `~/.claude`, not a plugin. Plugin agents ignore `hooks`, `mcpServers` and `permissionMode` (sub-agents docs), which would silently drop the read-only agents' `readonly-bash.py` guard and the S7 frontmatter hooks. Plugin hooks can't be scoped to `--agent`, and a plugin can't append to the system prompt. Mods go in a new `coremods` plugin (the engine reserves `core`), which absorbs `git-line`, `usage-band` and `agent-status` and will hold the S7.4 notify mod.
 - Q8. Resolved 2026-10-10 (S6 inputs, from [orchestration-prompts.md](../research/orchestration-prompts.md)): keep "Delegation is the default" and add the two-sided rule; adopt P2–P12; route with one Delegate/Don't line per agent; and design the three hooks in S7, each judged as a hook, a mod, or both.
 - Q7. Resolved 2026-10-10: Orchestration becomes the main-thread agent `agents/orchestration.md`, so its frontmatter can control tools, model, effort, permissions, hooks and MCP servers. The rest of the prompt is appended (G0). Known cost: `orchestration` also appears as a spawnable subagent type in every session, plain `claude` included (confirmed with `claude -p`). Its description says not to spawn it. To scope it to script sessions only, the launch script could define it inline with `--agents` instead of keeping it in `~/.claude/agents`.
 
@@ -359,7 +360,7 @@ hooks:
 **Behavior 2: `agent` mode and the mod**
 
 - **`agent` mode** injects R2 unless `tool_response.status` is `async_launched` or `teammate_spawned`.
-- **Background returns go to a mod (QS7-2).** A small mod, `plugins/orchestration-notify`, uses `prompt.submit` to inject R2 when a completed agent `task-notification` arrives, whether the session is idle or mid-turn. It replaces a `UserPromptSubmit` hook, so each return gets exactly one reminder.
+- **Background returns go to a mod (QS7-2).** A small mod in `plugins/coremods` (Q9) uses `prompt.submit` to inject R2 when a completed agent `task-notification` arrives, whether the session is idle or mid-turn. It replaces a `UserPromptSubmit` hook, so each return gets exactly one reminder.
   - It gates on the session's agent type being `orchestration` (whether `prompt.submit` exposes it is UNCONFIRMED; S7.0).
   - Background Bash notifications and the separate hand-back message are skipped.
   - R2 is the same constant string the hook uses.
@@ -410,7 +411,7 @@ hooks:
 | S7.0 | Spike the payloads and the task store | Scratch only; findings appended here | Records: the main-thread Stop fields; a subagent PostToolUse (with `agent_id`) firing the main agent's hook; the task directory and JSON fields; the UserPromptSubmit `prompt` for a background agent return, its hand-back, a background Bash return and a mid-turn return; whether `prompt_id` changes on notification turns | A probe agent passed through `--agents` whose hooks append stdin to a scratch log; `scripts/claude-tmux.sh` covers the interactive background case | `coder` |
 | S7.1 | Guard script and fixtures | `hooks/orchestration-guard.py`, `hooks/tests/orchestration-guard.test.sh` | Every fixture row passes | `bash hooks/tests/orchestration-guard.test.sh` | `coder`, then `quick-review` |
 | S7.2 | Wire the hooks | `agents/orchestration.md` frontmatter only | Three hook entries registered | One `claude -p --agent orchestration --append-system-prompt-file prompts/system_override.md` run in a temp git repo that creates two tasks, runs a foreground `Explore`, writes a 40-line file directly, completes one task, and stops. The transcript holds R1, R2, R3 and R4 | `coder-light` |
-| S7.4 | Notification mod | `plugins/orchestration-notify` (scaffolded from `plugins/example`, layout like `agent-status`) | Injects R2 once per completed agent notification, idle or mid-turn, only in `orchestration` sessions; silent elsewhere | `claude plugin test` in the plugin, then one background-agent run in a script session | `coder`, then `quick-review` |
+| S7.4 | Notification mod | A mod inside `plugins/coremods` (Q9) | Injects R2 once per completed agent notification, idle or mid-turn, only in `orchestration` sessions; silent elsewhere | `claude plugin test` in the plugin, then one background-agent run in a script session | `coder`, then `quick-review` |
 | S7.3 | Record | This section, the S7 row, the `work_state` operator step | Matches what landed | Read the diff | Main session |
 
 The fixtures follow `plugins/authoring/scripts/tests/check-docs-sync.sh` and point `XDG_STATE_HOME` and `CLAUDE_CONFIG_DIR` at temporary directories.
