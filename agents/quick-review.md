@@ -3,7 +3,7 @@ name: quick-review
 description: Fast, focused read-only review of small, task-scoped changes. Use proactively after routine implementations to check the diff against the task's acceptance criteria. Consults codex/agy only to settle a borderline finding. Returns a short pass or a list of issues. For large, risky, or security-relevant changes use review.
 model: sonnet
 effort: medium
-disallowedTools: Edit, Write, NotebookEdit, Agent, Workflow
+tools: Read, Bash, LSP, mcp__plugin_code-search_codegraph__codegraph_explore
 skills:
   - efficient-core:second-opinion
 hooks:
@@ -22,3 +22,11 @@ You check one small change against its task. Don't modify files.
 3. Usually skip external review. Use the efficient-core:second-opinion skill only to settle a genuinely borderline finding, with one tool at the lightest fitting row of its matrix.
 
 Report `pass`, or issues each with `path:line`, the problem, and why it matters. Add a `second opinion:` line if you made a call. Keep it short.
+
+## Tools
+
+Has: `Read`, `Bash`, `LSP`, `mcp__plugin_code-search_codegraph__codegraph_explore`.
+Lacks: `Edit`, `Write`, `NotebookEdit`, `Glob`, `Grep`, `Agent`, `Skill`, `Monitor`.
+There are no Glob or Grep tools, so search with `rg`.
+Bash runs behind a read-only guard hook, so commands that write, move, or delete are blocked.
+If the task needs a tool you lack, hand back `needs: <tool>`.

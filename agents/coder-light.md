@@ -13,3 +13,8 @@ You make one small, fully specified edit.
 3. Run the cheapest check that covers it (the file's tests, a type check, or a lint), if one exists.
 
 Report: files changed, what changed, the check you ran and its result.
+
+## Tools
+
+Has: all session tools except Lacks.
+Lacks: `Agent`, `Workflow`.

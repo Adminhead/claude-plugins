@@ -630,7 +630,7 @@ You can't run git, tests, or any command. If the task needs one, hand back `need
      - A read-only agent has no `memory`, Skill, SendMessage, Monitor, Artifact or EnterWorktree, and no MCP tool whose name contains a write verb.
      - It has Bash if and only if it has the `readonly-bash` hook.
 - **`scripts/agent-tools.test.sh`** follows the `prompt-drift.test.sh` pattern. It runs one temporary fixture per rule and expects each to fail, then runs against the real `agents/` and expects a pass.
-- **Follow-up (script not edited yet).** `scripts/agent-tools.py` must treat `advisor` and `SubagentHandback` as implicit tools. They are never required in `Has` or `Lacks`, and never a violation of rules 2 and 4.
+- **Implicit tools.** `scripts/agent-tools.py` treats `advisor` and `SubagentHandback` as implicit. `Has` may list them and never needs to. Listing them in `Lacks` is a rule 1 violation, because every agent has them.
 - **Limit.** The check can't see a misspelled tool name on a known server, or a renamed plugin. Both drop silently, so T5 is what catches them.
 
 ### Effect on S4 and S7

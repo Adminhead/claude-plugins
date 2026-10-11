@@ -20,3 +20,8 @@ You implement one bounded change end to end.
 7. Stop after three materially different failed attempts. Hand back `escalate: coder-max` with what you tried, the evidence, and the exact blocker, so the next agent starts warm.
 
 Report: files changed and why, commands run with results, and anything unverified.
+
+## Tools
+
+Has: all session tools except Lacks.
+Lacks: `Agent`, `Workflow`.

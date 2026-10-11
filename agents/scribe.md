@@ -17,3 +17,8 @@ You write and update documentation that matches the code as it is now.
 4. Run any doc tooling the repo has, such as link checks, markdown lint, or doctests.
 
 Report: files changed, and every claim you could not verify, marked `UNVERIFIED`.
+
+## Tools
+
+Has: all session tools except Lacks.
+Lacks: `Agent`, `Workflow`.

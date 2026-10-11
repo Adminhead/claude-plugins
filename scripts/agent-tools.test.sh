@@ -52,6 +52,14 @@ agent ok-inherit coder "disallowedTools: Agent, Workflow" \
 expect ok-allow 0 "agent-tools: ok (3 agents)"
 expect ok-inherit 0 "agent-tools: ok (1 agents)"
 
+# advisor and SubagentHandback are implicit: Has may list them, Lacks may not.
+agent ok-implicit ro "tools: Read, Glob, Grep, LSP" 'Has: `Read`, `Glob`, `Grep`, `LSP`, `advisor`, `SubagentHandback`.' \
+  "$RO_LACKS"
+expect ok-implicit 0 "agent-tools: ok (1 agents)"
+agent r1-implicit-lacks ro "tools: Read, Glob, Grep, LSP" 'Has: `Read`, `Glob`, `Grep`, `LSP`.' \
+  "${RO_LACKS%.}, \`advisor\`."
+expect r1-implicit-lacks 1 "ro.md: 1: Lacks lists implicit tools every agent has: ['advisor']"
+
 # Inline server: Has gains mcp__<server>__*, minus disallowedTools. A multi-line args list
 # inside the server is not a second mcpServers entry.
 SERVER_FM='tools: Read, Bash

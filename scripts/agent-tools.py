@@ -30,6 +30,7 @@ WRITE_VERBS = (
     "write", "edit", "create", "delete", "update", "merge", "push", "commit", "upload", "move",
     "save", "add", "comment", "assign", "fork", "request", "run", "send", "close", "remove", "set", "post",
 )
+IMPLICIT = {"advisor", "SubagentHandback"}  # every agent gets these unlisted
 MAIN_THREAD = "orchestration.md"  # runs as the session itself, so it is exempt from rules 1-4
 INHERIT_HAS = "Has: all session tools except Lacks."
 
@@ -93,7 +94,8 @@ def tools_section(body):
     lacks = re.search(r"^Lacks:(.*)$", sec, re.M)
     inherit = any(line.strip() == INHERIT_HAS for line in sec.split("\n"))
     names = lambda mm: re.findall(r"`([^`]+)`", mm.group(1)) if mm else None
-    return names(has), names(lacks), inherit
+    drop = lambda xs: xs if xs is None else [x for x in xs if x not in IMPLICIT]
+    return drop(names(has)), names(lacks), inherit
 
 
 def check(path):
@@ -120,6 +122,11 @@ def check(path):
     if lacks is None or (has is None and not inherit):
         v("parse", "## Tools section needs a `Has:` line (or `Has: all session tools except Lacks.`) and a `Lacks:` line")
         return out
+
+    implicit = [x for x in lacks if x in IMPLICIT]
+    if implicit:
+        v("1", f"Lacks lists implicit tools every agent has: {implicit}")
+        lacks = [x for x in lacks if x not in IMPLICIT]
 
     allow = "tools" in keys
     tools = csv(keys.get("tools", ""))
