@@ -12,6 +12,10 @@ The session is named claude-<git repo root name>, or claude-<DIR name> outside
 a repo, so every directory in a project shares one session. Inside tmux it
 switches sessions instead of nesting. The pane closes when Claude exits.
 
+Claude runs as the orchestration agent (~/.claude/agents/orchestration.md) with
+~/.claude/prompts/system_override.md appended to its system prompt, and with
+auto memory off (claude-mem covers it). Plain `claude` keeps the defaults.
+
   -s NAME   use NAME as the session name
   -l        pick an existing session with fzf (live preview)
   -h        show this help
@@ -56,6 +60,10 @@ fi
 dir=$(cd "$dir" && pwd)
 
 command -v claude >/dev/null || die "claude not found"
+agent=$HOME/.claude/agents/orchestration.md
+prompt=$HOME/.claude/prompts/system_override.md
+[[ -f $agent ]] || die "missing $agent"
+[[ -f $prompt ]] || die "missing $prompt"
 
 if [[ -z $name ]]; then
   root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || root=$dir
@@ -66,6 +74,7 @@ name=${name//[.:]/-} # tmux forbids . and : in session names
 if tmux has-session -t "=$name" 2>/dev/null; then
   (($# == 0)) || echo "claude-tmux: $name already exists; ignoring: $*" >&2
 else
-  tmux new-session -d -s "$name" -c "$dir" claude -n "$name" "$@"
+  tmux new-session -d -s "$name" -c "$dir" -e CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
+    claude -n "$name" --agent orchestration --append-system-prompt-file "$prompt" "$@"
 fi
 go_to "$name"
