@@ -5,6 +5,13 @@ set -euo pipefail
 script=$(cd "$(dirname "$0")" && pwd)/claude-tmux.sh
 tmp=$(mktemp -d)
 export TMUX_TMPDIR=$tmp
+# tmux uses the server in $TMUX over TMUX_TMPDIR, so when run inside tmux the kill-server below would hit the real server.
+unset TMUX
+# Stub agent and prompt files so the test does not depend on this machine's ~/.claude symlinks.
+export HOME=$tmp/home
+mkdir -p "$HOME/.claude/agents" "$HOME/.claude/prompts"
+: > "$HOME/.claude/agents/orchestration.md"
+: > "$HOME/.claude/prompts/system_override.md"
 trap 'tmux kill-server 2>/dev/null || true; rm -rf "$tmp"' EXIT
 
 mkdir -p "$tmp/bin" "$tmp/my.proj" "$tmp/repo/src/deep"
@@ -13,6 +20,8 @@ git -C "$tmp/repo" init -q
 printf '#!/bin/sh\nprintf "%%s|%%s\\n" "$PWD" "$*" > "%s/args.$2"\nexec sleep 30\n' "$tmp" > "$tmp/bin/claude"
 chmod +x "$tmp/bin/claude"
 export PATH=$tmp/bin:$PATH
+# claude-tmux.sh starts claude as the orchestration agent with the system override (667dd0f).
+launch="--agent orchestration --append-system-prompt-file $HOME/.claude/prompts/system_override.md"
 
 # Run the script as if from inside tmux; switch-client fails with no attached client.
 tmux new-session -d -s host
@@ -29,12 +38,12 @@ recorded() { # wait up to 2s for session $1's stub to record "<cwd>|<args>"
 # Outside a repo: claude-<dir name>, with "." sanitized
 run "$tmp/my.proj"
 tmux has-session -t "=claude-my-proj" || fail "default session name"
-recorded claude-my-proj "$tmp/my.proj|-n claude-my-proj"
+recorded claude-my-proj "$tmp/my.proj|-n claude-my-proj $launch"
 
 # Inside a repo: named after the repo root, but started in the current dir
 (cd "$tmp/repo/src/deep" && run)
 tmux has-session -t "=claude-repo" || fail "repo-root session name"
-recorded claude-repo "$tmp/repo/src/deep|-n claude-repo"
+recorded claude-repo "$tmp/repo/src/deep|-n claude-repo $launch"
 
 # An existing prefix-matching session must not satisfy an exact name
 tmux new-session -d -s api-foo
@@ -43,11 +52,11 @@ tmux has-session -t "=api" || fail "prefix match hijacked session name"
 
 # Dashed args go to claude and DIR defaults to $PWD
 (cd "$tmp/my.proj" && run -s dashed -c)
-recorded dashed "$tmp/my.proj|-n dashed -c"
+recorded dashed "$tmp/my.proj|-n dashed $launch -c"
 
 # Args after DIR go to claude, including non-dashed values
 run -s after "$tmp" --resume abc
-recorded after "$tmp|-n after --resume abc"
+recorded after "$tmp|-n after $launch --resume abc"
 
 # Bad directory, missing -s value, and help
 if "$script" /nonexistent 2>/dev/null; then fail "bad dir accepted"; fi
