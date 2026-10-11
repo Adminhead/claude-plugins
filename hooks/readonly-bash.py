@@ -21,7 +21,7 @@ import posixpath
 import re
 import sys
 
-SCRATCH_MSG = "This agent is read-only; write scratch files under $TMPDIR only."
+SCRATCH_MSG = "This agent is read-only; write scratch files under /tmp only."
 MAX_DEPTH = 8
 
 
@@ -267,7 +267,7 @@ def is_scratch(path):
     if path in ('/dev/null', '/dev/stdout', '/dev/stderr', '/dev/tty'):
         return True
     norm = posixpath.normpath(path)
-    if re.match(r'^(/tmp|\$TMPDIR|\$\{TMPDIR[^}]*\})(/.+)?$', norm):
+    if re.match(r'^/tmp(/.+)?$', norm):
         return True
     tmpdir = os.environ.get('TMPDIR', '').rstrip('/')
     return tmpdir.startswith('/') and (norm == tmpdir or norm.startswith(tmpdir + '/'))
@@ -277,8 +277,7 @@ def is_scratch_root(path):
     """The scratch directory itself, after normalizing `..`."""
     norm = posixpath.normpath(path)
     tmpdir = os.environ.get('TMPDIR', '').rstrip('/')
-    return (norm == '/tmp' or re.fullmatch(r'\$TMPDIR|\$\{TMPDIR[^}]*\}', norm) is not None
-            or (tmpdir.startswith('/') and norm == tmpdir))
+    return norm == '/tmp' or (tmpdir.startswith('/') and norm == tmpdir)
 
 
 def first_positional(args, valued=()):
@@ -505,6 +504,8 @@ def check_xargs(args):
     if i is None:
         return
     rest = strip_wrappers(args[i:])
+    if not rest:
+        block("xargs wrapper runs a command that cannot be checked")
     # xargs supplies the paths from stdin, which cannot be checked.
     if rest and posixpath.basename(rest[0]) in FS_CMDS:
         block("xargs %s modifies the filesystem" % rest[0])
@@ -534,14 +535,62 @@ def git_listing(rest, mutating_short, mutating_long, valued):
         block("git branch/tag with a name creates one")
 
 
+GIT_CONFIG_SAFE = re.compile(r'(color\..*|core\.quotepath|log\..*|diff\.renames|diff\.algorithm|'
+                             r'blame\..*|core\.abbrev)', re.I)
+
+
+def git_config_ok(key, value):
+    key = key.lower()
+    if GIT_CONFIG_SAFE.fullmatch(key):
+        return True
+    if key.startswith('pager.'):
+        return value == 'false'
+    return key == 'core.pager' and value in ('', 'cat')
+
+
+def check_git_globals(pre):
+    """Options before the subcommand: -c may only set display keys, repos must be under cwd."""
+    j = 0
+    while j < len(pre):
+        a = pre[j]
+        j += 1
+        name, eq, val = a.partition('=')
+        if name == '--exec-path':
+            block("git --exec-path picks the helpers git runs")
+        if name in ('-C', '--git-dir', '--work-tree'):
+            if not eq:
+                val = pre[j] if j < len(pre) else ''
+                j += 1
+            cwd = os.getcwd()
+            full = posixpath.normpath(posixpath.join(cwd, val))
+            if re.search(r'[$`~]', val) or not (full == cwd or full.startswith(cwd.rstrip('/') + '/')):
+                block("git %s '%s' points outside the working directory" % (name, val))
+        elif a == '-c' or name == '--config-env':
+            if a == '-c' or not eq:
+                val = pre[j] if j < len(pre) else ''
+                j += 1
+            key, has_value, value = val.partition('=')
+            if name == '--config-env':
+                value = 'env'   # the value comes from the environment: unknown
+            elif not has_value:
+                value = 'true'
+            if not git_config_ok(key, value):
+                block("git config override '%s' is not a display setting" % key)
+
+
 def check_git(args):
     i, sub = first_positional(args, GIT_VALUED)
+    check_git_globals(args[:i] if i is not None else args)
     if sub is None:
         return
     rest = args[i + 1:]
     listing_valued = {'--contains', '--no-contains', '--merged', '--no-merged',
                       '--points-at', '--sort', '--format'}
     _, first = first_positional(rest)
+    if sub == 'grep':
+        for a in rest:
+            if a.startswith('--open-files-in-pager') or 'O' in short_flags(a):
+                block("git grep -O launches a program")
     if sub in GIT_READ:
         for j, a in enumerate(rest):
             if a == '--output' or a.startswith('--output='):
@@ -585,6 +634,107 @@ def check_git(args):
             block("git apply writes files")
     else:
         block("git subcommand '%s' is not on the read-only list" % sub)
+
+
+GH_VALUED = {'-R', '--repo', '--hostname'}
+# Read subcommands per `gh` group; any other subcommand is blocked.
+GH_READ = {
+    'search': {'issues', 'prs', 'repos', 'code', 'commits'},
+    'pr': {'view', 'list', 'diff', 'checks', 'status'},
+    'issue': {'view', 'list', 'status'},
+    'run': {'view', 'list'},
+    'workflow': {'view', 'list'},
+    'release': {'view', 'list'},
+    'repo': {'view', 'list'},
+    'label': {'list'},
+    'gist': {'view', 'list'},
+    'secret': {'list'},
+    'variable': {'list', 'get'},
+    'auth': {'status'},
+    'config': {'get', 'list'},
+    'cache': {'list'},
+    'ruleset': {'list', 'view', 'check'},
+    'project': {'list', 'view', 'field-list', 'item-list'},
+}
+GH_ANY = {'status', 'help', 'version', 'completion'}   # read-only at every depth
+
+
+def gh_flag_end(args, start):
+    """Index of the first non-flag word at or after start. Only -R/--repo/--hostname
+    and --help/--version may precede a gh group or subcommand."""
+    i = start
+    while i < len(args) and args[i].startswith('-'):
+        a = args[i]
+        if a in GH_VALUED:
+            i += 1
+        elif a in ('--help', '--version') or re.match(r'(-R.|--(repo|hostname)=)', a):
+            pass
+        else:
+            block("gh flag '%s' before the subcommand" % a)
+        i += 1
+    return i
+
+
+GH_API_VALUED = {'--cache', '--hostname', '--jq', '--template', '--preview', '--method', '--header'}
+GH_API_BOOL = {'--allow-escape-sequences', '--include', '--paginate', '--silent', '--slurp', '--verbose', '--help'}
+
+
+def check_gh_api(args):
+    """Block any non-GET method, request fields, --input, graphql and method-override headers."""
+    i = 0
+    while i < len(args):
+        a = args[i]
+        i += 1
+        kind = value = None
+        if a.startswith('--'):
+            name, eq, value = a.partition('=')
+            if name in ('--field', '--raw-field', '--input'):
+                block("gh api with request fields or --input implies POST")
+            if name in GH_API_VALUED:
+                if not eq:
+                    value = args[i] if i < len(args) else ''
+                    i += 1
+                kind = {'--method': 'X', '--header': 'H'}.get(name)
+            elif name not in GH_API_BOOL:
+                block("unknown gh api flag '%s'" % name)
+        elif re.fullmatch(r'-[A-Za-z]+.*', a):
+            for pos, ch in enumerate(a[1:], 1):
+                if ch in 'fF':
+                    block("gh api with request fields implies POST")
+                if ch in 'XHptq':
+                    value = a[pos + 1:]
+                    if not value:
+                        value = args[i] if i < len(args) else ''
+                        i += 1
+                    elif value.startswith('='):
+                        value = value[1:]
+                    kind = ch
+                    break
+                if ch not in 'ih':
+                    block("unknown gh api flag '-%s'" % ch)
+        elif a.lstrip('/').split('?')[0].strip().rstrip('/') == 'graphql':
+            block("gh api graphql can mutate")
+        if kind == 'X' and value.upper() != 'GET':
+            block("gh api -X %s mutates" % value)
+        if kind == 'H' and 'method' in value.lower():
+            block("gh api header overrides the method")
+
+
+def check_gh(args):
+    i = gh_flag_end(args, 0)
+    group = args[i] if i < len(args) else None
+    if group is None or group in GH_ANY:
+        return
+    if group == 'api':
+        check_gh_api(args[i + 1:])
+    elif group in GH_READ:
+        if group == 'auth' and ('--show-token' in args or any('t' in short_flags(a) for a in args)):
+            block("gh auth status would print the token")
+        j = gh_flag_end(args, i + 1)
+        if j < len(args) and args[j] not in GH_READ[group]:
+            block("gh %s %s is not on the read-only list" % (group, args[j]))
+    else:
+        block("gh %s is not on the read-only list" % group)
 
 
 JS_MUT = {'install', 'i', 'in', 'ins', 'inst', 'install-test', 'it', 'add', 'remove', 'rm',
@@ -740,6 +890,77 @@ def check_formatter(cmd, args):
 KEYWORDS = {'then', 'do', 'else', 'elif', 'if', 'while', 'until', 'for', '!', '{', '}'}
 
 
+RTK_BLOCKED = {'init', 'trust', 'untrust', 'telemetry', 'hook'}
+ENV_OK = re.compile(r'LANG|LC_\w+|TERM|TZ|NO_COLOR|CLICOLOR\w*|FORCE_COLOR|COLUMNS|LINES|CI|'
+                    r'GH_REPO|GH_HOST|GH_FORCE_TTY')
+ASSIGNMENT = r'^([A-Za-z_][A-Za-z0-9_]*)(\+?)='
+# `read` only assigns stdin, so it is judged by what the name could launch or load.
+READ_RISKY = re.compile(r'(\w*PAGER|\w*BROWSER|\w*EDITOR|VISUAL|PATH|IFS|ENV|BASH_ENV|PROMPT_COMMAND|'
+                        r'LD_\w+|LESS\w*|\w*ASKPASS|GIT_\w+|SSH_\w+|path|fpath|cdpath|manpath|module_path)', re.I)
+ENV_BUILTINS = {'export', 'declare', 'typeset', 'readonly', 'local'}
+
+
+def check_assignment(word, standalone=False):
+    """Assignment prefixes may only set display variables; a pager only to empty or cat.
+    A standalone lowercase assignment passes unless the name is risky, because zsh
+    ties lowercase arrays such as `path` to exported variables."""
+    name, plus = re.match(ASSIGNMENT, word).groups()
+    value = word.split('=', 1)[1]
+    if ENV_OK.fullmatch(name):
+        return
+    if standalone and name == name.lower() and not READ_RISKY.fullmatch(name):
+        return
+    if name.endswith('PAGER') and not plus and value in ('', 'cat'):
+        return
+    block("assignment to %s is not on the display-variable list" % name)
+
+
+def check_env_builtin(cmd, args):
+    if cmd == 'set':
+        if any('a' in short_flags(a) for a in args) or 'allexport' in args:
+            block("set -a exports every assignment")
+    elif cmd == 'read':
+        i = 0
+        while i < len(args):
+            a = args[i]
+            i += 1
+            if a.startswith('-') and len(a) > 1:
+                i += a[-1] in 'adinNptu'   # a trailing valued option takes the next word
+            elif READ_RISKY.fullmatch(a):
+                block("read into %s" % a)
+    else:
+        for a in args:
+            if not a.startswith('-'):
+                check_assignment(a if '=' in a else a + '=x')
+
+
+def env_command(words):
+    """The command after `env`'s options and NAME=value words."""
+    i = 0
+    while i < len(words) and words[i].startswith('-') and len(words[i]) > 1:
+        a = words[i]
+        i += 1
+        if a == '--':
+            break
+        if a.startswith('--'):
+            name = a.split('=')[0]
+            if name == '--split-string':
+                block("env --split-string runs a shell-like string")
+            if '=' not in a and name in ('--unset', '--chdir', '--argv0'):
+                i += 1
+            continue
+        for pos, ch in enumerate(a[1:], 1):
+            if ch == 'S':
+                block("env -S runs a shell-like string")
+            if ch in 'uCa':
+                i += 1 if pos == len(a) - 1 else 0
+                break
+    while i < len(words) and re.match(ASSIGNMENT, words[i]):
+        check_assignment(words[i])
+        i += 1
+    return words[i:]
+
+
 def drop_flags(words, valued=()):
     i, _ = first_positional(words, valued)
     return words[i:] if i is not None else []
@@ -750,7 +971,10 @@ def strip_wrappers(words):
     while words:
         name = posixpath.basename(words[0])
         rest = words[1:]
-        if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\+?=', words[0]) or name in KEYWORDS:
+        if re.match(ASSIGNMENT, words[0]):
+            check_assignment(words[0], all(re.match(ASSIGNMENT, w) for w in words))
+            words = rest
+        elif name in KEYWORDS:
             words = rest
         elif name == 'command' and any(a in ('-v', '-V') for a in rest):
             return []
@@ -779,13 +1003,40 @@ def strip_wrappers(words):
             check_command(' '.join(rest), 1)   # watch runs its arguments through a shell
             return []
         elif name == 'env':
-            words = drop_flags(rest, {'-u', '-C', '-S'})
-            while words and re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', words[0]):
-                words = drop_flags(words[1:], {'-u', '-C', '-S'})
+            words = env_command(rest)
         elif name == 'nice':
             words = drop_flags(rest, {'-n'})
         elif name == 'stdbuf':
             words = drop_flags(rest, {'-i', '-o', '-e'})
+        elif name == 'rtk':   # token-saving proxy: judge what it runs
+            rest = drop_flags(rest)
+            sub, args = (rest[0], rest[1:]) if rest else (None, [])
+            if sub in RTK_BLOCKED:
+                block("rtk %s changes settings or runs hooks" % sub)
+            if sub == 'learn' and ('--write-rules' in args or any('w' in short_flags(a) for a in args)):
+                block("rtk learn -w writes rules")
+            if sub == 'config' and (first_positional(args)[1] is not None
+                                    or any(a.startswith('--create') for a in args)):
+                block("rtk config writes settings")
+            if sub == 'run':   # runs a shell string: the -c value and the folded positionals
+                line = option_value(args, '-c', '--command')
+                if line is not None:
+                    check_command(line, 1)
+                check_command(' '.join(drop_flags(args, {'-c', '--command'})), 1)
+                return []
+            if sub == 'lint':
+                check_formatter('eslint', args)
+                words = drop_flags(args)
+            elif sub in ('err', 'test', 'summary'):   # args are joined into a `sh -c` string
+                check_command(' '.join(drop_flags(args)), 1)
+                return []
+            elif sub == 'proxy':
+                words = drop_flags(args)
+                if len(words) == 1:   # a single word is run through a shell
+                    check_command(words[0], 1)
+                    return []
+            else:
+                words = rest
         elif name == 'timeout':
             rest = drop_flags(rest, {'-s', '-k', '--signal', '--kill-after'})
             words = rest[1:]   # the DURATION
@@ -808,6 +1059,8 @@ def check_argv(words):
         block("'%s' escalates privileges" % cmd)
     elif cmd == 'eval':
         block("eval runs arbitrary code")
+    elif cmd in ENV_BUILTINS or cmd in ('set', 'read'):
+        check_env_builtin(cmd, args)
     elif args in (['--version'], ['--help']):
         return
     elif cmd in SYSTEM_PKG:
@@ -836,6 +1089,8 @@ def check_argv(words):
         check_xargs(args)
     elif cmd == 'git':
         check_git(args)
+    elif cmd == 'gh':
+        check_gh(args)
     elif cmd in ('npm', 'pnpm', 'yarn', 'bun'):
         check_js(cmd, args)
     elif cmd in ('npx', 'bunx', 'pnpx', 'uvx'):
@@ -876,6 +1131,8 @@ def check_segment(tokens):
                     block("redirect to non-scratch path '%s'" % target)
                 i += 2
             else:
+                if t.startswith('-') and ('\n' in t or '\r' in t):
+                    block("option word with an embedded newline")   # defeats the flag regexes
                 words.append(t)
                 i += 1
         check_argv(words)

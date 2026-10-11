@@ -77,15 +77,15 @@ cmd allow "rg 'a|b' src"
 cmd allow 'cat f | tee /tmp/out.txt'
 cmd allow 'git diff | head && ls -la'
 TMPDIR=/var/scratch cmd allow 'echo x > /var/scratch/f'
-TMPDIR=/var/scratch cmd allow 'echo x > $TMPDIR/f'
+TMPDIR=/var/scratch cmd block 'echo x > $TMPDIR/f'
 
 # Heredocs
-cmd allow "cat > \$TMPDIR/repro.py <<'EOF'
+cmd allow "cat > /tmp/repro.py <<'EOF'
 from cart import add_item
 if len(add_item(1)) > 1:
     print('shared default')
 EOF
-python3 \$TMPDIR/repro.py"
+python3 /tmp/repro.py"
 cmd allow 'cat <<-EOF
 	rm x
 	EOF'
@@ -202,7 +202,7 @@ cmd allow '. .venv/bin/activate'
 cmd allow 'echo $((a > 1))'
 cmd allow '(( x > 1 )) && echo big'
 cmd allow 'echo hi # > out.txt'
-cmd allow 'echo x > ${TMPDIR:-/tmp}/f'
+cmd block 'echo x > ${TMPDIR:-/tmp}/f'
 cmd allow 'rg ">" src'
 cmd allow 'echo ";" && ls'
 cmd block 'echo "$(rm x)"'
@@ -261,8 +261,12 @@ cmd block 'rmdir $TMPDIR'
 cmd block 'mv /tmp/a /tmp'
 cmd block 'find /tmp -delete'
 cmd allow 'find /tmp/repro -name "*.pyc" -delete'
-cmd allow 'find $TMPDIR -exec rm {} \;'
+cmd block 'find $TMPDIR -exec rm {} \;'
 cmd block 'find $TMPDIR -exec mv {} /home/x \;'
+cmd block 'rm -rf $TMPDIR/*'
+cmd block 'echo x >> ${TMPDIR:-/home/buck}/.bashrc'
+cmd block 'tee ${TMPDIR:=/etc}/x'
+cmd block 'echo x > ${TMPDIR/#/\/home\/buck}/.profile'
 cmd block 'find . -name x -delete'
 
 # Minor fail-opens
@@ -355,6 +359,180 @@ EOF'
 cmd allow 'echo "$(grep -c ")" f)"'
 cmd allow 'echo hi > /dev/tty'
 
+# rtk wrapper is judged like the command it runs
+cmd block 'rtk rm -rf src'
+cmd block 'rtk git checkout main'
+cmd block 'rtk proxy rm x'
+cmd block 'rtk -v proxy rm x'
+cmd block 'rtk err touch x'
+cmd block 'rtk test rm x'
+cmd block 'rtk run "rm x"'
+cmd block 'rtk run -c "rm x"'
+cmd block 'rtk run rm x'
+cmd block 'rtk proxy gh pr merge 1'
+cmd allow 'rtk git log'
+cmd allow 'rtk proxy git log'
+cmd allow 'rtk rg foo'
+cmd allow 'rtk run "git log"'
+cmd allow 'rtk read src/a.py'
+cmd block 'rtk proxy --skip-env rm -rf src'
+cmd block "rtk err 'git log; rm -rf src'"
+cmd block "rtk test 'echo x > hooks/readonly-bash.py'"
+cmd block "rtk summary 'rm -rf src'"
+cmd block "rtk proxy 'rm -rf src'"
+cmd block 'rtk proxy -- touch src/x'
+cmd block 'rtk err -- rm -rf src'
+cmd block "rtk run 'touch pwned;' -c 'git log'"
+cmd block "rtk run -- 'touch pwned;' -c 'git log'"
+cmd allow 'rtk proxy git status'
+cmd allow "rtk err 'git log'"
+cmd allow "rtk run -c 'git log'"
+cmd block 'xargs rtk run'
+cmd block 'xargs rtk proxy'
+cmd block 'rtk init'
+cmd block 'rtk trust'
+cmd block 'rtk untrust'
+cmd block 'rtk telemetry'
+cmd block 'rtk hook'
+cmd block 'rtk learn -w'
+cmd block 'rtk learn --write-rules'
+cmd allow 'rtk learn'
+cmd block 'rtk config --create'
+cmd block 'rtk config set x'
+cmd allow 'rtk config'
+cmd block 'rtk lint --fix'
+cmd allow 'rtk lint src'
+cmd block "GH_FORCE_TTY=1 GH_PAGER='touch x' gh help reference"
+cmd block "GH_BROWSER='rm -rf src' gh search repos foo --web"
+cmd block 'env BROWSER=x gh pr view 1 --web'
+cmd block 'GIT_EXTERNAL_DIFF=x git diff'
+cmd block 'GIT_SSH_COMMAND=x git ls-remote origin'
+cmd block 'GIT_CONFIG_COUNT=1 git log'
+cmd block 'EDITOR=x git log'
+cmd allow 'LC_ALL=C git log'
+cmd block "rtk test 'echo A;' 'touch x'"
+cmd block "rtk err echo A ';' touch x"
+cmd block "rtk summary git log '&&' touch x"
+cmd block "rtk test cargo test '>' x"
+cmd allow 'rtk test cargo test'
+cmd allow 'rtk err npm test'
+cmd block 'gh repo -h view edit o/r --homepage https://example.com'
+cmd block 'gh api --template -p --method DELETE repos/o/r'
+cmd block 'gh api --jq -p -X DELETE repos/o/r'
+cmd block 'gh api -t= -X DELETE repos/o/r'
+cmd block 'gh api --bogus repos/o/r'
+cmd allow 'gh api repos/o/r --jq .x'
+cmd allow 'gh api repos/o/r -q .x --paginate'
+cmd allow "gh api -H 'Accept: application/json' repos/o/r"
+cmd allow 'gh pr view 1 --json title --jq .title'
+cmd block 'gh search destroy'
+cmd allow 'gh search issues foo'
+cmd block 'env -vu FOO GH_PAGER=x gh help'
+cmd block "env -S 'touch x'"
+cmd block "env --split-string='touch x'"
+cmd block 'export GH_PAGER=x'
+cmd block 'declare -x GH_PAGER=x'
+cmd block 'set -a'
+cmd block 'read -r GH_PAGER'
+cmd allow 'while read -r line; do echo $line; done < f'
+cmd block "LESSOPEN='|touch x' less f"
+cmd block 'MANPAGER=x man ls'
+cmd block 'GIT_ASKPASS=x git ls-remote o'
+cmd block 'LD_PRELOAD=/tmp/x.so git log'
+cmd block 'PATH=/tmp/bin:$PATH git log'
+cmd block 'BASH_ENV=/tmp/x.sh bash /tmp/y.sh'
+cmd allow 'GIT_PAGER=cat git log'
+cmd allow 'PAGER=cat gh pr view 1'
+cmd allow 'GH_PAGER= gh pr list'
+cmd allow 'TERM=dumb git log'
+cmd allow 'NO_COLOR=1 gh pr list'
+cmd allow 'env LC_ALL=C sort f'
+cmd allow 'export LC_ALL=C'
+cmd block 'git -c core.fsmonitor=x status'
+cmd block 'git -c diff.external=x diff'
+cmd block 'git -c core.pager=x log'
+cmd block 'git --git-dir=/tmp/evil status'
+cmd block 'git -C /tmp/evil status'
+cmd block 'git --config-env=core.fsmonitor=V status'
+cmd allow 'git -c color.ui=never log'
+cmd allow 'git -c core.quotepath=off status'
+cmd allow 'git -c core.pager=cat log'
+cmd allow 'git -c pager.log=false log'
+cmd allow 'gh api --allow-escape-sequences repos/o/r'
+cmd block 'git grep -Ox foo'
+cmd block 'git grep -nOx foo'
+cmd block 'git grep --open-files-in-pager=x foo'
+cmd allow 'git grep -n foo'
+cmd allow 'x=1; echo $x'
+cmd allow 'n=$(wc -l < f); echo $n'
+cmd allow 'for f in *; do c=$f; done'
+cmd block 'PAGER=x; git log'
+cmd block 'GIT_PAGER=x'
+cmd block 'x=1 ls'
+cmd block "gh api repos/o/r/issues -f'title=x
+y'"
+cmd block "gh api repos/o/r/issues/1/comments -F'body=a
+b'"
+cmd block "sed -i'
+' s/a/b/ f"
+cmd block 'path=/tmp/e; git log'
+cmd block 'fpath=/tmp/x'
+cmd block 'pager=x'
+cmd allow 'git -C hooks status'
+
+# gh: read subcommands pass, mutations and unknown subcommands block
+for c in 'pr create' 'pr merge 1' 'pr close 1' 'pr reopen 1' 'pr edit 1' 'pr comment 1 -b x' \
+  'pr review 1 -a' 'pr ready 1' 'pr checkout 1' 'issue create' 'issue close 1' 'issue reopen 1' \
+  'issue edit 1' 'issue comment 1 -b x' 'issue delete 1' 'issue transfer 1 o/r' \
+  'release create v1' 'release edit v1' 'release delete v1' 'release upload v1 f' \
+  'repo create x' 'repo delete x' 'repo edit' 'repo fork' 'repo rename y' 'repo archive x' 'repo clone x' \
+  'workflow run ci.yml' 'workflow enable ci.yml' 'workflow disable ci.yml' \
+  'run rerun 1' 'run cancel 1' 'run delete 1' 'secret set X' 'secret delete X' \
+  'variable set X' 'variable delete X' 'label create x' 'label edit x' 'label delete x' \
+  'gist create f' 'gist edit 1' 'gist delete 1' 'extension install x' 'alias set a b' 'auth login' \
+  '-R o/r pr merge 1' 'pr merge 1 -R o/r' \
+  'api -X POST /repos/o/r/issues' 'api -XDELETE /x' 'api --method PATCH /x' 'api --method=PUT /x' \
+  'api /x -f a=b' 'api /x -F a=b' 'api /x -fa=b' 'api /x --field a=b' 'api /x --raw-field a=b' \
+  'api /x --input body.json' 'api graphql -f query=q'; do
+  cmd block "gh $c"
+done
+for c in 'pr view 1' 'pr list' 'pr diff 1' 'pr checks 1' 'pr status' 'issue view 1' 'issue list' \
+  'issue status' 'run view 1' 'run list' 'repo view' 'release view v1' 'release list' \
+  'search issues foo' 'status' '-R o/r pr view 1' 'pr view 1 --repo o/r' 'pr' \
+  'api /repos/o/r' 'api -X GET /repos/o/r' 'api --method=get /x' 'api /x --paginate -q .[].name'; do
+  cmd allow "gh $c"
+done
+cmd allow 'gh pr list | head'
+cmd allow 'gh --version'
+cmd block 'gh --body status pr merge 1'
+cmd block 'gh pr -b view merge 1'
+cmd block 'gh pr --body view merge 1'
+cmd block 'gh issue --title list create --body x'
+cmd block 'gh repo --description view edit'
+cmd block 'gh release --notes list create v9'
+cmd block 'gh -p help api -X POST repos/o/r/issues'
+cmd block 'gh -c search pr close 1'
+cmd block 'gh -XDELETE api repos/o/r/git/refs/heads/main'
+cmd block 'gh --method=DELETE api repos/o/r/git/refs/heads/main'
+cmd block 'gh -fbody=x api repos/o/r/issues'
+cmd allow 'gh -R o/r pr list'
+cmd allow 'gh --repo=o/r pr view 1'
+cmd allow 'gh pr view 1'
+cmd allow 'gh pr list --help'
+cmd block 'gh api -X GET -X DELETE repos/o/r/git/refs/heads/main'
+cmd block 'gh api --method GET --method PUT repos/o/r/pulls/1/merge'
+cmd block 'gh api -iXPUT repos/o/r/pulls/1/merge'
+cmd block 'gh api -iX PUT repos/o/r/pulls/1/merge'
+cmd block 'gh api -if title=x repos/o/r/issues'
+cmd block 'gh api graphql -f query=x'
+cmd block "gh api -H 'X-HTTP-Method-Override: DELETE' repos/o/r"
+cmd allow 'gh api repos/o/r'
+cmd allow 'gh api -X get repos/o/r'
+cmd allow 'gh api --method=GET repos/o/r/pulls'
+cmd allow 'gh api -i repos/o/r'
+cmd block 'gh auth status -t'
+cmd block 'gh auth status --show-token'
+
 # The frontmatter command must fail closed even if python3 is shadowed or missing.
 fm() { # fm <expect> <label> <command> [env assignments...]
   local expect="$1" label="$2" c="$3" rc=0 json
@@ -374,6 +552,15 @@ fm block 'shadowed json.py cannot fail open' 'rm x' PYTHONPATH="$shadow"
 fm allow 'shadowed json.py cannot change an allow' 'ls' PYTHONPATH="$shadow"
 rm -rf "$shadow"
 fm block 'missing python3 blocks' 'ls' PATH=/nonexistent
+
+# The block message names /tmp, since TMPDIR is empty in agent Bash.
+err=$(jq -n '{tool_input:{command:"touch a"}}' | "$HOOK" 2>&1 >/dev/null) || true
+if [[ "$err" == *"under /tmp only"* && "$err" != *TMPDIR* ]]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: block message should name /tmp: %s\n' "$err"
+fi
 
 # An injected crash must exit 2 with an internal-error message.
 err=$(printf '{"tool_input":{"command":"ls"}}' | READONLY_BASH_TEST_FAULT=1 "$HOOK" 2>&1 >/dev/null) && rc=0 || rc=$?
