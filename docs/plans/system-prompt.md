@@ -1,6 +1,6 @@
 # Custom main-session system prompt
 
-Plan for replacing the stock main-session system prompt for script launches. Route (Q7): `claude --agent orchestration --append-system-prompt-file ~/.claude/prompts/system_override.md`. Status: S1 and S2 done 2026-10-10, then re-cut for the agent route; S3 moved to the end (runs last, after the launcher is ready); S5 and S6 done; S7 designed (see its section), not built; S4 not started. Evidence comes from the installed 2.1.296 binary (`~/.local/share/claude/versions/2.1.296`, build 2026-10-09T01:31:52Z, SHA `fdb6c17`) and [prompt-reconstruction.md](../research/prompt-reconstruction.md), which covers 2.1.287. Function names below are 2.1.296 minified names, and they change every release.
+Plan for replacing the stock main-session system prompt for script launches. Route (Q7): `claude --agent orchestration --append-system-prompt-file ~/.claude/prompts/system_override.md`. Status: S1 and S2 done 2026-10-10, then re-cut for the agent route; S3 moved to the end (runs last, after the launcher is ready); S5 and S6 done; S7 and S8 designed (see their sections), not built; S4 merged into S8. Evidence comes from the installed 2.1.296 binary (`~/.local/share/claude/versions/2.1.296`, build 2026-10-09T01:31:52Z, SHA `fdb6c17`) and [prompt-reconstruction.md](../research/prompt-reconstruction.md), which covers 2.1.287. Function names below are 2.1.296 minified names, and they change every release.
 
 ## Outcome and completion
 
@@ -195,7 +195,8 @@ The script doesn't need to supply env, date, interactive git status, CLAUDE.md, 
 | S0 | Capture the baseline | Appendix in this plan | Live section names and token counts recorded for the default model | `/context` in a stock session (operator step). It names sections by first heading (`bHo`), but whether the UI shows them is UNCONFIRMED; the fallback is a log-only `prompt.section` hook | Main session, user runs `/context` |
 | S1 | Write the prompt file | `prompts/system_override.md` | Follows the inventory and order; no sentence contradicts or restates CLAUDE.md | `claude --agent orchestration --append-system-prompt-file prompts/system_override.md`, then `/context` shows the custom headings and no dropped ones; `quick-review` checks the file against CLAUDE.md | `coder-light` copies verbatim sections; `scribe` writes the rewrites |
 | S2 | Drift probe | `scripts/prompt-drift.sh` | Fails when the agent-plus-append route breaks (G0), the slot list changes, or a kept phrase disappears | Run on 2.1.296 (pass) and 2.1.294 (report the diff) | `coder` |
-| S4 | Agent self-sufficiency | `agents/*.md` | Each agent body carries the stock essentials its role needs (for example, action caution for writers and harness facts for all), since subagents get only their body plus a Notes block (G3) | `quick-review` of each body against the kept inventory rows; spawn one agent and confirm it states the added rule | `scribe` |
+| S4 | ~~Agent self-sufficiency~~ | — | Merged into S8 (T4) | — | — |
+| S8 | Agent tool scoping | `agents/*.md`, `hooks/readonly-bash.py`, `scripts/agent-tools.*` | See the S8 section | T0 spike, drift check, T5 live run | per sub-slice |
 | S5 | Research orchestration prompts | `docs/research/orchestration-prompts.md` | How oh-my-opencode and oh-my-opencode-slim write their orchestrator logic (delegation rules, routing, parallelism, verification, todo discipline, failure handling), with links to the exact source files and a list of practices worth adopting | Every claim cites a file in the upstream repo at a pinned commit | `general-purpose`, one per repo, in parallel |
 | S6 | Improve the orchestration agent | `agents/orchestration.md` | Adopts the S5 practices that fit this setup; no rule contradicts CLAUDE.md or `system_override.md`; frontmatter sets tools and model where useful | `quick-review` against S5's adoption list; one `claude -p --agent orchestration --append-system-prompt-file …` smoke run | `scribe` drafts, user approves |
 | S7 | Orchestration enforcement | Plan section in this file, then hooks and/or mods | For each of three behaviors, decide a classic hook, a mod, an agent-frontmatter hook, or a mix: Stop-hook continuation while tasks are open, a reminder to verify when an agent returns, and a nudge when the main thread edits source directly. Each applies only to script sessions | Design reviewed before any code | `architect`, then `coder` per behavior |
@@ -480,3 +481,218 @@ Second opinion skipped, because external models are barred for prompt and agent 
 - **QS7-4. Completion audit when the last task closes** (upstream's `BOULDER_COMPLETE_PROMPT`).
   - (a) Don't build it. Recommended, because CLAUDE.md's verification rules and the reviewer pass cover it.
   - (b) Block once with an evidence audit.
+
+## S8. Agent tool scoping (absorbs S4, touches S7)
+
+Status: designed 2026-10-10, not built. T0 must pass before any agent edit.
+
+Evidence comes from:
+
+- the 2.1.296 binary (minified names `HC`, `an`, `SA`, `nd`, `Wf`)
+- sub-agents.md and tools-reference.md, fetched 2026-10-10
+- local runs
+
+### Outcome and completion
+
+- **Outcome.** Wherever possible, an agent is read-only because of its frontmatter allowlist. Every agent body states exactly which tools it has and which it lacks, and a check fails when a body and its frontmatter disagree.
+- **Completion conditions:**
+  - T0's findings are recorded, and every UNCONFIRMED row below is settled.
+  - `bash scripts/agent-tools.test.sh` and `bash hooks/tests/readonly-bash.test.sh` pass.
+  - In the T5 live run, no read-only agent creates its probe file. Each attempt fails because the tool is missing or `readonly-bash` blocked it, never because of a classifier denial.
+
+### Evidence
+
+| Fact | Source |
+|---|---|
+| `tools` entries parse as `Tool(spec)`, but the resolver drops the specifier for built-in tools, so `Bash(rg *)` grants all of Bash | binary `HC` → `an(e,s){return s===void 0\|\|ho(e)===void 0}`; T0.1 |
+| No frontmatter field can limit Bash to certain commands. `bashCommandClamp` exists only for Workflow `agent()` | binary key list `Wf`; clamp error strings |
+| `disallowedTools` applies first, and an entry with a specifier removes the whole tool | sub-agents.md |
+| An entry that doesn't resolve is dropped silently. The spawn is refused only when every entry fails | sub-agents.md; binary `tengu_subagent_zero_tools` |
+| Tools from the agent's own `mcpServers` join after `tools` is resolved, and only `disallowedTools` filters them | binary `nd`, then `it=[...Sn,...Ln]` in `SA` |
+| A subagent with no Bash that lists `Glob` or `Grep` gets them back | tools-reference "Glob tool behavior"; binary `HC` |
+| Background subagents keep only a fixed set of built-in tools: Read, Grep, Glob, LSP, Bash, Edit, Write, NotebookEdit, WebFetch, WebSearch, Skill, ToolSearch, Monitor, SendMessage, Artifact, the worktree tools and TaskStop | sub-agents.md |
+| A subagent's `permissionMode` is ignored when the parent runs in auto, acceptEdits or bypass mode. The user's `defaultMode` is `auto` | sub-agents.md; binary `SA` `yn()`; `~/.claude/settings.json` |
+| `memory:` turns on Read, Write and Edit automatically | sub-agents.md |
+| An inline server starts with each spawn and stops when the agent finishes. The parent never sees its tools, and `~/.claude/agents` needs no folder trust | sub-agents.md; binary `nd` |
+| Today's read-only agents can reach the GitHub write tools, Monitor, Artifact, SendMessage and EnterWorktree | the architect session's own tool list |
+| Hooks match on the tool name, and Monitor runs shell commands as `Monitor`, so the `Bash` hook never sees them | UNCONFIRMED; T0.6 |
+| Playwright MCP 0.0.83 turns on `browser_run_code_unsafe` ("RCE-equivalent") by default | npm readme for 0.0.83, Core automation section |
+| `readonly-bash.py` allows `rtk rm -rf src` (rc 0) | local run |
+| `TMPDIR` is empty in agent Bash, so `$TMPDIR/x` expands to `/x` | `echo "TMPDIR=$TMPDIR"` |
+
+### Recommended approach
+
+- **Explore drops Bash.** It lists `Glob` and `Grep`, which brings them back, so the allowlist alone makes it read-only and it no longer needs `readonly-bash.py`.
+- **The other six read-only agents keep Bash and the hook.** They need Bash for tests, `git diff`, `consult.sh`, scanners or dev servers. In 2.1.296 no allowlist entry, permission mode or MCP server can limit Bash to read-only commands, so the hook stays as their guard.
+- **All seven read-only agents switch from a denylist to an allowlist.** That closes today's leaks:
+  - the GitHub write tools
+  - Monitor, which gets past the Bash hook
+  - SendMessage, Artifact, EnterWorktree and Skill. A forked skill could spawn an agent with the full tool pool (inferred from the `spawnedBySkill` path; UNCONFIRMED).
+- **Session MCP servers are granted through `tools` entries, never `mcpServers`.** A `mcpServers` reference would add every tool on that server, past the allowlist.
+- **`permissionMode` is left out everywhere.** It matters only if the main thread leaves auto mode.
+- **No new MCP dependency is added** (see the candidates table below).
+
+| Alternative | Why it lost |
+|---|---|
+| `tools: Bash(git log *), Bash(rg *)` | The specifier is ignored, so the agent gets all of Bash while believing it is limited |
+| `permissionMode: plan` or `dontAsk` | Ignored under an auto-mode parent. Plan mode would also block test runs |
+| Settings `permissions.deny` for writes | Applies to the whole session, so coders and the main thread lose writes too |
+| Sandbox `filesystem.denyWrite` | Also session-wide, with no per-agent scoping |
+| Allowlists for writers too | They drift as Claude Code adds tools. The writers' real risk is outward-facing actions, which QT2 covers |
+| A filesystem, ripgrep or git MCP for a Bash-less Explore | See the candidates table |
+
+### Per-agent table
+
+Shorthand, spelled out in full in the frontmatter:
+
+- CG = `mcp__plugin_code-search_codegraph__codegraph_explore`
+- C7 = `mcp__plugin_code-search_context7__resolve-library-id` and `__query-docs`
+- GA = `mcp__plugin_code-search_grep-app__searchGitHub`
+- EXA = `mcp__plugin_efficient-core_exa__web_search_exa` and `__web_fetch_exa`
+
+| Agent | `tools` | `disallowedTools` | MCP servers | `readonly-bash.py` | Lost vs today |
+|---|---|---|---|---|---|
+| Explore | Read, Glob, Grep, LSP, CG, the `coremods` git tools (T7) | none | none | Dropped (no Bash) | Bash (git log and blame, finding files by metadata, the `codegraph` CLI), Monitor, Skill, web tools, all other MCP tools |
+| architect | Read, Bash, LSP, CG, C7, GA, EXA | none | none | Kept: `consult.sh`, git, rg | Agent (QT1), on-demand Skill (preloaded skills stay), Monitor, WebFetch and WebSearch (EXA covers them), the github, claude-mem and chrome MCP tools, Artifact, SendMessage |
+| debugger | Read, Bash, LSP, CG, C7, GA, EXA | none | none | Kept: tests, repro scripts | Monitor (it gets past the hook), on-demand Skill, github and claude-mem MCP, Artifact, SendMessage |
+| quick-review | Read, Bash, LSP, CG | none | none | Kept: diff, tests, `consult.sh` | On-demand Skill, docs and web tools, Monitor, other MCP tools |
+| review | Read, Bash, LSP, CG, C7, GA | none | none | Kept: same | On-demand Skill, Monitor, web tools, github MCP (it uses `gh` read commands instead) |
+| security-auditor | Read, Bash, LSP, CG, C7, GA, EXA | none | none | Kept: scanners, diff, `consult.sh` | On-demand Skill, Monitor, github MCP (alerts through `gh api` instead) |
+| browser-tester | Read, Bash | `mcp__playwright__browser_run_code_unsafe` | `playwright`, inline, pinned to 0.0.83; its tools join past `tools` | Kept: starts dev servers | `browser_run_code_unsafe`, which it can reach today, plus LSP, Skill, Monitor and the session MCP tools |
+| coder-light, coder, coder-max, scribe | omitted (inherit) | Agent, Workflow (plus QT2) | none | n/a | Nothing, unless QT2(b) is chosen |
+| orchestration | omitted. On the main thread, `tools` would narrow the whole session | none | none | n/a | Nothing |
+
+- **ToolSearch stays off the read-only lists**, so their few MCP tools load up front.
+  - Today each read-only spawn carries about 110 deferred tool names, roughly 1.5–2k tokens.
+  - Afterwards it carries 1–6 tool schemas, roughly 0.5–3k tokens. Both figures are UNCONFIRMED estimates.
+  - The change is about even for architect and debugger, and a saving for the rest.
+- **`SubagentHandback` isn't listed**, because the binary passes it separately as `handbackTool`. T0.4 confirms this; if it turns out to be dropped, it goes on every list.
+
+### MCP candidates
+
+| Candidate | Read-only tools | How to restrict | Pinning and supply chain | Verdict |
+|---|---|---|---|---|
+| `@modelcontextprotocol/server-filesystem` | read_text_file, read_media_file, read_multiple_files, list_directory(_with_sizes), directory_tree, search_files (file names only), get_file_info | `disallowedTools` must name write_file, edit_file, create_directory and move_file, because `tools` doesn't filter the agent's own `mcpServers` | 1.0.0 was published only hours ago (2026-10-11 02:44Z); 2026.8.31 is the last older release. It has five npm dependencies and is fetched through npx on every spawn. It needs args or client roots, and whether Claude Code sends roots is UNCONFIRMED | Rejected. It duplicates Read and Glob, which Explore now gets natively, and it has no content search |
+| `mcp-ripgrep` 0.4.0 | All | n/a | Last published 2025-04-29 | Rejected. Stale, and it duplicates the native Grep tool, which is built on ripgrep |
+| `mcp-server-git` (uvx) | status, diff*, log, show, branch | Deny commit, add, reset, create_branch and checkout by name | 2026.10.10 was published only hours ago; 2026.8.18 is the last older release. CVE-2025-68144 (`git_diff --output=` overwrote files), plus CVE-2026-27735 and CVE-2025-68143. The cyanheads git server's CVE-2026-85626 hit log, diff and show | Rejected. Its "read" tools have written files before (QT3) |
+| codegraph, context7, grep-app, exa (already installed) | All | `tools` entries | Already-installed plugins | Adopted, as in the per-agent table |
+| github, claude-mem, chrome (already installed) | Mixed | n/a | n/a | Main thread only |
+
+### Tool statements and drift check
+
+Each agent body gets one section, for example:
+
+```
+## Tools
+
+Has: `Read`, `Glob`, `Grep`, `LSP`, `mcp__plugin_code-search_codegraph__codegraph_explore`.
+Lacks: `Bash`, `Edit`, `Write`, `NotebookEdit`, `Agent`, `Skill`, `Monitor`.
+You can't run git, tests, or any command. If the task needs one, hand back `needs: <tool>`.
+```
+
+- Agents that inherit their tools write `Has: all session tools except Lacks.` Agents with Bash add one line: there are no Glob or Grep tools, so search with `rg`.
+- **`scripts/agent-tools.py`** is stdlib-only. `tools` and `disallowedTools` stay one-line, comma-separated strings. It checks four rules:
+  1. **Has and Lacks match the frontmatter.**
+     - For allowlist agents, `Has` equals `tools`, plus `mcp__<server>__*` for each inline server, minus `disallowedTools`. `Lacks` doesn't overlap `Has` and contains every `disallowedTools` entry.
+     - For inheriting agents, `Lacks` contains every `disallowedTools` entry.
+  2. **Every core tool is accounted for.** Read, Bash, Edit, Write, NotebookEdit, Glob, Grep, Agent, Skill and Monitor each appear in exactly one of the two lines.
+  3. **Names are valid.** Built-in names come from the background-safe list, and MCP names use a known server prefix.
+  4. **Read-only agents stay read-only.**
+     - An agent counts as read-only when it has no Edit, Write or NotebookEdit.
+     - A read-only agent has no `memory`, Skill, SendMessage, Monitor, Artifact or EnterWorktree, and no MCP tool whose name contains a write verb.
+     - It has Bash if and only if it has the `readonly-bash` hook.
+- **`scripts/agent-tools.test.sh`** follows the `prompt-drift.test.sh` pattern. It runs one temporary fixture per rule and expects each to fail, then runs against the real `agents/` and expects a pass.
+- **Limit.** The check can't see a misspelled tool name on a known server, or a renamed plugin. Both drop silently, so T5 is what catches them.
+
+### Effect on S4 and S7
+
+- **S4 merges into this work.** Both edit the same agent bodies, and the drift check covers both. The old S4 becomes T4 (stock essentials, plus the scratch-path fix). The tools part of the Sh5 rewrite now lives in each agent's Tools section.
+- **S7 needs no design change.**
+  - S7.2 touches only the orchestration frontmatter, which S8 leaves alone.
+  - Read-only agents already lacked Edit and Write, so the edit-nudge hook's load doesn't change.
+  - If QT1 drops Agent from architect, no subagent fires the orchestration `PostToolUse Agent` hook any more.
+  - T0 reuses S7.0's `--agents` probe harness, and the two spikes can run in one session.
+- **Orchestration body.** The Explore routing line gains: "has no shell: no git history, tests, or commands; send those to `debugger` or do them yourself."
+- **Q9 stands.** Explore no longer needs hooks, but the other six read-only agents still do.
+
+### Sub-slices
+
+T0 must pass before T3. T1 and T2 can run in parallel with T0.
+
+| # | Slice | Files | Acceptance | Cheapest check | Agent |
+|---|---|---|---|---|---|
+| T0 | Spike how tools resolve | Scratch only; findings appended here | Records eight probes (listed below) | `claude -p --agents <json>` probes, with hooks that log stdin to the scratchpad | `coder` |
+| T1 | Close the hook gaps | `hooks/readonly-bash.py` and its test | `rtk <cmd>` and `rtk proxy <cmd>` are unwrapped and checked like `<cmd>`. `SCRATCH_MSG` names `/tmp`, not `$TMPDIR` | New test rows: `rtk git checkout main` and `rtk proxy rm x` block, `rtk git log` is allowed. Run `bash hooks/tests/readonly-bash.test.sh` | `coder`, then `quick-review` |
+| T2 | Drift check | `scripts/agent-tools.py` and `.test.sh` | Each fixture fails on the rule it breaks | `bash scripts/agent-tools.test.sh` | `coder`, then `quick-review` |
+| T3 | Frontmatter and Tools sections | `agents/*.md` | Matches the per-agent table. Explore's hook is removed, and its body uses Glob and Grep instead of the shell `codegraph` line | `python3 scripts/agent-tools.py agents` | `coder` |
+| T4 | Stock essentials (the old S4) | `agents/*.md` bodies; the orchestration routing line | Each body carries the inventory rows its role needs. Scratch paths say `/tmp` or the scratchpad path from the environment block | The drift check still passes; `quick-review` against the kept inventory rows | `scribe` |
+| T5 | Live check | None (a temporary git repo) | Each read-only agent lists exactly its `Has` line. Its attempt to create `PROBE_<agent>` fails because the tool is absent or `readonly-bash` blocked it, not because of a classifier denial. No probe file exists afterwards, and one `coder` spawn does create its file | One `claude -p` session that spawns each agent with `model: haiku` per call | `coder`; the main session reads the transcripts |
+| T7 | Strict git tools in `coremods` (QT3) | `plugins/coremods/hooks/register.tsx`, a `git-tools` helper, tests, docs page; Explore's `tools` | `coremods` registers `git_log`, `git_blame` and `git_show` with `$.tool.register` and serves them in a `tool.call` hook. Each runs `git` through `$.process.run` with a fixed argument list: revisions match a strict pattern and never start with `-`, paths must sit inside `cwd` and are passed after `--`, and there is a cap on count and bytes. Explore lists `mcp__coremods__git_log`, `…git_blame` and `…git_show` | `claude plugin test plugins/coremods` (injection cases: `--output=x`, `-p`, `../`, a path outside `cwd`), then the T5 live run shows Explore calling `git_log` | `coder`, then `review` (untrusted input reaches a process) |
+| T6 | Record | This section, the S4 and S7 rows, the critique log | Matches what landed | Read the diff | Main session |
+
+T0's eight probes:
+
+1. Whether `tools: Bash(rg *)` can still run `ls`.
+2. Whether an agent with no Bash that lists Glob and Grep gets both.
+3. Whether an inline server's tools appear without `tools` entries, and whether a `disallowedTools` entry removes one.
+4. Whether an allowlisted agent can still hand back.
+5. Whether a `skills:` preload arrives without the `Skill` tool.
+6. Whether a hook with a `Bash` matcher sees a command run through Monitor.
+7. Whether ToolSearch can load a tool that isn't in the agent's pool.
+8. Whether one misspelled entry is dropped silently.
+9. Whether a tool registered by a mod with `$.tool.register` (`mcp__coremods__<name>`) can be listed in a subagent's `tools` and called by it. The types were written by 2.1.285 and need confirming on 2.1.296.
+10. Whether the mod's `tool.call` hook serves calls made from inside a subagent, and what the result looks like there.
+
+**When to rerun.** Run the drift check on every `agents/*.md` edit. Run T5 after each Claude Code upgrade (alongside S2), and after any plugin rename or MCP change.
+
+### Risks
+
+| Risk | Effect | Mitigation |
+|---|---|---|
+| A misspelled or renamed MCP entry drops silently | The agent quietly lacks a tool | Prefix check in T2; T5 after plugin changes |
+| Bash agents are guarded only by the hook | `python -c`, `curl -o` and `gh pr merge` get past it, because it is an accident guard, not a sandbox | Accept it; T1 closes the `rtk` gap; QT5 |
+| Inline servers bypass `tools` | A new Playwright release could add a tool that writes | Keep the version pinned and review its tool list on each bump |
+| An allowlist is too tight | The agent can't finish its task | Its body says to hand back `needs: <tool>` |
+| An upgrade changes `HC` or the Glob/Grep restore | Explore loses search | Run T5 after each upgrade |
+
+Rollback: revert the T3 and T4 commits. `~/.claude/agents` is watched, so the next spawn picks up the old definitions without a restart. T1 stands on its own.
+
+### Critique log (S8)
+
+Second opinion: skipped, because agent material is barred from external models. This is self-critique plus one advisor pass.
+
+| # | Critique | Disposition |
+|---|---|---|
+| 1 | `Bash(rg *)` in `tools` limits Bash | Rejected. The resolver drops the specifier (`an`); T0.1 confirms |
+| 2 | `permissionMode: plan` makes agents read-only | Rejected. Ignored under an auto-mode parent, and it would block tests |
+| 3 | Grant codegraph through `mcpServers` | Rejected. Server tools join past the allowlist |
+| 4 | Give writers allowlists too | Rejected. They drift as Claude Code adds tools (QT2) |
+| 5 | S7's edit hook loses load | Rejected. Edit and Write were already denied to read-only agents |
+| 6 | The drift check proves that tools resolve | Adopted as a stated limit; T5 covers it |
+| 7 | "No file appeared" can hide a classifier denial | Adopted. T5 asserts the reason for the failure |
+| 8 | An `rtk` prefix gets past `readonly-bash` | Adopted: T1 (verified, rc 0) |
+| 9 | `$TMPDIR` is unset in agent Bash | Adopted: the T1 message and the T4 bodies |
+| 10 | Skill, SendMessage and Agent let a read-only agent reach a writer | Adopted for Skill and SendMessage. Agent is open (QT1). The forked-skill spawn path is UNCONFIRMED |
+| 11 | Monitor runs shell commands past the Bash hook | Adopted. Monitor stays off every read-only list; T0.6 confirms |
+| 12 | Background subagents strip built-ins that aren't on the fixed list | Adopted. Allowlists use only listed built-ins, and T2 enforces it |
+
+### Open questions (S8)
+
+- Resolved 2026-10-10: QT1 → (a) drop Agent from architect; QT2 → (a) writers inherit, denying Agent and Workflow; QT4 → (a) EXA for architect, debugger and security-auditor only; QT5 → (a) guard `gh` mutating subcommands in T1. QT3 → strict git tools served by a `coremods` mod (T7), with a pinned `mcp-server-git` with its write tools denied as the fallback if the T0 spike rules the mod route out.
+- **QT1. Architect's Agent tool.**
+  - (a) Drop it. Recommended: architect then becomes read-only by allowlist alone, and codegraph plus `rg` cover its searches. This plan was built without spawning any Explore agent.
+  - (b) Keep it. A subagent's `Agent(Explore)` type list is ignored, so architect could also spawn `coder`.
+- **QT2. Writers' tools.**
+  - (a) Inherit, denying only Agent and Workflow. Recommended.
+  - (b) Also deny `mcp__plugin_github_github`, `mcp__claude-in-chrome` and `Artifact`, which keeps outward-facing actions on the main thread.
+  - (c) Full allowlists, which drift.
+- **QT3. Explore and git history.**
+  - (a) Accept the loss, and route history questions to `debugger` or the main thread. Recommended.
+  - (b) Keep Bash and the hook for Explore.
+  - (c) Add a pinned `mcp-server-git` with its write tools denied, accepting its CVE record.
+- **QT4. Web access for read-only agents.**
+  - (a) EXA for architect, debugger and security-auditor only. Recommended.
+  - (b) None, so no data leaves the machine from read-only agents.
+- **QT5. `gh` writes through Bash.**
+  - (a) Add `gh` mutating subcommands (such as `pr merge`, `pr create`, `pr close`, and `api -X`) to `readonly-bash.py` in T1. Recommended.
+  - (b) Accept them as outside the hook's file-mutation scope.
