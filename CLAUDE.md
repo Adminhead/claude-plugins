@@ -13,7 +13,7 @@
 
 Run from the repo root.
 
-- `python3 scripts/agent-tools.py` checks that each agent's `## Tools` section agrees with its frontmatter. Run it after editing `agents/*.md`.
+- `python3 scripts/agent-tools.py` checks each agent's `tools` and `disallowedTools` frontmatter: known tool names, and the read-only rules (no `memory`, no write tools, Bash only with the readonly-bash.py hook) for allowlist agents with no Edit/Write/NotebookEdit. Run it after editing `agents/*.md`.
 - `scripts/prompt-drift.sh [VERSION|PATH]` checks that a Claude Code upgrade hasn't broken the system-prompt override (`prompts/system_override.md`). Run it after upgrading Claude Code.
 - `bash scripts/agent-tools.test.sh`, `bash scripts/prompt-drift.test.sh`, `bash hooks/tests/orchestration-guard.test.sh` and `bash hooks/tests/readonly-bash.test.sh` test the scripts and hooks.
 - `claude plugin validate --strict plugins/<name>` validates one plugin. `claude plugin validate --strict .` validates the marketplace.

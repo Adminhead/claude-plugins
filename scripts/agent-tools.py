@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""Check that each agent's `## Tools` section agrees with its frontmatter.
+"""Check each agent's tool frontmatter.
 
 Usage: agent-tools.py [AGENTS_DIR]   (default: agents/ next to this script's repo root)
 
+Rules:
+  3  every name in `tools` and `disallowedTools` is a known builtin or an allowed MCP prefix.
+  4  an agent whose effective tools (`tools` plus inline-server wildcards, minus `disallowedTools`) hold
+     none of Edit/Write/NotebookEdit is read-only: no `memory` key, none of READONLY_BANNED, no MCP tool
+     with a write verb, and Bash iff the readonly-bash.py hook. Without a `tools` allowlist an agent
+     inherits every session tool, so one that disallows all three writers must use an allowlist instead.
+  5  orchestration.md runs as the session itself and must not set `tools`.
+
 Prints one `<file>: <rule>: <detail>` line per violation and exits 1, or
-`agent-tools: ok (<n> agents)` and exits 0. Rules are in docs/plans/system-prompt.md (S8).
+`agent-tools: ok (<n> agents)` and exits 0.
 """
 import re
 import sys
 from pathlib import Path
 
-CORE = ["Read", "Bash", "Edit", "Write", "NotebookEdit", "Glob", "Grep", "Agent", "Skill", "Monitor"]
 BUILTIN = {
     "Read", "Grep", "Glob", "LSP", "Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch",
     "Skill", "ToolSearch", "Monitor", "SendMessage", "Artifact", "EnterWorktree", "ExitWorktree",
@@ -30,9 +37,7 @@ WRITE_VERBS = (
     "write", "edit", "create", "delete", "update", "merge", "push", "commit", "upload", "move",
     "save", "add", "comment", "assign", "fork", "request", "run", "send", "close", "remove", "set", "post",
 )
-IMPLICIT = {"advisor", "SubagentHandback"}  # every agent gets these unlisted
-MAIN_THREAD = "orchestration.md"  # runs as the session itself, so it is exempt from rules 1-4
-INHERIT_HAS = "Has: all session tools except Lacks."
+MAIN_THREAD = "orchestration.md"  # runs as the session itself, so it is exempt from rules 3-4
 
 
 def split_frontmatter(text):
@@ -53,8 +58,7 @@ def csv(value):
 def parse_frontmatter(fm):
     """Return (top-level scalar keys, inline server names, hooks text, errors)."""
     keys, servers, errors = {}, [], []
-    lines = fm.split("\n")
-    for i, line in enumerate(lines):
+    for line in fm.split("\n"):
         m = re.match(r"([A-Za-z]+):\s*(.*)$", line)
         if m:
             keys[m.group(1)] = m.group(2).strip()
@@ -85,19 +89,6 @@ def has_readonly_hook(hooks):
     return False
 
 
-def tools_section(body):
-    m = re.search(r"^## Tools\s*\n(.*?)(?=^## |\Z)", body, re.S | re.M)
-    if not m:
-        return None, None, False
-    sec = m.group(1)
-    has = re.search(r"^Has:(.*)$", sec, re.M)
-    lacks = re.search(r"^Lacks:(.*)$", sec, re.M)
-    inherit = any(line.strip() == INHERIT_HAS for line in sec.split("\n"))
-    names = lambda mm: re.findall(r"`([^`]+)`", mm.group(1)) if mm else None
-    drop = lambda xs: xs if xs is None else [x for x in xs if x not in IMPLICIT]
-    return drop(names(has)), names(lacks), inherit
-
-
 def check(path):
     out = []
     v = lambda rule, detail: out.append(f"{path.name}: {rule}: {detail}")
@@ -105,7 +96,7 @@ def check(path):
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as e:
         return [f"{path.name}: parse: unreadable ({type(e).__name__})"]
-    fm, body = split_frontmatter(text.replace("\r\n", "\n"))
+    fm, _ = split_frontmatter(text.replace("\r\n", "\n"))
     if fm is None:
         return [f"{path.name}: parse: no frontmatter"]
     keys, servers, hooks, errors = parse_frontmatter(fm)
@@ -118,70 +109,32 @@ def check(path):
         if "tools" in keys:
             v("5", "main-thread agent must not set tools")
         return out
-    has, lacks, inherit = tools_section(body)
-    if lacks is None or (has is None and not inherit):
-        v("parse", "## Tools section needs a `Has:` line (or `Has: all session tools except Lacks.`) and a `Lacks:` line")
-        return out
-
-    implicit = [x for x in lacks if x in IMPLICIT]
-    if implicit:
-        v("1", f"Lacks lists implicit tools every agent has: {implicit}")
-        lacks = [x for x in lacks if x not in IMPLICIT]
-
-    allow = "tools" in keys
     tools = csv(keys.get("tools", ""))
     disallowed = csv(keys.get("disallowedTools", ""))
-    if allow and inherit:
-        v("1", "frontmatter has `tools` but the body says it inherits all session tools")
-    if not allow and not inherit:
-        v("1", "frontmatter has no `tools` but the body lists a `Has:` line instead of the inherit statement")
-    has = has or []
 
     # Rule 3: names
-    for where, names in (("tools", tools), ("disallowedTools", disallowed), ("Has", has), ("Lacks", lacks)):
+    for where, names in (("tools", tools), ("disallowedTools", disallowed)):
         for n in names:
-            if n.startswith("mcp__"):
-                ok = n.startswith(MCP_PREFIXES)
-            else:
-                ok = n in BUILTIN
+            ok = n.startswith(MCP_PREFIXES) if n.startswith("mcp__") else n in BUILTIN
             if not ok:
                 v("3", f"unknown tool name `{n}` in {where}")
 
-    # Rule 1: Has/Lacks vs frontmatter
-    if allow and not inherit:
-        want = [t for t in tools + [f"mcp__{s}__*" for s in servers] if t not in disallowed]
-        if set(has) != set(want):
-            v("1", f"Has is {sorted(has)}, frontmatter gives {sorted(want)}")
-        both = sorted(set(has) & set(lacks))
-        if both:
-            v("1", f"Has and Lacks overlap: {both}")
-    missing = [d for d in disallowed if d not in lacks]
-    if missing:
-        v("1", f"Lacks is missing disallowedTools entries: {missing}")
-
-    # Rule 2: core tools in exactly one line
-    def in_has(t):
-        return t not in lacks if inherit else t in has
-
-    if not inherit:  # for inheriting agents membership is implied by Lacks
-        for t in CORE:
-            if (t in has) == (t in lacks):
-                v("2", f"core tool `{t}` must appear in exactly one of Has or Lacks")
-
-    # Rule 4: read-only agents
-    if not any(in_has(t) for t in WRITERS):
+    # Rule 4: read-only agents, judged from the effective tools (allowlist plus inline servers, minus
+    # disallowedTools). Without a `tools` key the agent inherits everything, so it can't be one.
+    has = [t for t in tools + [f"mcp__{s}__*" for s in servers] if t not in disallowed]
+    if "tools" not in keys:
+        if WRITERS <= set(disallowed):
+            v("4", "read-only agents must use an allowlist")
+    elif not WRITERS & set(has):
         if "memory" in keys:
             v("4", "read-only agent has a `memory` key")
-        if inherit:  # an inheriting agent gets every session MCP tool
-            v("4", "read-only agents must use an allowlist")
-            return out
         for t in READONLY_BANNED:
-            if in_has(t):
+            if t in has:
                 v("4", f"read-only agent has `{t}`")
         for n in has:
             if n.startswith("mcp__") and has_write_verb(n):
                 v("4", f"read-only agent has MCP tool `{n}` with a write verb")
-        bash, hook = in_has("Bash"), has_readonly_hook(hooks)
+        bash, hook = "Bash" in has, has_readonly_hook(hooks)
         if bash != hook:
             v("4", "read-only agent has Bash without a PreToolUse Bash readonly-bash.py hook" if bash
               else "read-only agent has the readonly-bash.py hook but no Bash")
