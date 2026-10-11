@@ -1,6 +1,6 @@
 {
   "name": "authoring",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "hooks": "./hooks/docs-sync.json",
   "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security.",
   "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}

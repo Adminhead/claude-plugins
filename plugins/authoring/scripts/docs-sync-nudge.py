@@ -2,8 +2,9 @@
 """Docs-sync nudge for Claude Code hooks (stdlib only).
 
   docs-sync-nudge.py start   SessionStart: record HEAD for this session.
-  docs-sync-nudge.py stop    Stop: once per change set, block the stop and list
-                             docs that mention the changed non-doc files.
+  docs-sync-nudge.py stop    Stop: once per change set, nudge Claude (non-error
+                             additionalContext) with docs that mention the
+                             changed non-doc files.
 
 Fails open: any error, a non-git directory, or missing state prints nothing and
 exits 0 so a broken nudge never traps a session.
@@ -127,7 +128,8 @@ def stop(data):
         + ", ".join(docs)
         + ". Check them for stale statements, or offer authoring:docs-audit."
     )
-    print(json.dumps({"decision": "block", "reason": reason}))
+    # additionalContext is non-error feedback; decision: block would show as a "blocking error".
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": reason}}))
 
 
 def main():

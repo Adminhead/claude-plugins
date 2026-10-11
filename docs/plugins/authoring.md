@@ -2,7 +2,7 @@
 
 Skills for writing the files that steer Claude Code and the docs around a codebase. It covers Architecture Decision Records, Claude Code skills, agent instruction files such as `CLAUDE.md` and `AGENTS.md`, documentation audits, codebase maps, domain glossaries, agent teams, and audits of your Claude Code setup, including its security. It adds nine skills, all loaded on demand, and a hook pair that nudges you to check docs after code changes.
 
-Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents. Version 0.2.1 retuned the `create-skill` description around the phrasings people use when a skill never triggers or fires on the wrong requests. Version 0.3.0 added `authoring:agent-config-audit`, which moved here from the former `quality` plugin. Version 0.4.0 added the docs-sync nudge hook, plus a slice-landing reference and script for `authoring:agent-teams`.
+Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents. Version 0.2.1 retuned the `create-skill` description around the phrasings people use when a skill never triggers or fires on the wrong requests. Version 0.3.0 added `authoring:agent-config-audit`, which moved here from the former `quality` plugin. Version 0.4.0 added the docs-sync nudge hook, plus a slice-landing reference and script for `authoring:agent-teams`. Version 0.4.1 turned the nudge from a blocking Stop error into non-error feedback.
 
 ## What it adds
 
@@ -22,9 +22,9 @@ Each description names its neighbors. `create-skill` hands measured trigger eval
 
 ## Docs-sync nudge
 
-A SessionStart hook records `HEAD` for the session, and a Stop hook (`scripts/docs-sync-nudge.py`) compares against it. When non-doc files changed (working tree plus commits since the recorded `HEAD`), it runs `git grep -l` for those paths and basenames in `*.md`, `*.mdx`, `*.rst`, and `*.adoc` files. If docs that you did not also edit mention them, it blocks the stop once with a reason that lists up to 10 docs and asks Claude to check them or offer `authoring:docs-audit`.
+A SessionStart hook records `HEAD` for the session, and a Stop hook (`scripts/docs-sync-nudge.py`) compares against it. When non-doc files changed (working tree plus commits since the recorded `HEAD`), it runs `git grep -l` for those paths and basenames in `*.md`, `*.mdx`, `*.rst`, and `*.adoc` files. If docs that you did not also edit mention them, it nudges Claude once with non-error feedback (Stop `additionalContext`, not a blocking `decision`) that lists up to 10 docs and asks it to check them or offer `authoring:docs-audit`.
 
-- It fires once per change set. A hash of the sorted changed paths is kept per session in `${CLAUDE_PLUGIN_DATA}`, so the same set never blocks twice. Another changed file makes a new set.
+- It fires once per change set. A hash of the sorted changed paths is kept per session in `${CLAUDE_PLUGIN_DATA}`, so the same set never nudges twice. Another changed file makes a new set.
 - It exits quietly when `stop_hook_active` is set, outside a git repo, or on any error, so it never traps a session.
 - To turn it off, disable the plugin. There is no per-hook setting.
 

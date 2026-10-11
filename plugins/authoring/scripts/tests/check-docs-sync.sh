@@ -30,7 +30,7 @@ hook() {
   rc=$?
 }
 empty() { [ -z "$out" ]; }
-blocks() { printf '%s' "$out" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d["decision"]=="block" and "docs/guide.md" in d["reason"] and "authoring:docs-audit" in d["reason"] else 1)'; }
+nudges() { printf '%s' "$out" | python3 -c 'import json,sys; d=json.load(sys.stdin); h=d["hookSpecificOutput"]; c=h["additionalContext"]; sys.exit(0 if "decision" not in d and h["hookEventName"]=="Stop" and "docs/guide.md" in c and "authoring:docs-audit" in c else 1)'; }
 
 # No change.
 r=$root/clean; mkrepo "$r"; hook start "$r"; hook stop "$r"
@@ -40,22 +40,22 @@ check "no change: silent, exit 0" $((rc + $(empty; echo $?)))
 r=$root/code; mkrepo "$r"; hook start "$r"
 echo 'print(2)' >"$r/widget.py"
 hook stop "$r"
-blocks; check "code change with referencing doc blocks" $?
+nudges; check "code change with referencing doc nudges" $?
 
 # Same change set again: silent.
 hook stop "$r"
 check "repeat with same change set is silent" $(empty; echo $?)
 
-# A new change set blocks again.
+# A new change set nudges again.
 echo 'print(3)' >"$r/gizmo.py"
 hook stop "$r"
-check "new change set blocks again" $(blocks; echo $?)
+check "new change set nudges again" $(nudges; echo $?)
 
 # Committed since session start still counts.
 r=$root/committed; mkrepo "$r"; hook start "$r"
 echo 'print(2)' >"$r/widget.py"; git -C "$r" commit -qam change
 hook stop "$r"
-blocks; check "commit since recorded HEAD blocks" $?
+nudges; check "commit since recorded HEAD nudges" $?
 
 # Doc-only change.
 r=$root/doconly; mkrepo "$r"; hook start "$r"
@@ -81,7 +81,7 @@ echo 'print(2)' >"$r/widget.py"
 hook stop "$r" ',"stop_hook_active":true'
 check "stop_hook_active exits 0 silently" $((rc + $(empty; echo $?)))
 hook stop "$r"
-blocks; check "stop_hook_active did not consume the change set" $?
+nudges; check "stop_hook_active did not consume the change set" $?
 
 # Outside git and malformed input fail open.
 mkdir -p "$root/plain"; hook stop "$root/plain"
@@ -104,14 +104,14 @@ check "unset CLAUDE_PLUGIN_DATA: empty stderr" $([ -z "$out" ]; echo $?)
 r=$root/subdir; mkrepo "$r"; mkdir -p "$r/src/deep"; hook start "$r/src/deep"
 echo 'print(2)' >"$r/widget.py"
 hook stop "$r/src/deep"
-blocks; check "subdirectory cwd finds root-level changes and docs" $?
+nudges; check "subdirectory cwd finds root-level changes and docs" $?
 
 # Non-ASCII file names.
 r=$root/utf8; mkrepo "$r"; echo 'x' >"$r/café.py"; echo 'See café.py for details.' >"$r/docs/guide.md"
 git -C "$r" add -A; git -C "$r" commit -qm utf8; hook start "$r"
 echo 'y' >"$r/café.py"
 hook stop "$r"
-blocks; check "non-ASCII path is found" $?
+nudges; check "non-ASCII path is found" $?
 
 # Old state files are pruned at session start.
 mkdir -p "$root/data/docs-sync"; touch -d '60 days ago' "$root/data/docs-sync/old.seen"
