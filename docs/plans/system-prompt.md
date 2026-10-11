@@ -199,7 +199,7 @@ The script doesn't need to supply env, date, interactive git status, CLAUDE.md, 
 | S8 | Agent tool scoping | `agents/*.md`, `hooks/readonly-bash.py`, `scripts/agent-tools.*` | See the S8 section | T0 spike, drift check, T5 live run | per sub-slice |
 | S5 | Research orchestration prompts | `docs/research/orchestration-prompts.md` | How oh-my-opencode and oh-my-opencode-slim write their orchestrator logic (delegation rules, routing, parallelism, verification, todo discipline, failure handling), with links to the exact source files and a list of practices worth adopting | Every claim cites a file in the upstream repo at a pinned commit | `general-purpose`, one per repo, in parallel |
 | S6 | Improve the orchestration agent | `agents/orchestration.md` | Adopts the S5 practices that fit this setup; no rule contradicts CLAUDE.md or `system_override.md`; frontmatter sets tools and model where useful | `quick-review` against S5's adoption list; one `claude -p --agent orchestration --append-system-prompt-file …` smoke run | `scribe` drafts, user approves |
-| S7 | Orchestration enforcement | Plan section in this file, then hooks and/or mods | For each of three behaviors, decide a classic hook, a mod, an agent-frontmatter hook, or a mix: Stop-hook continuation while tasks are open, a reminder to verify when an agent returns, and a nudge when the main thread edits source directly. Each applies only to script sessions | Design reviewed before any code | `architect`, then `coder` per behavior |
+| S7 | Orchestration enforcement | Plan section in this file, then hooks and/or mods | Three behaviors, all agent-frontmatter classic hooks (no mod): Stop-hook continuation while tasks are open (from a hook-owned ledger), a reminder to verify when an agent returns (`UserPromptSubmit`), and a nudge when the main thread edits source directly. Each applies only to script sessions. S7.0 done | Design reviewed before any code | `architect`, then `coder` per behavior |
 | S3 | Migrate Orchestration | `~/.claude/CLAUDE.md` (body already in `agents/orchestration.md`) | Script sessions have it; plain `claude` and subagents don't | Ask an `Explore` subagent whether its context mentions routing rules; `/context` CLAUDE.md tokens drop by about 800 | `coder-light`, only once the launch script passes the flag (L1); before that, every session would lose Orchestration. Runs last, so current sessions keep CLAUDE.md's Orchestration until the launcher is ready |
 
 The launch script is out of scope. The user owns it, and L1–L6 are its inputs. S2 can stay a manual procedure (a `strings` and `rg -c -F` sweep) if upgrades slow down.
@@ -241,7 +241,7 @@ Second opinion: skipped, to keep the reconstruction and CLAUDE.md off external m
 - Q4. Resolved: teammates and background jobs don't get the flag. Subagents never see the main prompt, so each `agents/*.md` carries what it needs itself (S4).
 - Q5. Resolved: trimmed. Drop only "Finish the whole task, not just easy parts — report completion only when fully done", which CLAUDE.md Scope already says.
 - Q6. Resolved: `prompts/system_override.md` in this repo, with `~/.claude/prompts` symlinked to `prompts/` the same way as `agents/`.
-- Q9. Resolved 2026-10-10: `agents/`, `prompts/` and `hooks/` stay as repo folders symlinked into `~/.claude`, not a plugin. Plugin agents ignore `hooks`, `mcpServers` and `permissionMode` (sub-agents docs), which would silently drop the read-only agents' `readonly-bash.py` guard and the S7 frontmatter hooks. Plugin hooks can't be scoped to `--agent`, and a plugin can't append to the system prompt. Mods go in a new `coremods` plugin (the engine reserves `core`), which absorbs `git-line`, `usage-band` and `agent-status` and will hold the S7.4 notify mod.
+- Q9. Resolved 2026-10-10: `agents/`, `prompts/` and `hooks/` stay as repo folders symlinked into `~/.claude`, not a plugin. Plugin agents ignore `hooks`, `mcpServers` and `permissionMode` (sub-agents docs), which would silently drop the read-only agents' `readonly-bash.py` guard and the S7 frontmatter hooks. Plugin hooks can't be scoped to `--agent`, and a plugin can't append to the system prompt. Mods go in a new `coremods` plugin (the engine reserves `core`), which absorbs `git-line`, `usage-band` and `agent-status` (the S7.4 notify mod was dropped) and holds the T7 git tools.
 - Q8. Resolved 2026-10-10 (S6 inputs, from [orchestration-prompts.md](../research/orchestration-prompts.md)): keep "Delegation is the default" and add the two-sided rule; adopt P2–P12; route with one Delegate/Don't line per agent; and design the three hooks in S7, each judged as a hook, a mod, or both.
 - Q7. Resolved 2026-10-10: Orchestration becomes the main-thread agent `agents/orchestration.md`, so its frontmatter can control tools, model, effort, permissions, hooks and MCP servers. The rest of the prompt is appended (G0). Known cost: `orchestration` also appears as a spawnable subagent type in every session, plain `claude` included (confirmed with `claude -p`). Its description says not to spawn it. To scope it to script sessions only, the launch script could define it inline with `--agents` instead of keeping it in `~/.claude/agents`.
 
@@ -269,15 +269,15 @@ Consequence: the decision trigger fired, and Q1 was revisited. The user kept the
 
 ## S7. Orchestration enforcement
 
-Status: designed 2026-10-10, not built. S7.0 must pass before any code. Evidence comes from the 2.1.296 binary (`Fje`/`F2n`, `kqo`, `B(t)`, `Rir`/`Ftt`, `yv`/`ML`), from the mod types at `plugins/git-line/.claude-plugin/types/claude-code/index.d.ts` (2.1.291), and from hooks.md, sub-agents.md and agent-teams.md, read through claude-code-guide on 2026-10-10.
+Status: designed 2026-10-10, not built. S7.0 done 2026-10-10 (results under Sub-slices); S7.4 dropped. Evidence comes from the 2.1.296 binary (`Fje`/`F2n`, `kqo`, `B(t)`, `Rir`/`Ftt`, `yv`/`ML`), from the mod types at `plugins/git-line/.claude-plugin/types/claude-code/index.d.ts` (2.1.291), and from hooks.md, sub-agents.md and agent-teams.md, read through claude-code-guide on 2026-10-10.
 
 ### Outcome and completion
 
 - **Outcome.** In script sessions, the main thread is held to its open tasks, gets a verify reminder when an agent returns, and gets a delegate nudge once it passes the do-it-yourself threshold. Plain `claude`, subagents and teammates see none of this.
 - **Completion conditions:**
-  - S7.0 findings are recorded, and every UNCONFIRMED row that blocks code is settled.
-  - `hooks/tests/orchestration-guard.test.sh` passes every fixture row, and `claude plugin test` passes for the mod.
-  - One wiring run of a script session shows R1, R2 and R3 in its transcript.
+  - S7.0 findings are recorded, and every UNCONFIRMED row that blocks code is settled (done).
+  - `hooks/tests/orchestration-guard.test.sh` passes every fixture row.
+  - One wiring run in `-p` and one in interactive tmux show R1, R2, R3 and R4 in the transcript.
   - Every mode exits 0 with no output on bad input, on a subagent payload, and in a session whose agent isn't `orchestration`.
 
 ### Evidence
@@ -292,37 +292,37 @@ Status: designed 2026-10-10, not built. S7.0 must pass before any code. Evidence
 | Stop doesn't fire on a user interrupt. An API error fires `StopFailure` instead | hooks.md#stop |
 | The engine's limit of 8 continuations resets on every tool call, so it doesn't bound a block → tool → stop loop | hooks.md#stop-input |
 | Stop input carries `stop_hook_active`, `last_assistant_message`, `background_tasks` and `session_crons` | hooks.md; `index.d.ts` `StopHookInput` |
-| PostToolUse on `Agent` is the documented parent-side hook. For a background agent it fires at launch, with `status: "async_launched"`. SubagentStop context goes to the child | hooks.md#subagentstop-input, #pretooluse-input |
-| UserPromptSubmit fires when a background subagent reports back. Its `source` field is compiled out in 2.1.296, so a hook has to match the prompt text | hooks.md#userpromptsubmit; binary `Rir`/`Ftt` |
-| UserPromptSubmit fires for a notification delivered into a running turn | UNCONFIRMED |
-| Tasks live in `~/.claude/tasks/{team-name}/`, where the team name is `session-` plus the first 8 characters of the session ID. `CLAUDE_CODE_TASK_LIST_ID` overrides it | agent-teams.md; binary `yv`, `ML`. JSON shape UNCONFIRMED: all 104 local dirs were empty |
+| PostToolUse on `Agent` is the documented parent-side hook. For a background agent it fires at launch, with `status: "async_launched"`. SubagentStop context goes to the child. **Interactively, every Agent call returns `async_launched`, even without `run_in_background`, so this hook almost never sees a result there** | hooks.md#subagentstop-input, #pretooluse-input; S7.0 |
+| UserPromptSubmit fires when a background subagent reports back, and **also mid-turn** when a notification is delivered into a running turn, in both modes. Its `source` field is absent in 2.1.296, so a hook has to match the prompt text | hooks.md#userpromptsubmit; binary `Rir`/`Ftt`; S7.0 |
+| Tasks live in `~/.claude/tasks/<list>/`, where `<list>` is `<full-sid>` in `-p` and `session-<sid8>` interactively. `CLAUDE_CODE_TASK_LIST_ID` overrides it. **The interactive UI deletes every task file about 5 s after all tasks complete**, so a Stop hook can't audit a finished list from the store | S7.0 |
 | Plugin hooks can't be limited to one `--agent`. `if` holds a single permission rule, and plugin agents ignore `hooks` | hooks.md#common-fields; sub-agents.md |
 
 ### Decision
 
-All three behaviors are classic hooks declared in the frontmatter of `agents/orchestration.md` and run by one stdlib Python script. A mod is the named fallback.
+All three behaviors are classic hooks declared in the frontmatter of `agents/orchestration.md` and run by one stdlib Python script. No mod (S7.4 dropped, 2026-10-10).
 
 | Behavior | Mechanism | Why | Scoping | Failure mode |
 |---|---|---|---|---|
-| 1. Continuation | `Stop` hook in the frontmatter | Only a Stop hook can keep a finished turn going, and Stop already skips interrupts and API errors | Frontmatter hooks load only for `--agent orchestration`; the script also requires `agent_id` to be absent | Fails open. The worst case is one extra model turn per chain of stops |
-| 2. Agent-return reminder | `PostToolUse` on `Agent`, plus `UserPromptSubmit` matched on notification text | The two documented parent-side hooks: one for foreground returns, one for background returns while idle | Same | Misses notifications delivered mid-turn (UNCONFIRMED). Fails open |
+| 1. Continuation | `Stop` hook in the frontmatter, reading a hook-owned ledger written by `PostToolUse` on `TaskCreate\|TaskUpdate` | Only a Stop hook can keep a finished turn going, and Stop already skips interrupts and API errors. The ledger survives the interactive UI deleting finished task files | Frontmatter hooks load only for `--agent orchestration`; the script also requires `agent_id` to be absent | Fails open. The worst case is one extra model turn per chain of stops |
+| 2. Agent-return reminder | `UserPromptSubmit` matched on `<agent-message from="` or `<task-notification>` with `<summary>Agent "` | Fires for idle and mid-turn returns in both modes. `PostToolUse` on `Agent` almost never sees a result interactively (always `async_launched`) | Same | Fails open. A prompt-text change in an upgrade silences it, which the wiring run catches |
 | 3. Direct-edit nudge | `PostToolUse` on `Edit\|Write\|NotebookEdit` | Needs only the tool input and `prompt_id` | `agent_id` must be absent, because these hooks also fire inside subagents | Fails open. A false positive costs about 60 tokens, at most once per prompt |
 
 ### Rejected alternatives
 
 | Alternative | Why it lost |
 |---|---|
-| Mod: `classic.Stop` gated on `e.agent_type`, `tool.call` with no `agentId`, `prompt.submit` on origin `task-notification`, and the `agent-status` `applyTask` map for tasks | The strongest rival. It covers mid-turn notifications and needs no task-dir read. It lost on the early-access API (`index.d.ts:4`; the types already drifted between 2.1.289 and 2.1.291), on having no native `--agent` scoping, and on batch2's choice of classic hooks over mods. It becomes the route if S7.0 rules out the task dir |
+| Mod: `classic.Stop` gated on `e.agent_type`, `tool.call` with no `agentId`, `prompt.submit` on origin `task-notification`, and the `agent-status` `applyTask` map for tasks | The strongest rival. It lost on the early-access API (`index.d.ts:4`; the types already drifted between 2.1.289 and 2.1.291), on having no native `--agent` scoping, and on batch2's choice of classic hooks over mods. S7.0 removed its edge: `UserPromptSubmit` fires mid-turn, and `prompt.submit` doesn't expose the agent type. The ledger replaced its task map |
 | Plugin `hooks.json` with the script checking `agent_type` | Fits the house layout, but spawns Python on every matched event in every session, plain `claude` included |
 | `--plugin-dir` passed by the launch script | Same scope as frontmatter, but adds another launch-script requirement. Frontmatter scoping was the intent of Q7 |
 | Prompt-type Stop hook, where a model judges completion | A model call on every stop, nondeterministic, and no state for stagnation |
-| Task counts from `TaskCreated`/`TaskCompleted`, or PostToolUse on the Task tools | The first drifts on deletes (batch2). The second adds hooks and state the task dir already holds |
+| Task counts from `TaskCreated`/`TaskCompleted` | Drifts on deletes (batch2) |
+| Reading the task store at Stop | The interactive UI deletes the files after the last task completes, so the R4 audit would never see them. Superseded by the ledger (PostToolUse on `TaskCreate\|TaskUpdate`) |
 
 ### Design
 
 **Shared parts**
 
-- One stdlib script, `hooks/orchestration-guard.py <stop|agent|edit>`, reached as `$HOME/.claude/hooks/…` because `~/.claude/hooks` symlinks to the repo's `hooks/` (QS7-1). Frontmatter hooks get no plugin root.
+- One stdlib script, `hooks/orchestration-guard.py <stop|prompt|edit|ledger>`, reached as `$HOME/.claude/hooks/…` because `~/.claude/hooks` symlinks to the repo's `hooks/` (QS7-1). Frontmatter hooks get no plugin root.
 - Every mode first checks the session. It exits 0 silently unless `agent_type == "orchestration"` and `agent_id` is absent.
 - Every mode fails open. A catch-all wraps `main`, and malformed stdin or a missing directory also produce no output and exit 0, following the H6 rule.
 - State lives in `${XDG_STATE_HOME:-~/.local/state}/orchestration-guard/<session_id>.json` and is pruned after 30 days. `--resume` keeps the session ID.
@@ -332,16 +332,18 @@ All three behaviors are classic hooks declared in the frontmatter of `agents/orc
 hooks:
   Stop:
     - hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" stop'}]
+  UserPromptSubmit:
+    - hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" prompt'}]
   PostToolUse:
-    - matcher: Agent
-      hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" agent'}]
+    - matcher: TaskCreate|TaskUpdate
+      hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" ledger'}]
     - matcher: Edit|Write|NotebookEdit
       hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" edit'}]
 ```
 
 **Behavior 1: `stop` mode**
 
-- **Where tasks come from.** The script reads `${CLAUDE_CONFIG_DIR:-~/.claude}/tasks/<list>/*.json`. The list is `CLAUDE_CODE_TASK_LIST_ID` if set, otherwise `session-<sid[:8]>`, otherwise `<sid>`.
+- **Where tasks come from.** `ledger` mode, on `PostToolUse` of `TaskCreate|TaskUpdate`, records each task's id, subject and status in the per-session state file (below). `stop` reads that ledger, not the store. Hook-owned state doesn't depend on the store's directory name, and it survives the interactive UI deleting finished task files. The tool-input field names for `TaskUpdate` (id, status, deletion) are UNCONFIRMED; S7.1 reads them from a captured payload first.
 - **Terms:**
   - A task is *open* when it is pending or in progress.
   - The list has *started* when any task is in progress or completed.
@@ -353,18 +355,19 @@ hooks:
   - The snapshot equals the one saved at the last allowed stop, so nothing has moved (for example, later questions while a plan is paused).
   - `stop_hook_active` is set and the snapshot equals the last blocked one. That is stagnation.
   - The current chain has already blocked 5 times.
-- **Final audit (QS7-4).** When every task is completed and this snapshot hasn't been audited yet, it blocks once with R4 and marks the snapshot audited. A later stop with the same snapshot passes.
+- **Final audit (QS7-4, ledger-based).** When every ledger task is completed and this snapshot hasn't been audited yet, it blocks once with R4 and marks the snapshot audited. A later stop with the same snapshot passes.
 - **Otherwise it blocks with R1** and saves the snapshot. Every allowed stop saves the snapshot as the new rest point. When `stop_hook_active` is false, the chain count resets.
 - **Stagnation limit.** It is 1, not upstream's 3. Upstream wakes an idle session, but here the model has read R1 and chosen to stop again, which the CLAUDE.md stop-and-report rules allow. Both limits are constants.
 - It runs alongside the authoring plugin's docs-sync Stop hook, and both may block the same stop.
 
-**Behavior 2: `agent` mode and the mod**
+**Behavior 2: `prompt` mode (QS7-2, hook only)**
 
-- **`agent` mode** injects R2 unless `tool_response.status` is `async_launched` or `teammate_spawned`.
-- **Background returns go to a mod (QS7-2).** A small mod in `plugins/coremods` (Q9) uses `prompt.submit` to inject R2 when a completed agent `task-notification` arrives, whether the session is idle or mid-turn. It replaces a `UserPromptSubmit` hook, so each return gets exactly one reminder.
-  - It gates on the session's agent type being `orchestration` (whether `prompt.submit` exposes it is UNCONFIRMED; S7.0).
-  - Background Bash notifications and the separate hand-back message are skipped.
-  - R2 is the same constant string the hook uses.
+- `prompt` mode injects R2 when the `UserPromptSubmit` prompt matches an agent return:
+  - `<agent-message from="` (interactive hand-back, wrapping `[Subagent hand-back] …`), or
+  - `<task-notification>` containing `<summary>Agent "` (`-p` background agent).
+- It skips `<summary>Background command …` (background Bash) and Monitor events.
+- It also fires mid-turn, because `UserPromptSubmit` does. Within a turn `prompt_id` is unchanged. On an idle notification turn it changes, so the edit counter resets then, which is acceptable.
+- The `PostToolUse Agent` hook is gone. Interactive Agent calls always return `async_launched`, and a foreground `-p` return carries a real tool result but is the rarer path.
 - One text serves every agent type. "If it changed files" keeps it true for read-only agents.
 
 **Behavior 3: `edit` mode**
@@ -396,38 +399,61 @@ hooks:
 
 ### Unknowns
 
-| Unknown | Assumption | Cheapest way to settle it | If the assumption is wrong |
-|---|---|---|---|
-| Task JSON shape and directory name | `<id>.json` with `status` of pending, in_progress or completed, under `session-<sid8>` | S7.0 | If the store is unusable, behavior 1 moves to the mod route |
-| Frontmatter hooks fire inside subagents | Yes, per `B(t)` | S7.0 captures a subagent PostToolUse payload | Keep the `agent_id` check either way |
-| Notification `prompt` shapes, including mid-turn delivery | Agent and Bash notifications differ, and nothing fires mid-turn | S7.0 | If the idle path doesn't fire either, the background half of behavior 2 moves to a mod (QS7-2) |
-| `prompt_id` on main-thread events | Present, and it changes with each user prompt | S7.0 | If absent, S7.1 keys the edit counter on the last typed user message in the transcript instead |
-| Mod `prompt.submit` sees task notifications (idle and mid-turn) and the session's agent type | Yes, per the `agent-status` mod's event use | S7.0, with a throwaway mod | If it can't see the agent type, the mod gates on a launch-script env var instead |
-| `--agents` JSON accepts `hooks` (spike tooling only) | Yes | S7.0 | If not, use a temporary file in `agents/` and remove it after |
+All settled by S7.0 except the last row.
+
+| Unknown | Result (S7.0) |
+|---|---|
+| Task JSON shape and directory name | Settled. `<id>.json` under `<full-sid>` (`-p`) or `session-<sid8>` (interactive); the interactive UI deletes files after the last completion, so behavior 1 uses a hook-owned ledger |
+| Frontmatter hooks fire inside subagents | Yes. They carry `agent_id` and the subagent's `agent_type`, so the `agent_id` check stays mandatory |
+| Notification `prompt` shapes, including mid-turn delivery | Settled. Agent and Bash shapes differ (see Spike results), and `UserPromptSubmit` fires mid-turn in both modes, so QS7-2 needs no mod |
+| `prompt_id` on main-thread events | Present. Unchanged mid-turn, new on idle notification turns |
+| Mod `prompt.submit` sees task notifications and the session's agent type | Notifications yes; agent type no. Moot, since S7.4 is dropped |
+| `--agents` JSON accepts `hooks` (spike tooling only) | Probes ran through `--agents`. Frontmatter-file agents were not run; S7.2 covers them |
+| Whether interactive default-async is a setting (agent-teams env?) or a build default | UNCONFIRMED. Not run |
+| `--resume` task dir name | UNCONFIRMED. Not run |
 
 ### Sub-slices
 
 | # | Slice | Files | Acceptance | Cheapest check | Agent |
 |---|---|---|---|---|---|
-| S7.0 | Spike the payloads and the task store | Scratch only; findings appended here | Records: the main-thread Stop fields; a subagent PostToolUse (with `agent_id`) firing the main agent's hook; the task directory and JSON fields; the UserPromptSubmit `prompt` for a background agent return, its hand-back, a background Bash return and a mid-turn return; whether `prompt_id` changes on notification turns | A probe agent passed through `--agents` whose hooks append stdin to a scratch log; `scripts/claude-tmux.sh` covers the interactive background case | `coder` |
-| S7.1 | Guard script and fixtures | `hooks/orchestration-guard.py`, `hooks/tests/orchestration-guard.test.sh` | Every fixture row passes | `bash hooks/tests/orchestration-guard.test.sh` | `coder`, then `quick-review` |
-| S7.2 | Wire the hooks | `agents/orchestration.md` frontmatter only | Three hook entries registered | One `claude -p --agent orchestration --append-system-prompt-file prompts/system_override.md` run in a temp git repo that creates two tasks, runs a foreground `Explore`, writes a 40-line file directly, completes one task, and stops. The transcript holds R1, R2, R3 and R4 | `coder-light` |
-| S7.4 | Notification mod | A mod inside `plugins/coremods` (Q9) | Injects R2 once per completed agent notification, idle or mid-turn, only in `orchestration` sessions; silent elsewhere | `claude plugin test` in the plugin, then one background-agent run in a script session | `coder`, then `quick-review` |
+| S7.0 | ~~Spike the payloads and the task store~~ Done 2026-10-10 | Scratch only; findings below | Records: the main-thread Stop fields; a subagent PostToolUse (with `agent_id`) firing the main agent's hook; the task directory and JSON fields; the UserPromptSubmit `prompt` for a background agent return, its hand-back, a background Bash return and a mid-turn return; whether `prompt_id` changes on notification turns | A probe agent passed through `--agents` whose hooks append stdin to a scratch log; `scripts/claude-tmux.sh` covers the interactive case | `coder` |
+| S7.1 | Guard script and fixtures | `hooks/orchestration-guard.py`, `hooks/tests/orchestration-guard.test.sh` | Every fixture row passes. Modes: stop, prompt, edit, ledger | `bash hooks/tests/orchestration-guard.test.sh` | `coder`, then `quick-review` |
+| S7.2 | Wire the hooks | `agents/orchestration.md` frontmatter only | Four hook entries registered (Stop, UserPromptSubmit, PostToolUse for tasks, PostToolUse for edits) | One `claude -p --agent orchestration --append-system-prompt-file prompts/system_override.md` run in a temp git repo that creates two tasks, runs a `Explore` agent, writes a 40-line file directly, completes one task, and stops, plus the same scenario in interactive tmux (`scripts/claude-tmux.sh`), because `-p` alone doesn't match interactive behavior. Each transcript holds R1, R2, R3 and R4 | `coder-light` |
+| ~~S7.4~~ | ~~Notification mod~~ | — | Dropped 2026-10-10: QS7-2 is a hook (`prompt` mode) | — | — |
 | S7.3 | Record | This section, the S7 row, the `work_state` operator step | Matches what landed | Read the diff | Main session |
+
+**Spike results (2.1.296).** Haiku, `-p` and interactive tmux. Logs under `$L` = `/tmp/claude-1000/-home-buck-Projects-adminhead-claude-plugins/d3587765-e946-4874-935d-335b692b6f5a/scratchpad/logs/`.
+
+| Topic | Result | Log |
+|---|---|---|
+| Main-thread Stop under `--agent X` | Has `agent_type`, `prompt_id`, `stop_hook_active`, `last_assistant_message`, `background_tasks` (`{id, type: subagent\|shell, status, description, agent_type\|command}`; `[]` when idle). No `agent_id`. A second Stop after a block has `stop_hook_active: true` and the same `prompt_id` | `$L/a1.log`, `a7.log`, `d1.log` |
+| Frontmatter hooks inside subagents | They fire there, with `agent_id` and the subagent's `agent_type`. The `agent_id`-absent check is mandatory | `$L/b1.log` |
+| Task store | `~/.claude/tasks/<list>/`; `<list>` is `<full-sid>` in `-p`, `session-<sid8>` interactive; `CLAUDE_CODE_TASK_LIST_ID` overrides. Files `<id>.json`, `.lock`, `.highwatermark`. Fields: id, subject, description, activeForm?, owner?, status (pending\|in_progress\|completed), blocks, blockedBy, metadata?. Interactive UI deletes all task files about 5 s after every task completes; `-p` keeps them. Pending tasks survive /exit | — |
+| Return shapes in UserPromptSubmit `prompt` (no `source` field) | Interactive background agent: `<agent-message from="<id>">` wrapping `[Subagent hand-back] …` (the subagent calls `SubagentHandback`). `-p` background agent: `<task-notification>` with `<summary>Agent "…" finished</summary>` and `<result>`. Background Bash: `<task-notification>` with `<summary>Background command …`. Foreground Agent in `-p`: a real tool result | — |
+| Interactive Agent status | Every Agent call returns `status: "async_launched"`, even without `run_in_background` | — |
+| Mid-turn delivery | UserPromptSubmit fires mid-turn for notifications delivered into a running turn, both modes. `prompt_id` stays the same mid-turn and changes on idle notification turns (critique 11 settled) | — |
+| Mod `prompt.submit` | Origin `task-notification` for `-p` returns, `peer` for interactive hand-backs. No agent type in its event (it is readable from `classic.UserPromptSubmit` and `classic.Stop`) | — |
+| Not run | `--resume` task dir name; frontmatter-file agents (probes used `--agents`); whether interactive default-async is a setting (for example an agent-teams env) or a build default | — |
+
+**Decisions after the spike (user, 2026-10-10).**
+
+- **R4 audit → hook-owned ledger.** A PostToolUse hook on `TaskCreate|TaskUpdate` writes the per-session ledger, and Stop reads it, not the store. It still blocks once with an audit (QS7-4).
+- **QS7-2 → hook only.** `prompt` mode in `orchestration-guard.py` replaces both the `PostToolUse Agent` hook and the S7.4 mod.
 
 The fixtures follow `plugins/authoring/scripts/tests/check-docs-sync.sh` and point `XDG_STATE_HOME` and `CLAUDE_CONFIG_DIR` at temporary directories.
 
 | Mode | Input | Expected |
 |---|---|---|
-| stop | No task dir; all tasks pending; `background_tasks` non-empty | Silent |
+| stop | No ledger; all tasks pending; `background_tasks` non-empty | Silent |
 | stop | One task completed, one pending, first stop | R1 |
 | stop | Same snapshot with `stop_hook_active` | Silent |
 | stop | Another task completed, with `stop_hook_active` | R1 |
 | stop | Chain already at 5 blocks; snapshot unchanged since the last allowed stop | Silent |
 | stop | All tasks completed, first stop on that snapshot | R4 |
 | stop | All tasks completed, same snapshot already audited | Silent |
-| agent | Completed foreground return | R2 |
-| agent | `async_launched`, `teammate_spawned` | Silent |
+| prompt | `<agent-message from="…">`; `<task-notification>` with `<summary>Agent "…" finished</summary>` | R2 |
+| prompt | `<summary>Background command …`; a Monitor event; a typed prompt | Silent |
+| ledger | `TaskCreate`, then `TaskUpdate` to completed (a stop afterwards sees the ledger with no store dir) | Ledger updated, no output |
 | edit | One 31-line Edit; three files of 5 lines each | R3 |
 | edit | 20 then 15 lines under the same `prompt_id`, then a third edit | R3 on the second edit, silent on the third |
 | edit | New `prompt_id`; a path outside `cwd` | Counter resets; path not counted |
@@ -439,10 +465,10 @@ The fixtures follow `plugins/authoring/scripts/tests/check-docs-sync.sh` and poi
 
 | Risk | Effect | Mitigation |
 |---|---|---|
-| An upgrade changes the task store layout | Behavior 1 goes silent | It fails open, the post-upgrade wiring run catches it, and the mod route takes over |
-| Python starts on every Edit, Write and Agent call in script sessions, subagents included | About 20–40 ms per call (UNCONFIRMED estimate) | Accept it. Plain sessions pay nothing |
+| An upgrade changes the `TaskCreate`/`TaskUpdate` payload or the notification text | The ledger or `prompt` mode goes silent | It fails open, and the post-upgrade wiring run (`-p` and interactive) catches it |
+| Python starts on every Edit, Write, task and prompt event in script sessions, subagents included | About 20–40 ms per call (UNCONFIRMED estimate) | Accept it. Plain sessions pay nothing |
 | Continuation fights a legitimate stop | One extra turn and a visible "Stop hook feedback" line | The silence rules above, and a stagnation limit of 1 |
-| Mid-turn returns get no R2 | A weaker verify habit on those returns | S6 prompt rule P6 already says reports are claims; QS7-2 |
+| The edit counter resets on each idle notification turn | A long run of direct edits across returns may not trip R3 | Accepted (critique 11) |
 | Hook edits need a relaunch | Old behavior until restart | Same as L6 |
 
 Rollback: delete the `hooks:` block from `agents/orchestration.md` and relaunch. The script and symlink then sit unused.
@@ -457,24 +483,26 @@ Second opinion skipped, because external models are barred for prompt and agent 
 | 2 | The engine's 8-continuation limit doesn't bound loops | Adopted. Blocks require progress, and a chain limit of 5 bounds the rest |
 | 3 | Stagnation should allow 3 nudges, as upstream does | Rejected. Upstream fires on idle without the model choosing to stop; here a second unchanged stop is deliberate |
 | 4 | Holding the model to pending tasks fights plan-and-stop | Adopted. The "nothing started" and "nothing moved" rules let it stop |
-| 5 | The task JSON shape is unverified | Adopted. S7.0 must pass before S7.1, and the mod route is the fallback |
+| 5 | The task JSON shape is unverified | Adopted. S7.0 passed (shape recorded). The interactive store deletion then moved the audit to a ledger |
 | 6 | A notification plus its hand-back gives two reminders | Adopted. Only completed agent notifications match |
 | 7 | Bash notifications look like agent ones | Adopted. S7.0 records both shapes, and Bash ones are skipped |
 | 8 | "Read the diff" in R2 makes no sense after an Explore return | Adopted. R2 says "if it changed files" |
 | 9 | The nudge fires even after the user asked the main thread to make the edit | Adopted. R3 names that exception and fires once per prompt |
 | 10 | R1 invites marking tasks done just to escape | Adopted in part. R1 asks for evidence, and the reviewer pass is unchanged |
-| 11 | `prompt_id` may reset on notification turns | Open, lenient by design. S7.0 records whether it does |
+| 11 | `prompt_id` may reset on notification turns | Settled by S7.0: it changes on idle notification turns and stays put mid-turn. The per-turn counter reset is acceptable |
+| 12 | The task store is deleted on completion interactively, so a Stop-time R4 audit reads nothing | Adopted (user, 2026-10-10): a hook-owned ledger written by PostToolUse on the task tools |
+| 13 | `PostToolUse Agent` never sees a result interactively | Adopted: R2 moves to `UserPromptSubmit` (`prompt` mode) |
 
 ### Open questions (S7)
 
-- Resolved 2026-10-10: QS7-1 → a repo `hooks/` folder symlinked as `~/.claude/hooks` (done; `readonly-bash.py` and its tests moved in, hivemind's logs git-ignored); QS7-2 → add the mod (S7.4); QS7-3 → (a) everything under `cwd`; QS7-4 → (b) block once with R4.
+- Resolved 2026-10-10: QS7-1 → a repo `hooks/` folder symlinked as `~/.claude/hooks` (done; `readonly-bash.py` and its tests moved in, hivemind's logs git-ignored); QS7-2 → hook only, via `UserPromptSubmit` (the S7.4 mod is dropped, after S7.0 showed the hook fires mid-turn); QS7-3 → (a) everything under `cwd`; QS7-4 → (b) block once with R4, audited from the hook-owned ledger.
 - **QS7-1. Where the script lives.**
   - (a) `scripts/`, plus an operator symlink at `~/.claude/hooks/orchestration-guard.py`. Recommended; it matches the `readonly-bash.py` precedent.
   - (b) Inside `agents/`, reached through the existing symlink. No operator step, but it relies on the agent loader ignoring non-`.md` files (UNCONFIRMED).
   - (c) An absolute repo path. It breaks if the repo moves.
-- **QS7-2. Mid-turn notifications.**
-  - (a) Accept the gap. Recommended, because P4 already has the orchestrator end its turn while agents run.
-  - (b) Add a mod with a `prompt.submit` hook for that half.
+- **QS7-2. Mid-turn notifications.** Resolved: a `UserPromptSubmit` hook (`prompt` mode), because S7.0 showed it fires mid-turn.
+  - (a) Accept the gap. Moot.
+  - (b) Add a mod with a `prompt.submit` hook. Dropped.
 - **QS7-3. Which edits count toward the nudge.**
   - (a) Every path under `cwd`, plan Status edits included. Recommended, because CLAUDE.md counts docs.
   - (b) Exclude `docs/plans/**`.
@@ -484,7 +512,7 @@ Second opinion skipped, because external models are barred for prompt and agent 
 
 ## S8. Agent tool scoping (absorbs S4, touches S7)
 
-Status: designed 2026-10-10, not built. T0 must pass before any agent edit.
+Status: designed 2026-10-10, not built. T0 done 2026-10-10 (results under Sub-slices); T3 is unblocked. T1: `readonly-bash` fixes done (review and security-audit findings 1–8 addressed, suite 446 pass / 0 fail); a re-audit is pending.
 
 Evidence comes from:
 
@@ -515,7 +543,7 @@ Evidence comes from:
 | `memory:` turns on Read, Write and Edit automatically | sub-agents.md |
 | An inline server starts with each spawn and stops when the agent finishes. The parent never sees its tools, and `~/.claude/agents` needs no folder trust | sub-agents.md; binary `nd` |
 | Today's read-only agents can reach the GitHub write tools, Monitor, Artifact, SendMessage and EnterWorktree | the architect session's own tool list |
-| Hooks match on the tool name, and Monitor runs shell commands as `Monitor`, so the `Bash` hook never sees them | UNCONFIRMED; T0.6 |
+| Hooks match on the tool name, and Monitor runs shell commands as `Monitor`, so a `Bash`-matcher hook never sees them (only matcher-less hooks fire) | Confirmed, T0.6 |
 | Playwright MCP 0.0.83 turns on `browser_run_code_unsafe` ("RCE-equivalent") by default | npm readme for 0.0.83, Core automation section |
 | `readonly-bash.py` allows `rtk rm -rf src` (rc 0) | local run |
 | `TMPDIR` is empty in agent Bash, so `$TMPDIR/x` expands to `/x` | `echo "TMPDIR=$TMPDIR"` |
@@ -566,7 +594,7 @@ Shorthand, spelled out in full in the frontmatter:
   - Today each read-only spawn carries about 110 deferred tool names, roughly 1.5–2k tokens.
   - Afterwards it carries 1–6 tool schemas, roughly 0.5–3k tokens. Both figures are UNCONFIRMED estimates.
   - The change is about even for architect and debugger, and a saving for the rest.
-- **`SubagentHandback` isn't listed**, because the binary passes it separately as `handbackTool`. T0.4 confirms this; if it turns out to be dropped, it goes on every list.
+- **Implicit tools: `SubagentHandback` and `advisor`.** Neither is ever listed. The binary passes `SubagentHandback` separately as `handbackTool`, and T0.4 confirmed allowlisted agents still hand back. T0.4 also found that every agent gets an unlisted `advisor` tool. Neither counts as a violation of a read-only agent's `Lacks` line.
 
 ### MCP candidates
 
@@ -602,6 +630,7 @@ You can't run git, tests, or any command. If the task needs one, hand back `need
      - A read-only agent has no `memory`, Skill, SendMessage, Monitor, Artifact or EnterWorktree, and no MCP tool whose name contains a write verb.
      - It has Bash if and only if it has the `readonly-bash` hook.
 - **`scripts/agent-tools.test.sh`** follows the `prompt-drift.test.sh` pattern. It runs one temporary fixture per rule and expects each to fail, then runs against the real `agents/` and expects a pass.
+- **Follow-up (script not edited yet).** `scripts/agent-tools.py` must treat `advisor` and `SubagentHandback` as implicit tools. They are never required in `Has` or `Lacks`, and never a violation of rules 2 and 4.
 - **Limit.** The check can't see a misspelled tool name on a known server, or a renamed plugin. Both drop silently, so T5 is what catches them.
 
 ### Effect on S4 and S7
@@ -610,23 +639,23 @@ You can't run git, tests, or any command. If the task needs one, hand back `need
 - **S7 needs no design change.**
   - S7.2 touches only the orchestration frontmatter, which S8 leaves alone.
   - Read-only agents already lacked Edit and Write, so the edit-nudge hook's load doesn't change.
-  - If QT1 drops Agent from architect, no subagent fires the orchestration `PostToolUse Agent` hook any more.
-  - T0 reuses S7.0's `--agents` probe harness, and the two spikes can run in one session.
+  - Orchestration's frontmatter no longer has a `PostToolUse Agent` hook (R2 moved to `UserPromptSubmit`), so QT1 has no effect on S7.
+  - T0 and S7.0 both ran (2026-10-10) on one `--agents` probe harness.
 - **Orchestration body.** The Explore routing line gains: "has no shell: no git history, tests, or commands; send those to `debugger` or do them yourself."
 - **Q9 stands.** Explore no longer needs hooks, but the other six read-only agents still do.
 
 ### Sub-slices
 
-T0 must pass before T3. T1 and T2 can run in parallel with T0.
+T0 passed, so T3 is unblocked. T1 and T2 can run in parallel.
 
 | # | Slice | Files | Acceptance | Cheapest check | Agent |
 |---|---|---|---|---|---|
-| T0 | Spike how tools resolve | Scratch only; findings appended here | Records eight probes (listed below) | `claude -p --agents <json>` probes, with hooks that log stdin to the scratchpad | `coder` |
-| T1 | Close the hook gaps | `hooks/readonly-bash.py` and its test | `rtk <cmd>` and `rtk proxy <cmd>` are unwrapped and checked like `<cmd>`. `SCRATCH_MSG` names `/tmp`, not `$TMPDIR` | New test rows: `rtk git checkout main` and `rtk proxy rm x` block, `rtk git log` is allowed. Run `bash hooks/tests/readonly-bash.test.sh` | `coder`, then `quick-review` |
+| T0 | ~~Spike how tools resolve~~ Done 2026-10-10 | Scratch only; findings below | Records ten probes (listed below) | `claude -p --agents <json>` probes, with hooks that log stdin to the scratchpad | `coder` |
+| T1 | Close the hook gaps. Fixes done (findings 1–8, suite 446/0); re-audit pending | `hooks/readonly-bash.py` and its test | `rtk <cmd>` and `rtk proxy <cmd>` are unwrapped and checked like `<cmd>`. `SCRATCH_MSG` names `/tmp`, not `$TMPDIR` | New test rows: `rtk git checkout main` and `rtk proxy rm x` block, `rtk git log` is allowed. Run `bash hooks/tests/readonly-bash.test.sh` | `coder`, then `quick-review` |
 | T2 | Drift check | `scripts/agent-tools.py` and `.test.sh` | Each fixture fails on the rule it breaks | `bash scripts/agent-tools.test.sh` | `coder`, then `quick-review` |
 | T3 | Frontmatter and Tools sections | `agents/*.md` | Matches the per-agent table. Explore's hook is removed, and its body uses Glob and Grep instead of the shell `codegraph` line | `python3 scripts/agent-tools.py agents` | `coder` |
 | T4 | Stock essentials (the old S4) | `agents/*.md` bodies; the orchestration routing line | Each body carries the inventory rows its role needs. Scratch paths say `/tmp` or the scratchpad path from the environment block | The drift check still passes; `quick-review` against the kept inventory rows | `scribe` |
-| T5 | Live check | None (a temporary git repo) | Each read-only agent lists exactly its `Has` line. Its attempt to create `PROBE_<agent>` fails because the tool is absent or `readonly-bash` blocked it, not because of a classifier denial. No probe file exists afterwards, and one `coder` spawn does create its file | One `claude -p` session that spawns each agent with `model: haiku` per call | `coder`; the main session reads the transcripts |
+| T5 | Live check | None (a temporary git repo) | Each read-only agent lists exactly its `Has` line. Its attempt to create `PROBE_<agent>` fails because the tool is absent or `readonly-bash` blocked it, not because of a classifier denial. No probe file exists afterwards, and one `coder` spawn does create its file | One `claude -p` session that spawns each agent with `model: haiku` per call, plus the same in interactive tmux (`scripts/claude-tmux.sh`), because interactive Agent calls are always async and `-p` alone doesn't match | `coder`; the main session reads the transcripts |
 | T7 | Strict git tools in `coremods` (QT3) | `plugins/coremods/hooks/register.tsx`, a `git-tools` helper, tests, docs page; Explore's `tools` | `coremods` registers `git_log`, `git_blame` and `git_show` with `$.tool.register` and serves them in a `tool.call` hook. Each runs `git` through `$.process.run` with a fixed argument list: revisions match a strict pattern and never start with `-`, paths must sit inside `cwd` and are passed after `--`, and there is a cap on count and bytes. Explore lists `mcp__coremods__git_log`, `…git_blame` and `…git_show` | `claude plugin test plugins/coremods` (injection cases: `--output=x`, `-p`, `../`, a path outside `cwd`), then the T5 live run shows Explore calling `git_log` | `coder`, then `review` (untrusted input reaches a process) |
 | T6 | Record | This section, the S4 and S7 rows, the critique log | Matches what landed | Read the diff | Main session |
 
@@ -642,6 +671,23 @@ T0's eight probes:
 8. Whether one misspelled entry is dropped silently.
 9. Whether a tool registered by a mod with `$.tool.register` (`mcp__coremods__<name>`) can be listed in a subagent's `tools` and called by it. The types were written by 2.1.285 and need confirming on 2.1.296.
 10. Whether the mod's `tool.call` hook serves calls made from inside a subagent, and what the result looks like there.
+
+**Spike results (2.1.296).** Haiku, `-p` and interactive tmux, probes through `--agents` (JSON needs `mcpServers` as an array of `{name: {command, args}}` and `tools` as an array).
+
+| Probe | Result |
+|---|---|
+| 1. `tools: Bash(rg *)` | Grants all of Bash. Confirmed |
+| 2. Glob and Grep without Bash | Listing them works. Confirmed |
+| 3. Inline `mcpServers` tools | Bypass `tools`; `disallowedTools` removes them. Confirmed |
+| 4. Hand-back | Allowlisted agents still hand back; `SubagentHandback` never needs listing. **Every agent also gets an unlisted `advisor` tool** |
+| 5. `skills:` preload | Works without the Skill tool. Confirmed |
+| 6. Monitor | Bash-matcher hooks do not fire on Monitor, only matcher-less hooks do. Monitor stays off every read-only list |
+| 7. ToolSearch | Can't load tools outside the agent's pool. It is absent when nothing is deferred |
+| 8. Misspelled entries | Dropped silently, so the T5 live check is the only catch |
+| 9. Mod tools in `tools` | `$.tool.register` tools (`mcp__<plugin>__<name>`) work in a subagent's `tools` list. **T7's premise holds** |
+| 10. `tool.call` in subagents | The mod's `tool.call` serves subagent calls; the event carries `agentId` for subagents |
+
+Consequence for T7: coremods `$.tool.register` is viable, so the pinned `mcp-server-git` fallback (QT3 note) is not needed.
 
 **When to rerun.** Run the drift check on every `agents/*.md` edit. Run T5 after each Claude Code upgrade (alongside S2), and after any plugin rename or MCP change.
 
@@ -673,12 +719,12 @@ Second opinion: skipped, because agent material is barred from external models. 
 | 8 | An `rtk` prefix gets past `readonly-bash` | Adopted: T1 (verified, rc 0) |
 | 9 | `$TMPDIR` is unset in agent Bash | Adopted: the T1 message and the T4 bodies |
 | 10 | Skill, SendMessage and Agent let a read-only agent reach a writer | Adopted for Skill and SendMessage. Agent is open (QT1). The forked-skill spawn path is UNCONFIRMED |
-| 11 | Monitor runs shell commands past the Bash hook | Adopted. Monitor stays off every read-only list; T0.6 confirms |
+| 11 | Monitor runs shell commands past the Bash hook | Adopted. Monitor stays off every read-only list; T0.6 confirmed |
 | 12 | Background subagents strip built-ins that aren't on the fixed list | Adopted. Allowlists use only listed built-ins, and T2 enforces it |
 
 ### Open questions (S8)
 
-- Resolved 2026-10-10: QT1 → (a) drop Agent from architect; QT2 → (a) writers inherit, denying Agent and Workflow; QT4 → (a) EXA for architect, debugger and security-auditor only; QT5 → (a) guard `gh` mutating subcommands in T1. QT3 → strict git tools served by a `coremods` mod (T7), with a pinned `mcp-server-git` with its write tools denied as the fallback if the T0 spike rules the mod route out.
+- Resolved 2026-10-10: QT1 → (a) drop Agent from architect; QT2 → (a) writers inherit, denying Agent and Workflow; QT4 → (a) EXA for architect, debugger and security-auditor only; QT5 → (a) guard `gh` mutating subcommands in T1. QT3 → strict git tools served by a `coremods` mod (T7), with a pinned `mcp-server-git` with its write tools denied as the fallback if the T0 spike rules the mod route out. T0 did not (probes 9 and 10), so the fallback is not needed.
 - **QT1. Architect's Agent tool.**
   - (a) Drop it. Recommended: architect then becomes read-only by allowlist alone, and codegraph plus `rg` cover its searches. This plan was built without spawning any Explore agent.
   - (b) Keep it. A subagent's `Agent(Explore)` type list is ignored, so architect could also spawn `coder`.
