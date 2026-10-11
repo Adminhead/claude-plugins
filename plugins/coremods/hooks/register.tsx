@@ -1,6 +1,7 @@
 import type { Register, SessionUsage } from 'claude-code'
 import { applyTask, buildView, renderLine as agentLine, track, type Seen, type Tasks, type View } from './agent-status/line'
 import { parseNumstat, parseStatus, placeOf, renderLine as gitLine, type Snapshot } from './git-line/line'
+import { buildGit, TOOLS, TOOL_PREFIX, truncate } from './git-tools/git'
 import { renderBand } from './usage-band/band'
 
 // The engine refuses a plugin that registers an event twice, and it follows `$` only through
@@ -89,8 +90,31 @@ async function refreshAgents($: any) {
   }
 }
 
+// git-tools
+
+const GIT_TIMEOUT_MS = 15000
+
+// Serves a git tool call with a result string; failures come back as text, never thrown.
+async function runGitTool($: any, e: any): Promise<string> {
+  try {
+    const cwd = await $.session.cwd()
+    const built = buildGit(e.tool, e, cwd)
+    if ('error' in built) return `error: ${built.error}`
+    const out = await $.process.run(built.argv, { cwd, env: built.env, timeoutMs: GIT_TIMEOUT_MS })
+    if (out.exitCode !== 0) return `error: git exited ${out.exitCode}: ${out.stderr.trim()}`
+    return truncate(out.stdout) || '(no output)'
+  } catch (err) {
+    return `error: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    try {
+      for (const tool of TOOLS) await $.tool.register(tool)
+    } catch (err) {
+      report($, 'git-tools', err)
+    }
     await Promise.all([refreshGit($), refreshUsage($)])
     if (!polling) {
       polling = true
@@ -102,8 +126,9 @@ export const register: Register = on => {
     await Promise.all([refreshGit($), refreshUsage($)])
     return next(e)
   })
-  // Observes only: the tool's result passes through whatever happens here.
+  // Answers the git tools; for every other tool it observes only, and the result passes through.
   on('tool.call', async ($, e: any, next) => {
+    if (typeof e.tool === 'string' && e.tool.startsWith(TOOL_PREFIX)) return { result: await runGitTool($, e) }
     const out: any = await next(e)
     if (typeof e.tool === 'string' && e.tool.startsWith('Task')) {
       try {

@@ -99,3 +99,11 @@ If reading the agent list fails, the last line stays and the error is logged onc
 ```
 claude plugin install coremods@adminhead
 ```
+
+## git-tools
+
+Three read-only tools for subagents, served from the same hooks module: `mcp__coremods__git_log` (`rev`, `path`, `max_count` up to 100, default 20), `mcp__coremods__git_blame` (`path`, `rev`, `start_line`, `end_line`) and `mcp__coremods__git_show` (`rev`, `path`). Explore lists them in place of a shell.
+
+Each call runs `git` through `$.process.run` as an argument vector, never a shell, with `--no-pager`, `--no-lazy-fetch` (a partial clone can't fetch from a remote mid-call), `--literal-pathspecs`, `--no-show-signature` on log and show, `--no-ext-diff`, `--no-textconv`, `core.fsmonitor=false`, an empty `diff.external`, and `GIT_CONFIG_NOSYSTEM=1`. Revisions must match a strict pattern and never start with `-`. Paths must stay inside the session's working directory (checked lexically, so `../` and outside absolute paths fail) and follow `--`. Blame always names a revision (default `HEAD`), so it never reads the worktree. Output is cut at 100,000 characters with a note. Bad input and git failures come back as an `error: ...` result, never as a thrown error.
+
+The helper in `hooks/git-tools/git.ts` builds and validates the argv. The tools are registered on `session.start`, so they appear from the first prompt.

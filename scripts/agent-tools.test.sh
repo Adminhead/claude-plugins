@@ -143,6 +143,13 @@ expect r4-verb 1 "a.md: 4: read-only agent has MCP tool \`$V\` with a write verb
 agent ok-verb-server ro "tools: Read, Glob, Grep, mcp__plugin_efficient-core_exa__web_fetch_exa" \
   'Has: `Read`, `Glob`, `Grep`, `mcp__plugin_efficient-core_exa__web_fetch_exa`.' "$RO_LACKS"
 expect ok-verb-server 0 "agent-tools: ok (1 agents)"
+# The coremods git tools are known MCP tools; a write verb on that server still fails.
+GT=mcp__coremods__git_log
+agent ok-coremods ro "tools: Read, Glob, Grep, $GT" "Has: \`Read\`, \`Glob\`, \`Grep\`, \`$GT\`." "$RO_LACKS"
+expect ok-coremods 0 "agent-tools: ok (1 agents)"
+GW=mcp__coremods__git_push
+agent r4-coremods a "tools: Read, Glob, Grep, $GW" "Has: \`Read\`, \`Glob\`, \`Grep\`, \`$GW\`." "$RO_LACKS"
+expect r4-coremods 1 "a.md: 4: read-only agent has MCP tool \`$GW\` with a write verb"
 agent r4-nohook a "tools: Read, Bash" 'Has: `Read`, `Bash`.' \
   'Lacks: `Glob`, `Grep`, `Edit`, `Write`, `NotebookEdit`, `Agent`, `Skill`, `Monitor`.'
 expect r4-nohook 1 "a.md: 4: read-only agent has Bash without a PreToolUse Bash readonly-bash.py hook"
