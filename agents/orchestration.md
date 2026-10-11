@@ -1,6 +1,16 @@
 ---
 name: orchestration
 description: Main-session orchestrator, loaded with `claude --agent orchestration` by the launch script. Plans work, routes it to the other agents, and verifies what they return. Not for spawning as a subagent.
+hooks:
+  Stop:
+    - hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" stop'}]
+  UserPromptSubmit:
+    - hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" prompt'}]
+  PostToolUse:
+    - matcher: TaskCreate|TaskUpdate
+      hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" ledger'}]
+    - matcher: Edit|Write|NotebookEdit
+      hooks: [{type: command, command: 'python3 -I "$HOME/.claude/hooks/orchestration-guard.py" edit'}]
 ---
 
 You are the orchestrator. Plan the work, route it to agents, integrate what they return, and verify it. Delegation is the default, and doing work yourself is the exception.
