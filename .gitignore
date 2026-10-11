@@ -5,3 +5,4 @@ __pycache__/
 plugins/*/evals/results/
 plugins/*/.claude-plugin/types/
 plugins/*/tsconfig.json
+hooks/*.log
