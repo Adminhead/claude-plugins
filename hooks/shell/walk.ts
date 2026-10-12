@@ -32,6 +32,9 @@ export type ShellCommand = {
   // but every expansion kept as written: `--out="$f"` reads `--out=$f`, `$'-i'$x` reads `-i$x`.
   // A consumer that needs the literal parts of an expanded word reads them here.
   text: string[]
+  // Whether a word or assignment of the command itself (not its substitutions) holds a `$"…"`
+  // string, which bash reads as `…` and zsh as `$…`.
+  locale: boolean
   // `NAME=value` prefixes. The name carries its subscript (`a[1]`), and is null when the
   // subscript holds an expansion. The value is null when it holds an expansion. `append` marks `+=`.
   assigns: { name: string | null; value: string | null; append: boolean }[]
@@ -111,7 +114,8 @@ function partText(p: Node, first: boolean, bare = true): string | null {
 }
 
 // A part as a tokenizer that keeps expansions as written reads it: quotes removed, escapes and ANSI-C
-// strings decoded, and each expansion (`$x`, `$(…)`, `$"…"`, `{a,b}`) kept as its source text.
+// strings decoded, `$"…"` read as bash reads it (zsh keeps the `$`), and each expansion (`$x`, `$(…)`,
+// `{a,b}`) kept as its source text.
 function partSource(p: Node): string {
   switch (p.type) {
     case 'Literal':
@@ -120,6 +124,7 @@ function partSource(p: Node): string {
     case 'AnsiCQuoted':
       return (p.value as string).split('\u0000')[0]
     case 'DoubleQuoted':
+    case 'LocaleString':
       return (p.parts as Node[]).map(partSource).join('')
     default:
       return p.text as string
@@ -128,6 +133,9 @@ function partSource(p: Node): string {
 
 const source = (w: Word | undefined): string =>
   !w ? '' : w.parts ? w.parts.map(p => partSource(p as unknown as Node)).join('') : w.value
+
+// Whether a word holds a `$"…"` string outside its substitutions.
+const hasLocale = (w: Word | undefined): boolean => !!w?.parts?.some(p => p.type === 'LocaleString')
 
 function literal(w: Word | undefined): string | null {
   if (!w) return null
@@ -199,9 +207,12 @@ function parseAt(text: string, depth: number): ShellParse {
         text.push(`${a.name}${a.index ? `[${source(a.index)}]` : ''}${a.append ? '+' : ''}=${value}`)
       }
     }
+    const words = [c.name, ...c.args, ...c.prefix].flatMap(a =>
+      !a ? [] : a.type === 'Word' ? [a] : a.type === 'Assignment' ? (a.value.type === 'Word' ? [a.value] : [...a.value.elements]) : [])
     commands.push({
       argv,
       text,
+      locale: words.some(hasLocale),
       assigns: c.prefix.flatMap(p =>
         p.type === 'Assignment'
           ? [{ name: assignName(p), value: p.value.type === 'Word' ? literal(p.value) : null, append: p.append ?? false }]
@@ -293,7 +304,7 @@ function parseAt(text: string, depth: number): ShellParse {
         if (!carried.hit) {
           for (const m of ctx.carriers) m.hit = true
           commands.push({
-            argv: [], text: [], assigns: [], redirects: inner.redirects, heredocs: inner.heredocs,
+            argv: [], text: [], locale: false, assigns: [], redirects: inner.redirects, heredocs: inner.heredocs,
             pipeline: ctx.pipeline, nesting: ctx.nesting, depth,
           })
         }

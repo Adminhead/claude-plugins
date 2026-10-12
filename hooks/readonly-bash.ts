@@ -1232,12 +1232,18 @@ const REDIR_OUT = set('>', '>>', '>|', '&>', '&>>', '>&', '<>')
 // as written, so `--out=$f` is still an option and `"/tmp/$d"` still scratch.
 const word = (w: string | null, text: string | undefined): string => w ?? text ?? EXPANDED
 
-// bash reads `$"…"` as a translated string and zsh as a plain one, so its text can't be judged.
-const LOCALE = '$"'
-
 // bash and zsh evaluate an array subscript (and an arithmetic operand) even when it was quoted, so a
-// substitution in `a['$(…)']=1`, `unset 'a[$(…)]'` or `[[ -v 'a[$(…)]' ]]` runs.
+// substitution in `a['$(…)']=1`, `unset 'a[$(…)]'` or `[[ -v 'a[$(…)]' ]]` runs. Words are checked
+// only where a variable name is expected, since `Tags[?Key==`x`]` (JMESPath) and code are common.
 const SUBSCRIPT_SUB = /[A-Za-z_][A-Za-z0-9_]*\[[^\]]*(?:\$\(|`)/
+const NAME_TAKERS = set('unset', 'printf', 'declare', 'typeset', 'local', 'export', 'readonly', 'read', 'let',
+  'test', '[', 'mapfile', 'readarray')
+// In the raw text: a quoted `name[…$(…` as in `[[ -v 'a[$(…)]' ]]` or `(( 'a[$(…)]' ))`, which are no simple command.
+const QUOTED_SUBSCRIPT_SUB = /['"][A-Za-z_][A-Za-z0-9_]*\[[^\]'"]*\$\(/
+
+const subscriptSub = (c: ShellCommand): boolean =>
+  c.assigns.some(a => a.name !== null && /\$\(|`/.test(a.name)) ||
+  (NAME_TAKERS.has(basename(c.argv[0] ?? '')) && c.text.some(t => SUBSCRIPT_SUB.test(t)))
 
 // Redirects already judged. Commands under one compound share its redirect arrays, so each array and
 // each redirect is checked once rather than once per command.
@@ -1250,7 +1256,6 @@ function checkRedirects(c: ShellCommand): void {
     if (seenRedirects.has(r)) continue
     seenRedirects.add(r)
     const target = word(r.target, r.text)
-    if (r.target === null && target.includes(LOCALE)) block(`$"..." in redirect target '${target}'`)
     const fdDup = (r.op === '>&' || r.op === '<&') && /^(\d+-?|-)$/.test(target)
     if (REDIR_OUT.has(r.op) && !fdDup && !isScratch(target)) block(`redirect to non-scratch path '${target}'`)
   }
@@ -1267,12 +1272,9 @@ function checkCommand(c: ShellCommand): void {
     `${a.name === null ? EXPANDED : a.name.replace(/\[[\s\S]*$/, '')}${a.append ? '+' : ''}=${a.value ?? EXPANDED}`)
   try {
     checkRedirects(c)
-    for (const [i, w] of c.argv.entries()) {
-      if (w === null && c.text[i]?.includes(LOCALE)) block(`$"..." in '${c.text[i]}'`)
-    }
-    if (c.assigns.some(a => a.name !== null && /\$\(|`/.test(a.name)) || c.text.some(t => SUBSCRIPT_SUB.test(t))) {
-      block('array subscript with a command substitution runs it')
-    }
+    // bash reads `$"…"` as a translated string and zsh as `$…`, so its words can't be judged.
+    if (c.locale) block('$"..." reads differently in bash and zsh')
+    if (subscriptSub(c)) block('array subscript with a command substitution runs it')
     for (const a of argv) {
       if (a.startsWith('-') && /[\n\r\u2028\u2029]/.test(a)) block('option word with an embedded newline')   // defeats the flag regexes
     }
@@ -1291,7 +1293,7 @@ function checkCommand(c: ShellCommand): void {
 function checkScript(text: string, depth: number): void {
   const r = depth === 0 ? parse(text) : reparse(text, depth)
   if (r.errors.length) throw new ParseFailure(r.errors[0].message)
-  if (SUBSCRIPT_SUB.test(text)) block('array subscript with a command substitution runs it')
+  if (QUOTED_SUBSCRIPT_SUB.test(text)) block('array subscript with a command substitution runs it')
   for (const c of r.commands) checkCommand(c)
 }
 
