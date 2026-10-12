@@ -254,7 +254,15 @@ describe('classify', () => {
     expect(rule("python3 <<EOF\nopen(a,'" + 'w'.repeat(65000))).toBeNull()
     expect(rule('cat <<EOF | ' + 'cat | '.repeat(10000) + 'tee f\nx\nEOF')).toBe('heredoc-write')
     expect(rule('cat | '.repeat(10000) + 'cat')).toBeNull()
+    expect(rule('cat | ' + 'tee f | '.repeat(7000) + 'cat')).toBeNull()
+    expect(rule('cat | ' + 'x >f | '.repeat(7000) + 'cat')).toBeNull()
     expect(performance.now() - t0).toBeLessThan(1000)
+  })
+
+  // shortcut: a pipeline inside a substitution numbers its stages from 0, so they can match the outer previous stage.
+  test('known gap: a pipeline inside a substitution hides an echo feeding tee', () => {
+    expect(rule('echo "$(ls | wc -l)" | tee f')).toBeNull()
+    expect(rule('echo "$(ls)" | tee f')).toBe('echo-write')
   })
 
   test('a redirect elsewhere in the command does not make a heredoc a write', () => {

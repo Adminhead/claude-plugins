@@ -39,10 +39,10 @@ const hasArg = (c: ShellCommand, re: RegExp) => c.argv.slice(1).some(a => a !== 
 
 const fedByPipe = (c: ShellCommand) => c.pipeline !== null && c.pipeline.stage > 0
 
-// The commands of the previous pipeline stage. `earlier` also holds commands from substitutions, which have no stage.
+// The commands of the previous pipeline stage. `prev` also holds commands from substitutions, which have no stage.
 const prevStage = (c: ShellCommand) => {
   const p = c.pipeline
-  return p ? p.earlier.filter(e => e.pipeline?.stage === p.stage - 1) : []
+  return p ? p.prev.filter(e => e.pipeline?.stage === p.stage - 1) : []
 }
 
 // How many file operands a sed has: its non-option words, less the script when no -e/-f supplies it. `-` is stdin.
@@ -149,10 +149,16 @@ const hasHeredoc = (c: ShellCommand) => c.heredocs.length > 0
 // a heredoc body (its own, or the one piped into it) that writes files. Each heredoc is judged by its own command and body.
 // `bodyCommands` are the commands of every heredoc script a shell reads. Skipped on purpose: `python -c` and `node -e` with no heredoc.
 function heredocWrite(commands: ShellCommand[], bodyCommands: ShellCommand[]): boolean {
+  // Whether a heredoc sits upstream of each pipeline stage, built in one pass: commands come in emission order, so a stage's
+  // previous stage is already in the map.
+  const up = new Map<object, boolean>()
+  for (const c of commands) {
+    const p = c.pipeline
+    if (p && !up.has(p)) up.set(p, p.prev.some(e => e.pipeline !== null && (hasHeredoc(e) || up.get(e.pipeline) === true)))
+  }
   return (
     commands.some(c => {
-      // The cheap test first: `earlier` is rebuilt on every read.
-      if ((redirectsToFile(c) || teeFile(c)) && (hasHeredoc(c) || c.pipeline?.earlier.some(e => e.pipeline !== null && hasHeredoc(e)))) return true
+      if ((redirectsToFile(c) || teeFile(c)) && (hasHeredoc(c) || (c.pipeline !== null && up.get(c.pipeline) === true))) return true
       return interpreterOf(c) === 'script' && fedBodies(c).some(b => BODY_WRITES.test(b))
     }) || bodyCommands.some(shellBodyWrites)
   )

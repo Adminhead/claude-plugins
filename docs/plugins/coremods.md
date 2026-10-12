@@ -160,6 +160,7 @@ Known gaps and false positives:
 - `python3 - <<'EOF' > scratch` is blocked on purpose: it is a heredoc with a redirect to a file.
 - `python -c` and `node -e` with no heredoc are not checked, nor are `sed -i` and `perl -pi -e` run directly.
 - An interpreter body with a variable mode (`open(p, mode)`) or a write through `os.system` or `subprocess` is not caught. The body is matched with regexes whose scans are bounded, so a crafted 64 KB body checks in a few milliseconds.
+- A pipeline inside a substitution numbers its own stages, so it can hide the previous stage of the pipe around it: `echo "$(ls | wc -l)" | tee f` passes.
 - A redirect set earlier in the script (`exec > f; cat <<EOF`) is not tracked.
 - Only the command itself is matched, not a wrapper around it: `printf x \| sed ... \| tee f`, `echo x \| sudo tee f`, `timeout 5 sed -n p f` and `sudo bash -c '...'` slip by.
 - A `<<` inside quotes (`echo "a << b" > out.txt`) is not a heredoc.

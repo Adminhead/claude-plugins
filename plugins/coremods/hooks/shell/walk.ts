@@ -33,8 +33,9 @@ export type ShellCommand = {
   redirects: ShellRedirect[]
   heredocs: ShellHeredoc[]
   // Set when the command sits in a pipeline stage (including inside a subshell or group in it).
-  // `earlier` holds every command emitted by the stages before it.
-  pipeline: { stage: number; readonly earlier: ShellCommand[] } | null
+  // `earlier` holds every command emitted by the stages before it (rebuilt on each read, so O(n)).
+  // `prev` holds the commands emitted by the previous stage, substitution commands (pipeline null) included.
+  pipeline: { stage: number; readonly prev: readonly ShellCommand[]; readonly earlier: ShellCommand[] } | null
   // 0 for the parsed text, +1 per `reparse` level.
   depth: number
 }
@@ -201,6 +202,7 @@ function parseAt(text: string, depth: number): ShellParse {
         // A pipeline inside a stage of an outer one still has the outer stage's predecessors upstream.
         const outer = ctx.pipeline
         const members: ShellCommand[] = []
+        let last: ShellCommand[] = []
         for (const [stage, c] of (node.commands as unknown[]).entries()) {
           const count = members.length
           const start = commands.length
@@ -208,12 +210,14 @@ function parseAt(text: string, depth: number): ShellParse {
             ...ctx,
             pipeline: {
               stage,
+              prev: stage === 0 ? (outer?.prev ?? []) : last,
               get earlier() {
                 return [...(outer?.earlier ?? []), ...members.slice(0, count)]
               },
             },
           })
-          members.push(...commands.slice(start))
+          last = commands.slice(start)
+          members.push(...last)
         }
         return
       }
