@@ -16,12 +16,19 @@ HOOK='hooks:
         - type: command
           command: '"'"'python3 -I "$HOME/.claude/hooks/readonly-bash.py" || exit 2'"'"
 CG='mcp__plugin_code-search_codegraph__codegraph_explore'
+PY='python3 -I "$HOME/.claude/hooks/readonly-bash.py" || exit 2'
+BUN='bun --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2'
 
 # agent DIR NAME FRONTMATTER_LINES: write $tmp/<dir>/NAME.md
 agent() {
   local dir=$1 name=$2 fm=$3
   mkdir -p "$tmp/$dir"
   printf -- '---\nname: %s\ndescription: x\n%s\n---\nBody.\n' "$name" "$fm" >"$tmp/$dir/$name.md"
+}
+
+# hook_with CMD: a PreToolUse Bash hook block, as the frontmatter spells it, that runs CMD.
+hook_with() {
+  printf 'hooks:\n  PreToolUse:\n    - matcher: "Bash"\n      hooks:\n        - type: command\n          command: '"'"'%s'"'"'\n' "$1"
 }
 
 # expect CASE WANT OUTPUT: run the checker on $tmp/CASE; output must equal OUTPUT exactly.
@@ -125,6 +132,27 @@ agent r4-dis-bash a "tools: Read, Bash
 disallowedTools: Bash
 $HOOK"
 expect r4-dis-bash 1 "a.md: 4: read-only agent has the readonly-bash.py hook but no Bash"
+# The Python hook command and the bun hook command (both isolation flags, then `|| exit 2`) are accepted.
+agent ok-hook-py ro "tools: Read, Bash, Glob, Grep
+$(hook_with "$PY")"
+expect ok-hook-py 0 "agent-tools: ok (1 agents)"
+agent ok-hook-bun ro "tools: Read, Bash, Glob, Grep
+$(hook_with "$BUN")"
+expect ok-hook-bun 0 "agent-tools: ok (1 agents)"
+# A bun hook missing one isolation flag, the config flag, the exit guard or `bun` itself is rejected, naming the gap.
+agent r4-bun-noenv a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2')"
+expect r4-bun-noenv 1 "a.md: 4: read-only agent readonly-bash hook command is missing \`--no-env-file\`"
+agent r4-bun-config a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun --no-env-file "$HOME/.claude/hooks/readonly-bash.ts" || exit 2')"
+expect r4-bun-config 1 "a.md: 4: read-only agent readonly-bash hook command is missing \`--config=/dev/null\`"
+agent r4-bun-exit a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts"')"
+expect r4-bun-exit 1 "a.md: 4: read-only agent readonly-bash hook command must end with \`|| exit 2\`"
+agent r4-bun-node a "tools: Read, Bash, Glob, Grep
+$(hook_with 'node --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2')"
+expect r4-bun-node 1 "a.md: 4: read-only agent readonly-bash hook command must start with \`bun\`"
+
 # Any one writer makes an allowlist agent a writer (Write alone, NotebookEdit alone).
 agent ok-write w "tools: Read, Write, Bash
 memory: user"

@@ -9,7 +9,8 @@ Rules:
   4  an agent whose effective tools (`tools` plus inline-server wildcards, minus `disallowedTools`) hold
      none of Edit/Write/NotebookEdit is read-only: no `memory` key, none of READONLY_BANNED, no
      server-level grant of a server with write tools (inline servers excepted), no MCP tool with a
-     write verb, and Bash iff the readonly-bash.py hook. Without a `tools` allowlist an agent
+     write verb, and Bash iff the readonly-bash hook (the Python command, or the bun command with both
+     isolation flags and `|| exit 2`). Without a `tools` allowlist an agent
      inherits every session tool, so one that disallows all three writers must use an allowlist instead.
   5  orchestration.md runs as the session itself and must not set `tools`.
 
@@ -91,14 +92,34 @@ def parse_frontmatter(fm):
     return keys, servers, hooks.group(1) if hooks else "", errors
 
 
-def has_readonly_hook(hooks):
+def bun_hook_problems(cmd):
+    """Name each isolation flag or the exit guard that the bun readonly-bash command lacks."""
+    words = cmd.split()
+    problems = []
+    if words[:1] != ["bun"]:
+        problems.append("must start with `bun`")
+    if "--no-env-file" not in words:
+        problems.append("is missing `--no-env-file`")
+    if "--config=/dev/null" not in words:
+        problems.append("is missing `--config=/dev/null`")
+    if not cmd.endswith("|| exit 2"):
+        problems.append("must end with `|| exit 2`")
+    return problems
+
+
+def readonly_hook(hooks):
+    """Return None when no Bash PreToolUse entry runs readonly-bash, else the problems with its command."""
     m = re.search(r"^[ \t]+PreToolUse:\s*\n((?:[ \t]{3,}.*\n?)*)", hooks, re.M)
-    if not m:
-        return False
-    for entry in re.split(r"^[ \t]*-[ \t]+matcher:", m.group(1), flags=re.M)[1:]:
-        if re.match(r"\s*[\"']?Bash[\"']?\s*\n", entry) and "readonly-bash.py" in entry:
-            return True
-    return False
+    for entry in re.split(r"^[ \t]*-[ \t]+matcher:", m.group(1) if m else "", flags=re.M)[1:]:
+        if not re.match(r"\s*[\"']?Bash[\"']?\s*\n", entry):
+            continue
+        command = re.search(r"^\s*command:\s*(.*?)\s*$", entry, re.M)
+        cmd = command.group(1).strip("'\"") if command else ""
+        if "readonly-bash.py" in cmd:
+            return []
+        if "readonly-bash.ts" in cmd:
+            return bun_hook_problems(cmd)
+    return None
 
 
 def check(path):
@@ -151,10 +172,12 @@ def check(path):
         for n in has:
             if n.startswith("mcp__") and has_write_verb(n):
                 v("4", f"read-only agent has MCP tool `{n}` with a write verb")
-        bash, hook = "Bash" in has, has_readonly_hook(hooks)
-        if bash != hook:
+        bash, hook = "Bash" in has, readonly_hook(hooks)
+        if bash != (hook is not None):
             v("4", "read-only agent has Bash without a PreToolUse Bash readonly-bash.py hook" if bash
               else "read-only agent has the readonly-bash.py hook but no Bash")
+        for problem in hook or []:
+            v("4", f"read-only agent readonly-bash hook command {problem}")
     return out
 
 
