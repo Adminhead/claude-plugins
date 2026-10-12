@@ -80,7 +80,7 @@ if (specs.length === 0) {
     times.push(performance.now() - t0)
     if (r.errors.length) {
       parseErrors++
-      if (samples.length < 5) samples.push(`${r.errors[0].message} | ${excerpt(c)}`)
+      if (samples.length < 5) samples.push(excerpt(`${r.errors[0].message} | ${c}`))
     }
   }
   times.sort((a, b) => a - b)
@@ -100,9 +100,9 @@ if (specs.length === 0) {
     const vb = JSON.stringify(await b(c))
     if (va !== vb) {
       disagree++
-      console.log(`  ${va} -> ${vb} | ${excerpt(c)}`)
+      console.log(`  ${excerpt(`${va} -> ${vb}`)} | ${excerpt(c)}`)
     }
   }
-  console.log(`A verdicts: ${[...tally].map(([v, n]) => `${v} x${n}`).join(', ')}`)
+  console.log(`A verdicts: ${[...tally].map(([v, n]) => `${excerpt(v)} x${n}`).join(', ')}`)
   if (b) console.log(`disagreements: ${disagree} of ${unique.length}`)
 }

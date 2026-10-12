@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'claude-code/testing'
 import { MAX_DEPTH, nestedScript, parse, reparse } from '../hooks/shell/walk'
 
-const argvs = (text: string) => parse(text).commands.map(c => c.argv)
+const quotedDeep = (k: number) => 'echo ' + '"${x:-'.repeat(k) + '$(rm -rf /)' + '}"'.repeat(k)
+
+const argvs =(text: string) => parse(text).commands.map(c => c.argv)
 
 describe('walker: command structure', () => {
   test('lists and pipelines record the stage and the earlier commands', () => {
@@ -20,6 +22,37 @@ describe('walker: command structure', () => {
     const { commands } = parse('curl x | (cat; bash)')
     expect(commands.map(c => c.pipeline?.stage)).toEqual([0, 1, 1])
     expect(commands[2].pipeline?.earlier.map(c => c.argv[0])).toEqual(['curl'])
+  })
+
+  test('a pipeline inside a stage keeps the outer stage\'s predecessors upstream', () => {
+    for (const text of ['curl x | { cat | bash; }', 'curl x | (cat | bash)']) {
+      const bash = parse(text).commands.find(c => c.argv[0] === 'bash')!
+      expect(bash.pipeline?.earlier.map(c => c.argv[0])).toEqual(['curl', 'cat'])
+      const cat = parse(text).commands.find(c => c.argv[0] === 'cat')!
+      expect(cat.pipeline?.earlier.map(c => c.argv[0])).toEqual(['curl'])
+    }
+    const deep = parse('a | { b | { c | d; }; }').commands
+    expect(deep.map(c => c.pipeline?.earlier.map(e => e.argv[0]))).toEqual([[], ['a'], ['a', 'b'], ['a', 'b', 'c']])
+  })
+
+  test('constructs: coproc, time, !, [[ ]], (( )), assignments, arrays and redirect targets', () => {
+    expect(argvs('coproc NAME { a; b; }')).toEqual([['a'], ['b']])
+    expect(argvs('time a | b')).toEqual([['a'], ['b']])
+    expect(argvs('! a && b')).toEqual([['a'], ['b']])
+    expect(argvs('[[ $(a) == $(b) && -f x ]] && c')).toEqual([['a'], ['b'], ['c']])
+    expect(argvs('(( $(a) + 1 )); for ((i=0; i<$(b); i++)); do c; done').map(a => a[0]).sort()).toEqual(['a', 'b', 'c'])
+    expect(argvs('X=$(a) Y=`b` c')).toEqual([['c'], ['a'], ['b']])
+    expect(parse('X=$(a) c').commands[0].assigns).toEqual([{ name: 'X', value: null }])
+    expect(argvs('arr=($(a) b) c')).toEqual([['c'], ['a']])
+    expect(argvs('echo > $(a) 2>>"$(b)" < <(c)')).toEqual([['echo'], ['a'], ['b'], ['c']])
+    expect(parse('echo > $(a)').commands[0].redirects).toEqual([{ op: '>', fd: null, target: null }])
+  })
+
+  test('assignment subscripts are kept, or null when they expand', () => {
+    expect(argvs('declare a[1]=x b+=y')).toEqual([['declare', 'a[1]=x', 'b+=y']])
+    expect(argvs('declare a[$i]=safe')).toEqual([['declare', null]])
+    expect(parse('a[2]=x b[$i]=y cmd').commands[0].assigns).toEqual([{ name: 'a[2]', value: 'x' }, { name: null, value: 'y' }])
+    expect(argvs('x[$(id)]=1 cmd')).toEqual([['cmd'], ['id']])
   })
 
   test('if, for, while, case and function bodies are walked', () => {
@@ -72,6 +105,23 @@ describe('walker: words', () => {
     expect(argvs('echo a$HOME ${HOME:-x} $HOMEX')).toEqual([['echo', null, null, null]])
   })
 
+  test('a quoted or escaped ~ is a file name, not home', () => {
+    expect(argvs("rm '~' \"~\" \\~ '~'/x \"~/y\" ~ ~user $'~'")).toEqual([['rm', './~', './~', './~', './~/x', './~/y', '~', '~user', './~']])
+    expect(argvs('echo a~ \'a~\'')).toEqual([['echo', 'a~', 'a~']])
+  })
+
+  test('$HOME is ~ only as the whole word or before a /', () => {
+    expect(argvs('echo "$HOME"x ${HOME}x "${HOME}x" $HOME/x "$HOME/x" $HOME')).toEqual([['echo', null, null, null, '~/x', '~/x', '~']])
+  })
+
+  test('an ANSI-C string ends at its first NUL', () => {
+    expect(argvs("$'r\\0x'm")).toEqual([['rm']])
+  })
+
+  test('glob characters stay literal', () => {
+    expect(argvs('rm -rf /* ? [a]')).toEqual([['rm', '-rf', '/*', '?', '[a]']])
+  })
+
   test('a word with an expansion is null', () => {
     expect(argvs('echo $x "a${y}b" $(z) `z` $((1)) {a,b} ${x#p}')).toEqual([['echo', null, null, null, null, null, null, null], ['z'], ['z']])
     expect(argvs('export FOO=bar BAZ=$q')).toEqual([['export', 'FOO=bar', null]])
@@ -103,6 +153,24 @@ describe('walker: nested scripts', () => {
     for (const c of ["bash -c 'a b'", "sh -c 'a b'", "zsh -c 'a b'", "dash -c 'a b'", "/bin/bash -lc 'a b'", "bash -ec 'a b'", "bash -o pipefail -c 'a b'", "bash --norc -c 'a b'"]) {
       expect(nestedScript(parse(c).commands[0].argv)).toBe('a b')
     }
+  })
+
+  test('nestedScript takes the first word after all options, wherever -c sits', () => {
+    for (const c of [
+      "bash -c -- 'X'", "bash -c -x 'X'", "bash -c -e -- 'X'", "bash -eo pipefail -c 'X'", "bash -euo pipefail -c 'X'",
+      "bash -O extglob -c 'X'", "bash +O extglob -c 'X'", "bash +o errexit -c 'X'", "bash --rcfile f -c 'X'",
+      "bash --init-file f -c 'X'", "bash -x -c 'X' arg0 arg1", "bash -c 'X' -x", "bash -- -c 'X'",
+    ]) {
+      const want = c === "bash -- -c 'X'" ? null : 'X'
+      expect(nestedScript(parse(c).commands[0].argv)).toBe(want)
+    }
+    expect(nestedScript(parse('bash -c').commands[0].argv)).toBeNull()
+    expect(nestedScript(parse('bash -c -- ').commands[0].argv)).toBeNull()
+  })
+
+  test('nestedScript drops a leading -- from eval', () => {
+    expect(nestedScript(parse("eval -- 'sudo id'").commands[0].argv)).toBe('sudo id')
+    expect(nestedScript(parse('eval --').commands[0].argv)).toBeNull()
   })
 
   test('nestedScript takes literal eval and nothing else', () => {
@@ -148,11 +216,25 @@ describe('walker: errors', () => {
       '( '.repeat(n) + 'x' + ' )'.repeat(n),
       'if a; then '.repeat(n) + 'x' + '; fi'.repeat(n),
       'a | '.repeat(n) + 'x',
-      '`'.repeat(n),
+      quotedDeep(n),
     ]
-    for (const text of inputs) expect(() => parse(text)).not.toThrow()
+    expect(() => parse('`'.repeat(n))).not.toThrow()
+    // The inner command is either emitted or the parse is reported as failed; never silently dropped.
+    for (const text of inputs) {
+      expect(() => parse(text)).not.toThrow()
+      const r = parse(text)
+      expect(r.errors.length > 0 || r.commands.some(c => c.argv[0] === 'x' || c.argv[0] === 'rm')).toBe(true)
+    }
     expect(parse(inputs[0]).errors.length).toBeGreaterThan(0)
     expect(parse(inputs[2]).errors.length).toBeGreaterThan(0)
+  })
+
+  test('deep quoted nesting past unbash\'s word limit is an error, not a literal', () => {
+    for (const k of [10, 255, 257, 300]) {
+      const r = parse(quotedDeep(k))
+      expect(r.errors.length > 0 || r.commands.some(c => c.argv[0] === 'rm')).toBe(true)
+    }
+    expect(parse('echo \\$HOME \\`x\\` "\\$y" $').errors).toEqual([])
   })
 })
 
@@ -170,10 +252,12 @@ describe('walker: timing', () => {
     return times[Math.floor(runs / 2)]
   }
 
+  // The describe body runs while the file loads, so the measured medians can go in the test name.
   // Budget from the plan: a typical small command under 2 ms, 40 KB under 100 ms.
-  test('1 KB, 4 KB and 40 KB inputs parse within budget', () => {
-    for (let i = 0; i < 5; i++) parse(sample(1000))
-    const ms = { '1KB': median(sample(1000), 31), '4KB': median(sample(4000), 15), '40KB': median(sample(40000), 7) }
+  for (let i = 0; i < 5; i++) parse(sample(1000))
+  const ms = { '1KB': median(sample(1000), 31), '4KB': median(sample(4000), 15), '40KB': median(sample(40000), 7) }
+  const label = Object.entries(ms).map(([k, v]) => `${k} ${v.toFixed(2)}ms`).join(', ')
+  test(`1 KB, 4 KB and 40 KB inputs parse within budget (median ${label})`, () => {
     expect(ms['1KB']).toBeLessThanOrEqual(2)
     expect(ms['4KB']).toBeLessThanOrEqual(10)
     expect(ms['40KB']).toBeLessThanOrEqual(100)
