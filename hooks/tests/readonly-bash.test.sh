@@ -678,7 +678,7 @@ cmd block 'mise x node@20 -- npm install x'
 cmd block 'mise x -c "rm x"'
 cmd block 'direnv exec . kubectl apply -f x'
 cmd block 'doppler run -- rails db:migrate'
-cmd block 'doppler run -c "rm x"'
+cmd block 'doppler run --command "rm x"'
 cmd block 'op run -- psql -c "DROP TABLE t"'
 cmd block 'dotenv -e .env -- terraform destroy'
 cmd allow 'aws-vault exec prod -- terraform plan'
@@ -725,6 +725,42 @@ cmd block 'psql --log-file=out.log -c "SELECT 1"'
 cmd allow 'psql -Ato /tmp/out.txt -c "SELECT 1"'
 cmd allow 'psql -L /tmp/out.log -c "SELECT 1"'
 cmd block 'mysql --tee=out.txt -e "SELECT 1"'
+
+# Backslashes and dollar quotes can hide a statement from the quote-aware splitter.
+cmd block "psql -c \"SELECT E'\\\\'' ; DELETE FROM t ; -- '\""
+cmd block "psql -c \"SELECT \$\$'\$\$; DELETE FROM t; SELECT \$\$'\$\$\""
+cmd block "mysql -e \"SELECT '\\\\'' ; DELETE FROM t ; -- '\""
+cmd allow "psql -c \"SELECT 'it''s' AS a, \\\$1\""
+
+# Runner wrappers fail closed on options they cannot parse.
+cmd block 'hatch -p proj run alembic upgrade head'
+cmd block 'hatch --data-dir d run alembic upgrade head'
+cmd block 'pipenv --python 3.11 run alembic upgrade head'
+cmd block 'pdm run --venv prod alembic upgrade head'
+cmd block 'pdm run -L pdm.lock alembic upgrade head'
+cmd block 'doppler run -p app terraform apply'
+cmd block 'op run --env-file .env terraform apply'
+cmd block 'dotenv -c prod knex migrate:latest'
+cmd block 'doppler run --command="rm x"'
+cmd allow 'pdm run -p proj pytest'
+cmd allow 'doppler run -c dev -- npm test'
+cmd allow 'doppler run -p app -c dev pytest'
+cmd allow 'op run --env-file .env -- pytest'
+cmd allow 'conda run --no-capture-output -n app pytest'
+cmd allow 'pdm run --venv=prod pytest'
+
+# liquibase and helm output options.
+cmd block 'liquibase snapshot --output-file=snap.json'
+cmd block 'liquibase --url=jdbc:x update-sql --output-file out.sql'
+cmd allow 'liquibase snapshot --output-file=/tmp/snap.json'
+cmd allow 'liquibase update-sql'
+cmd block 'helm template web ./chart --dependency-update=true'
+cmd allow 'helm template web ./chart --dependency-update=false'
+cmd block 'aws s3api get-object-torrent --bucket b --key k out'
+cmd block 'aws glacier get-job-output --vault-name v --job-id j out'
+cmd block 'aws apigateway get-sdk --rest-api-id r --stage-name s --sdk-type java out.zip'
+cmd block 'aws ebs get-snapshot-block --snapshot-id s --block-index 0 --block-token t out'
+cmd allow 'aws glacier get-job-output --vault-name v --job-id j /tmp/out'
 
 # Local writes inside allowed verbs go to scratch only.
 cmd block 'terraform providers lock'

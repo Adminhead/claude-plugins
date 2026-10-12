@@ -956,7 +956,8 @@ def check_live(cmd, args):
             block("%s %s %s may change a live system" % (cmd, sub, second))
     if sub == 'fmt' and not {'-check', '-check=true'} & set(args):
         block("%s fmt rewrites files" % cmd)
-    if cmd == 'helm' and '--dependency-update' in rest:
+    if cmd == 'helm' and any(a.partition('=')[0] == '--dependency-update' and a != '--dependency-update=false'
+                             for a in rest):
         block("helm --dependency-update writes the chart")
     for names in live_outputs(cmd, sub, rest, valued):
         out = option_value(rest, *names)
@@ -987,7 +988,9 @@ AWS_VALUED = {'--profile', '--region', '--output', '--endpoint-url', '--query', 
 AWS_READ_PREFIXES = ('describe-', 'get-', 'list-', 'head-', 'batch-get-', 'filter-', 'lookup-')
 AWS_READ_PAIRS = {('s3', 'ls'), ('logs', 'tail'), ('dynamodb', 'query'), ('dynamodb', 'scan'),
                   ('configure', 'list')}
-AWS_OUTFILE_VERBS = {'get-object', 'get-export'}   # the last argument is a local file
+# The last argument is a local file.
+AWS_OUTFILE_VERBS = {'get-object', 'get-object-torrent', 'get-export', 'get-job-output', 'get-sdk',
+                     'get-snapshot-block'}
 
 
 def check_aws(args):
@@ -1112,8 +1115,12 @@ def split_sql(cmd, text):
                 j = text.find(c, j + 2)
             if j < 0:
                 block("%s statement has an unterminated quote" % cmd)
+            if '\\' in text[i + 1:j]:   # backslash escapes differ by server settings, so the span is unreadable
+                block("%s statement has a backslash inside quotes" % cmd)
             out.append(c + c)
             i = j + 1
+        elif not mysql and re.match(r'\$\w*\$', text[i:i + 64]):
+            block("psql dollar quote hides text from this check")
         elif text.startswith('/*', i):
             if mysql and text.startswith(('/*!', '/*M!'), i):
                 block("%s executable comment" % cmd)
@@ -1161,7 +1168,7 @@ def check_sql_client(cmd, args):
 
 
 LIQUIBASE_VALUED = {'--changelog-file', '--url', '--username', '--password', '--defaults-file',
-                    '--driver', '--classpath', '--log-level', '--log-file', '--search-path'}
+                    '--driver', '--classpath', '--log-level', '--log-file', '--search-path', '--output-file'}
 LIQUIBASE_READ = {'status', 'history', 'validate', 'diff', 'snapshot', 'tagexists',
                   'unexpectedchangesets', 'help'}
 KNEX_READ = {'migrate:list', 'migrate:status', 'migrate:currentVersion'}
@@ -1178,6 +1185,9 @@ def check_liquibase(args):
         i += 1
     if not words:
         block("liquibase has no command")
+    out = option_value(args, '', '--output-file')
+    if out is not None and not is_scratch(out):
+        block("liquibase --output-file writes '%s'" % out)
     if words[0] == 'checks':
         ok = words[1:2] == ['show']
     else:
@@ -1206,27 +1216,52 @@ RUNNERS = {
     'conda': ({'run'}, 0, {'-n', '--name', '-p', '--prefix', '--cwd'}, False, ()),
     'mise': ({'exec', 'x'}, 0, {'-C', '--cd', '-E', '--env', '-j', '--jobs'}, True, ('-c', '--command')),
     'direnv': ({'exec'}, 1, set(), False, ()),
-    'doppler': ({'run'}, 0, set(), True, ('-c', '--command')),
-    'op': ({'run'}, 0, set(), True, ()),
+    # doppler -c is --config; only --command takes a shell string.
+    'doppler': ({'run'}, 0, {'-c', '--config', '-p', '--project', '-t', '--token', '--fallback',
+                             '--passphrase', '--mount', '--mount-template', '--mount-format',
+                             '--mount-max-reads'}, True, ('--command',)),
+    'op': ({'run'}, 0, {'--env-file', '--account', '--session'}, True, ()),
     'dotenv': (None, 0, {'-e', '-v', '-p'}, True, ()),
 }
+# Flags without a value that the runners accept. Any other option before the inner
+# command could take a value that would be mistaken for it, so it blocks.
+RUNNER_FLAGS = {'--no-capture-output', '--live-stream', '--no-masking', '--no-session',
+                '--preserve-env', '--forward-signals', '--no-cache', '--no-fallback', '--silent'}
+
+
+def inner_command(cmd, words, valued):
+    """words after the leading options; an option that is neither valued nor a known flag blocks."""
+    i = 0
+    while i < len(words) and words[i].startswith('-') and words[i] != '-':
+        a = words[i]
+        if a == '--':
+            return words[i + 1:]
+        if a in valued:
+            i += 1
+        elif a not in RUNNER_FLAGS and '=' not in a:
+            block("%s option '%s' is unknown, so its value could be mistaken for the command" % (cmd, a))
+        i += 1
+    return words[i:]
 
 
 def check_runner(cmd, args):
     verbs, skip, valued, dashes, shell = RUNNERS[cmd]
     rest = args
     if verbs:
-        i, sub = first_positional(args, valued)
+        head = args[:args.index('--')] if dashes and '--' in args else args
+        i, sub = first_positional(head, valued)
         if sub not in verbs:
+            if verbs & set(head):   # the verb follows an option this check cannot parse
+                block("%s runs a command after an option that is not understood" % cmd)
             return
         rest = args[i + 1:]
     if dashes and '--' in rest:
         before, inner = rest[:rest.index('--')], rest[rest.index('--') + 1:]
     else:
-        before, inner = rest, drop_flags(rest, valued)
+        before, inner = rest, inner_command(cmd, rest, valued)
         for _ in range(skip):
-            inner = drop_flags(inner[1:], valued)
-    if set(before) & set(shell):
+            inner = inner_command(cmd, inner[1:], valued)
+    if any(a == s or a.startswith(s + '=') for a in before for s in shell):
         block("%s runs a shell string" % cmd)
     if cmd == 'hatch' and inner:   # `hatch run env:command`
         inner = [inner[0].split(':', 1)[-1]] + inner[1:]
