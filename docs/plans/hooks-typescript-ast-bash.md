@@ -2,8 +2,8 @@
 
 ## Status
 
-- Done: 0 (`aeed61d`).
-- In progress: 1, 2, 5.
+- Done: 0 (`aeed61d`), 1 (`2ed4e93`, `44918c2`; coremods 0.4.2), 5 (`c6a6ebc`, `b208ddd`; authoring 0.5.0).
+- In progress: 2.
 - Left: 3, 4, 6, 7 (7b and 7d wait on a real-session soak), 8.
 - Each slice is committed to local `main` after its checks and review pass.
 
