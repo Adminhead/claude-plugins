@@ -118,7 +118,9 @@ function assignName(a: { name: string; index: Word | undefined }): string | null
   return i === null ? null : `${a.name}[${i}]`
 }
 
-const hasExpansion = (text: string): boolean => /(?:^|[^\\])(?:\\\\)*[`$]./s.test(text)
+// What bash leaves literal in a word without parts but something else would expand: an unescaped
+// backtick, `$(`, `${`, or a zsh modifier such as `$=name`. A lone `$` (`^a$|^b$`, `$/`) is literal.
+const hasExpansion = (text: string): boolean => /(?:^|[^\\])(?:\\\\)*(?:`|\$[({]|\$[=~^+][A-Za-z_{(])/.test(text)
 
 const fdOf = (r: Redirection): number | string | null =>
   r.descriptor ? (r.descriptor.type === 'FileDescriptor' ? r.descriptor.value : r.descriptor.name) : null
@@ -174,12 +176,12 @@ function parseAt(text: string, depth: number): ShellParse {
     // unbash drops the errors of a word it fails to expand (very deep quoting), leaving a Word
     // without parts or a substitution without a script. Report both rather than read them as literal.
     if (node.type === 'Word' && !(node as unknown as Word).parts && hasExpansion((node as unknown as Word).text)) {
-      errors.push({ message: 'unparsed expansion in word', pos: node.pos as number })
+      errors.push({ message: 'unsupported or zsh-only expansion in word; rewrite in plain bash', pos: node.pos as number })
     } else if (
       (node.type === 'CommandExpansion' || node.type === 'ProcessSubstitution' || node.type === 'ArithmeticCommandExpansion') &&
       !node.script
     ) {
-      errors.push({ message: 'unparsed substitution', pos: node.pos as number })
+      errors.push({ message: 'unsupported substitution (nested too deep?); rewrite in plain bash or use a script file', pos: node.pos as number })
     }
     switch (node.type) {
       case 'Script':
