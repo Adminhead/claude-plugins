@@ -1,9 +1,11 @@
 // Pure rules and formatting for tool-mgr. Nothing here touches `$`.
 
+import { askHit, dangerHit, viewsOf } from './danger'
+import type { AskRule, DangerRule } from './danger'
 import { nestedScript, parse, reparse } from '../shell/walk'
 import type { ShellCommand, ShellParse, ShellRedirect } from '../shell/walk'
 
-export type Rule = 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long'
+export type Rule = DangerRule | 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long'
 export type Hit = { rule: Rule; message: string }
 
 const MESSAGES = {
@@ -18,7 +20,7 @@ const MESSAGES = {
 // Commands longer than this are denied unparsed.
 const MAX_PARSE = 64 * 1024
 
-const DEV_OK = /^\/dev\/(null|stderr|stdout|tty)$/
+const DEV_OK = /^\/dev\/(?:(?:null|stderr|stdout|tty)|(?:tcp|udp)\/[^/]+\/\d+)$/
 const OUTPUT_OPS = new Set(['>', '>>', '>|', '&>', '&>>', '>&', '<>'])
 
 // An output redirect to anything but a harmless device. An fd dup (`>&2`, `>&-`) is not a file, and
@@ -105,7 +107,7 @@ function echoWrite(commands: ShellCommand[]): boolean {
 
 const SCRIPT_INTERP = /^(?:python[\d.]*|node|bun|deno|ruby|perl)$/
 const SHELL_INTERP = /^(?:sh|bash|zsh)$/
-const WRAPPERS = new Set(['sudo', 'env', 'timeout', 'nice', 'nohup', 'exec', 'time', 'command', 'uv'])
+const WRAPPERS = new Set(['sudo', 'doas', 'env', 'timeout', 'nice', 'nohup', 'exec', 'time', 'command', 'builtin', 'stdbuf', 'setsid', 'xargs', 'uv'])
 const baseName = (t: string | null) => (t ?? '').slice((t ?? '').lastIndexOf('/') + 1)
 const kindOf = (t: string | null) => (SCRIPT_INTERP.test(baseName(t)) ? 'script' : SHELL_INTERP.test(baseName(t)) ? 'shell' : null)
 
@@ -166,7 +168,7 @@ function heredocWrite(commands: ShellCommand[], bodyCommands: ShellCommand[]): b
 
 type Scan = { commands: ShellCommand[]; bodyCommands: ShellCommand[]; errors: ShellParse['errors'] }
 
-// Parses a command and the scripts it hands to a shell: `sh -c STR` and `eval` bodies join `commands` (they are
+// Parses a command and the scripts it hands to a shell: `sh -c STR` and `eval` bodies (also behind wrappers) join `commands` (they are
 // checked like top-level commands), and heredoc bodies read by a shell join `bodyCommands` (checked for writes only).
 function scan(command: string): Scan {
   const out: Scan = { commands: [], bodyCommands: [], errors: [] }
@@ -174,8 +176,11 @@ function scan(command: string): Scan {
     out.errors.push(...r.errors)
     for (const c of r.commands) {
       sink.push(c)
-      const script = nestedScript(c.argv)
-      if (script !== null) add(reparse(script, c.depth + 1), sink)
+      // A script handed to a shell behind a wrapper (`timeout 5 sh -c STR`) or `find -exec` is checked too.
+      for (const v of viewsOf(c.argv)) {
+        const script = nestedScript(v)
+        if (script !== null) add(reparse(script, c.depth + 1), sink)
+      }
     }
   }
   add(parse(command), out.commands)
@@ -193,8 +198,48 @@ export function classify(command: string): Hit | null {
     // Deep inputs cascade into hundreds of errors; the first one names the cause.
     return { rule: 'parse-error', message: `tool-mgr: could not parse this command (${errors[0].message}). Rewrite it in plain bash, or write a script file and run it.` }
   }
+  const danger = dangerHit([...commands, ...bodyCommands])
+  if (danger) return danger
   const rule = commands.some(sedRead) ? 'sed-read' : heredocWrite(commands, bodyCommands) ? 'heredoc-write' : echoWrite(commands) ? 'echo-write' : null
   return rule && { rule, message: MESSAGES[rule] }
+}
+
+export type AskHit = { rule: AskRule; message: string }
+
+// The ask-tier rules (remote-exec, git-rewrite) for a command. A command classify() denies never reaches them, so a parse error has no ask.
+export function askRule(command: string): AskHit | null {
+  if (command.length > MAX_PARSE) return null
+  const { commands, bodyCommands, errors } = scan(command)
+  return errors.length > 0 ? null : askHit([...commands, ...bodyCommands])
+}
+
+// What the ask-tier rules answer. Set this to 'deny' if `ask` does not prompt in a session; the deny then hands the command to the person.
+export const ASK_TIER: 'ask' | 'deny' = 'ask'
+
+export type Verdict = { allow?: true; ask?: string; deny?: string; [key: string]: unknown }
+
+const ownVerdict = (hit: AskHit): Verdict =>
+  ASK_TIER === 'ask' ? { ask: hit.message } : { deny: `${hit.message} Hand this command to the user to run.` }
+
+// The stricter of a lower hook's verdict and our own: deny beats ask, and ask beats allow or no answer.
+function stricter(inner: Verdict, own: Verdict): Verdict {
+  if (inner.deny !== undefined || (inner.ask !== undefined && own.deny === undefined)) return inner
+  const { allow: _allow, ask: _ask, ...rest } = inner
+  return { ...rest, ...own }
+}
+
+// The classic.PreToolUse body for Bash: the hooks below run first, then the ask-tier rules add theirs. A deny from below
+// always wins, so readonly-bash and cloud-ops-guard keep their say. A throw in our rules leaves the verdict from below
+// alone and goes to `onError`.
+export async function withAsk(command: string, next: () => Promise<Verdict | undefined>, onError: (err: unknown) => void): Promise<Verdict> {
+  const inner = (await next()) ?? {}
+  try {
+    const hit = askRule(command)
+    return hit ? stricter(inner, ownVerdict(hit)) : inner
+  } catch (err) {
+    onError(err)
+    return inner
+  }
 }
 
 // The log keeps at most this many characters of a command.

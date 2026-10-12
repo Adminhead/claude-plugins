@@ -38,6 +38,8 @@ export type ShellCommand = {
   pipeline: { stage: number; readonly prev: readonly ShellCommand[]; readonly earlier: ShellCommand[] } | null
   // 0 for the parsed text, +1 per `reparse` level.
   depth: number
+  // The commands emitted inside this command's own words and redirects (`$(...)`, backticks, `<(...)`), nested ones included.
+  subs: ShellCommand[]
 }
 
 export type ShellParse = { commands: ShellCommand[]; errors: ParseError[] }
@@ -144,7 +146,7 @@ function parseAt(text: string, depth: number): ShellParse {
   const commands: ShellCommand[] = []
   const errors: ParseError[] = []
 
-  const emit = (c: Command, ctx: Ctx) => {
+  const emit = (c: Command, ctx: Ctx): ShellCommand => {
     const own = convert(c.redirects)
     const argv: (string | null)[] = []
     if (c.name) argv.push(literal(c.name))
@@ -156,7 +158,7 @@ function parseAt(text: string, depth: number): ShellParse {
         argv.push(n === null || v === null ? null : `${n}${a.append ? '+' : ''}=${v}`)
       }
     }
-    commands.push({
+    const emitted: ShellCommand = {
       argv,
       assigns: c.prefix.flatMap(p =>
         p.type === 'Assignment' ? [{ name: assignName(p), value: p.value.type === 'Word' ? literal(p.value) : null }] : [],
@@ -165,7 +167,10 @@ function parseAt(text: string, depth: number): ShellParse {
       heredocs: [...own.heredocs, ...ctx.heredocs],
       pipeline: ctx.pipeline,
       depth,
-    })
+      subs: [],
+    }
+    commands.push(emitted)
+    return emitted
   }
 
   const visit = (node: unknown, ctx: Ctx): void => {
@@ -192,10 +197,12 @@ function parseAt(text: string, depth: number): ShellParse {
         return
       case 'Command': {
         const c = node as unknown as Command
-        emit(c, ctx)
+        const emitted = emit(c, ctx)
+        const from = commands.length
         visit(c.prefix, ctx)
         visit(c.name, ctx)
         visit(c.suffix, ctx)
+        emitted.subs = commands.slice(from)
         return
       }
       case 'Pipeline': {

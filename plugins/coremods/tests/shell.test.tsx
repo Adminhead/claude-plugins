@@ -35,6 +35,14 @@ describe('walker: command structure', () => {
     expect(deep.map(c => c.pipeline?.earlier.map(e => e.argv[0]))).toEqual([[], ['a'], ['a', 'b'], ['a', 'b', 'c']])
   })
 
+  test('subs holds the commands inside a command\'s own words and redirects, nested ones included', () => {
+    const subs = (text: string) => parse(text).commands.map(c => [c.argv[0], c.subs.map(s => s.argv[0])])
+    expect(subs('a $(b $(c)) d; e')).toEqual([['a', ['b', 'c']], ['b', ['c']], ['c', []], ['e', []]])
+    expect(subs('bash <(curl x); wget y')).toEqual([['bash', ['curl']], ['curl', []], ['wget', []]])
+    expect(subs('bash < <(curl x)')[0]).toEqual(['bash', ['curl']])
+    expect(subs('eval $L; curl y')).toEqual([['eval', []], ['curl', []]])
+  })
+
   test('constructs: coproc, time, !, [[ ]], (( )), assignments, arrays and redirect targets', () => {
     expect(argvs('coproc NAME { a; b; }')).toEqual([['a'], ['b']])
     expect(argvs('time a | b')).toEqual([['a'], ['b']])

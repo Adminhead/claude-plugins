@@ -139,11 +139,11 @@ The helper in `hooks/git-tools/git.ts` builds and validates the argv. The tools 
 
 ## tool-mgr
 
-Blocks three Bash habits that have a better built-in tool, and denies a Bash command it cannot parse. It reads each command with a shell parser, so it sees through lists, pipelines, groups, loops, `$(...)` and `bash -c` bodies. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history.
+Blocks three Bash habits that have a better built-in tool, denies a handful of dangerous commands (recursive deletes of system paths, disk wipes, `sudo`), asks before piped installers and git history rewrites, and denies a Bash command it cannot parse. It reads each command with a shell parser, so it sees through lists, pipelines, groups, loops, `$(...)` and `bash -c` bodies. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history.
 
 ### Rules
 
-A blocked call never runs. Claude sees a deny message that starts with `tool-mgr:` and names the tool to use instead.
+A blocked call never runs. Claude sees a deny message that starts with `tool-mgr:` and names the tool to use instead. The danger rules below run first, so a command that trips one reports it, not a hygiene rule.
 
 | Rule | Blocks | Use instead |
 | --- | --- | --- |
@@ -153,7 +153,7 @@ A blocked call never runs. Claude sees a deny message that starts with `tool-mgr
 | `parse-error` | A command the parser rejects. The deny quotes the parser's first message and says to rewrite the command in plain bash or put it in a script file. Zsh-only syntax such as `for f k in ...`, `*(N)` and `$=var` lands here, as do unbalanced quotes and substitutions, in the command or in a `bash -c`, `eval` or shell-heredoc body | Rewrite in plain bash, or write a script file and run it |
 | `too-long` | A command over 64 KB (65,536 characters), denied without parsing | Write a script file and run it |
 
-Heredoc bodies are read as data, not shell, so `git commit -F - <<EOF`, `cat <<EOF` with no redirect, and `python3 - <<'EOF'` that only prints all pass. Each heredoc is judged by its own body and by the command that reads it: the command it is attached to, or the one piped from it (on the same line or a later one). A redirect or `tee` on an unrelated command in the same line (`ls > f; git commit -F - <<EOF`) does not count. That command may be path-qualified (`.venv/bin/python`) or behind `sudo`, `env`, `timeout`, `nice`, `nohup`, `exec`, `time`, `command` or `uv run`, and it counts only when it reads its script from stdin (`-`, `/dev/stdin` or no script argument). So `node tool.js <<EOF` (data on stdin), `git commit -F - <<EOF` after `bun test &&`, and a commit message that mentions `write_text` or `overwriteFile` all pass.
+Heredoc bodies are read as data, not shell, so `git commit -F - <<EOF`, `cat <<EOF` with no redirect, and `python3 - <<'EOF'` that only prints all pass. Each heredoc is judged by its own body and by the command that reads it: the command it is attached to, or the one piped from it (on the same line or a later one). A redirect or `tee` on an unrelated command in the same line (`ls > f; git commit -F - <<EOF`) does not count. That command may be path-qualified (`.venv/bin/python`) or behind `env`, `timeout`, `nice`, `nohup`, `exec`, `time`, `command`, `builtin`, `stdbuf`, `setsid`, `xargs` or `uv run` (or `sudo` and `doas`, which the danger rules deny first), and it counts only when it reads its script from stdin (`-`, `/dev/stdin` or no script argument). So `node tool.js <<EOF` (data on stdin), `git commit -F - <<EOF` after `bun test &&`, and a commit message that mentions `write_text` or `overwriteFile` all pass.
 
 Known gaps and false positives:
 
@@ -162,12 +162,53 @@ Known gaps and false positives:
 - An interpreter body with a variable mode (`open(p, mode)`) or a write through `os.system` or `subprocess` is not caught. The body is matched with regexes whose scans are bounded, so a crafted 64 KB body checks in a few milliseconds.
 - A pipeline inside a substitution numbers its own stages, so it can hide the previous stage of the pipe around it: `echo "$(ls | wc -l)" | tee f` passes.
 - A redirect set earlier in the script (`exec > f; cat <<EOF`) is not tracked.
-- Only the command itself is matched, not a wrapper around it: `printf x \| sed ... \| tee f`, `echo x \| sudo tee f`, `timeout 5 sed -n p f` and `sudo bash -c '...'` slip by.
+- Only the command itself is matched for the pipeline-shaped rules: `printf x \| sed ... \| tee f` and `timeout 5 sed -n p f` slip by. A `sh -c` or `eval` script is checked even behind a wrapper (`timeout 5 bash -c '...'`, `find -exec sh -c '...'`).
 - A `<<` inside quotes (`echo "a << b" > out.txt`) is not a heredoc.
 - A `-c` or `eval` body is checked only when every argument is a literal, and only to a nesting depth of 8; a deeper one is a parse error.
 - The parser reads Bash. Zsh-only syntax is a parse error, and so is anything unbash cannot parse, so those commands are denied rather than let through unchecked.
 
-If a rule check itself throws (our bug, not the command's), the call goes through and the error is logged once. A failure in the log or the metrics never blocks a call.
+### Danger rules
+
+Six rules for commands that destroy a system or run unreviewed code. They stop a mistaken `rm -rf ~` or an unreviewed piped installer. They are not a sandbox: the threat model is model accidents, not a determined adversary.
+
+| Rule | Tier | Blocks | Passes |
+| --- | --- | --- | --- |
+| `rm-root` | deny | `rm` with `-r`, `-R` or `--recursive` (any bundling) on a normalized literal target of `/`, `/*`, `~`, `~/`, `~/*`, a top-level system dir (`/bin /boot /dev /etc /home /lib /lib64 /opt /root /sbin /srv /usr /var`), `/home/<name>` or `/Users/<name>`. Also `rm --no-preserve-root`, and `find` from one of those paths with `-delete` or `-exec rm` | `rm -rf ./build`, `rm -rf "$HOME/proj/out"`, `rm -rf /tmp/x`, `echo "rm -rf /"`, `git commit -m "rm -rf /"` |
+| `disk-wipe` | deny | `mkfs*`, `wipefs` and `blkdiscard` on a device path or an unknown operand, `sgdisk -Z`/`--zap-all`, `dd of=/dev/<block>`, `shred /dev/<block>`, an output redirect to `/dev/<block>` | `dd if=/dev/zero of=./img`, `mkfs.ext4 ./disk.img`, `lsblk`, `> /dev/null` |
+| `system-perms` | deny | `chmod`, `chown` or `chgrp` with `-R`/`--recursive` on `/` or a top-level system dir | `chown -R buck:buck ~/proj`, `chmod -R u+w ./dist`, `chown -R "$USER" ~` |
+| `priv-escalation` | deny | any `sudo`, `doas`, `su`, `pkexec` or `run0` command, wherever it sits in the AST. Claude hands such commands to you | `echo sudo`, `git commit -m "sudo fix"`, `man sudo`, `command -v sudo` |
+| `git-rewrite` | ask | `git push` with `--force`, `-f`, `--force-with-lease` or a `+refspec`; `git reset --hard` | `git push`, `git reset --soft HEAD~1`, `git reset HEAD file` |
+| `remote-exec` | ask | A pipeline with `curl` or `wget` (or `base64 -d`, `xxd -r`) upstream of a shell or interpreter reading its program from stdin. Also `bash`/`sh`/`zsh`/`source`/`.`/`eval` with a `<(curl ...)` or `$(curl ...)` operand, and `bash <<< "$(curl ...)"` | `curl x \| jq .`, `curl x \| python3 -m json.tool`, `curl x \| python3 -c '...'`, `curl -o f x` |
+
+- **Order:** `priv-escalation` runs first, so `sudo rm -rf /` names privilege escalation. The other deny rules still see through `sudo`, and a command that trips one of them reports the danger, not a hygiene rule.
+- **Seen through:**
+  - wrappers `sudo doas env nice nohup time timeout stdbuf command builtin exec setsid xargs`, with their option operands (`timeout 5`, `env X=1`, `nice -n 5`)
+  - `find -exec`, `-execdir`, `-ok` and `-okdir`
+  - `sh -c` and literal `eval`, also behind a wrapper
+  - path-qualified names such as `/bin/rm`, and quoting such as `\rm` and `r""m`
+  - heredoc bodies fed to a shell, and every compound command, function body and substitution
+- **Targets:** literal targets are normalized first (`//`, `/.`, `/..`, `/etc/..`, a trailing slash). A glob component counts when it can match a protected path, so `/*`, `/*/`, `/e*`, `/[b]in` and `/home/*` are blocked while `/xyz*` and `/tmp/*` pass. A quoted `'~'` is a file named `~` and passes. `$HOME` counts as `~` only as the whole word or before a `/`.
+- **Ask tier:** `git-rewrite` and `remote-exec` return `ask` from a `classic.PreToolUse` hook on Bash, so Claude Code prompts you before the call runs. The hook calls `next` first and returns the stricter answer: a deny from readonly-bash or cloud-ops-guard always wins, and an ask beats an allow. `ASK_TIER` in `tool-mgr/rules.ts` switches both rules to deny, with a message that tells Claude to hand you the command, if `ask` does not prompt in your permission mode (a headless `-p` run returns it to the model as an error, so the command never runs).
+- **Out of scope**, because the threat model is accidents:
+  - variable indirection (`$CMD`, `X=/; rm -rf "$X"`) and brace lists (`rm -rf /{usr,etc}`), which the parser reads as unknown words
+  - `cd / && rm -rf *`
+  - `rsync --delete`
+  - download-then-run (`curl -o f && bash f`)
+  - destructive code inside `python -c`
+  - zsh glob-qualifier code (`*(e:...:)`)
+  - aliases and functions defined outside the command
+  - fork bombs
+  - ask rules beyond remote-exec and git-rewrite, and exfiltration rules
+
+### Failure behavior
+
+| Case | tool-mgr (mod) | readonly-bash | cloud-ops-guard |
+| --- | --- | --- | --- |
+| Parse error | Deny with the parser message and a hint to rewrite in plain bash or use a script file | Block, exit 2, as today | `ask`, as today |
+| Over 64 KB | Deny with a hint to write a script file and run it | No cap, as today | No cap, as today |
+| Exception in our code | Allow and log once (the ask hook keeps the verdict from below) | Block, exit 2, as today | `ask`, as today |
+
+A parse error is a property of the input, and Claude can fix it by rewriting. An exception is our bug, and Claude can't fix it, so failing closed would stop all Bash in every session. A failure in the log or the metrics never blocks a call.
 
 ### Log
 
