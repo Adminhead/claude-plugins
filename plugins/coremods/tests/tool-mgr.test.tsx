@@ -611,6 +611,20 @@ describe('danger rules: review fixes', () => {
     expect(rule(nest('echo hi', 7))).toBeNull()
   })
 
+  test('an interpreter body shared by many commands is matched once', () => {
+    const t0 = performance.now()
+    const c = '{ ' + 'python3;'.repeat(4000) + " } <<'Q'\n" + 'open('.repeat(6000) + "\nQ\npython3 <<'R'\nopen('f','w')\nR"
+    expect(c.length).toBeLessThan(65536)
+    expect(rule(c)).toBe('heredoc-write')
+    expect(performance.now() - t0).toBeLessThan(1000)
+  })
+
+  test('a shell heredoc inside a shell heredoc body is read', () => {
+    expect(rule("bash <<'A'\nbash <<'B'\nrm -rf ~\nB\nA")).toBe('rm-root')
+    expect(rule("bash <<'A'\nbash <<'B'\nbash <<'C'\necho hi > f\nC\nB\nA")).toBe('heredoc-write')
+    expect(rule("bash <<'A'\nbash <<'B'\necho hi\nB\nA")).toBeNull()
+  })
+
   test('remote-exec checks a long pipeline in linear time', () => {
     const t0 = performance.now()
     expect(ask('sh' + '|sh'.repeat(15000))).toBeNull()

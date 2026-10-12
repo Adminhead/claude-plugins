@@ -152,10 +152,17 @@ function heredocWrite(commands: ShellCommand[], bodyCommands: ShellCommand[]): b
     const p = c.pipeline
     if (p && !up.has(p)) up.set(p, p.prev.some(e => e.pipeline !== null && (hasHeredoc(e) || up.get(e.pipeline) === true)))
   }
+  // A body shared by many commands is matched once.
+  const judged = new Map<string, boolean>()
+  const writesFiles = (body: string) => {
+    let w = judged.get(body)
+    if (w === undefined) judged.set(body, (w = BODY_WRITES.test(body)))
+    return w
+  }
   return (
     commands.some(c => {
       if ((redirectsToFile(c) || teeFile(c)) && (hasHeredoc(c) || (c.pipeline !== null && up.get(c.pipeline) === true))) return true
-      return interpreterOf(c) === 'script' && fedBodies(c).some(b => BODY_WRITES.test(b))
+      return interpreterOf(c) === 'script' && fedBodies(c).some(writesFiles)
     }) || bodyCommands.some(shellBodyWrites)
   )
 }
@@ -191,13 +198,16 @@ function scan(command: string): Scan {
   }
   add(parse(command), out.commands)
   const bodies = new Set<string>()
-  for (const c of out.commands) {
-    if (out.tooComplex) break
-    if (interpreterOf(c) !== 'shell') continue
-    for (const body of fedBodies(c)) {
-      if (bodies.has(body)) continue
-      bodies.add(body)
-      nested(body, c.depth + 1, out.bodyCommands)
+  // A shell heredoc inside a shell heredoc body is read too: the body commands are a worklist that grows as bodies are reparsed.
+  for (const list of [out.commands, out.bodyCommands]) {
+    for (let i = 0; i < list.length && !out.tooComplex; i++) {
+      const c = list[i]
+      if (interpreterOf(c) !== 'shell') continue
+      for (const body of fedBodies(c)) {
+        if (bodies.has(body)) continue
+        bodies.add(body)
+        nested(body, c.depth + 1, out.bodyCommands)
+      }
     }
   }
   return out
