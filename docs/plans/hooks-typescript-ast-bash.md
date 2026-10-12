@@ -4,7 +4,8 @@
 
 - Done: 0 (`aeed61d`), 1 (`2ed4e93`, `44918c2`; coremods 0.4.2), 5 (`c6a6ebc`, `b208ddd`; authoring 0.5.0), 2 (`c026e43`, `4d7052b`, `74e62fe`; gate GO: in-sandbox corpus p95 0.15 ms, 40 KB about 13 ms, 18 parse errors in 28,284 commands), 3 (`9336920`, `b458f75`, `f89b4a1`; coremods 0.4.3). Echo-write now fires only when every command feeding the redirect or tee is echo or printf. 4 (`5f53518`, `cf43667`, `5f8bc65`; coremods 0.5.0; review and security audit passed after fixes; corpus hits: priv-escalation 8, git-rewrite 22, remote-exec 1, all true positives). 6 (`1b32445`..`df3fce9`, coremods 0.5.1 for the walker additions; review and security audit passed after fixes; suite 834/834 on both implementations; replay 11 disagreements, 2 intended allows, none regressing toward allow).
 - 7a done (`c10806c`, `d505dde`): agent-tools.py accepts the exact bun form. 7b started: quick-review runs readonly-bash.ts as the canary.
-- In progress: 8.
+- 8 done (`8370b36`, `48eac33`, `c4cfe6d`, `7ff203b`; infra 0.5.0; review found and the fixes closed a heredoc-cut gate bypass and a quadratic reparse; replay: 0 deny→anything, 0 →allow, 70 ask→none from quoted backticks that are not substitutions, 14 ask→deny). Known loosening: text piped to `python3`, `ssh`, `su` or `fish` with a quoted `$(tofu …)` no longer asks; the old guard caught these only through a raw-text regex.
+- Not done from the review rounds: a stray `)` or apostrophe in a running heredoc body turns a cloud-ops deny into ask.
 - Waiting on real-session soak: 7c (flip the other six agents after a few days of quick-review with no `readonly-bash: internal error`), then 7d (delete the .py after a further soak).
 - User decisions during execution: P1 (expanded segments in `/tmp` paths count as scratch) stays at parity with the Python hook; read-only agents' hook entries get no added timeout.
 - Left: 7 (7b and 7d wait on a real-session soak), 8.
