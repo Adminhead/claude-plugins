@@ -186,8 +186,12 @@ describe('walker: words', () => {
     expect(parse("x $'--output='$f $'-i'$x $'\\x2di'$X e\\ f$g").commands[0].text).toEqual(['x', '--output=$f', '-i$x', '-i$X', 'e f$g'])
     // A quote of the other kind stays, so `'` inside "…" still delimits SQL text.
     expect(parse('x "SELECT \'--$x\'; DROP"').commands[0].text[1]).toBe("SELECT '--$x'; DROP")
-    // $"…" (bash locale string, zsh plain string) and other expansions stay as written.
-    expect(parse('$"rm" {a,b}$c').commands[0].text).toEqual(['$"rm"', '{a,b}$c'])
+    // $"…" reads as bash reads it and sets `locale`; other expansions stay as written.
+    const [loc] = parse('$"rm" {a,b}$c').commands
+    expect([loc.text, loc.locale]).toEqual([['rm', '{a,b}$c'], true])
+    expect(parse('X=$"a" y').commands[0].locale).toBe(true)
+    // A `$"` inside a substitution belongs to the inner command, not the outer one.
+    expect(parse('echo "$(echo $"x" "$")"').commands.map(c => c.locale)).toEqual([false, true])
     expect(parse('declare a[1]="$x" b=(1 "$y")').commands[0].text).toEqual(['declare', 'a[1]=$x', 'b=(1 $y)'])
   })
 })
