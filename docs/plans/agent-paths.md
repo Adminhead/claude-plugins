@@ -54,4 +54,4 @@ Each slice is about 30 lines of prose, so a single `coder` can carry slices 1 to
 
 ## Status
 
-Not started.
+Done 2026-10-11. Slices 1–4 landed in `fdb7802`, `fc47e57`, `f9aa300` and `1eccdc8`. Shipped git 0.2.3, efficient-core 0.4.1 and authoring 0.4.2.
