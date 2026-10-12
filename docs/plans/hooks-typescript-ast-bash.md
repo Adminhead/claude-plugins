@@ -2,9 +2,10 @@
 
 ## Status
 
-- Done: 0 (`aeed61d`), 1 (`2ed4e93`, `44918c2`; coremods 0.4.2), 5 (`c6a6ebc`, `b208ddd`; authoring 0.5.0).
-- In progress: 2.
-- Left: 3, 4, 6, 7 (7b and 7d wait on a real-session soak), 8.
+- Done: 0 (`aeed61d`), 1 (`2ed4e93`, `44918c2`; coremods 0.4.2), 5 (`c6a6ebc`, `b208ddd`; authoring 0.5.0), 2 (`c026e43`, `4d7052b`, `74e62fe`; gate GO: in-sandbox corpus p95 0.15 ms, 40 KB about 13 ms, 18 parse errors in 28,284 commands).
+- In progress: 3, 6.
+- Left: 4, 7 (7b and 7d wait on a real-session soak), 8.
+- Waiting on the user: the interactive ask check that settles D2 and D4 (headless `-p` returns ask as an error to the model, so the command never runs).
 - Each slice is committed to local `main` after its checks and review pass.
 
 ## Goal
