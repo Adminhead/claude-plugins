@@ -100,7 +100,7 @@ describe('walker: command structure', () => {
       { op: '>', fd: 'fd', target: 'g', text: 'g' },
     ])
     expect(parse('echo hi > "$f"').commands[0].redirects[0].target).toBeNull()
-    expect(parse('cat <<<"x y"').commands[0].redirects).toEqual([{ op: '<<<', fd: null, target: 'x y', text: '"x y"' }])
+    expect(parse('cat <<<"x y"').commands[0].redirects).toEqual([{ op: '<<<', fd: null, target: 'x y', text: 'x y' }])
   })
 
   test('redirects of a compound command apply to the commands inside', () => {
@@ -119,6 +119,26 @@ describe('walker: command structure', () => {
     expect(parse('a | (( x )) > f').commands[1].pipeline?.stage).toBe(1)
     // A group with a simple command inside carries the redirect on that command only.
     expect(argvs('{ echo a; (( x )); } > f')).toEqual([['echo', 'a']])
+    // A substitution's commands run apart from the redirect, so they don't carry it.
+    for (const text of ['[[ -n $(a) ]] > f', '[[ -n `a` ]] > f', '(( $(a) )) > f', 'case $(a) in esac > f']) {
+      const { commands } = parse(text)
+      expect(commands.map(c => [c.argv, c.redirects.map(r => r.target)])).toEqual([[['a'], []], [[], ['f']]])
+    }
+  })
+
+  test('commands under one compound share its redirect objects', () => {
+    const { commands } = parse('{ a; b > g; { c; } 2>&1; } > f')
+    const f = commands[0].redirects[0]
+    expect(commands.map(c => c.redirects.map(r => r.target))).toEqual([['f'], ['g', 'f'], ['1', 'f']])
+    expect(commands.every(c => c.redirects.includes(f))).toBe(true)
+  })
+
+  test('many commands under many redirects parse in linear time', () => {
+    const big = `{ ${'a; '.repeat(20000)}} ${'> f '.repeat(20000)}`
+    const t0 = performance.now()
+    const { commands } = parse(big)
+    expect(performance.now() - t0).toBeLessThan(2000)
+    expect(commands[0].redirects).toBe(commands[19999].redirects)
   })
 })
 
@@ -156,12 +176,33 @@ describe('walker: words', () => {
     expect(argvs('export FOO=bar BAZ=$q')).toEqual([['export', 'FOO=bar', null]])
   })
 
-  test('text holds each word as written, parallel to argv', () => {
+  test('text decodes quotes, escapes and ANSI-C strings but keeps expansions as written', () => {
     const [c] = parse('x --output=$f "$X"/rm \'a b\' b+=$y').commands
     expect(c.argv).toEqual(['x', null, null, 'a b', null])
-    expect(c.text).toEqual(['x', '--output=$f', '"$X"/rm', "'a b'", 'b+=$y'])
+    expect(c.text).toEqual(['x', '--output=$f', '$X/rm', 'a b', 'b+=$y'])
     expect(parse('A=1 > f').commands[0].text).toEqual([])
-    expect(parse('x > "/tmp/a/$s.log"').commands[0].redirects[0]).toEqual({ op: '>', fd: null, target: null, text: '"/tmp/a/$s.log"' })
+    expect(parse('x > "/tmp/a/$s.log"').commands[0].redirects[0]).toEqual({ op: '>', fd: null, target: null, text: '/tmp/a/$s.log' })
+    // ANSI-C strings decode, so an option spelled in them is still an option.
+    expect(parse("x $'--output='$f $'-i'$x $'\\x2di'$X e\\ f$g").commands[0].text).toEqual(['x', '--output=$f', '-i$x', '-i$X', 'e f$g'])
+    // A quote of the other kind stays, so `'` inside "…" still delimits SQL text.
+    expect(parse('x "SELECT \'--$x\'; DROP"').commands[0].text[1]).toBe("SELECT '--$x'; DROP")
+    // $"…" (bash locale string, zsh plain string) and other expansions stay as written.
+    expect(parse('$"rm" {a,b}$c').commands[0].text).toEqual(['$"rm"', '{a,b}$c'])
+    expect(parse('declare a[1]="$x" b=(1 "$y")').commands[0].text).toEqual(['declare', 'a[1]=$x', 'b=(1 $y)'])
+  })
+})
+
+describe('walker: substitution nesting and ${var/…}', () => {
+  test('nesting counts the substitutions around each command', () => {
+    expect(parse('a $(b $(c) `d`) <(e)').commands.map(c => [c.argv[0], c.nesting])).toEqual([['a', 0], ['b', 1], ['c', 2], ['d', 2], ['e', 1]])
+    expect(parse('cat <<EOF\n$(a)\nEOF\n').commands.map(c => c.nesting)).toEqual([0, 1])
+  })
+
+  test('a substitution inside ${var/pattern/replacement} is an error', () => {
+    for (const t of ['echo ${PWD/$(rm x)/}', 'echo ${X/`rm x`}', 'echo ${X/<(rm x)}', 'echo ${X/a\\/$(rm x)/b}', 'echo ${X//a/$(rm x)}']) {
+      expect(parse(t).errors.map(e => e.message)).toContain('substitution inside ${var/pattern/replacement}; rewrite in plain bash')
+    }
+    expect(parse('echo ${X/a/b} ${X:-$(a)}').errors).toEqual([])
   })
 })
 
