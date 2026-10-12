@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/cloud-ops-guard.py"],
+            "command": "bun",
+            "args": ["--no-env-file", "--config=/dev/null", "${CLAUDE_PLUGIN_ROOT}/scripts/cloud-ops-guard.ts"],
             "timeout": 10
           }
         ]

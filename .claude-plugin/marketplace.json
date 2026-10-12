@@ -247,7 +247,7 @@
       "name": "infra",
       "source": "./plugins/infra",
       "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, Terraform, OpenTofu, Terragrunt, and Ansible, plus a guard hook for unsafe `tofu` and `aws` commands.",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "category": "development"
     },
     {

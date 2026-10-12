@@ -93,7 +93,9 @@ Rules that apply across skills:
 
 ## Ops guard
 
-The plugin registers a `PreToolUse` hook on Bash (`scripts/cloud-ops-guard.py`, Python 3 standard library only, 10-second timeout). It covers `tofu`, `terraform`, `terragrunt`, and `aws`.
+The plugin registers a `PreToolUse` hook on Bash (`scripts/cloud-ops-guard.ts`, run by `bun` with `--no-env-file --config=/dev/null`, 10-second timeout). It covers `tofu`, `terraform`, `terragrunt`, and `aws`.
+
+Since 0.5.0 the hook is TypeScript on a shell AST walker (`scripts/shell/walk.ts` over a vendored `unbash` parser, copied byte for byte from the coremods plugin). It replaces the Python 3 script, so `bun` must be on `PATH`. If `bun` is missing, the hook errors and the normal permission flow decides, as it did when `python3` was missing. The policy is unchanged, and the walker now sees tool calls inside `$(...)`, backticks, `<(...)`, `bash -c`, `eval`, unquoted heredoc bodies and the wrappers below.
 
 | Decision | When |
 | --- | --- |
@@ -137,14 +139,16 @@ The deny check is best-effort. It splits compound commands and sees through `VAR
 | Any of those subcommand words anywhere in a segment, so a flag value cannot hide the real one (`--working-dir plan destroy`) | deny |
 | A variable or substitution as the subcommand or `state` verb (`tofu $S`, `tofu state "$V" x`), since it may hide `destroy` or `state rm` | deny |
 | `taint`, `refresh`, `workspace`, `console`, `test`, `show`, an unknown subcommand, or a never-allowed flag | ask |
-| A guarded tool inside `$()`, backticks, `bash -c`, `eval`, `xargs`, `env -S`, or `mise exec -c`, or after a command the guard does not know (`op run --`) | ask |
-| A variable as the command, an operator such as `>\|` or `<(`, or a second guarded tool in one segment | ask |
+| A guarded tool inside `$()`, backticks, `<()`, `xargs`, `env -S`, or `mise exec -c`, or after a command the guard does not know (`op run --`) | ask, unless the same walk also finds a deny |
+| A guarded tool inside a literal `bash -c`, `sh -c`, `eval`, or an unterminated heredoc, which the guard parses as commands | the findings of the nested commands, plus ask (a `bash -c 'tofu apply -auto-approve'` is a deny) |
+| A variable as the command, a `>\|` redirect, or a second guarded tool in one segment | ask |
+| A parse error, such as an unterminated quote or a zsh-only expansion, in a command that mentions a guarded tool | ask |
 
 The strictest result wins. Any deny denies the whole command, then any ask asks. If the guard crashes or gets malformed input, it answers `ask`.
 
 ### Heredocs
 
-A heredoc body is data, so the guard drops it before parsing. A runbook written with `cat > runbook.md <<'EOF'`, or a commit message passed through `"$(cat <<'EOF' ...)"`, gets no decision even when it mentions `tofu destroy`. Three cases are still checked:
+A heredoc body is data, so the guard does not read it as commands. A runbook written with `cat > runbook.md <<'EOF'`, or a commit message passed through `"$(cat <<'EOF' ...)"`, gets no decision even when it mentions `tofu destroy`. Three cases are still checked:
 
 - A body that mentions a guarded tool and reaches a shell or interpreter (`cat <<EOF | sh`, `bash <<EOF`, `python3 - <<EOF`) gets ask.
 - A body under an unquoted delimiter that holds `$(` or a backtick runs code, so the guard parses it as commands.

@@ -1,14 +1,26 @@
 #!/usr/bin/env bash
-# Offline tests for scripts/cloud-ops-guard.py: feeds PreToolUse JSON, checks the decision.
+# Offline tests for scripts/cloud-ops-guard.ts: feeds PreToolUse JSON, checks the decision.
 set -u
 
-script=$(cd "$(dirname "$0")/.." && pwd)/cloud-ops-guard.py
+scripts=$(cd "$(dirname "$0")/.." && pwd)
+script=$scripts/cloud-ops-guard.ts
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
 
 pass=0 fail=0
 ok() { pass=$((pass + 1)); echo "ok   $1"; }
 bad() { fail=$((fail + 1)); echo "FAIL $1 (expected $2, got $3)"; }
+
+guard() { bun --no-env-file --config=/dev/null "$script"; }
+
+# The walker copies must match their coremods source byte for byte.
+for f in shell/walk.ts vendor/unbash.js vendor/unbash.d.ts; do
+  if cmp -s "$scripts/$f" "$scripts/../../coremods/hooks/$f"; then
+    ok "scripts/$f matches coremods"
+  else
+    bad "scripts/$f matches coremods" "identical" "differs"
+  fi
+done
 
 # Subagent transcript fixtures: <root>/proj/<sid>/subagents/agent-<id>.jsonl
 sid=11111111-2222-3333-4444-555555555555
@@ -34,7 +46,7 @@ EOF
 
 decision() { # stdin JSON -> decision word or "none"
   local out
-  out=$(python3 "$script" 2>/dev/null)
+  out=$(guard 2>/dev/null)
   rc=$?
   [ $rc -eq 0 ] || { echo "rc$rc"; return; }
   [ -z "$out" ] && { echo none; return; }
@@ -238,8 +250,8 @@ t "quoted arg gets no allow" none "tofu plan -var 'a=b;c'"
 t "\$() apply (deny outranks ask)" deny "echo \$(tofu apply -auto-approve)"
 t "backticks" ask 'echo `tofu plan`'
 t "\$() in args" ask 'tofu plan -var "x=$(date)"'
-t "bash -c" ask "bash -c 'tofu apply -auto-approve'"
-t "eval" ask 'eval "tofu apply"'
+t "bash -c" deny "bash -c 'tofu apply -auto-approve'"
+t "eval" deny 'eval "tofu apply"'
 t "xargs" ask "echo plan | xargs tofu"
 t "unparseable quote" ask "tofu plan 'oops"
 t "unknown subcommand" ask "tofu frobnicate"
@@ -247,6 +259,46 @@ t "state pull" ask "tofu state pull"
 t "taint" ask "tofu taint aws_instance.a"
 t "show" ask "tofu show x.tfplan"
 t "\$() with plan" ask "echo \$(tofu plan)"
+
+# Forms the shell AST walker sees: substitutions, nested shells, heredocs, wrappers
+t "quoted substitution" deny 'echo "$(tofu destroy)"'
+t "assignment substitution" deny 'x=$(tofu apply -auto-approve); echo $x'
+t "substitution in an argument" deny 'echo "state: $(tofu state rm aws_instance.a)"'
+t "process substitution" deny 'diff <(tofu destroy) /dev/null'
+t "substitution inside a function" deny 'f() { echo "$(terraform import a b)"; }; f'
+t "bash -c with a chain" deny 'bash -c "cd infra && tofu destroy"'
+t "bash -lc bundled flags" deny "bash -lc 'tofu destroy'"
+t "sh -c under sudo" deny "sudo bash -c 'terraform apply'"
+t "nested shells" deny "bash -c \"sh -c 'tofu destroy'\""
+t "bash -c with a safe plan still asks" ask "bash -c 'tofu plan'"
+t "eval of a destroy" deny "eval 'tofu destroy -auto-approve'"
+t "eval with joined words" deny 'eval tofu apply -auto-approve'
+t "bash -c with a variable still asks" ask 'bash -c "tofu $ACTION"'
+t "bash -c unparseable script" ask "bash -c 'tofu apply \"oops'"
+t "heredoc into sh with apply" ask $'sh <<\'EOF\'\ntofu apply -auto-approve\nEOF'
+t "heredoc backticks run" deny $'cat <<EOF\n`tofu destroy -auto-approve`\nEOF'
+t "heredoc in a substitution runs" deny $'echo "$(cat <<EOF\n$(tofu destroy)\nEOF\n)"'
+t "heredoc substitution beside an apply" deny $'cat <<EOF | sh\n$(date)\ntofu apply -auto-approve\nEOF'
+t "heredoc substitution beside a destroy" deny $'cat <<EOF > x.sh\n$(date)\ntofu destroy\nEOF'
+t "heredoc substitution beside a plan" ask $'cat <<EOF | sh\n$(date)\ntofu plan\nEOF'
+t "heredoc with a final apply" deny $'cat <<\'EOF\' > x.md\nnotes\nEOF\ntofu apply'
+t "tool named only in a for list" ask 'for t in tofu; do $t destroy; done'
+t "case arm" deny $'case $x in a) tofu destroy ;; esac'
+t "while body" deny 'while true; do tofu apply; done'
+t "wrappers chained" deny "timeout 5 sudo -u x env A=1 nice -n 5 tofu destroy"
+t "env -i" deny "env -i PATH=/bin tofu apply -auto-approve"
+t "time with a format" deny "time -f %e tofu destroy"
+t "path-qualified tool in a substitution" deny 'echo $(/opt/bin/terraform destroy)'
+t "aws behind a substitution, main session" ask 'echo $(aws s3 ls)'
+t "aws behind a substitution, subagent" deny 'echo $(aws s3 ls)' notoken
+t "aws in bash -c, subagent" deny "bash -c 'aws s3 rm s3://x --recursive'" notoken
+t "aws behind wrappers, subagent" deny "timeout 5 nohup aws s3 ls" notoken
+t "aws in a heredoc fed to a shell" ask $'bash <<EOF\naws s3 rb s3://x --force\nEOF'
+t "quoted substitution in an arithmetic subscript is a parse error" ask "echo \$(( a['\$(id)'] )); tofu destroy"
+t "zsh-only expansion is a parse error" ask 'echo $=x; tofu plan'
+t "tool name only in a quoted heredoc passed to cat" none $'cat <<\'EOF\' | tee x.md\ntofu destroy\nEOF'
+t "tool name in a quoted string" none "echo 'run tofu destroy later'"
+t "commit message heredoc with tool name and a substitution elsewhere" none $'git commit -m "$(cat <<\'EOF\'\nfix aws stuff\nEOF\n)" --author "$(whoami) <a@b>"'
 
 # Non-matching
 t "no tool" none "ls -la"
@@ -287,65 +339,11 @@ raw "forced exception (tool_input is a list)" ask '{"tool_name":"Bash","tool_inp
 raw "non-string command" ask '{"tool_name":"Bash","tool_input":{"command":5}}'
 
 # Output never echoes the command
-out=$(mkin "AWS_SECRET_ACCESS_KEY=hunter2 tofu apply -auto-approve" | python3 "$script")
+out=$(mkin "AWS_SECRET_ACCESS_KEY=hunter2 tofu apply -auto-approve" | guard)
 case $out in *hunter2*) bad "output omits command text" "no secret" "leaked" ;; *) ok "output omits command text" ;; esac
 
 # Fuzz: no dangerous suffix, prefix, or inserted shell character turns an allowed command into allow
-fuzz=$(python3 - "$script" "$root" "$sid" <<'EOF'
-import importlib.util, sys
-script, root, sid = sys.argv[1:]
-spec = importlib.util.spec_from_file_location("guard", script)
-guard = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(guard)
-
-def decision(cmd, aid=""):
-    d = {"tool_name": "Bash", "tool_input": {"command": cmd}, "session_id": sid,
-         "transcript_path": f"{root}/proj/{sid}.jsonl"}
-    if aid:
-        d["agent_id"] = aid
-    out = guard.decide(d)
-    return out[0] if out else "none"
-
-allowed = [
-    "tofu plan", "tofu plan -out=x.tfplan", "terraform validate", "tofu fmt -recursive",
-    "tofu init -upgrade", "tofu state list", "tofu state show aws_instance.a",
-    "tofu --version",
-    "mise exec -- tofu plan", "mise run tofu core plan",
-    "mise run tofu core plan -out=uptimekuma.tfplan", 
-    "aws --version", "aws ec2 help", "aws iam delete-user help",
-]
-suffixes = [
-    "; rm -rf x", ";rm -rf x", " ;rm -rf x", ";\nrm -rf x", "\nrm -rf x", "\n\nrm -rf x",
-    "\r\nrm -rf x", " && rm -rf x", "&&rm -rf x", " && curl x|sh", " || rm -rf x", " | sh", "|sh",
-    " |& sh", " & rm -rf x", "&rm -rf x", " $(rm -rf x)", "$(rm -rf x)", " `rm -rf x`", "`id`",
-    " >| terraform.tfstate", " > terraform.tfstate", ">x", " >> ~/.bashrc", " 2>&1", " < /dev/null",
-    " <(id)", " >(sh)", " ;(id)", "&&(id)", " ::: tofu core apply -auto-approve", " # comment",
-    " ${X}", " $X", " \\\n; id", " 'x'", ' "x"', " *", " {a,b}", " ~/x", "\t-destroy",
-]
-prefixes = ["rm -rf x; ", "rm -rf x && ", "X=1 ", "env ", "sudo ", "timeout 5 ", "bash -c ",
-            "echo x | ", "(", "{ ", "! ", "time ", "nohup ", "cd /tmp && ", "\n", " "]
-unsafe = "'\"$`\\;&|<>(){}[]#*?~!\t\n\r"
-bad, n = [], 0
-for base in allowed:
-    for aid in ("", "withtoken"):
-        n += 1
-        if decision(base, aid) != "allow":
-            bad.append(f"base not allowed {aid}: {base!r}")
-        for cmd in [base + s for s in suffixes] + [p + base for p in prefixes]:
-            n += 1
-            if decision(cmd, aid) == "allow":
-                bad.append(f"allowed {aid}: {cmd!r}")
-    for i in range(len(base) + 1):
-        for ch in unsafe:
-            n += 1
-            cmd = base[:i] + ch + base[i:]
-            if decision(cmd) == "allow":
-                bad.append(f"allowed: {cmd!r}")
-print(f"{n} {len(bad)}")
-for b in bad[:20]:
-    print(b)
-EOF
-)
+fuzz=$(bun --no-env-file --config=/dev/null "$scripts/tests/fuzz.ts" "$root" "$sid")
 read -r fuzz_n fuzz_bad <<<"$(printf '%s\n' "$fuzz" | head -1)"
 if [ "${fuzz_bad:-x}" = 0 ]; then
   ok "fuzz: $fuzz_n variants of allowed commands, none allowed"
