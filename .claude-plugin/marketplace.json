@@ -156,7 +156,7 @@
       "name": "authoring",
       "source": "./plugins/authoring",
       "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security.",
-      "version": "0.4.2",
+      "version": "0.5.0",
       "category": "development"
     },
     {

@@ -2,7 +2,7 @@
 
 Skills for writing the files that steer Claude Code and the docs around a codebase. It covers Architecture Decision Records, Claude Code skills, agent instruction files such as `CLAUDE.md` and `AGENTS.md`, documentation audits, codebase maps, domain glossaries, agent teams, and audits of your Claude Code setup, including its security. It adds nine skills, all loaded on demand, and a hook pair that nudges you to check docs after code changes.
 
-Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents. Version 0.2.1 retuned the `create-skill` description around the phrasings people use when a skill never triggers or fires on the wrong requests. Version 0.3.0 added `authoring:agent-config-audit`, which moved here from the former `quality` plugin. Version 0.4.0 added the docs-sync nudge hook, plus a slice-landing reference and script for `authoring:agent-teams`. Version 0.4.1 turned the nudge from a blocking Stop error into non-error feedback. Version 0.4.2 puts team worktrees under `.claude/worktrees/<slice>` and the slice contract file at `.agents/plans/<slug>-contract.md`.
+Version 0.2.0 added five skills. `authoring:create-skill` also gained references on porting third-party skills and writing for agents. Version 0.2.1 retuned the `create-skill` description around the phrasings people use when a skill never triggers or fires on the wrong requests. Version 0.3.0 added `authoring:agent-config-audit`, which moved here from the former `quality` plugin. Version 0.4.0 added the docs-sync nudge hook, plus a slice-landing reference and script for `authoring:agent-teams`. Version 0.4.1 turned the nudge from a blocking Stop error into non-error feedback. Version 0.4.2 puts team worktrees under `.claude/worktrees/<slice>` and the slice contract file at `.agents/plans/<slug>-contract.md`. Version 0.5.0 ports the docs-sync nudge from Python to TypeScript (bun), attributes changes by this session's recorded edits instead of the git tree, skips historical docs, and points at `path:line → name`.
 
 ## What it adds
 
@@ -22,9 +22,18 @@ Each description names its neighbors. `create-skill` hands measured trigger eval
 
 ## Docs-sync nudge
 
-A SessionStart hook records `HEAD` for the session, and a Stop hook (`scripts/docs-sync-nudge.py`) compares against it. When non-doc files changed (working tree plus commits since the recorded `HEAD`), it runs `git grep -l` for those paths and basenames in `*.md`, `*.mdx`, `*.rst`, and `*.adoc` files. If docs that you did not also edit mention them, it nudges Claude once with non-error feedback (Stop `additionalContext`, not a blocking `decision`) that lists up to 10 docs and asks it to check them or offer `authoring:docs-audit`.
+Three hooks share `scripts/docs-sync-nudge.ts`. A SessionStart hook records `HEAD` for the session. A synchronous PostToolUse hook (matcher `Edit|Write|MultiEdit|NotebookEdit`) appends each edited `file_path` or `notebook_path` to a per-session list. A Stop hook looks only at that list, so another session's uncommitted work or commits never count. Paths outside the repo (other worktrees) are dropped.
 
-- It fires once per change set. A hash of the sorted changed paths is kept per session in `${CLAUDE_PLUGIN_DATA}`, so the same set never nudges twice. Another changed file makes a new set.
+At Stop, for the non-doc files this session edited, it searches `*.md`, `*.mdx`, `*.rst`, and `*.adoc` files, skipping `docs/plans/`, `docs/research/`, `docs/adr/`, `.agents/`, and `CHANGELOG*`, which record a moment rather than describe current code. It nudges Claude once with non-error feedback (Stop `additionalContext`, not a blocking `decision`) that lists up to 10 docs as `path:line → name`, and asks Claude to check them or offer `authoring:docs-audit`. Two tiers, in order:
+
+1. Docs that name something that no longer exists in code. The names come from the removed lines of `git diff -U0 <recorded HEAD> -- <edited files>`: code-like words of 4 or more characters (`snake_case`, `camelCase`, `CONST_CASE`, `--flag`) that no tracked or untracked non-doc file still contains.
+2. Docs that mention an edited file, by full path first and then by basename.
+
+A doc appears once, at its best tier. Docs you edited this session are dropped.
+
+- It fires once per change set. A hash of the sorted edited code paths is kept per session in `${CLAUDE_PLUGIN_DATA}`, so the same set never nudges twice. Another edited file makes a new set.
+- Edits made through Bash (`sed -i`, `mv`, code generators) are not seen.
+- Gap, UNCONFIRMED: Claude Code's hook docs say `session_id` is on every hook input and `agent_id` and `agent_type` appear when a hook fires inside a subagent, but they don't say whether a subagent's `session_id` is the parent's. If it differs, a subagent's edits are recorded under another session and missed. This was not tested against a live subagent.
 - It exits quietly when `stop_hook_active` is set, outside a git repo, or on any error, so it never traps a session.
 - To turn it off, disable the plugin. There is no per-hook setting.
 
@@ -34,7 +43,7 @@ A SessionStart hook records `HEAD` for the session, and a Stop hook (`scripts/do
 
 ## Requirements
 
-- `git` and Python 3 for the docs-sync hook. `git` and `flock` (util-linux) for `land-slice.sh`.
+- `git` and [bun](https://bun.sh) for the docs-sync hooks, run as `bun --no-env-file --config=/dev/null`. `git` and `flock` (util-linux) for `land-slice.sh`.
 - Python 3 for `adr-writing`, `create-skill`, `docs-audit`, and `map-codebase`. Their scripts are `new_adr.py`, `scaffold_skill.py`, `validate_skill.py`, `docs_drift.py`, and `detect_stack.py`. `docs_drift.py` and `detect_stack.py` use only the standard library and change nothing.
 - `git` for `docs_drift.py`, which resolves the commit in a doc's `Fingerprint: git:<sha>` header to flag stale docs.
 - `agent-teams` needs an interactive session and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Split panes need tmux or iTerm2 with the `it2` CLI. See Limits.
