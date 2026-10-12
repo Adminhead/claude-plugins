@@ -152,6 +152,24 @@ expect r4-bun-exit 1 "a.md: 4: read-only agent readonly-bash hook command must e
 agent r4-bun-node a "tools: Read, Bash, Glob, Grep
 $(hook_with 'node --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2')"
 expect r4-bun-node 1 "a.md: 4: read-only agent readonly-bash hook command must start with \`bun\`"
+# The bun form is matched as a whole command: flags after the script, a suffixed flag, text after the
+# exit guard, and a `#` comment that hides the real path are each rejected. A bun command for another
+# script never names readonly-bash, so it is not read as the hook at all and gets the no-hook message.
+agent r4-bun-after a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun "$HOME/.claude/hooks/readonly-bash.ts" --no-env-file --config=/dev/null || exit 2')"
+expect r4-bun-after 1 "a.md: 4: read-only agent readonly-bash hook command must be exactly \`bun --no-env-file --config=/dev/null \"\$HOME/.claude/hooks/readonly-bash.ts\" || exit 2\`"
+agent r4-bun-suffix a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun --no-env-file --config=/dev/null.x "$HOME/.claude/hooks/readonly-bash.ts" || exit 2')"
+expect r4-bun-suffix 1 "a.md: 4: read-only agent readonly-bash hook command is missing \`--config=/dev/null\`"
+agent r4-bun-tail a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2 ; rm -rf x')"
+expect r4-bun-tail 1 "a.md: 4: read-only agent readonly-bash hook command must end with \`|| exit 2\`"
+agent r4-bun-path a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun --no-env-file --config=/dev/null /tmp/evil.ts || exit 2')"
+expect r4-bun-path 1 "a.md: 4: read-only agent has Bash without a PreToolUse Bash readonly-bash.py hook"
+agent r4-bun-hash a "tools: Read, Bash, Glob, Grep
+$(hook_with 'bun --no-env-file --config=/dev/null evil.ts # readonly-bash.ts || exit 2')"
+expect r4-bun-hash 1 "a.md: 4: read-only agent readonly-bash hook command must be exactly \`bun --no-env-file --config=/dev/null \"\$HOME/.claude/hooks/readonly-bash.ts\" || exit 2\`"
 
 # Any one writer makes an allowlist agent a writer (Write alone, NotebookEdit alone).
 agent ok-write w "tools: Read, Write, Bash

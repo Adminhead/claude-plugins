@@ -92,8 +92,16 @@ def parse_frontmatter(fm):
     return keys, servers, hooks.group(1) if hooks else "", errors
 
 
+BUN_HOOK = re.compile(
+    r'bun (?:--no-env-file --config=/dev/null|--config=/dev/null --no-env-file)'
+    r' "\$HOME/\.claude/hooks/readonly-bash\.ts" \|\| exit 2'
+)
+
+
 def bun_hook_problems(cmd):
-    """Name each isolation flag or the exit guard that the bun readonly-bash command lacks."""
+    """Return [] for the exact bun command; otherwise name the gap, or say the form is wrong."""
+    if BUN_HOOK.fullmatch(cmd):
+        return []
     words = cmd.split()
     problems = []
     if words[:1] != ["bun"]:
@@ -104,7 +112,9 @@ def bun_hook_problems(cmd):
         problems.append("is missing `--config=/dev/null`")
     if not cmd.endswith("|| exit 2"):
         problems.append("must end with `|| exit 2`")
-    return problems
+    return problems or [
+        'must be exactly `bun --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2`'
+    ]
 
 
 def readonly_hook(hooks):
