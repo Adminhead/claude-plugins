@@ -6,7 +6,7 @@
 
 - `plugins/<name>/` holds one plugin each, with `.claude-plugin/plugin.json`. The catalog is `.claude-plugin/marketplace.json`.
 - `docs/plugins/<name>.md` is the per-plugin page. Several plugins can share a page (`efficient-*` share `docs/plugins/efficient.md`). `docs/plans/` holds plans and `docs/research/` holds research notes.
-- `agents/`, `hooks/` and `prompts/` are global Claude config tracked here. `~/.claude/agents`, `~/.claude/hooks` and `~/.claude/prompts` are symlinks to these directories, so an edit takes effect in every session. Check for in-progress work before changing them.
+- `agents/`, `hooks/` and `prompts/` are global Claude config tracked here. `~/.claude/agents`, `~/.claude/hooks` and `~/.claude/prompts` are symlinks to these directories, so an edit takes effect in every session. Check for in-progress work before changing them. `agents/CLAUDE.md` holds the rules for writing and changing agents.
 - `scripts/` holds the checks and the `claude-tmux` launcher.
 
 ## Checks
