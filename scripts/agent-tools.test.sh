@@ -39,6 +39,7 @@ $HOOK"
 agent ok-allow dis-ro "tools: Read, Glob, Grep, LSP
 disallowedTools: LSP"
 agent ok-inherit coder "disallowedTools: Agent, Workflow"
+printf '# Agents\n\nGuidance, no frontmatter.\n' >"$tmp/ok-allow/CLAUDE.md"
 expect ok-allow 0 "agent-tools: ok (3 agents)"
 expect ok-inherit 0 "agent-tools: ok (1 agents)"
 
@@ -70,12 +71,26 @@ expect r5-tools 1 "orchestration.md: 5: main-thread agent must not set tools"
 # Rule 3: tool specifier, unknown built-in, unknown MCP prefix (each in tools), and in disallowedTools.
 agent r3-spec a "tools: Read, Glob, Grep, Bash(rg *)"
 expect r3-spec 1 "a.md: 3: unknown tool name \`Bash(rg *)\` in tools"
-agent r3-builtin a "tools: Read, Glob, Grep, TodoWrite"
-expect r3-builtin 1 "a.md: 3: unknown tool name \`TodoWrite\` in tools"
+agent r3-builtin a "tools: Read, Glob, Grep, NoSuchTool"
+expect r3-builtin 1 "a.md: 3: unknown tool name \`NoSuchTool\` in tools"
 agent r3-mcp a "tools: Read, Glob, Grep, mcp__nosuch__tool"
 expect r3-mcp 1 "a.md: 3: unknown tool name \`mcp__nosuch__tool\` in tools"
-agent r3-disallowed a "disallowedTools: Agent, TodoWrite"
-expect r3-disallowed 1 "a.md: 3: unknown tool name \`TodoWrite\` in disallowedTools"
+agent r3-server a "tools: Read, Glob, Grep, mcp__nosuch"
+expect r3-server 1 "a.md: 3: unknown tool name \`mcp__nosuch\` in tools"
+agent r3-disallowed a "disallowedTools: Agent, NoSuchTool"
+expect r3-disallowed 1 "a.md: 3: unknown tool name \`NoSuchTool\` in disallowedTools"
+# PowerShell, TodoWrite and SubagentHandback are known built-ins.
+agent ok-builtins ro "tools: Read, Glob, Grep, PowerShell, TodoWrite, SubagentHandback"
+expect ok-builtins 0 "agent-tools: ok (1 agents)"
+
+# Server-level grants: bare and `__*` forms of a read-only server pass in a read-only agent.
+agent ok-server-grant ro "tools: Read, Glob, Grep, mcp__plugin_code-search_codegraph, mcp__coremods"
+expect ok-server-grant 0 "agent-tools: ok (1 agents)"
+agent ok-server-star ro "tools: Read, Glob, Grep, mcp__plugin_efficient-core_exa__*"
+expect ok-server-star 0 "agent-tools: ok (1 agents)"
+# A writer may deny a whole server and individual tools of a mixed one.
+agent ok-dis-server coder "disallowedTools: Agent, mcp__claude-in-chrome, mcp__plugin_github_github__create_branch"
+expect ok-dis-server 0 "agent-tools: ok (1 agents)"
 
 # Rule 4: memory, banned tool, write-verb MCP tool, Bash without hook, hook without Bash.
 agent r4-memory a "tools: Read, Glob, Grep
@@ -95,6 +110,11 @@ expect ok-coremods 0 "agent-tools: ok (1 agents)"
 GW=mcp__coremods__git_push
 agent r4-coremods a "tools: Read, Glob, Grep, $GW"
 expect r4-coremods 1 "a.md: 4: read-only agent has MCP tool \`$GW\` with a write verb"
+# A read-only agent may not take a whole server that has write tools, in either form.
+agent r4-server-write a "tools: Read, Glob, Grep, mcp__plugin_github_github"
+expect r4-server-write 1 "a.md: 4: read-only agent has server \`mcp__plugin_github_github\` with write tools"
+agent r4-server-write-star a "tools: Read, Glob, Grep, mcp__claude-in-chrome__*"
+expect r4-server-write-star 1 "a.md: 4: read-only agent has server \`mcp__claude-in-chrome__*\` with write tools"
 agent r4-nohook a "tools: Read, Bash"
 expect r4-nohook 1 "a.md: 4: read-only agent has Bash without a PreToolUse Bash readonly-bash.py hook"
 agent r4-nobash a "tools: Read, Glob, Grep

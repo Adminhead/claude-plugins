@@ -4,10 +4,12 @@
 Usage: agent-tools.py [AGENTS_DIR]   (default: agents/ next to this script's repo root)
 
 Rules:
-  3  every name in `tools` and `disallowedTools` is a known builtin or an allowed MCP prefix.
+  3  every name in `tools` and `disallowedTools` is a known builtin or an MCP entry on a known server:
+     `mcp__<server>`, `mcp__<server>__*` or `mcp__<server>__<tool>` (MCP_SERVERS).
   4  an agent whose effective tools (`tools` plus inline-server wildcards, minus `disallowedTools`) hold
-     none of Edit/Write/NotebookEdit is read-only: no `memory` key, none of READONLY_BANNED, no MCP tool
-     with a write verb, and Bash iff the readonly-bash.py hook. Without a `tools` allowlist an agent
+     none of Edit/Write/NotebookEdit is read-only: no `memory` key, none of READONLY_BANNED, no
+     server-level grant of a server with write tools (inline servers excepted), no MCP tool with a
+     write verb, and Bash iff the readonly-bash.py hook. Without a `tools` allowlist an agent
      inherits every session tool, so one that disallows all three writers must use an allowlist instead.
   5  orchestration.md runs as the session itself and must not set `tools`.
 
@@ -21,16 +23,19 @@ from pathlib import Path
 BUILTIN = {
     "Read", "Grep", "Glob", "LSP", "Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch",
     "Skill", "ToolSearch", "Monitor", "SendMessage", "Artifact", "EnterWorktree", "ExitWorktree",
-    "TaskStop", "Agent", "Workflow",
+    "TaskStop", "Agent", "Workflow", "PowerShell", "TodoWrite", "SubagentHandback",
 }
-MCP_PREFIXES = (
-    "mcp__plugin_code-search_codegraph__",
-    "mcp__plugin_code-search_context7__",
-    "mcp__plugin_code-search_grep-app__",
-    "mcp__plugin_efficient-core_exa__",
-    "mcp__coremods__",
-    "mcp__playwright__",
-)
+# Known MCP server ids (the part after `mcp__`) -> whether every tool on the server is read-only.
+MCP_SERVERS = {
+    "plugin_code-search_codegraph": True,
+    "plugin_code-search_context7": True,
+    "plugin_code-search_grep-app": True,
+    "plugin_efficient-core_exa": True,
+    "coremods": True,
+    "playwright": False,
+    "plugin_github_github": False,
+    "claude-in-chrome": False,
+}
 WRITERS = {"Edit", "Write", "NotebookEdit"}
 READONLY_BANNED = ["Skill", "SendMessage", "Monitor", "Artifact", "EnterWorktree"]
 WRITE_VERBS = (
@@ -38,6 +43,7 @@ WRITE_VERBS = (
     "save", "add", "comment", "assign", "fork", "request", "run", "send", "close", "remove", "set", "post",
 )
 MAIN_THREAD = "orchestration.md"  # runs as the session itself, so it is exempt from rules 3-4
+DOCS = {"CLAUDE.md"}  # no frontmatter, so Claude Code treats it as documentation, not an agent
 
 
 def split_frontmatter(text):
@@ -49,6 +55,12 @@ def has_write_verb(name):
     """True when a word of the tool part (after the last `__`) is a write verb."""
     words = re.split(r"[_-]|(?<=[a-z])(?=[A-Z])", name.rsplit("__", 1)[-1])
     return any(w.lower() in WRITE_VERBS for w in words)
+
+
+def mcp_parts(name):
+    """Split `mcp__<server>[__<tool>]` into (server, tool); tool is None for a bare server."""
+    server, _, tool = name[len("mcp__"):].partition("__")
+    return server, tool or None
 
 
 def csv(value):
@@ -115,7 +127,7 @@ def check(path):
     # Rule 3: names
     for where, names in (("tools", tools), ("disallowedTools", disallowed)):
         for n in names:
-            ok = n.startswith(MCP_PREFIXES) if n.startswith("mcp__") else n in BUILTIN
+            ok = mcp_parts(n)[0] in MCP_SERVERS if n.startswith("mcp__") else n in BUILTIN
             if not ok:
                 v("3", f"unknown tool name `{n}` in {where}")
 
@@ -131,6 +143,11 @@ def check(path):
         for t in READONLY_BANNED:
             if t in has:
                 v("4", f"read-only agent has `{t}`")
+        for n in tools:
+            if n.startswith("mcp__") and n not in disallowed:
+                server, tool = mcp_parts(n)
+                if tool in (None, "*") and not MCP_SERVERS.get(server, True):
+                    v("4", f"read-only agent has server `{n}` with write tools")
         for n in has:
             if n.startswith("mcp__") and has_write_verb(n):
                 v("4", f"read-only agent has MCP tool `{n}` with a write verb")
@@ -143,7 +160,7 @@ def check(path):
 
 def main():
     root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "agents"
-    files = sorted(root.glob("*.md"))
+    files = sorted(f for f in root.glob("*.md") if f.name not in DOCS)
     if not files:
         print(f"agent-tools: no agents in {root}", file=sys.stderr)
         return 1
