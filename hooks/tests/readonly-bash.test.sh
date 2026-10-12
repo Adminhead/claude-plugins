@@ -840,6 +840,16 @@ cmd block 'GOFLAGS=-toolexec=./x go test ./...'
 cmd block 'PYTHONPATH=./evil pytest -q'
 cmd block 'LD_PRELOAD=./x.so pytest -q'
 
+# Redirects on compounds without a simple command, the literal parts of expanded words, and +=.
+cmd block '(( x )) > out.txt'
+cmd block '[[ -n x ]] > out.txt'
+cmd block 'git log --output=$f'
+cmd block '$X/rm x'
+cmd block 'sed -i$s f'
+cmd block 'gh api --method=$m x'
+cmd block 'PAGER+=cat git log'
+cmd allow 'for p in a b; do mkdir -p "/tmp/x/$p"; echo hi > "/tmp/x/$p.log"; done'
+
 # The frontmatter command must fail closed even if python3 is shadowed or the runtime is missing.
 case $HOOK in
   *.ts) frontmatter='bun --no-env-file --config=/dev/null "'"$HOOK"'" || exit 2' ;;

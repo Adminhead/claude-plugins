@@ -20,9 +20,8 @@ import type { ShellCommand } from './shell/walk.ts'
 
 const SCRATCH_MSG = 'This agent is read-only; write scratch files under /tmp only.'
 
-// Stands for a word the walker reports as null because it holds an expansion. It reads as an
-// expansion again when rejoined and reparsed (watch, rtk), never starts with `-`, has no `/`
-// or `=`, and is not a scratch path.
+// Stands for an expanded assignment name or value, which the walker reports as null without its
+// source text. It never matches a name, is never empty or `cat`, and is not a scratch path.
 const EXPANDED = '$EXPANDED'
 
 class Block extends Error {
@@ -1097,8 +1096,6 @@ function envCommand(words: Words): Words {
     checkAssignment(words[i])
     i++
   }
-  // The walker reports `NAME=$x` as an expanded word, so it can't be told from a command.
-  if (words[i] === EXPANDED) block('env word with an expansion may be an assignment')
   return words.slice(i)
 }
 
@@ -1222,22 +1219,26 @@ function checkArgv(words: Words): void {
 
 const REDIR_OUT = set('>', '>>', '>|', '&>', '&>>', '>&', '<>')
 
-const word = (w: string | null): string => w ?? EXPANDED
+// An expanded word as the tokenizer saw it: its source text with quotes and escapes removed and
+// the expansions left as written, so `--out=$f` is still an option and `"/tmp/$d"` still scratch.
+const unquoted = (text: string): string => text.replace(/\\([\s\S])|["']/g, (_, c: string | undefined) => c ?? '')
+
+const word = (w: string | null, text: string | undefined): string => w ?? (text === undefined ? EXPANDED : unquoted(text))
 
 // Check one simple command: its redirects first, then its assignments and words.
 function checkCommand(c: ShellCommand): void {
-  let argv = c.argv.map(word)
+  let argv = c.argv.map((w, i) => word(w, c.text[i]))
   // unbash reads a leading `time` as the keyword and leaves its options as the command words.
   if (argv[0]?.startsWith('-')) argv = ['time', ...argv]
   // A subscript is dropped from the name; an expanded subscript leaves the name unknown.
-  const assigns = c.assigns.map(a => `${a.name === null ? EXPANDED : a.name.replace(/\[[\s\S]*$/, '')}=${word(a.value)}`)
-  const redirects = c.redirects.map(r => `${r.fd ?? ''}${r.op}${word(r.target)}`)
+  const assigns = c.assigns.map(a =>
+    `${a.name === null ? EXPANDED : a.name.replace(/\[[\s\S]*$/, '')}${a.append ? '+' : ''}=${a.value ?? EXPANDED}`)
+  const targets = c.redirects.map(r => word(r.target, r.text))
+  const redirects = c.redirects.map((r, i) => `${r.fd ?? ''}${r.op}${targets[i]}`)
   try {
-    for (const r of c.redirects) {
-      const fdDup = (r.op === '>&' || r.op === '<&') && r.target !== null && /^(\d+-?|-)$/.test(r.target)
-      if (REDIR_OUT.has(r.op) && !fdDup && (r.target === null || !isScratch(r.target))) {
-        block(`redirect to non-scratch path '${word(r.target)}'`)
-      }
+    for (const [i, r] of c.redirects.entries()) {
+      const fdDup = (r.op === '>&' || r.op === '<&') && /^(\d+-?|-)$/.test(targets[i])
+      if (REDIR_OUT.has(r.op) && !fdDup && !isScratch(targets[i])) block(`redirect to non-scratch path '${targets[i]}'`)
     }
     for (const a of argv) {
       if (a.startsWith('-') && /[\n\r]/.test(a)) block('option word with an embedded newline')   // defeats the flag regexes

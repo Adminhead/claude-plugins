@@ -14,6 +14,8 @@ export type ShellRedirect = {
   fd: number | string | null
   // The literal target, or null when it holds an expansion.
   target: string | null
+  // The target's source text, as written ('' when there is none).
+  text: string
 }
 
 export type ShellHeredoc = { op: '<<' | '<<-'; fd: number | string | null; body: string; quoted: boolean }
@@ -26,10 +28,15 @@ export type ShellCommand = {
   //   cares must treat them itself.
   // - An ANSI-C string ends at its first NUL, as in bash.
   argv: (string | null)[]
+  // Each word's source text, quotes and expansions as written, parallel to `argv`. A consumer
+  // that needs the literal parts of an expanded word (`--out=$f`, `$X/rm`) reads them here.
+  text: string[]
   // `NAME=value` prefixes. The name carries its subscript (`a[1]`), and is null when the
-  // subscript holds an expansion. The value is null when it holds an expansion.
-  assigns: { name: string | null; value: string | null }[]
-  // The command's own redirects, then those of every compound command around it.
+  // subscript holds an expansion. The value is null when it holds an expansion. `append` marks `+=`.
+  assigns: { name: string | null; value: string | null; append: boolean }[]
+  // The command's own redirects, then those of every compound command around it. A compound
+  // command that holds no simple command (`(( x )) > f`, `[[ -n x ]] > f`) yields one command
+  // with empty `argv` and `text` that carries its redirects, as a bare `> f` does.
   redirects: ShellRedirect[]
   heredocs: ShellHeredoc[]
   // Set when the command sits in a pipeline stage (including inside a subshell or group in it).
@@ -134,7 +141,7 @@ function convert(rs: readonly Redirection[]): { redirects: ShellRedirect[]; here
     if (r.type === 'HereDoc') {
       heredocs.push({ op: r.operator, fd: fdOf(r), body: r.body.text, quoted: r.delimiter?.quoted ?? false })
     } else {
-      redirects.push({ op: r.operator, fd: fdOf(r), target: literal(r.target) })
+      redirects.push({ op: r.operator, fd: fdOf(r), target: literal(r.target), text: r.target?.text ?? '' })
     }
   }
   return { redirects, heredocs }
@@ -147,8 +154,13 @@ function parseAt(text: string, depth: number): ShellParse {
   const emit = (c: Command, ctx: Ctx) => {
     const own = convert(c.redirects)
     const argv: (string | null)[] = []
-    if (c.name) argv.push(literal(c.name))
+    const text: string[] = []
+    if (c.name) {
+      argv.push(literal(c.name))
+      text.push(c.name.text)
+    }
     for (const a of c.args) {
+      text.push(a.text)
       if (a.type === 'Word') argv.push(literal(a))
       else {
         const n = assignName(a)
@@ -158,8 +170,11 @@ function parseAt(text: string, depth: number): ShellParse {
     }
     commands.push({
       argv,
+      text,
       assigns: c.prefix.flatMap(p =>
-        p.type === 'Assignment' ? [{ name: assignName(p), value: p.value.type === 'Word' ? literal(p.value) : null }] : [],
+        p.type === 'Assignment'
+          ? [{ name: assignName(p), value: p.value.type === 'Word' ? literal(p.value) : null, append: p.append ?? false }]
+          : [],
       ),
       redirects: [...own.redirects, ...ctx.redirects],
       heredocs: [...own.heredocs, ...ctx.heredocs],
@@ -224,11 +239,13 @@ function parseAt(text: string, depth: number): ShellParse {
       case 'Redirected': {
         const r = convert(node.redirects as Redirection[])
         visit(node.redirects, ctx)
-        visit(node.command, {
-          ...ctx,
-          redirects: [...r.redirects, ...ctx.redirects],
-          heredocs: [...r.heredocs, ...ctx.heredocs],
-        })
+        const inner: Ctx = { ...ctx, redirects: [...r.redirects, ...ctx.redirects], heredocs: [...r.heredocs, ...ctx.heredocs] }
+        const start = commands.length
+        visit(node.command, inner)
+        // `(( x )) > f` holds no simple command, so its redirects would otherwise vanish.
+        if (commands.length === start) {
+          commands.push({ argv: [], text: [], assigns: [], redirects: inner.redirects, heredocs: inner.heredocs, pipeline: ctx.pipeline, depth })
+        }
         return
       }
       default: {
