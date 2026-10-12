@@ -5,10 +5,10 @@
       { "hooks": [{ "type": "command", "command": "sh", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh"], "async": true, "timeout": 180 }] }
     ],
     "PostToolUse": [
-      { "hooks": [{ "type": "command", "command": "bun", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/log-call.ts"], "async": true, "timeout": 10 }] }
+      { "hooks": [{ "type": "command", "command": "bun", "args": ["--no-env-file", "--config=/dev/null", "${CLAUDE_PLUGIN_ROOT}/scripts/log-call.ts"], "async": true, "timeout": 10 }] }
     ],
     "PostToolUseFailure": [
-      { "hooks": [{ "type": "command", "command": "bun", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/log-call.ts"], "async": true, "timeout": 10 }] }
+      { "hooks": [{ "type": "command", "command": "bun", "args": ["--no-env-file", "--config=/dev/null", "${CLAUDE_PLUGIN_ROOT}/scripts/log-call.ts"], "async": true, "timeout": 10 }] }
     ],
     "Stop": [
       { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/metrics.mjs"], "async": true, "timeout": 60 }] }
