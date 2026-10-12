@@ -54,16 +54,19 @@ describe('walker: command structure', () => {
     expect(argvs('[[ $(a) == $(b) && -f x ]] && c')).toEqual([['a'], ['b'], ['c']])
     expect(argvs('(( $(a) + 1 )); for ((i=0; i<$(b); i++)); do c; done').map(a => a[0]).sort()).toEqual(['a', 'b', 'c'])
     expect(argvs('X=$(a) Y=`b` c')).toEqual([['c'], ['a'], ['b']])
-    expect(parse('X=$(a) c').commands[0].assigns).toEqual([{ name: 'X', value: null }])
+    expect(parse('X=$(a) c').commands[0].assigns).toEqual([{ name: 'X', value: null, append: false }])
     expect(argvs('arr=($(a) b) c')).toEqual([['c'], ['a']])
     expect(argvs('echo > $(a) 2>>"$(b)" < <(c)')).toEqual([['echo'], ['a'], ['b'], ['c']])
-    expect(parse('echo > $(a)').commands[0].redirects).toEqual([{ op: '>', fd: null, target: null }])
+    expect(parse('echo > $(a)').commands[0].redirects).toEqual([{ op: '>', fd: null, target: null, text: '$(a)' }])
   })
 
   test('assignment subscripts are kept, or null when they expand', () => {
     expect(argvs('declare a[1]=x b+=y')).toEqual([['declare', 'a[1]=x', 'b+=y']])
     expect(argvs('declare a[$i]=safe')).toEqual([['declare', null]])
-    expect(parse('a[2]=x b[$i]=y cmd').commands[0].assigns).toEqual([{ name: 'a[2]', value: 'x' }, { name: null, value: 'y' }])
+    expect(parse('a[2]=x b[$i]=y cmd').commands[0].assigns).toEqual([
+      { name: 'a[2]', value: 'x', append: false },
+      { name: null, value: 'y', append: false },
+    ])
     expect(argvs('x[$(id)]=1 cmd')).toEqual([['cmd'], ['id']])
   })
 
@@ -87,16 +90,17 @@ describe('walker: command structure', () => {
   test('assignments, redirects and descriptors are reported', () => {
     const [c] = parse('A=1 B=$x cmd -f >out 2>&1 <in &>all {fd}>g').commands
     expect(c.argv).toEqual(['cmd', '-f'])
-    expect(c.assigns).toEqual([{ name: 'A', value: '1' }, { name: 'B', value: null }])
+    expect(c.assigns).toEqual([{ name: 'A', value: '1', append: false }, { name: 'B', value: null, append: false }])
+    expect(parse('PAGER+=cat A=1 x').commands[0].assigns.map(a => a.append)).toEqual([true, false])
     expect(c.redirects).toEqual([
-      { op: '>', fd: null, target: 'out' },
-      { op: '>&', fd: 2, target: '1' },
-      { op: '<', fd: null, target: 'in' },
-      { op: '&>', fd: null, target: 'all' },
-      { op: '>', fd: 'fd', target: 'g' },
+      { op: '>', fd: null, target: 'out', text: 'out' },
+      { op: '>&', fd: 2, target: '1', text: '1' },
+      { op: '<', fd: null, target: 'in', text: 'in' },
+      { op: '&>', fd: null, target: 'all', text: 'all' },
+      { op: '>', fd: 'fd', target: 'g', text: 'g' },
     ])
     expect(parse('echo hi > "$f"').commands[0].redirects[0].target).toBeNull()
-    expect(parse('cat <<<"x y"').commands[0].redirects).toEqual([{ op: '<<<', fd: null, target: 'x y' }])
+    expect(parse('cat <<<"x y"').commands[0].redirects).toEqual([{ op: '<<<', fd: null, target: 'x y', text: '"x y"' }])
   })
 
   test('redirects of a compound command apply to the commands inside', () => {
@@ -104,6 +108,17 @@ describe('walker: command structure', () => {
     expect(commands.map(c => c.redirects.map(r => r.target))).toEqual([['f', '1'], ['f', '1']])
     expect(parse('(echo a) > f; echo b').commands[1].redirects).toEqual([])
     expect(parse('echo $(cat) > f').commands[1].redirects).toEqual([])
+  })
+
+  test('a compound command with no simple command inside yields one empty command carrying its redirects', () => {
+    for (const text of ['(( x )) > f', '[[ -n x ]] > f', '{ (( x )); } > f', 'while (( i )); do (( i-- )); done > f']) {
+      const { commands } = parse(text)
+      expect(commands.map(c => [c.argv, c.text, c.redirects])).toEqual([[[], [], [{ op: '>', fd: null, target: 'f', text: 'f' }]]])
+    }
+    expect(parse('(( x )) <<EOF > f\nhi\nEOF\n').commands[0].heredocs).toHaveLength(1)
+    expect(parse('a | (( x )) > f').commands[1].pipeline?.stage).toBe(1)
+    // A group with a simple command inside carries the redirect on that command only.
+    expect(argvs('{ echo a; (( x )); } > f')).toEqual([['echo', 'a']])
   })
 })
 
@@ -140,6 +155,14 @@ describe('walker: words', () => {
     expect(argvs('echo $x "a${y}b" $(z) `z` $((1)) {a,b} ${x#p}')).toEqual([['echo', null, null, null, null, null, null, null], ['z'], ['z']])
     expect(argvs('export FOO=bar BAZ=$q')).toEqual([['export', 'FOO=bar', null]])
   })
+
+  test('text holds each word as written, parallel to argv', () => {
+    const [c] = parse('x --output=$f "$X"/rm \'a b\' b+=$y').commands
+    expect(c.argv).toEqual(['x', null, null, 'a b', null])
+    expect(c.text).toEqual(['x', '--output=$f', '"$X"/rm', "'a b'", 'b+=$y'])
+    expect(parse('A=1 > f').commands[0].text).toEqual([])
+    expect(parse('x > "/tmp/a/$s.log"').commands[0].redirects[0]).toEqual({ op: '>', fd: null, target: null, text: '"/tmp/a/$s.log"' })
+  })
 })
 
 describe('walker: heredocs', () => {
@@ -147,7 +170,7 @@ describe('walker: heredocs', () => {
     const { commands } = parse("cat <<'EOF' > f\nx $(not run)\nEOF\n")
     expect(commands).toHaveLength(1)
     expect(commands[0].heredocs).toEqual([{ op: '<<', fd: null, body: 'x $(not run)\n', quoted: true }])
-    expect(commands[0].redirects).toEqual([{ op: '>', fd: null, target: 'f' }])
+    expect(commands[0].redirects).toEqual([{ op: '>', fd: null, target: 'f', text: 'f' }])
   })
 
   test('an unquoted body is expanded, so its substitutions are walked', () => {
