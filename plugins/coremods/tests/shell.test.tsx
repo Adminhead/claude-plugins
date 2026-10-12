@@ -208,6 +208,39 @@ describe('walker: substitution nesting and ${var/…}', () => {
     }
     expect(parse('echo ${X/a/b} ${X:-$(a)}').errors).toEqual([])
   })
+
+  test('quoted or escaped substitution text in an arithmetic subscript is an error', () => {
+    for (const t of [
+      "echo $(( a['$(rm x)'] ))",
+      "(( a['$(rm x)'] ))",
+      "for (( i=a['$(rm x)']; ; )); do break; done",
+      "echo $(( a['`rm x`'] ))",
+      "echo $[ a['$(rm x)'] ]",
+      "echo $(( a[\\$(rm x)] ))",
+      "echo $(( a[$'\\x24(rm x)'] ))",
+      "echo ${a['$(rm x)']}",
+      "echo ${x:'$(y)'}",
+      "echo ${x:1:'`y`'}",
+      "a=(['$(rm x)']=1)",
+      'a+=(["\\$(rm x)"]=1)',
+      "(( 'a'\"[\\$(rm x)]\" ))",
+      "[[ -v 'a[`rm x`]' ]]",
+      "[[ -v 'a'\"[\\$(rm x)]\" ]]",
+      "[[ -v \"a[\\`rm x\\`]\" ]]",
+      "[[ 1 -eq 'a'\"[\\$(rm x)]\" ]]",
+    ]) {
+      expect(parse(t).errors.map(e => e.message)).toContain('substitution inside arithmetic subscript; rewrite in plain bash')
+    }
+    for (const t of [
+      'echo $(( a[$(date +%s)] + 1 )) ${a[@]} ${x:1:2} ${a[$i]}',
+      "a=([k]='$(x)' [j]=\"$(date)\")",
+      "a=('[$(x)]=1')",
+      "[[ -v a && $x -eq 1 && -n '$(x)' && $(date) == '$(x)' ]]",
+      "aws ec2 describe-instances --query 'Reservations[?Tags[?Key==`x`]]'",
+    ]) {
+      expect(parse(t).errors).toEqual([])
+    }
+  })
 })
 
 describe('walker: heredocs', () => {
