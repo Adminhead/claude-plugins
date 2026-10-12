@@ -1,6 +1,6 @@
 # git
 
-Adds four Git skills. One plans and creates focused commits in the repository's own message convention, one names and creates branches, one edits and repairs history, and one manages `git worktree` checkouts. `git:commit` and `git:worktree` replace the user-level `git-*` skills. Version 0.2.0 added `git:branch` and `git:history`. Version 0.2.1 retuned the `git:commit` description so it also loads for message-only requests. Version 0.2.2 points push, PR, and merge requests to `github:ship`. Version 0.2.3 defaults manual worktrees to `.claude/worktrees/<name>`, checks that the path is gitignored, and sends session and subagent isolation to the built-in tools first.
+Adds four Git skills. One plans and creates focused commits in the repository's own message convention, one names and creates branches, one edits and repairs history, and one manages `git worktree` checkouts. `git:commit` and `git:worktree` replace the user-level `git-*` skills. Version 0.2.0 added `git:branch` and `git:history`. Version 0.2.1 retuned the `git:commit` description so it also loads for message-only requests. Version 0.2.2 points push, PR, and merge requests to `github:ship`. Version 0.2.3 defaults manual worktrees to `.claude/worktrees/<name>`, checks that the path is gitignored, and sends session and subagent isolation to the built-in tools first. Version 0.2.4 recommends `worktree.baseRef: "head"`, because the default `"fresh"` branches worktrees from `origin/HEAD` and drops unpushed commits.
 
 ## What it adds
 

@@ -28,7 +28,7 @@
       "name": "git",
       "source": "./plugins/git",
       "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "category": "development"
     },
     {

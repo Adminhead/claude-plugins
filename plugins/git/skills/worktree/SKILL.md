@@ -12,6 +12,7 @@ Worktrees are parallel checkouts of one repository. Each has its own files and i
 - To isolate a subagent that writes files, pass `isolation: "worktree"` to Agent.
 - To move this session into an isolated checkout, use EnterWorktree and leave with ExitWorktree, or launch with `claude --worktree <name>`. Use it only when the user or CLAUDE.md asks for a worktree.
 - These create `.claude/worktrees/<name>`, the only location Claude Code supports.
+- They branch from the base in the `worktree.baseRef` setting. Recommend `"head"`, which branches from local `HEAD`. The default, `"fresh"`, branches from `origin/HEAD`, so the worktree silently lacks every unpushed commit and its work diverges from the local branch it should merge into. Neither setting carries uncommitted changes, so commit them first.
 - Use this skill for what the built-ins can't do: an existing branch, a detached inspection checkout, a user-requested worktree, auditing existing ones, cleanup, locking, and repair. To work inside a worktree you created with `git worktree add`, enter it with EnterWorktree `path`. EnterWorktree prompts for approval when the path is outside `.claude/worktrees/`, so keep manual worktrees there.
 
 ## Safety defaults
