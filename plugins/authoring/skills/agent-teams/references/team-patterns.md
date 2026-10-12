@@ -26,7 +26,7 @@ One question or area per teammate, read-only. Ask each for findings with sources
 
 ## Branches
 
-A single feature branch works for two or three teammates with strict file ownership. For larger teams, give each teammate its own sub-branch or a `git worktree` created by hand, and merge at stated points. Do not pass `isolation` on a teammate spawn, because that makes it a subagent. Shared barrel files are the usual source of conflicts, so have the lead merge them last.
+A single feature branch works for two or three teammates with strict file ownership. For larger teams, give each teammate its own sub-branch in a worktree at `.claude/worktrees/<slice>`, and merge at stated points. For subagent slices, pass `isolation: "worktree"` on the Agent call, which creates the worktree there automatically. If you create one by hand, first check that `.claude/worktrees/` is gitignored (`git check-ignore -q .claude/worktrees/`) and append it to `.gitignore` if not. Do not pass `isolation` on a teammate spawn, because that makes it a subagent. Shared barrel files are the usual source of conflicts, so have the lead merge them last.
 
 ## Troubleshooting
 

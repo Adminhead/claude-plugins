@@ -4,7 +4,7 @@ Read this when teammates or subagents work on slices in separate git worktrees a
 
 ## Contract file
 
-Write one file before spawning, owned by the lead, and quote its path in every brief. Teammates read it and never edit it. Adapt this template:
+Write one file at `.agents/plans/<slug>-contract.md` before spawning, owned by the lead, and quote its path in every brief. Teammates read it and never edit it. Adapt this template:
 
 ```markdown
 # Slice rules
