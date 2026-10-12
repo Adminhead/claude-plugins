@@ -81,15 +81,17 @@ A read-only agent that only disallows the writers still inherits everything else
 | `effort` | Set it explicitly. A per-call `effort` overrides it, and `CLAUDE_CODE_EFFORT_LEVEL` overrides both. Available levels depend on the model, so check before using `xhigh` or `max`. |
 | `skills` | Preload only what the agent needs on every run, at most 32. The full skill text is injected, which costs context on each spawn. A missing or disabled skill is skipped with only a debug-log warning, so preload only skills from user-scope plugins. Skills with `disable-model-invocation: true` can't be preloaded. |
 | `hooks` | Frontmatter hooks in this directory run without a trust prompt. A `Stop` hook becomes `SubagentStop`. Session hooks from settings and plugins also fire inside subagents. |
-| `color` | One of `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`. There are more agents than colors, so share a color within a family (red for debugging and last-resort work, orange for reviewers). |
+| `color` | One of `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`. There are more agents than colors, so share a color within a family: red for debuggers and coder-max, orange for reviewers and security-auditor, and one color each for the other agents, reused across unrelated roles (yellow for Explore and devops, cyan for browser-tester and scribe). |
 
 Fields this roster doesn't use, and why:
 
 - `permissionMode`: ignored when the parent runs in auto, acceptEdits or bypass mode, which is how these sessions run.
 - `isolation`: the orchestrator passes `isolation: "worktree"` per call. Set in frontmatter, it doesn't stop a named spawn from becoming a teammate when agent teams are on, and that teammate runs in the main checkout.
 - `memory`: banned for read-only agents, and no writer needs memory across sessions.
-- `background`, `maxTurns`, `mcpServers`, `initialPrompt`, `omitClaudeMd`, `experimental`: add one only with a concrete current use.
+- `background`, `maxTurns`, `initialPrompt`, `omitClaudeMd`, `experimental`: add one only with a concrete current use.
 - Unknown or misspelled fields are ignored without an error, so match the camelCase exactly.
+
+`mcpServers` has one use. browser-tester declares its own playwright server so the browser stays scoped to that agent.
 
 ## Tools at runtime
 
@@ -110,7 +112,8 @@ The description is the router's only signal, for both the orchestrator and autom
 
 - Open with one sentence that states the job and its main limit ("You diagnose and never implement the fix.").
 - Then a numbered procedure, a stop rule, and a `Report:` line that fixes the shape of the final message. The final message is all the caller sees.
-- Ladders end with an `escalate:` line naming the next rung, so the next agent starts warm.
+- Ladders end with an `escalate:` line naming the next rung, so the next agent starts warm. A terminal rung (devops, dba) ends with `escalate: caller — <blocker>`. debugger-critical ends with `escalate: user — <artifact or decision needed>` when the cause stays unconfirmed.
+- Every writer carries the commit-policy line from `coder.md` ("Commit your change as small, grouped Conventional Commits ... Never push.") and starts its `Report:` with the branch and commit hashes.
 - Ground rules are copied verbatim, never paraphrased:
   - Writers carry the three paragraphs under `## Ground rules` in `coder.md`.
   - Read-only agents carry the one paragraph in `debugger.md`. `security-auditor.md` adds a second paragraph that refuses destructive and evasion work.
@@ -121,7 +124,7 @@ The description is the router's only signal, for both the orchestrator and autom
 
 | Agent | Model / effort | Class | Role |
 | --- | --- | --- | --- |
-| Explore | haiku | read-only | Locate and map code |
+| Explore | haiku / low | read-only | Locate and map code |
 | architect | opus / high | read-only | Sliced plans for multi-slice or unclear work |
 | coder | haiku / medium | writer | Default implementer: clear, bounded, including mechanical edits |
 | coder-high | sonnet / medium | writer | Bounded work needing design judgment; next rung after coder |
@@ -141,7 +144,8 @@ Ladders:
 
 - Implementers: coder, then coder-high, then coder-max, one rung at a time.
 - Debugging: debugger, then debugger-critical. Each ends by naming the coder rung for the fix.
-- A coder-high failure with no known cause goes to debugger before coder-max.
+- A coder-high failure with a known cause goes to coder-max, and one with no known cause goes to debugger.
+- devops and dba are terminal. quick-review may hand a change up to review.
 
 ## Changing the roster
 
