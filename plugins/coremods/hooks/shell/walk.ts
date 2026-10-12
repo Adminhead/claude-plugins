@@ -57,10 +57,17 @@ const isNode = (v: unknown): v is Node => typeof v === 'object' && v !== null &&
 // unbash 5.0.0 builds these node fields on first read, so `Object.keys` doesn't list them.
 const LAZY_FIELDS = ['parts', 'elements', 'value', 'initialize', 'test', 'update', 'expression', 'index']
 
+// Operations that leave HOME as it was or strip some of its tail: `${HOME:?}`, `${HOME:-x}`, `${HOME%/}`. They read as home.
+const HOME_OPS = new Set(['?', ':?', '-', ':-', '=', ':=', '%', '%%'])
+
 const isHome = (p: Node): boolean =>
   p.type === 'SimpleExpansion'
     ? p.text === '$HOME'
-    : p.type === 'ParameterExpansion' && p.parameter === 'HOME' && !p.operation && !p.prefix && !p.index
+    : p.type === 'ParameterExpansion' &&
+      p.parameter === 'HOME' &&
+      (!p.operation || HOME_OPS.has((p.operation as { operator: string }).operator)) &&
+      !p.prefix &&
+      !p.index
 
 // Stands for a leading $HOME until the whole word is known.
 const HOME = '\u0000'
@@ -265,7 +272,7 @@ export function reparse(text: string, depth: number): ShellParse {
   return parseAt(text, depth)
 }
 
-const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash'])
+const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh'])
 
 // The script text of `sh|bash|zsh|dash -c STR` (a bare name or a path; bundled flags such as
 // `-lc` included) and of `eval` with all-literal arguments. Null for any other command, or when

@@ -35,6 +35,10 @@ describe('walker: command structure', () => {
     expect(deep.map(c => c.pipeline?.earlier.map(e => e.argv[0]))).toEqual([[], ['a'], ['a', 'b'], ['a', 'b', 'c']])
   })
 
+  test('ksh -c is a nested script', () => {
+    expect(nestedScript(['ksh', '-c', 'rm -rf ~'])).toBe('rm -rf ~')
+  })
+
   test('subs holds the commands inside a command\'s own words and redirects, nested ones included', () => {
     const subs = (text: string) => parse(text).commands.map(c => [c.argv[0], c.subs.map(s => s.argv[0])])
     expect(subs('a $(b $(c)) d; e')).toEqual([['a', ['b', 'c']], ['b', ['c']], ['c', []], ['e', []]])
@@ -110,7 +114,9 @@ describe('walker: words', () => {
 
   test('~, $HOME and ${HOME} at the start of a word resolve to ~', () => {
     expect(argvs('rm ~ ~/a $HOME $HOME/a ${HOME} "${HOME}/a" "$HOME"')).toEqual([['rm', '~', '~/a', '~', '~/a', '~', '~/a', '~']])
-    expect(argvs('echo a$HOME ${HOME:-x} $HOMEX')).toEqual([['echo', null, null, null]])
+    expect(argvs('echo a$HOME $HOMEX ${HOME#x} ${HOME:+x} ${HOME/a/b}')).toEqual([['echo', null, null, null, null, null]])
+    // Operations that keep HOME or only strip its tail still read as home.
+    expect(argvs('rm "${HOME:?}" "${HOME:?}/" "${HOME%/}" ${HOME:-x} "${HOME%%/}"')).toEqual([['rm', '~', '~/', '~', '~', '~']])
   })
 
   test('a quoted or escaped ~ is a file name, not home', () => {

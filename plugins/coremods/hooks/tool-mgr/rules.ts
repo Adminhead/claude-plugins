@@ -1,11 +1,11 @@
 // Pure rules and formatting for tool-mgr. Nothing here touches `$`.
 
-import { askHit, dangerHit, viewsOf } from './danger'
+import { askHit, dangerHit, envSplit, stdinReader, viewsOf } from './danger'
 import type { AskRule, DangerRule } from './danger'
 import { nestedScript, parse, reparse } from '../shell/walk'
 import type { ShellCommand, ShellParse, ShellRedirect } from '../shell/walk'
 
-export type Rule = DangerRule | 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long'
+export type Rule = DangerRule | AskRule | 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long'
 export type Hit = { rule: Rule; message: string }
 
 const MESSAGES = {
@@ -105,20 +105,14 @@ function echoWrite(commands: ShellCommand[]): boolean {
   })
 }
 
-const SCRIPT_INTERP = /^(?:python[\d.]*|node|bun|deno|ruby|perl)$/
-const SHELL_INTERP = /^(?:sh|bash|zsh)$/
-const WRAPPERS = new Set(['sudo', 'doas', 'env', 'timeout', 'nice', 'nohup', 'exec', 'time', 'command', 'builtin', 'stdbuf', 'setsid', 'xargs', 'uv'])
-const baseName = (t: string | null) => (t ?? '').slice((t ?? '').lastIndexOf('/') + 1)
-const kindOf = (t: string | null) => (SCRIPT_INTERP.test(baseName(t)) ? 'script' : SHELL_INTERP.test(baseName(t)) ? 'shell' : null)
-
-// What interpreter a command runs as a script reader: its command word, possibly path-qualified or behind wrappers
-// (sudo, env, timeout, nice, uv run, ...), and with no script file, only `-`, `/dev/stdin` or `run`. `node tool.js <<EOF` gets the heredoc as data.
-// shortcut: after a wrapper the first interpreter-named word is taken, even if it is really an option argument.
+// What interpreter a command runs as a script reader, possibly path-qualified or behind wrappers, and reading its program
+// from stdin (see `stdinReader`). `node tool.js <<EOF` gets the heredoc as data.
 function interpreterOf(c: ShellCommand): 'script' | 'shell' | null {
-  const i = WRAPPERS.has(baseName(c.argv[0])) ? c.argv.findIndex((t, j) => j > 0 && kindOf(t)) : 0
-  const kind = i < 0 ? null : kindOf(c.argv[i])
-  const positional = c.argv.slice(i + 1).filter(a => a === null || a === '-' || !a.startsWith('-'))
-  return kind && positional.every(a => a === '-' || a === '/dev/stdin' || a === 'run') ? kind : null
+  for (const v of viewsOf(c.argv)) {
+    const kind = stdinReader(v)
+    if (kind) return kind
+  }
+  return null
 }
 
 // The heredoc bodies an interpreter command reads: its own, and those of the command piped into it.
@@ -166,40 +160,71 @@ function heredocWrite(commands: ShellCommand[], bodyCommands: ShellCommand[]): b
   )
 }
 
-type Scan = { commands: ShellCommand[]; bodyCommands: ShellCommand[]; errors: ShellParse['errors'] }
+type Scan = { commands: ShellCommand[]; bodyCommands: ShellCommand[]; errors: ShellParse['errors']; tooComplex: boolean }
+
+// Nested scripts and heredoc bodies may be reparsed up to this many characters in all. A script nested in itself
+// (`eval "eval \"...\""`) is reparsed once per level, up to MAX_DEPTH levels, so only a command built to repeat one
+// large text gets near it.
+const MAX_REPARSE = 256 * 1024
 
 // Parses a command and the scripts it hands to a shell: `sh -c STR` and `eval` bodies (also behind wrappers) join `commands` (they are
 // checked like top-level commands), and heredoc bodies read by a shell join `bodyCommands` (checked for writes only).
+// A heredoc body is reparsed once however many commands share it, and the reparsed text is capped (`tooComplex`).
 function scan(command: string): Scan {
-  const out: Scan = { commands: [], bodyCommands: [], errors: [] }
+  const out: Scan = { commands: [], bodyCommands: [], errors: [], tooComplex: false }
+  let reparsed = 0
+  const nested = (text: string, depth: number, sink: ShellCommand[]) => {
+    reparsed += text.length
+    if (reparsed > MAX_REPARSE) out.tooComplex = true
+    else add(reparse(text, depth), sink)
+  }
   const add = (r: ShellParse, sink: ShellCommand[]) => {
     out.errors.push(...r.errors)
     for (const c of r.commands) {
       sink.push(c)
-      // A script handed to a shell behind a wrapper (`timeout 5 sh -c STR`) or `find -exec` is checked too.
+      // A script handed to a shell behind a wrapper (`timeout 5 sh -c STR`, `env -S STR`) or `find -exec` is checked too.
       for (const v of viewsOf(c.argv)) {
-        const script = nestedScript(v)
-        if (script !== null) add(reparse(script, c.depth + 1), sink)
+        const script = nestedScript(v) ?? envSplit(v)
+        if (script !== null && !out.tooComplex) nested(script, c.depth + 1, sink)
       }
     }
   }
   add(parse(command), out.commands)
+  const bodies = new Set<string>()
   for (const c of out.commands) {
+    if (out.tooComplex) break
     if (interpreterOf(c) !== 'shell') continue
-    for (const body of fedBodies(c)) add(reparse(body, c.depth + 1), out.bodyCommands)
+    for (const body of fedBodies(c)) {
+      if (bodies.has(body)) continue
+      bodies.add(body)
+      nested(body, c.depth + 1, out.bodyCommands)
+    }
   }
   return out
 }
 
-export function classify(command: string): Hit | null {
+const TOO_COMPLEX = 'tool-mgr: this command nests too much script to check. Write it to a script file and run that.'
+
+// The ask-tier rules answer `ask` (the person confirms) or, if `ask` does not prompt in a session, `deny`, which hands the
+// command to the person. Changing ASK_TIER changes both rules, and classify() then denies them with the other danger rules.
+export const ASK_TIER: 'ask' | 'deny' = 'ask'
+const HAND_OVER = ' Hand this command to the user to run.'
+
+export function classify(command: string, askTier: 'ask' | 'deny' = ASK_TIER): Hit | null {
   if (command.length > MAX_PARSE) return { rule: 'too-long', message: MESSAGES['too-long'] }
-  const { commands, bodyCommands, errors } = scan(command)
+  const { commands, bodyCommands, errors, tooComplex } = scan(command)
+  if (tooComplex) return { rule: 'too-long', message: TOO_COMPLEX }
   if (errors.length > 0) {
     // Deep inputs cascade into hundreds of errors; the first one names the cause.
     return { rule: 'parse-error', message: `tool-mgr: could not parse this command (${errors[0].message}). Rewrite it in plain bash, or write a script file and run it.` }
   }
-  const danger = dangerHit([...commands, ...bodyCommands])
+  const all = [...commands, ...bodyCommands]
+  const danger = dangerHit(all)
   if (danger) return danger
+  if (askTier === 'deny') {
+    const hit = askHit(all)
+    if (hit) return { rule: hit.rule, message: hit.message + HAND_OVER }
+  }
   const rule = commands.some(sedRead) ? 'sed-read' : heredocWrite(commands, bodyCommands) ? 'heredoc-write' : echoWrite(commands) ? 'echo-write' : null
   return rule && { rule, message: MESSAGES[rule] }
 }
@@ -209,37 +234,46 @@ export type AskHit = { rule: AskRule; message: string }
 // The ask-tier rules (remote-exec, git-rewrite) for a command. A command classify() denies never reaches them, so a parse error has no ask.
 export function askRule(command: string): AskHit | null {
   if (command.length > MAX_PARSE) return null
-  const { commands, bodyCommands, errors } = scan(command)
-  return errors.length > 0 ? null : askHit([...commands, ...bodyCommands])
+  const { commands, bodyCommands, errors, tooComplex } = scan(command)
+  return errors.length > 0 || tooComplex ? null : askHit([...commands, ...bodyCommands])
 }
-
-// What the ask-tier rules answer. Set this to 'deny' if `ask` does not prompt in a session; the deny then hands the command to the person.
-export const ASK_TIER: 'ask' | 'deny' = 'ask'
 
 export type Verdict = { allow?: true; ask?: string; deny?: string; [key: string]: unknown }
 
-const ownVerdict = (hit: AskHit): Verdict =>
-  ASK_TIER === 'ask' ? { ask: hit.message } : { deny: `${hit.message} Hand this command to the user to run.` }
-
-// The stricter of a lower hook's verdict and our own: deny beats ask, and ask beats allow or no answer.
-function stricter(inner: Verdict, own: Verdict): Verdict {
-  if (inner.deny !== undefined || (inner.ask !== undefined && own.deny === undefined)) return inner
-  const { allow: _allow, ask: _ask, ...rest } = inner
-  return { ...rest, ...own }
+// The stricter of a lower hook's verdict and our ask: deny beats ask, and ask beats allow or no answer.
+function stricter(inner: Verdict, hit: AskHit): Verdict {
+  if (inner.deny !== undefined || inner.ask !== undefined) return inner
+  const { allow: _allow, ...rest } = inner
+  return { ...rest, ask: hit.message }
 }
 
-// The classic.PreToolUse body for Bash: the hooks below run first, then the ask-tier rules add theirs. A deny from below
-// always wins, so readonly-bash and cloud-ops-guard keep their say. A throw in our rules leaves the verdict from below
-// alone and goes to `onError`.
-export async function withAsk(command: string, next: () => Promise<Verdict | undefined>, onError: (err: unknown) => void): Promise<Verdict> {
-  const inner = (await next()) ?? {}
-  try {
-    const hit = askRule(command)
-    return hit ? stricter(inner, ownVerdict(hit)) : inner
-  } catch (err) {
-    onError(err)
-    return inner
+// The classic.PreToolUse body for Bash. Our ask is worked out first, so a failing hook below cannot lose it; then the hooks
+// below run and the stricter verdict wins. A deny from below always wins, so readonly-bash and cloud-ops-guard keep their
+// say. A throw in our rules leaves the verdict from below alone and goes to `onError`. With ASK_TIER 'deny', classify()
+// already denied these commands before this hook ran, so it only passes the verdict through.
+export async function withAsk(
+  command: string,
+  next: () => Promise<Verdict | undefined>,
+  onError: (err: unknown) => void,
+  askTier: 'ask' | 'deny' = ASK_TIER,
+): Promise<Verdict> {
+  let hit: AskHit | null = null
+  if (askTier === 'ask') {
+    try {
+      hit = askRule(command)
+    } catch (err) {
+      onError(err)
+    }
   }
+  let inner: Verdict
+  try {
+    inner = (await next()) ?? {}
+  } catch (err) {
+    if (!hit) throw err
+    onError(err)
+    inner = {}
+  }
+  return hit ? stricter(inner, hit) : inner
 }
 
 // The log keeps at most this many characters of a command.
