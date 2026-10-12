@@ -9,9 +9,10 @@ Worktrees are parallel checkouts of one repository. Each has its own files and i
 
 ## Claude Code tools versus this skill
 
-- To move this session into an isolated checkout, use EnterWorktree (it creates `.claude/worktrees/<name>`) and leave with ExitWorktree. Use it only when the user or CLAUDE.md asks for a worktree.
 - To isolate a subagent that writes files, pass `isolation: "worktree"` to Agent.
-- Use this skill for everything else: user-requested worktrees at chosen paths, auditing existing ones, cleanup, locking, and repair. To work inside a worktree you created with `git worktree add` under `.claude/worktrees/`, enter it with EnterWorktree `path`.
+- To move this session into an isolated checkout, use EnterWorktree and leave with ExitWorktree, or launch with `claude --worktree <name>`. Use it only when the user or CLAUDE.md asks for a worktree.
+- These create `.claude/worktrees/<name>`, the only location Claude Code supports.
+- Use this skill for what the built-ins can't do: an existing branch, a detached inspection checkout, a user-requested worktree, auditing existing ones, cleanup, locking, and repair. To work inside a worktree you created with `git worktree add`, enter it with EnterWorktree `path`. EnterWorktree prompts for approval when the path is outside `.claude/worktrees/`, so keep manual worktrees there.
 
 ## Safety defaults
 
@@ -37,7 +38,7 @@ git status --short --branch
 
 ## Create
 
-1. Path: honor an explicit safe path. Otherwise follow a project convention (an ignored `.worktrees/` or `worktrees/`), else use a sibling directory such as `../<repo>-<branch>`. Name the directory after the branch with `/` replaced by `-` (`feat/user-auth` becomes `feat-user-auth`) so `git worktree list` reads against branch names. Keep the word `worktree` out of the branch name itself. Don't add an unignored directory inside the repo. Adding an ignore rule needs approval.
+1. Path: honor an explicit path from the user. Otherwise use `.claude/worktrees/<name>`, naming the directory after the branch with `/` replaced by `-` (`feat/user-auth` becomes `feat-user-auth`) so `git worktree list` reads against branch names. Keep the word `worktree` out of the branch name itself. Before creating the first worktree in a repo, run `git check-ignore -q .claude/worktrees/`. If the path isn't ignored, append `.claude/worktrees/` to `.gitignore` and tell the user.
 2. Confirm the path doesn't exist or is empty and isn't already a worktree.
 3. State the branch and start point, then run one of:
    - New branch: `git worktree add -b <branch> <path> <start-point>`
