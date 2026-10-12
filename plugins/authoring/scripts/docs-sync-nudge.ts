@@ -12,7 +12,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 const DOC_EXTS = [".md", ".mdx", ".rst", ".adoc", ".txt"];
 const DOC_GLOBS = ["*.md", "*.mdx", "*.rst", "*.adoc"];
@@ -67,7 +67,7 @@ function start(data: Hook) {
   if (!existsSync(headFile)) writeFileSync(headFile, git(top, ["rev-parse", "HEAD"]).trim()); // resume and compact keep the original baseline
 }
 
-// shortcut: a subagent's PostToolUse may carry its own session_id, not the parent's (UNCONFIRMED); its edits are then missed.
+// Subagent transcripts record the parent's sessionId, so hooks are expected to carry it too (UNCONFIRMED for hooks).
 function edit(data: Hook) {
   const path = data.tool_input?.file_path ?? data.tool_input?.notebook_path;
   const sdir = stateDir();
@@ -75,7 +75,15 @@ function edit(data: Hook) {
   appendFileSync(join(sdir, `${safeId(data.session_id)}.edited`), `${resolve(data.cwd, path)}\n`);
 }
 
-/** Repo-relative paths of this session's edits that sit inside the repo. */
+/** True when a nested repo or worktree (a `.git` below the repo top) contains the path. */
+function inNestedRepo(top: string, real: string): boolean {
+  for (let dir = dirname(real); dir.length > top.length && dir.startsWith(top); dir = dirname(dir)) {
+    if (existsSync(join(dir, ".git"))) return true;
+  }
+  return false;
+}
+
+/** Repo-relative paths of this session's edits that sit inside the repo, outside nested repos and ignored paths. */
 function editedPaths(sdir: string, sid: string, top: string, cwd: string): string[] {
   const file = join(sdir, `${sid}.edited`);
   if (!existsSync(file)) return [];
@@ -90,8 +98,13 @@ function editedPaths(sdir: string, sid: string, top: string, cwd: string): strin
       // A deleted file keeps its recorded path.
     }
     const rel = relative(top, real);
-    if (rel && !rel.startsWith("..") && !isAbsolute(rel)) out.add(rel);
+    if (rel && !rel.startsWith("..") && !isAbsolute(rel) && !inNestedRepo(top, real)) out.add(rel);
   }
+  if (!out.size) return [];
+  // Subagent worktrees live under the gitignored .claude/worktrees/.
+  const ignored = spawnSync("git", ["-C", top, "check-ignore", "--stdin", "-z"], { input: [...out].join("\0"), encoding: "utf8", timeout: 20000 });
+  if (ignored.error || (ignored.status !== 0 && ignored.status !== 1)) throw new Error(ignored.error?.message ?? ignored.stderr.trim());
+  for (const p of ignored.stdout.split("\0")) out.delete(p);
   return [...out].sort();
 }
 
@@ -99,7 +112,7 @@ const CODE_LIKE = /_|[a-z][A-Z]|^[A-Z0-9]+$|^--/;
 
 /** Code-like identifiers on removed lines of the edited files' diff since the baseline. */
 function removedIdents(top: string, base: string, files: string[]): string[] {
-  const diff = git(top, ["diff", "-U0", "--no-ext-diff", base, "--", ...files]);
+  const diff = git(top, ["--literal-pathspecs", "diff", "-U0", "--no-ext-diff", base, "--", ...files]);
   const found = new Set<string>();
   for (const line of diff.split("\n")) {
     if (!line.startsWith("-") || /^--- (a\/|\/dev\/null)/.test(line)) continue;

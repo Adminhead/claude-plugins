@@ -33,7 +33,8 @@ A doc appears once, at its best tier. Docs you edited this session are dropped.
 
 - It fires once per change set. A hash of the sorted edited code paths is kept per session in `${CLAUDE_PLUGIN_DATA}`, so the same set never nudges twice. Another edited file makes a new set.
 - Edits made through Bash (`sed -i`, `mv`, code generators) are not seen.
-- Gap, UNCONFIRMED: Claude Code's hook docs say `session_id` is on every hook input and `agent_id` and `agent_type` appear when a hook fires inside a subagent, but they don't say whether a subagent's `session_id` is the parent's. If it differs, a subagent's edits are recorded under another session and missed. This was not tested against a live subagent.
+- Subagent edits: Claude Code's hook docs put `session_id` on every hook input and add `agent_id` and `agent_type` inside a subagent, without saying which session id a subagent carries. Subagent transcripts under `~/.claude/projects/<project>/<session>/subagents/*.jsonl` record the parent's `sessionId`, so hooks are expected to carry it too and subagent edits are attributed to the parent session. Not tested against a live subagent hook.
+- Edits under a gitignored path (such as subagent worktrees in `.claude/worktrees/`) and inside a nested repo or worktree are dropped.
 - It exits quietly when `stop_hook_active` is set, outside a git repo, or on any error, so it never traps a session.
 - To turn it off, disable the plugin. There is no per-hook setting.
 
