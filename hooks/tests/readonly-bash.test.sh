@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
-# Tests for readonly-bash.py: feeds hook-shaped JSON and asserts allow/block.
+# Tests for readonly-bash: feeds hook-shaped JSON and asserts allow/block.
+# HOOK picks the implementation (default readonly-bash.py; HOOK=hooks/readonly-bash.ts for the port).
 # shellcheck disable=SC2016  # literal $ in test commands is intentional
 set -uo pipefail
 
-HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/readonly-bash.py"
+hooks="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOOK="$(realpath "${HOOK:-$hooks/readonly-bash.py}")"
 pass=0
 fail=0
+
+# The walker copies must match their coremods source byte for byte.
+for f in shell/walk.ts vendor/unbash.js vendor/unbash.d.ts; do
+  if cmp -s "$hooks/$f" "$hooks/../plugins/coremods/hooks/$f"; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf 'FAIL: hooks/%s differs from plugins/coremods/hooks/%s\n' "$f" "$f"
+  fi
+done
 
 run() { # run <expect: allow|block> <label> <raw stdin>
   local expect="$1" label="$2" input="$3" rc=0 err
@@ -127,8 +139,13 @@ EOF'
 cmd allow "cat <<'EOF'
 \$(rm x)
 EOF"
-cmd block 'cat <<EOF
+# bash reads an unterminated heredoc to the end of the script, so nothing after it runs. The
+# tokenizer calls it a parse error; the walker reads it as bash does and still checks the body.
+if [[ $HOOK == *.py ]]; then unterminated=block; else unterminated=allow; fi
+cmd "$unterminated" 'cat <<EOF
 never terminated'
+cmd block 'cat <<EOF
+$(rm x)'
 cmd block 'bash <<X
 rm y
 X'
@@ -823,12 +840,16 @@ cmd block 'GOFLAGS=-toolexec=./x go test ./...'
 cmd block 'PYTHONPATH=./evil pytest -q'
 cmd block 'LD_PRELOAD=./x.so pytest -q'
 
-# The frontmatter command must fail closed even if python3 is shadowed or missing.
+# The frontmatter command must fail closed even if python3 is shadowed or the runtime is missing.
+case $HOOK in
+  *.ts) frontmatter='bun --no-env-file --config=/dev/null "'"$HOOK"'" || exit 2' ;;
+  *) frontmatter='python3 -I "'"$HOOK"'" || exit 2' ;;
+esac
 fm() { # fm <expect> <label> <command> [env assignments...]
   local expect="$1" label="$2" c="$3" rc=0 json
   shift 3
   json=$(jq -n --arg c "$c" '{tool_name:"Bash",tool_input:{command:$c}}')
-  printf '%s' "$json" | env "$@" "$BASH" -c 'python3 -I "'"$HOOK"'" || exit 2' >/dev/null 2>&1 || rc=$?
+  printf '%s' "$json" | env "$@" "$BASH" -c "$frontmatter" >/dev/null 2>&1 || rc=$?
   if { [[ $expect == block && $rc -eq 2 ]] || [[ $expect == allow && $rc -eq 0 ]]; }; then
     pass=$((pass + 1))
   else
@@ -841,7 +862,7 @@ printf 'import sys\nsys.exit(1)\n' >"$shadow/json.py"
 fm block 'shadowed json.py cannot fail open' 'rm x' PYTHONPATH="$shadow"
 fm allow 'shadowed json.py cannot change an allow' 'ls' PYTHONPATH="$shadow"
 rm -rf "$shadow"
-fm block 'missing python3 blocks' 'ls' PATH=/nonexistent
+fm block 'missing runtime blocks' 'ls' PATH=/nonexistent
 
 # The block message names /tmp, since TMPDIR is empty in agent Bash.
 err=$(jq -n '{tool_input:{command:"touch a"}}' | "$HOOK" 2>&1 >/dev/null) || true
