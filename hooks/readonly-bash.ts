@@ -1232,14 +1232,13 @@ const REDIR_OUT = set('>', '>>', '>|', '&>', '&>>', '>&', '<>')
 // as written, so `--out=$f` is still an option and `"/tmp/$d"` still scratch.
 const word = (w: string | null, text: string | undefined): string => w ?? text ?? EXPANDED
 
-// bash and zsh evaluate an array subscript (and an arithmetic operand) even when it was quoted, so a
-// substitution in `a['$(…)']=1`, `unset 'a[$(…)]'` or `[[ -v 'a[$(…)]' ]]` runs. Words are checked
-// only where a variable name is expected, since `Tags[?Key==`x`]` (JMESPath) and code are common.
+// bash and zsh evaluate an array subscript even when it was quoted, so a substitution in `a['$(…)']=1`
+// or `unset 'a[$(…)]'` runs. Words are checked only where a variable name is expected, since
+// `Tags[?Key==`x`]` (JMESPath) and code are common. The walker reports arithmetic contexts
+// (`(( … ))`, `${a[…]}`, `[[ -v … ]]`) as parse errors.
 const SUBSCRIPT_SUB = /[A-Za-z_][A-Za-z0-9_]*\[[^\]]*(?:\$\(|`)/
 const NAME_TAKERS = set('unset', 'printf', 'declare', 'typeset', 'local', 'export', 'readonly', 'read', 'let',
   'test', '[', 'mapfile', 'readarray')
-// In the raw text: a quoted `name[…$(…` as in `[[ -v 'a[$(…)]' ]]` or `(( 'a[$(…)]' ))`, which are no simple command.
-const QUOTED_SUBSCRIPT_SUB = /['"][A-Za-z_][A-Za-z0-9_]*\[[^\]'"]*\$\(/
 
 const subscriptSub = (c: ShellCommand): boolean =>
   c.assigns.some(a => a.name !== null && /\$\(|`/.test(a.name)) ||
@@ -1293,7 +1292,6 @@ function checkCommand(c: ShellCommand): void {
 function checkScript(text: string, depth: number): void {
   const r = depth === 0 ? parse(text) : reparse(text, depth)
   if (r.errors.length) throw new ParseFailure(r.errors[0].message)
-  if (QUOTED_SUBSCRIPT_SUB.test(text)) block('array subscript with a command substitution runs it')
   for (const c of r.commands) checkCommand(c)
 }
 

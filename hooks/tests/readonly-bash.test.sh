@@ -897,6 +897,23 @@ cmd "$hole" "unset 'a[\$(rm -rf /home/buck/x)]'"
 cmd "$hole" "printf -v 'a[\$(rm -rf /home/buck/x)]' x"
 cmd "$hole" "[[ -v 'a[\$(rm -rf /home/buck/x)]' ]]"
 
+# Arithmetic contexts expand a quoted subscript again.
+cmd block "echo \$(( a['\$(rm -rf /home/buck/x)'] ))"
+cmd block "(( a['\$(rm -rf /home/buck/x)'] ))"
+cmd block "for (( i=a['\$(rm -rf /home/buck/x)']; ; )); do break; done"
+cmd block "echo \$(( a['\`rm -rf /home/buck/x\`'] ))"
+cmd "$hole" "a=(['\$(rm -rf /home/buck/x)']=1)"
+cmd "$hole" "a+=([\"\\\$(rm -rf /home/buck/x)\"]=1)"
+cmd "$hole" "echo \${a['\$(rm -rf /home/buck/x)']}"
+cmd "$hole" "echo \$[ a['\$(rm -rf /home/buck/x)'] ]"
+cmd "$hole" "echo \${x:'\$(rm -rf /home/buck/x)'}"
+cmd "$hole" "[[ -v 'a[\`rm -rf /home/buck/x\`]' ]]"
+cmd "$hole" "[[ -v 'a'\"[\\\$(rm -rf /home/buck/x)]\" ]]"
+cmd "$hole" "[[ 1 -eq 'a'\"[\\\$(rm -rf /home/buck/x)]\" ]]"
+cmd "$hole" "(( 'a'\"[\\\$(rm -rf /home/buck/x)]\" ))"
+cmd "$hole" "[[ -v \"a[\\\`rm -rf /home/buck/x\\\`]\" ]]"
+cmd allow "aws ec2 describe-instances --query 'Reservations[?Tags[?Key==\`x\`]]'"
+
 # A long body under many redirects is checked in time (the hook timeout lets an unchecked call through).
 big="{ $(printf 'ls; %.0s' {1..20000})} $(printf '> /tmp/f %.0s' {1..20000})"
 json=$(printf '%s' "$big" | jq -Rs '{tool_name:"Bash",tool_input:{command:.}}')

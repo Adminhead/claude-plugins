@@ -174,6 +174,50 @@ function assignName(a: { name: string; index: Word | undefined }): string | null
 // backtick, `$(`, `${`, or a zsh modifier such as `$=name`. A lone `$` (`^a$|^b$`, `$/`) is literal.
 const hasExpansion = (text: string): boolean => /(?:^|[^\\])(?:\\\\)*(?:`|\$[({]|\$[=~^+][A-Za-z_{(])/.test(text)
 
+// A word's quoted and literal text, decoded, with each expansion as a NUL.
+const plain = (parts: readonly Node[]): string =>
+  parts
+    .map(p =>
+      p.type === 'Literal' || p.type === 'SingleQuoted' || p.type === 'AnsiCQuoted'
+        ? partSource(p)
+        : p.type === 'DoubleQuoted' || p.type === 'LocaleString'
+          ? plain(p.parts as Node[])
+          : '\u0000',
+    )
+    .join('')
+
+// bash expands an arithmetic subscript again when it evaluates it, so quoted `$(…)` or backticks there run.
+const ARITH_SUB = /\$\(|`/
+
+// `[[ … ]]` operators whose operands bash evaluates as arithmetic.
+const TEST_ARITH = new Set(['-eq', '-ne', '-lt', '-le', '-gt', '-ge'])
+
+// The arithmetic text of a node, or null when it has none: an arithmetic word, a `${a[i]}` index or
+// `${x:off:len}` slice, the `[key]` of an array literal element (up to its last `]=`, which may take
+// in some of the value), or a `[[ -v name ]]` or `[[ x -eq y ]]` operand.
+function arithText(node: Node): string | null {
+  const word = (w: unknown) => (isNode(w) ? ((w.parts as Node[] | undefined) ? plain(w.parts as Node[]) : (w.value as string)) : '')
+  switch (node.type) {
+    case 'ArithmeticWord':
+      return word(node)
+    case 'TestUnary':
+      return node.operator === '-v' ? word(node.operand) : null
+    case 'TestBinary':
+      return TEST_ARITH.has(node.operator as string) ? word(node.left) + word(node.right) : null
+    case 'ParameterExpansion': {
+      const op = node.operation as Node | undefined
+      return word(node.index) + (op?.type === 'Slice' ? word(op.offset) + word(op.length) : '')
+    }
+    case 'ArrayValue':
+      return (node.elements as Node[])
+        .filter(e => (e.text as string).startsWith('['))
+        .map(e => /^\[([\s\S]*)\]\+?=/.exec(word(e))?.[1] ?? '')
+        .join('')
+    default:
+      return null
+  }
+}
+
 const fdOf = (r: Redirection): number | string | null =>
   r.descriptor ? (r.descriptor.type === 'FileDescriptor' ? r.descriptor.value : r.descriptor.name) : null
 
@@ -261,6 +305,9 @@ function parseAt(text: string, depth: number): ShellParse {
       // unbash splits `${x/pattern/repl}` at the first `/` without regard to nesting, so a substitution
       // in it would be walked as the wrong command.
       errors.push({ message: 'substitution inside ${var/pattern/replacement}; rewrite in plain bash', pos: node.pos as number })
+    }
+    if (ARITH_SUB.test(arithText(node) ?? '')) {
+      errors.push({ message: 'substitution inside arithmetic subscript; rewrite in plain bash', pos: node.pos as number })
     }
     switch (node.type) {
       case 'Script':
