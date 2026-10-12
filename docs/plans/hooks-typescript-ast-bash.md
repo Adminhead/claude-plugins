@@ -8,8 +8,8 @@
 - Not done from the review rounds: a stray `)` or apostrophe in a running heredoc body turns a cloud-ops deny into ask.
 - Waiting on real-session soak: 7c (flip the other six agents after a few days of quick-review with no `readonly-bash: internal error`), then 7d (delete the .py after a further soak).
 - User decisions during execution: P1 (expanded segments in `/tmp` paths count as scratch) stays at parity with the Python hook; read-only agents' hook entries get no added timeout.
-- Left: 7 (7b and 7d wait on a real-session soak), 8.
-- Waiting on the user: the interactive ask check that settles D2 and D4 (headless `-p` returns ask as an error to the model, so the command never runs).
+- Left: 7c and 7d, which wait on the soak above.
+- Ask check done (2026-10-12, coremods 0.5.1, auto/accept-edits mode): `git reset --hard` and `base64 -d | sh` each prompted the user, from the main session and from inside a `coder` subagent. D2 and D4 stay at ask. Headless `-p` returns ask as an error to the model, so the command never runs there.
 - Each slice is committed to local `main` after its checks and review pass.
 
 ## Goal
