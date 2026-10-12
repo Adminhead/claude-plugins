@@ -52,7 +52,7 @@ EOF
 
 - Call the script by its literal path, as above, so the permission allow rule matches.
 - Always pass `--input FILE` or `--input -` with a heredoc. Plain stdin is never read.
-- Keep the Bash call's timeout above the script's (default 600 s; `--timeout` raises it for `max` effort). Consider `run_in_background` for `max`.
+- In the foreground, pass `--timeout 540` so the script finishes under the Bash 600 s cap. For `max` effort, run the call with `run_in_background` instead, since that effort can run past the foreground cap.
 - Both tools run read-only. codex uses its read-only sandbox. agy runs in a scratch workspace whose hook allows only file-reading tools.
 
 | Exit | Meaning | Do |
