@@ -849,8 +849,7 @@ WRITE_FLAGS = {'prettier': {'--write', '-w'}, 'eslint': {'--fix'}, 'gofmt': {'-w
 CHECK_FLAGS = {'black': {'--check', '--diff'}, 'isort': {'--check-only', '--check', '--diff', '-c'},
                'rustfmt': {'--check'}}
 # `<tool> <subcommand>` pairs that write unless a dry-run flag is present.
-FMT_SUBCOMMANDS = {'deno': ('fmt', {'--check'}),
-                   'terraform': ('fmt', {'-check', '-check=true'})}
+FMT_SUBCOMMANDS = {'deno': ('fmt', {'--check'})}
 
 
 def check_system_pkg(cmd, args):
@@ -885,6 +884,215 @@ def check_formatter(cmd, args):
             block("ruff --fix rewrites files")
 
 
+# ---------------------------------------------------------------- live systems
+#
+# Tools that change a cluster, cloud account, service or database. Each is
+# allowlisted by verb, so a verb that is not listed (including a new one) blocks.
+
+# tool -> (options that take a value, {read verb: None, or the sub-verbs that read}).
+LIVE_READ = {
+    'kubectl': ({'-n', '--namespace', '--context', '--cluster', '--user', '--kubeconfig', '-s',
+                 '--server', '--token', '--as', '--as-group', '--request-timeout', '-v'},
+                {**dict.fromkeys(['get', 'describe', 'logs', 'top', 'events', 'diff', 'explain', 'wait',
+                                  'api-resources', 'api-versions', 'cluster-info', 'version']),
+                 'rollout': {'status', 'history'},
+                 'config': {'view', 'get-contexts', 'current-context', 'get-clusters', 'get-users'},
+                 'auth': {'can-i', 'whoami'}}),
+    'helm': ({'-n', '--namespace', '--kube-context', '--kubeconfig', '--kube-apiserver',
+              '--kube-token', '--kube-as-user', '--kube-as-group', '--registry-config',
+              '--repository-cache', '--repository-config'},
+             {**dict.fromkeys(['template', 'lint', 'list', 'ls', 'status', 'get', 'show', 'search',
+                               'history', 'version', 'env']),
+              'dependency': {'list'}, 'dep': {'list'}, 'repo': {'list'}}),
+    'docker': ({'-H', '--host', '-c', '--context', '--config', '-l', '--log-level',
+                '-f', '--file', '-p', '--project-name', '--profile', '--env-file', '--project-directory'},
+               {**dict.fromkeys(['ps', 'logs', 'inspect', 'images', 'top', 'stats', 'port', 'diff',
+                                 'history', 'info', 'version', 'events', 'search']),
+                'image': {'ls', 'list', 'inspect', 'history'},
+                'container': {'ls', 'list', 'ps', 'inspect', 'logs', 'top', 'stats', 'diff', 'port'},
+                'network': {'ls', 'inspect'}, 'volume': {'ls', 'inspect'},
+                'context': {'ls', 'show', 'inspect'}, 'system': {'df', 'info', 'events'},
+                'compose': {'ps', 'ls', 'logs', 'config', 'images', 'top', 'version', 'port', 'events'}}),
+    'systemctl': ({'-H', '--host', '-M', '--machine', '-t', '--type', '-p', '--property', '-s',
+                   '--signal', '-n', '--lines', '-o', '--output', '--state', '--root'},
+                  dict.fromkeys(['status', 'show', 'cat', 'list-units', 'list-unit-files', 'list-timers',
+                                 'list-sockets', 'list-dependencies', 'list-jobs', 'is-active',
+                                 'is-enabled', 'is-failed', 'is-system-running', 'show-environment',
+                                 'get-default'])),
+    'pulumi': ({'--cwd', '-C', '-s', '--stack'},
+               {**dict.fromkeys(['preview', 'version', 'whoami', 'about', 'logs']),
+                'stack': {'ls', 'output', 'history', 'graph'}, 'config': {'get'}}),
+    'alembic': ({'-c', '--config', '-n', '--name', '-x'},
+                dict.fromkeys(['current', 'history', 'heads', 'branches', 'show', 'check', 'list_templates'])),
+    'prisma': ({'--schema'}, {**dict.fromkeys(['validate', 'version']), 'migrate': {'status', 'diff'}}),
+    'flyway': (set(), dict.fromkeys(['info', 'validate', 'version'])),
+    'dbmate': ({'-u', '--url', '-d', '--migrations-dir', '-e', '--env', '-s', '--schema-file',
+                '--migrations-table', '--env-file'},
+               dict.fromkeys(['status', 'wait', 'version'])),
+}
+TF_READ = ({'-chdir', '--terragrunt-working-dir', '--terragrunt-config', '--terragrunt-tfpath'},
+           {**dict.fromkeys(['validate', 'fmt', 'show', 'plan', 'version', 'output', 'providers', 'graph']),
+            'state': {'list', 'show', 'pull'}, 'workspace': {'list', 'show'}})
+LIVE_READ.update(terraform=TF_READ, tofu=TF_READ, terragrunt=TF_READ)
+LIVE_READ['docker-compose'] = (LIVE_READ['docker'][0], dict.fromkeys(LIVE_READ['docker'][1]['compose']))
+
+
+def check_live(cmd, args):
+    valued, verbs = LIVE_READ[cmd]
+    i, sub = first_positional(args, valued)
+    if sub is None:
+        return
+    if sub not in verbs:
+        block("%s %s may change a live system and is not on the read-only list" % (cmd, sub))
+    rest = args[i + 1:]
+    if verbs[sub] is not None:
+        second = first_positional(rest, valued)[1]
+        if second is not None and second not in verbs[sub]:
+            block("%s %s %s may change a live system" % (cmd, sub, second))
+    if sub == 'fmt' and not {'-check', '-check=true'} & set(args):
+        block("%s fmt rewrites files" % cmd)
+    out = option_value(rest, '', '-out') if sub == 'plan' else (
+        option_value(rest, '', '--output-dir') if cmd == 'helm' and sub == 'template' else None)
+    if out is not None and not is_scratch(out):
+        block("%s %s writes '%s'" % (cmd, sub, out))
+
+
+AWS_VALUED = {'--profile', '--region', '--output', '--endpoint-url', '--query', '--color',
+              '--cli-read-timeout', '--cli-connect-timeout', '--ca-bundle', '--cli-binary-format'}
+
+
+def check_aws(args):
+    """Only describe-*, get-* and list-* verbs, and `s3 ls`, pass."""
+    words, i = [], 0
+    while i < len(args) and len(words) < 2:
+        if args[i].startswith('-'):
+            i += args[i] in AWS_VALUED
+        else:
+            words.append(args[i])
+        i += 1
+    if len(words) == 2 and words != ['s3', 'ls'] and not words[1].startswith(('describe-', 'get-', 'list-')):
+        block("aws %s %s may change an account and is not on the read-only list" % tuple(words))
+
+
+REDIS_VALUED = {'-h', '-p', '-a', '-n', '-u', '-s', '-r', '-i', '-d', '-D', '-t', '--user', '--pass',
+                '--sni', '--cacert', '--capath', '--cert', '--key', '--pattern', '--count',
+                '--quoted-pattern', '--cluster'}
+REDIS_MODES = {'--scan', '--bigkeys', '--memkeys', '--stat', '--latency', '--latency-history',
+               '--latency-dist', '--keystats', '--hotkeys'}
+REDIS_READ = {
+    **dict.fromkeys(['get', 'mget', 'exists', 'ttl', 'pttl', 'type', 'keys', 'scan', 'sscan', 'hscan',
+                     'zscan', 'hget', 'hgetall', 'hmget', 'hkeys', 'hvals', 'hlen', 'hexists', 'llen',
+                     'lrange', 'lindex', 'scard', 'smembers', 'sismember', 'srandmember', 'zcard',
+                     'zrange', 'zrangebyscore', 'zrevrange', 'zscore', 'zrank', 'zcount', 'strlen',
+                     'getrange', 'info', 'ping', 'dbsize', 'time', 'xlen', 'xrange', 'xrevrange',
+                     'randomkey', 'dump', 'bitcount', 'echo']),
+    'config': {'get'}, 'client': {'list', 'info', 'getname'}, 'slowlog': {'get', 'len'},
+    'memory': {'usage', 'stats'}, 'object': {'encoding', 'freq', 'idletime', 'refcount'},
+    'xinfo': {'stream', 'groups', 'consumers'}, 'pubsub': {'channels', 'numsub', 'numpat'},
+}
+
+
+def check_redis(args):
+    """Only read commands pass; bare redis-cli takes commands from stdin."""
+    if {'--pipe', '--rdb', '--functions-rdb'} & set(args):
+        block("redis-cli bulk write or dump option")
+    i, sub = first_positional(args, REDIS_VALUED)
+    if sub is None:
+        if not REDIS_MODES & set(args):
+            block("redis-cli without a command reads commands from stdin")
+        return
+    sub = sub.lower()
+    if sub not in REDIS_READ:
+        block("redis-cli %s may write or flush" % sub)
+    if REDIS_READ[sub] is not None:
+        second = first_positional(args[i + 1:])[1]
+        if second is None or second.lower() not in REDIS_READ[sub]:
+            block("redis-cli %s %s may write" % (sub, second or ''))
+
+
+# client -> (-c/-e letter, its long option, short options whose value is the rest of the word)
+SQL_CLIENTS = {'psql': ('c', '--command', 'dhpUoLFRPTv'),
+               'mysql': ('e', '--execute', 'hPuDSp'),
+               'mariadb': ('e', '--execute', 'hPuDSp')}
+SQL_EXPLAIN = re.compile(r'explain\b\s*(\([^)]*\)|(?:(?:analy[sz]e|verbose|format\s*=?\s*\w+)\s+)*)', re.I)
+SQL_READ = re.compile(r'\(?\s*(select|show)\b', re.I)
+# SELECT forms that write: new tables, files, sequences, sessions, large objects.
+SQL_SIDE_EFFECT = re.compile(r'\binto\b|\b(nextval|setval|pg_terminate_backend|pg_cancel_backend|'
+                             r'pg_reload_conf|lo_\w+|dblink\w*)\s*\(', re.I)
+
+
+def sql_commands(cmd, args):
+    """The SQL strings given with -c/-e. Files and stdin cannot be checked, so they block."""
+    letter, long_name, valued = SQL_CLIENTS[cmd]
+    found, i = [], 0
+    while i < len(args):
+        a = args[i]
+        i += 1
+        if a.startswith('--'):
+            name, eq, val = a.partition('=')
+            if name == '--file':
+                block("%s --file runs SQL that cannot be checked" % cmd)
+            if name == long_name:
+                if not eq:
+                    val, i = (args[i] if i < len(args) else ''), i + 1
+                found.append(val)
+        elif a.startswith('-') and len(a) > 1:
+            for pos, ch in enumerate(a[1:], 1):
+                if ch == letter:
+                    val = a[pos + 1:]
+                    if not val:
+                        val, i = (args[i] if i < len(args) else ''), i + 1
+                    found.append(val)
+                    break
+                if cmd == 'psql' and ch == 'f':
+                    block("psql -f runs SQL that cannot be checked")
+                if ch in valued:
+                    break
+    return found
+
+
+def check_sql_statement(cmd, stmt):
+    stmt = re.sub(r'\\G\s*$', '', stmt.strip())   # mysql's vertical-output terminator
+    explain = SQL_EXPLAIN.match(stmt)
+    if explain:   # plain EXPLAIN only plans; ANALYZE runs the statement, so it must read
+        if not re.search(r'analy[sz]e', explain.group(0), re.I):
+            return
+        stmt = stmt[explain.end():]
+    meta = re.fullmatch(r'\\(d\w*|l)\+?(\s+[^\\\s]+)?', stmt)
+    if not meta and (not SQL_READ.match(stmt) or '\\' in stmt or SQL_SIDE_EFFECT.search(stmt)):
+        block("%s statement is not a plain SELECT, EXPLAIN, SHOW or \\d: %s" % (cmd, stmt[:40]))
+
+
+def check_sql_client(cmd, args):
+    commands = sql_commands(cmd, args)
+    if not commands:
+        if cmd == 'psql' and ('-l' in args or '--list' in args):
+            return
+        block("%s without -c/-e reads SQL from stdin" % cmd)
+    out = option_value(args, '-o', '--output') if cmd == 'psql' else None
+    if out is not None and not is_scratch(out):
+        block("psql -o writes a non-scratch file")
+    for text in commands:
+        for stmt in text.split(';'):
+            if stmt.strip():
+                check_sql_statement(cmd, stmt)
+
+
+LIQUIBASE_WRITE = {'update', 'updatecount', 'updatetotag', 'rollback', 'rollbackcount', 'rollbacktodate',
+                   'rollbackonechangeset', 'rollbackoneupdate', 'dropall', 'tag', 'clearchecksums',
+                   'changelogsync', 'changelogsynctotag', 'marknextchangesetran', 'releaselocks',
+                   'generatechangelog', 'executesql', 'init'}
+KNEX_READ = {'migrate:list', 'migrate:status', 'migrate:currentVersion'}
+
+
+def check_migration(cmd, args):
+    for a in args:
+        if ((cmd in ('rails', 'rake') and a.startswith('db:'))
+                or (cmd == 'knex' and a.startswith(('migrate', 'seed')) and a not in KNEX_READ)
+                or (cmd == 'liquibase' and a.lower().replace('-', '') in LIQUIBASE_WRITE)):
+            block("%s %s changes the database" % (cmd, a))
+
+
 # ---------------------------------------------------------------- dispatch
 
 KEYWORDS = {'then', 'do', 'else', 'elif', 'if', 'while', 'until', 'for', '!', '{', '}'}
@@ -892,7 +1100,10 @@ KEYWORDS = {'then', 'do', 'else', 'elif', 'if', 'while', 'until', 'for', '!', '{
 
 RTK_BLOCKED = {'init', 'trust', 'untrust', 'telemetry', 'hook'}
 ENV_OK = re.compile(r'LANG|LC_\w+|TERM|TZ|NO_COLOR|CLICOLOR\w*|FORCE_COLOR|COLUMNS|LINES|CI|'
-                    r'GH_REPO|GH_HOST|GH_FORCE_TTY')
+                    r'GH_REPO|GH_HOST|GH_FORCE_TTY|'
+                    # Code-free test settings. NODE_OPTIONS, GOFLAGS, PYTHONPATH and LD_PRELOAD load code.
+                    r'RUST_BACKTRACE|RUST_LOG|RUST_TEST_THREADS|PYTHONHASHSEED|PYTHONFAULTHANDLER|'
+                    r'PYTHONDONTWRITEBYTECODE|GOMAXPROCS|GOTRACEBACK|NODE_ENV|DEBUG')
 ASSIGNMENT = r'^([A-Za-z_][A-Za-z0-9_]*)(\+?)='
 # `read` only assigns stdin, so it is judged by what the name could launch or load.
 READ_RISKY = re.compile(r'(\w*PAGER|\w*BROWSER|\w*EDITOR|VISUAL|PATH|IFS|ENV|BASH_ENV|PROMPT_COMMAND|'
@@ -1109,8 +1320,18 @@ def check_argv(words):
         i, sub = first_positional(args)
         if sub in SUB_BLOCK[cmd]:
             block("%s %s modifies the system" % (cmd, sub))
-        if cmd in ('poetry', 'pipx') and sub == 'run':
+        if (cmd in ('poetry', 'pipx') and sub == 'run') or (cmd == 'bundle' and sub == 'exec'):
             check_launcher(args[i + 1:])
+    elif cmd in LIVE_READ:
+        check_live(cmd, args)
+    elif cmd == 'aws':
+        check_aws(args)
+    elif cmd == 'redis-cli':
+        check_redis(args)
+    elif cmd in SQL_CLIENTS:
+        check_sql_client(cmd, args)
+    elif cmd in ('rails', 'rake', 'knex', 'liquibase'):
+        check_migration(cmd, args)
     else:
         check_formatter(cmd, args)
 
