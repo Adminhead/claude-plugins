@@ -335,7 +335,7 @@ const withoutData = (script: string, data: readonly string[]): string =>
 // Whether a shell reads its program from a pipe: a shell stage with no -c, after a stage whose text
 // names a guarded tool (`echo '$(tofu destroy)' | sh`). A guarded tool run in that stage is classified itself.
 const pipedToShell = (c: ShellCommand): boolean =>
-  !!c.pipeline && c.pipeline.stage > 0 && SHELLS.has(basename(c.text[0] ?? '')) && nestedScript(c.argv) === null &&
+  !!c.pipeline && c.pipeline.stage > 0 && ['bash', 'sh', 'zsh', 'dash', 'ksh'].includes(basename(c.text[0] ?? '')) && nestedScript(c.argv) === null &&
   c.pipeline.prev.some(p => !TOOLS.has(basename(p.text[0] ?? '')) && TOOL_RE.test(plainText(p.text.join(' '))))
 
 // Best-effort deny or ask for a command outside the allowlist. Null means no opinion.
