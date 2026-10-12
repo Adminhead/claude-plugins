@@ -282,6 +282,14 @@ t "heredoc substitution beside an apply" deny $'cat <<EOF | sh\n$(date)\ntofu ap
 t "heredoc substitution beside a destroy" deny $'cat <<EOF > x.sh\n$(date)\ntofu destroy\nEOF'
 t "heredoc substitution beside a plan" ask $'cat <<EOF | sh\n$(date)\ntofu plan\nEOF'
 t "heredoc with a final apply" deny $'cat <<\'EOF\' > x.md\nnotes\nEOF\ntofu apply'
+t "earlier line ends with the heredoc body: destroy" deny $'tofu destroy\ncat <<\'E\'\nofu destroy\nE'
+t "earlier line ends with the heredoc body: apply" deny $'tofu apply -auto-approve\ncat > notes.md <<\'EOF\'\nofu apply -auto-approve\nEOF'
+t "earlier line ends with the heredoc body: state rm" deny $'terraform state rm aws_instance.a\ncat <<\'E\'\nerraform state rm aws_instance.a\nE'
+t "earlier line ends with an unquoted heredoc body" deny $'tofu destroy\ncat <<E\nofu destroy\nE'
+t "earlier line ends with the heredoc body: subagent aws" deny $'aws s3 rm s3://b --recursive\ncat <<\'E\'\nws s3 rm s3://b --recursive\nE' notoken
+t "substitution text piped to sh" ask "echo '\$(tofu destroy)' | sh"
+t "backtick text piped to bash" ask "printf %s '\`tofu destroy\`' | bash"
+t "tool output piped to sh" none "tofu validate | sh"
 t "tool named only in a for list" ask 'for t in tofu; do $t destroy; done'
 t "case arm" deny $'case $x in a) tofu destroy ;; esac'
 t "while body" deny 'while true; do tofu apply; done'
@@ -299,6 +307,13 @@ t "zsh-only expansion is a parse error" ask 'echo $=x; tofu plan'
 t "tool name only in a quoted heredoc passed to cat" none $'cat <<\'EOF\' | tee x.md\ntofu destroy\nEOF'
 t "tool name in a quoted string" none "echo 'run tofu destroy later'"
 t "commit message heredoc with tool name and a substitution elsewhere" none $'git commit -m "$(cat <<\'EOF\'\nfix aws stuff\nEOF\n)" --author "$(whoami) <a@b>"'
+
+# A shared heredoc is parsed once, so a 64 KB command with many commands under one redirect stays fast
+big=$(python3 -c 'print("{ " + ":;" * 6000 + " } <<EOF\n" + "$(tofu destroy)\n" * 2500 + "EOF", end="")')
+start=$(date +%s%N)
+got=$(mkin "$big" | decision)
+ms=$(( ($(date +%s%N) - start) / 1000000 ))
+if [ "$got" = deny ] && [ "$ms" -lt 1000 ]; then ok "64 KB shared heredoc: deny in ${ms} ms"; else bad "64 KB shared heredoc" "deny under 1000 ms" "$got in ${ms} ms"; fi
 
 # Non-matching
 t "no tool" none "ls -la"

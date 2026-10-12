@@ -95,7 +95,7 @@ Rules that apply across skills:
 
 The plugin registers a `PreToolUse` hook on Bash (`scripts/cloud-ops-guard.ts`, run by `bun` with `--no-env-file --config=/dev/null`, 10-second timeout). It covers `tofu`, `terraform`, `terragrunt`, and `aws`.
 
-Since 0.5.0 the hook is TypeScript on a shell AST walker (`scripts/shell/walk.ts` over a vendored `unbash` parser, copied byte for byte from the coremods plugin). It replaces the Python 3 script, so `bun` must be on `PATH`. If `bun` is missing, the hook errors and the normal permission flow decides, as it did when `python3` was missing. The policy is unchanged, and the walker now sees tool calls inside `$(...)`, backticks, `<(...)`, `bash -c`, `eval`, unquoted heredoc bodies and the wrappers below.
+Since 0.5.0 the hook is TypeScript on a shell AST walker (`scripts/shell/walk.ts` over a vendored `unbash` parser, copied byte for byte from the coremods plugin). It replaces the Python 3 script, so `bun` must be on `PATH`. If `bun` is missing, the hook errors and the normal permission flow decides, as it did when `python3` was missing. The rules are the same, with deeper coverage: the walker sees tool calls inside `$(...)`, backticks, `<(...)`, `bash -c`, `eval`, unquoted heredoc bodies and the wrappers below. A `bash -c 'tofu apply -auto-approve'` or `eval "tofu apply"` that used to get ask is now deny, as is a destroy or unplanned apply inside a substitution or a heredoc body that runs. A variable or `<(...)` word with no literal subcommand (`terragrunt list --filters-file <(echo "$f")`) is also deny now, where it was ask.
 
 | Decision | When |
 | --- | --- |

@@ -231,7 +231,7 @@ function splitTasks(c: ShellCommand): [(string | null)[], string[]][] {
 function nestedFindings(script: string, depth: number): Finding[] {
   const r = reparse(script, depth)
   if (r.errors.length) throw new ParseFailure(r.errors[0].message)
-  return r.commands.flatMap(c => commandFindings(c, script))
+  return scriptFindings(r.commands, script, depth)
 }
 
 // Findings for one task: a word list in which expansions stay as written (`text`) and `argv` keeps
@@ -267,9 +267,13 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
 const runs = (script: string, h: ShellHeredoc): boolean =>
   (h.body !== '' && script.endsWith(h.body)) || (!h.quoted && SUBST.test(h.body))
 
-function commandFindings(c: ShellCommand, script: string): Finding[] {
-  const out = splitTasks(c).flatMap(([argv, words]) => classify(argv, words, c.depth))
-  for (const h of c.heredocs) if (runs(script, h)) out.push(...nestedFindings(h.body, c.depth + 1))
+// Findings for the commands of one parsed script, then for each heredoc body it runs. Commands
+// under one compound share their heredoc objects, so each body is parsed once.
+function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number): Finding[] {
+  const out = commands.flatMap(c => splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth)))
+  for (const h of new Set(commands.flatMap(c => c.heredocs))) {
+    if (runs(script, h)) out.push(...nestedFindings(h.body, depth + 1))
+  }
   return out
 }
 
@@ -320,12 +324,19 @@ function briefAllows(d: Record<string, unknown>): boolean | null {
 }
 
 // The script without its data heredoc bodies, so a tool named only in data is not a mention.
-// Each body is cut once, so a real command that repeats a body's text still counts.
+// A body starts a line, so it is cut only at a line start (an earlier line that merely ends with
+// the body's text keeps its tool name), and once, so a real line that repeats the body still counts.
 const withoutData = (script: string, data: readonly string[]): string =>
   data.reduce((s, body) => {
-    const i = s.indexOf(body)
-    return i < 0 ? s : s.slice(0, i) + s.slice(i + body.length)
+    const i = s.indexOf(`\n${body}`)
+    return i < 0 ? s : s.slice(0, i + 1) + s.slice(i + 1 + body.length)
   }, script)
+
+// Whether a shell reads its program from a pipe: a shell stage with no -c, after a stage whose text
+// names a guarded tool (`echo '$(tofu destroy)' | sh`). A guarded tool run in that stage is classified itself.
+const pipedToShell = (c: ShellCommand): boolean =>
+  !!c.pipeline && c.pipeline.stage > 0 && SHELLS.has(basename(c.text[0] ?? '')) && nestedScript(c.argv) === null &&
+  c.pipeline.prev.some(p => !TOOLS.has(basename(p.text[0] ?? '')) && TOOL_RE.test(plainText(p.text.join(' '))))
 
 // Best-effort deny or ask for a command outside the allowlist. Null means no opinion.
 function check(cmd: string, d: Record<string, unknown>): Decision | null {
@@ -341,12 +352,13 @@ function check(cmd: string, d: Record<string, unknown>): Decision | null {
   let results: Finding[] = []
   if (TOOL_RE.test(plainText(withoutData(cmd, data)))) {
     try {
-      results = commands.flatMap(c => commandFindings(c, cmd))
+      results = scriptFindings(commands, cmd, 0)
     } catch (e) {
       if (e instanceof ParseFailure) return ['ask', PARSE_REASON]
       throw e
     }
     if (commands.some(c => c.redirects.some(r => r.op === '>|'))) asks.push('A redirect or operator next to a guarded tool cannot be checked.')
+    if (commands.some(pipedToShell)) asks.push('Text that mentions a guarded tool is piped to a shell.')
     if (commands.some(c => c.nesting > 0)) asks.push('Command substitution around a guarded tool cannot be checked.')
   }
   const denies = results.flatMap(([kind, reason]) => (kind === 'deny' ? [reason!] : []))
