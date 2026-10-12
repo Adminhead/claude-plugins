@@ -210,4 +210,18 @@ Files: `plugins/efficient-core/skills/second-opinion/SKILL.md:55`, `docs/plugins
 
 ## Status
 
-Not started.
+| Slice | State |
+| --- | --- |
+| 0 | Done. Deny rules for general-purpose and Plan work, and `--agent orchestration` still runs. |
+| 1 | Done: `7e47870`, `af4a59e`, `7e2ffb8`. Fail-closed verb allowlists, SQL checks, runner and launcher unwrapping. Review, one re-check, then the final fix verified by probe. readonly-bash tests 777/0. Security audit stopped partway by a classifier; its findings overlapped review's. |
+| 2 | Done. Deny rules, `consult.sh` allow rule at the 0.4.2 cache path (update on the next efficient-core release), avoid-ai-writing at user scope. |
+| 3 | Done: `4ccf235`. |
+| 4 | Done: `ff6f62c`, `62997d5`, `699e5e1`. |
+| 5 | Done: `63092e6`. |
+| 6 | Done: `7a892d8`, shipped as efficient-core 0.4.2. |
+
+Open:
+
+- Live spawn of one writer, one debugger and Explore to confirm model and effort in `/tasks`.
+- Confirm scribe's avoid-ai-writing preload loads (`claude --debug`).
+- readonly-bash doesn't cover `ssh`, `service`, `pkill`, `podman`, `oc`, `kubecolor`, `helmfile`, `gcloud`, `dropdb`, or `make`/`npm` scripts. The user decides whether to add them.
