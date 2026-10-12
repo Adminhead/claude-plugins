@@ -53,6 +53,8 @@ export type ShellCommand = {
   nesting: number
   // 0 for the parsed text, +1 per `reparse` level.
   depth: number
+  // The commands emitted inside this command's own words and redirects (`$(...)`, backticks, `<(...)`), nested ones included.
+  subs: ShellCommand[]
 }
 
 export type ShellParse = { commands: ShellCommand[]; errors: ParseError[] }
@@ -73,10 +75,17 @@ const isNode = (v: unknown): v is Node => typeof v === 'object' && v !== null &&
 // unbash 5.0.0 builds these node fields on first read, so `Object.keys` doesn't list them.
 const LAZY_FIELDS = ['parts', 'elements', 'value', 'initialize', 'test', 'update', 'expression', 'index']
 
+// Operations that leave HOME as it was or strip some of its tail: `${HOME:?}`, `${HOME:-x}`, `${HOME%/}`. They read as home.
+const HOME_OPS = new Set(['?', ':?', '-', ':-', '=', ':=', '%', '%%'])
+
 const isHome = (p: Node): boolean =>
   p.type === 'SimpleExpansion'
     ? p.text === '$HOME'
-    : p.type === 'ParameterExpansion' && p.parameter === 'HOME' && !p.operation && !p.prefix && !p.index
+    : p.type === 'ParameterExpansion' &&
+      p.parameter === 'HOME' &&
+      (!p.operation || HOME_OPS.has((p.operation as { operator: string }).operator)) &&
+      !p.prefix &&
+      !p.index
 
 // Stands for a leading $HOME until the whole word is known.
 const HOME = '\u0000'
@@ -186,7 +195,7 @@ function parseAt(text: string, depth: number): ShellParse {
   const commands: ShellCommand[] = []
   const errors: ParseError[] = []
 
-  const emit = (c: Command, ctx: Ctx) => {
+  const emit = (c: Command, ctx: Ctx): ShellCommand => {
     for (const m of ctx.carriers) m.hit = true
     const own = convert(c.redirects)
     const argv: (string | null)[] = []
@@ -209,7 +218,7 @@ function parseAt(text: string, depth: number): ShellParse {
     }
     const words = [c.name, ...c.args, ...c.prefix].flatMap(a =>
       !a ? [] : a.type === 'Word' ? [a] : a.type === 'Assignment' ? (a.value.type === 'Word' ? [a.value] : [...a.value.elements]) : [])
-    commands.push({
+    const emitted: ShellCommand = {
       argv,
       text,
       locale: words.some(hasLocale),
@@ -223,7 +232,10 @@ function parseAt(text: string, depth: number): ShellParse {
       pipeline: ctx.pipeline,
       nesting: ctx.nesting,
       depth,
-    })
+      subs: [],
+    }
+    commands.push(emitted)
+    return emitted
   }
 
   const visit = (node: unknown, ctx: Ctx): void => {
@@ -259,10 +271,12 @@ function parseAt(text: string, depth: number): ShellParse {
         return
       case 'Command': {
         const c = node as unknown as Command
-        emit(c, ctx)
+        const emitted = emit(c, ctx)
+        const from = commands.length
         visit(c.prefix, ctx)
         visit(c.name, ctx)
         visit(c.suffix, ctx)
+        emitted.subs = commands.slice(from)
         return
       }
       case 'Pipeline': {
@@ -305,7 +319,7 @@ function parseAt(text: string, depth: number): ShellParse {
           for (const m of ctx.carriers) m.hit = true
           commands.push({
             argv: [], text: [], locale: false, assigns: [], redirects: inner.redirects, heredocs: inner.heredocs,
-            pipeline: ctx.pipeline, nesting: ctx.nesting, depth,
+            pipeline: ctx.pipeline, nesting: ctx.nesting, depth, subs: [],
           })
         }
         return
@@ -337,7 +351,7 @@ export function reparse(text: string, depth: number): ShellParse {
   return parseAt(text, depth)
 }
 
-const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash'])
+const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh'])
 
 // The script text of `sh|bash|zsh|dash -c STR` (a bare name or a path; bundled flags such as
 // `-lc` included) and of `eval` with all-literal arguments. Null for any other command, or when
