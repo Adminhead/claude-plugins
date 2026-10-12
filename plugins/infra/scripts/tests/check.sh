@@ -287,6 +287,25 @@ t "earlier line ends with the heredoc body: apply" deny $'tofu apply -auto-appro
 t "earlier line ends with the heredoc body: state rm" deny $'terraform state rm aws_instance.a\ncat <<\'E\'\nerraform state rm aws_instance.a\nE'
 t "earlier line ends with an unquoted heredoc body" deny $'tofu destroy\ncat <<E\nofu destroy\nE'
 t "earlier line ends with the heredoc body: subagent aws" deny $'aws s3 rm s3://b --recursive\ncat <<\'E\'\nws s3 rm s3://b --recursive\nE' notoken
+t "continuation hides the tool name: destroy" deny $'true\nt\\\nofu destroy\ncat <<\'E\'\nofu destroy\nE'
+t "continuation hides the tool name, first line" deny $'t\\\nofu destroy\ncat <<\'E\'\nofu destroy\nE'
+t "continuation hides the tool name, unquoted delimiter" deny $'t\\\nofu destroy\ncat <<E\nofu destroy\nE'
+t "continuation inside the heredoc body" deny $'true\nt\\\nofu destroy\ncat <<\'E\'\nt\\\nE'
+t "continuation after to" deny $'true\nto\\\nfu destroy\ncat <<\'E\'\nto\\\nE'
+t "continuation: subagent aws" deny $'a\\\nws s3 rm s3://x\ncat <<\'E\'\nws s3 rm s3://x\nE' notoken
+t "piped to sudo sh" ask "echo '\$(tofu destroy)' | sudo sh"
+t "piped to sudo -u root bash" ask "echo 'tofu destroy' | sudo -u root bash"
+t "piped to env bash" ask "echo 'tofu destroy' | env bash"
+t "piped to env -i sh" ask "echo 'tofu destroy' | env -i sh"
+t "piped to command sh" ask "echo 'tofu destroy' | command sh"
+t "piped to exec sh" ask "echo 'tofu destroy' | exec sh"
+t "piped to timeout 5 sh" ask "echo 'tofu destroy' | timeout 5 sh"
+t "piped to nohup bash" ask "echo 'tofu destroy' | nohup bash"
+t "piped to nice sh" ask "echo 'tofu destroy' | nice sh"
+t "piped through tee to sh" ask "echo 'tofu destroy' | tee f | sh"
+t "piped through cat to bash" ask "echo 'tofu destroy' | cat | bash"
+t "piped to xargs sh" ask "echo 'tofu destroy' | xargs sh"
+t "piped to busybox sh" ask "echo 'tofu destroy' | busybox sh"
 t "substitution text piped to sh" ask "echo '\$(tofu destroy)' | sh"
 t "backtick text piped to bash" ask "printf %s '\`tofu destroy\`' | bash"
 t "tool output piped to sh" none "tofu validate | sh"
@@ -309,7 +328,9 @@ t "tool name in a quoted string" none "echo 'run tofu destroy later'"
 t "commit message heredoc with tool name and a substitution elsewhere" none $'git commit -m "$(cat <<\'EOF\'\nfix aws stuff\nEOF\n)" --author "$(whoami) <a@b>"'
 
 # A shared heredoc is parsed once, so a 64 KB command with many commands under one redirect stays fast
-big=$(python3 -c 'print("{ " + ":;" * 6000 + " } <<EOF\n" + "$(tofu destroy)\n" * 2500 + "EOF", end="")')
+colons=$(printf ':;%.0s' $(seq 6000))
+subs=$(printf '$(tofu destroy)\n%.0s' $(seq 2500))
+big="{ $colons } <<EOF"$'\n'"$subs"$'\n'"EOF"
 start=$(date +%s%N)
 got=$(mkin "$big" | decision)
 ms=$(( ($(date +%s%N) - start) / 1000000 ))

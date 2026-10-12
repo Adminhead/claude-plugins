@@ -323,20 +323,31 @@ function briefAllows(d: Record<string, unknown>): boolean | null {
   }
 }
 
-// The script without its data heredoc bodies, so a tool named only in data is not a mention.
-// A body starts a line, so it is cut only at a line start (an earlier line that merely ends with
-// the body's text keeps its tool name), and once, so a real line that repeats the body still counts.
-const withoutData = (script: string, data: readonly string[]): string =>
-  data.reduce((s, body) => {
-    const i = s.indexOf(`\n${body}`)
-    return i < 0 ? s : s.slice(0, i + 1) + s.slice(i + 1 + body.length)
-  }, script)
+// How many times the script names a guarded tool, with quotes and line continuations joined.
+const mentions = (s: string): number => plainText(s).match(new RegExp(TOOL_RE, 'g'))?.length ?? 0
 
-// Whether a shell reads its program from a pipe: a shell stage with no -c, after a stage whose text
-// names a guarded tool (`echo '$(tofu destroy)' | sh`). A guarded tool run in that stage is classified itself.
+// Whether the script names a tool outside its data heredoc bodies. The bodies sit inside the
+// script, so the script's count never falls below theirs; no text is cut.
+const mentionedOutsideData = (script: string, data: readonly string[]): boolean =>
+  mentions(script) > data.reduce((n, body) => n + mentions(body), 0)
+
+const SHELL_NAMES: ReadonlySet<string> = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh'])
+
+// Whether a command is a shell reading its program from stdin: bash, sh and the like with no -c,
+// also behind wrappers, `xargs` or `busybox`.
+function readsShellFromStdin(c: ShellCommand): boolean {
+  const k = stripWrappers(c.text)
+  if (k === null || k >= c.text.length) return false
+  let i = k
+  if (['xargs', 'busybox'].includes(basename(c.text[k]))) i = c.text.findIndex((w, j) => j > k && !w.startsWith('-'))
+  return i >= 0 && SHELL_NAMES.has(basename(c.text[i])) && nestedScript(c.argv.slice(i)) === null
+}
+
+// Whether a shell reads text from earlier pipeline stages that names a guarded tool
+// (`echo '$(tofu destroy)' | sh`). A guarded tool run in an earlier stage is classified itself.
 const pipedToShell = (c: ShellCommand): boolean =>
-  !!c.pipeline && c.pipeline.stage > 0 && ['bash', 'sh', 'zsh', 'dash', 'ksh'].includes(basename(c.text[0] ?? '')) && nestedScript(c.argv) === null &&
-  c.pipeline.prev.some(p => !TOOLS.has(basename(p.text[0] ?? '')) && TOOL_RE.test(plainText(p.text.join(' '))))
+  !!c.pipeline && c.pipeline.stage > 0 && readsShellFromStdin(c) &&
+  c.pipeline.earlier.some(p => !TOOLS.has(basename(p.text[0] ?? '')) && mentions(p.text.join(' ')) > 0)
 
 // Best-effort deny or ask for a command outside the allowlist. Null means no opinion.
 function check(cmd: string, d: Record<string, unknown>): Decision | null {
@@ -350,7 +361,7 @@ function check(cmd: string, d: Record<string, unknown>): Decision | null {
     asks.push('A heredoc that mentions a guarded tool feeds a shell.')
   }
   let results: Finding[] = []
-  if (TOOL_RE.test(plainText(withoutData(cmd, data)))) {
+  if (mentionedOutsideData(cmd, data)) {
     try {
       results = scriptFindings(commands, cmd, 0)
     } catch (e) {
