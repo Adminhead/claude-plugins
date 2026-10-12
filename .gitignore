@@ -1,5 +1,6 @@
 .vscode/
 .idea/
+.claude/worktrees/
 __pycache__/
 .pytest_cache/
 plugins/*/evals/results/

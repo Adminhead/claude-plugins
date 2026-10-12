@@ -28,7 +28,7 @@
       "name": "git",
       "source": "./plugins/git",
       "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "category": "development"
     },
     {
@@ -42,7 +42,7 @@
       "name": "efficient-core",
       "source": "./plugins/efficient-core",
       "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, modernization, second-opinion review, review-fix loops, plan execution, anti-slop cleanup, and poka-yoke error-proofing, plus the Exa web search MCP server.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "category": "development"
     },
     {
@@ -156,7 +156,7 @@
       "name": "authoring",
       "source": "./plugins/authoring",
       "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security.",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "category": "development"
     },
     {
