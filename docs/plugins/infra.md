@@ -135,9 +135,10 @@ The deny check is best-effort. It splits compound commands and sees through `VAR
 | `apply` with `-auto-approve` or `-destroy`, or without one literal plan file as its last argument | deny: save a plan, review it, then apply that file |
 | `destroy`, `import`, `state rm`, `state mv`, `state push`, `state replace-provider` | deny, with the safe alternative in the reason |
 | Any of those subcommand words anywhere in a segment, so a flag value cannot hide the real one (`--working-dir plan destroy`) | deny |
+| A variable or substitution as the subcommand or `state` verb (`tofu $S`, `tofu state "$V" x`), since it may hide `destroy` or `state rm` | deny |
 | `taint`, `refresh`, `workspace`, `console`, `test`, `show`, an unknown subcommand, or a never-allowed flag | ask |
 | A guarded tool inside `$()`, backticks, `bash -c`, `eval`, `xargs`, `env -S`, or `mise exec -c`, or after a command the guard does not know (`op run --`) | ask |
-| A variable as the command or in a guarded command's arguments, an operator such as `>\|` or `<(`, or a second guarded tool in one segment | ask |
+| A variable as the command, an operator such as `>\|` or `<(`, or a second guarded tool in one segment | ask |
 
 The strictest result wins. Any deny denies the whole command, then any ask asks. If the guard crashes or gets malformed input, it answers `ask`.
 

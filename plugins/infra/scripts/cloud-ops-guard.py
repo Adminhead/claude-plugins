@@ -273,6 +273,14 @@ def saved_plan(rest):
     return len(pos) == 1 and pos[0] == rest[-1] and bool(PLANFILE.fullmatch(pos[0]))
 
 
+DYNAMIC_REASON = "A variable or substitution as the subcommand or state verb may hide destroy or state rm; write it literally."
+
+
+def dynamic(word):
+    """True for a non-flag word whose value is only known at run time."""
+    return not word.startswith("-") and ("$" in word or "`" in word)
+
+
 def tf_sub(sub, rest):
     if sub == "apply":
         return (GATE, SUBAGENT_REASON) if saved_plan(rest) else (DENY, APPLY_REASON)
@@ -282,6 +290,8 @@ def tf_sub(sub, rest):
         return DENY, "Add an import block and apply it through a saved plan."
     if sub == "state":
         verb = next((a for a in rest if not a.startswith("-")), "")
+        if dynamic(verb):
+            return DENY, DYNAMIC_REASON
         if verb in {"list", "show"}:
             return NEUTRAL, None
         if verb in {"rm", "mv", "push", "replace-provider"}:
@@ -301,13 +311,13 @@ def classify_tf(args):
     found = [tf_sub(a, args[i + 1:]) for i, a in enumerate(args)
              if a in SUBCMDS and args[i - 1:i] != ["state"]]
     if not found:
-        found.append((ASK, "Cannot classify this infrastructure command."))
+        # With no literal subcommand, a variable word may be destroy.
+        dyn = any(dynamic(a) for a in args)
+        found.append((DENY, DYNAMIC_REASON) if dyn else (ASK, "Cannot classify this infrastructure command."))
     if any(a.startswith("-") and a.lstrip("-").split("=", 1)[0] in NEVER_FLAGS for a in args):
         found.append((ASK, "This flag migrates state, writes generated files, or prints secrets."))
     if any(a in TOOLS for a in args):
         found.append((ASK, "A second guarded tool in one command cannot be checked."))
-    if any("$" in a for a in args):
-        found.append((ASK, "A variable in a guarded command can expand to anything."))
     return found
 
 

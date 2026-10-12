@@ -212,7 +212,14 @@ t "unknown option cluster" ask "sudo -iu root tofu destroy"
 t "echo with a dangerous tool call" ask "echo tofu apply"
 t "variable as the command" ask 'X=tofu; $X destroy'
 t "eval of a variable" ask "CMD='tofu destroy'; eval \"\$CMD\""
-t "variable in tool arguments" ask 'tofu -chdir=$PWD/infra plan'
+t "variable in tool arguments" none 'tofu -chdir=$PWD/infra plan'
+t "variable as the subcommand" deny 'S=destroy; tofu $S'
+t "quoted braced variable as the subcommand" deny 'tofu "${SUB}" -auto-approve'
+t "variable subcommand under terragrunt" deny 'terragrunt run-all $S'
+t "substitution as the subcommand" deny 'tofu `echo destroy`'
+t "variable as the state verb" deny 'V=rm; tofu state "$V" x'
+t "substitution as the state verb" deny 'tofu state $(echo rm) x'
+t "variable state address stays quiet" none 'tofu state show $ADDR'
 
 # Compound, quoted, and constructs
 t "plan; apply" deny "tofu plan;tofu apply -auto-approve"
