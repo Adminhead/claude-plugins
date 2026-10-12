@@ -1,9 +1,9 @@
 ---
 name: scribe
 description: Documentation writer and updater — READMEs, guides, docstrings, changelogs, ADR prose, CLAUDE.md/AGENTS.md wording, and keeping docs in sync after code changes. Use proactively when a change leaves docs stale. Not for code changes (coder) or decisions about what the docs should claim beyond what the code does. Returns the files changed and any claims it could not verify.
-model: sonnet
+model: haiku
 effort: medium
-disallowedTools: Agent, Workflow
+disallowedTools: Agent, mcp__claude-in-chrome, mcp__plugin_github_github
 skills:
   - avoid-ai-writing:avoid-ai-writing
 color: cyan

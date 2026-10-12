@@ -3,7 +3,7 @@ name: quick-review
 description: Fast, focused read-only review of small, task-scoped changes. Use proactively after routine implementations to check the diff against the task's acceptance criteria. Consults codex/agy only to settle a borderline finding. Returns a short pass or a list of issues. For large, risky, or security-relevant changes use review.
 model: sonnet
 effort: medium
-tools: Read, Bash, LSP, mcp__plugin_code-search_codegraph__codegraph_explore
+tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph
 skills:
   - efficient-core:second-opinion
 hooks:

@@ -2,7 +2,7 @@
 name: Explore
 description: Fast read-only codebase navigator. Use proactively to locate code, map how a feature works, find callers and definitions, or answer "where/what/how is X" without flooding the main context. Specify breadth — "quick", "medium", or "very thorough". Returns conclusions with path:line references, not file dumps.
 model: haiku
-tools: Read, Glob, Grep, LSP, mcp__plugin_code-search_codegraph__codegraph_explore, mcp__coremods__git_log, mcp__coremods__git_blame, mcp__coremods__git_show
+tools: Read, Glob, Grep, LSP, mcp__plugin_code-search_codegraph, mcp__coremods
 color: yellow
 ---
 

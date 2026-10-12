@@ -29,25 +29,28 @@ Format: delegate when; don't when; rule of thumb.
 - `Explore`: delegate when you must locate or understand code across more than one file; don't when you know the path or are about to edit the file, so read it yourself; one round of Explore calls per question (parallel is fine), a second only if the first failed, and stop once you can name the files to change. It has no shell, only Read, Glob, Grep, LSP, codegraph, and the read-only `git_log`, `git_blame`, and `git_show` tools, so it can't run tests or other commands; run those yourself or leave them to the agent doing the work.
 - `architect`: delegate when work is multi-slice, cross-cutting, risky, or has an unclear approach, or a design choice is open; don't when the approach is obvious and bounded; plan first, then execute its plan slice by slice.
 - `debugger`: delegate when a test fails or flakes, a regression appears, or a bug has an unknown cause; don't when the cause is known, and don't send these to `architect`; hand its diagnosis to the coder it names.
-- `coder-light`: delegate when the exact edit is known and mechanical and spans files or exceeds your threshold, yet stays small (rename, config value, import update); don't when it needs judgment; its output gets no reviewer pass.
-- `coder`: delegate when the work is a bounded feature, fix, or refactor with a clear approach, usually 1 to 5 files; don't for mechanical edits, unclear approaches, or docs; this is the default implementer.
-- `coder-max`: delegate only after `coder` fails or `architect` or `debugger` marks the work high-complexity; don't as a first choice; climb one rung at a time and pass the failed attempt's report along. If `coder` fails three times without a known cause, send the work to `debugger` before `coder-max`.
+- `debugger-critical`: delegate when `debugger` ends with `escalate: debugger-critical` (cause still unconfirmed after its rounds, or the failure involves concurrency, data loss or corruption, security, or a production incident); don't as a first pass; pass `debugger`'s hypotheses table along, then hand the diagnosis to the coder it names.
+- `coder`: delegate when the change is bounded with a clear, known approach, including mechanical multi-file edits (rename, config value, import update, applying a specified patch); don't when it needs design judgment, has an unclear approach, touches infra, schema, or queries, or is docs; this is the default implementer.
+- `coder-high`: delegate when a bounded feature, fix, integration, or refactor needs design judgment, usually 1 to 5 files, or when `coder` failed; don't for mechanical edits or unclear approaches.
+- `coder-max`: delegate only after `coder-high` fails or `architect` or `debugger-critical` marks the work high-complexity; don't as a first choice. Climb coder, then coder-high, then coder-max, one rung at a time, and pass the failed attempt's report along. If `coder-high` fails three times without a known cause, send the work to `debugger` before `coder-max`.
+- `devops`: delegate for CI/CD workflows, Dockerfiles and compose, Kubernetes, Helm, or GitOps manifests, Terraform, OpenTofu, or Terragrunt, Ansible, and deploy or runtime config; don't for application code or schema work; it won't apply or change live infrastructure without explicit authorization in the brief (the cloud-ops guard also needs a whole line `ALLOW: cloud-ops`).
+- `dba`: delegate for schema design, migrations, indexes, query performance, and data integrity constraints; don't for application code or infra; it works against a local or disposable database unless the brief authorizes otherwise.
 - `scribe`: delegate when docs, READMEs, changelogs, or ADR prose need writing beyond the do-it-yourself threshold; don't for code changes or for deciding what the docs should claim; give it the code or diff the docs describe.
-- `quick-review`: delegate for the reviewer pass on a small, task-scoped `coder` or `coder-max` diff; don't for large or risky changes; one pass, then fix or report what it finds.
-- `review`: delegate for the reviewer pass on large, risky, or security-relevant diffs, and on high-stakes plans before execution; don't for read-only agents' output or routine small diffs; it replaces `quick-review`, never adds to it.
-- `security-auditor`: delegate for changes touching auth, permissions, crypto, secrets, untrusted input parsing, or dependencies, in parallel with `review`; don't for general correctness; it adds no reviewer pass of its own.
+- `quick-review`: delegate for the reviewer pass on a small, task-scoped `coder`, `coder-high`, or `coder-max` diff; don't for large or risky changes; one pass, then fix or report what it finds.
+- `review`: delegate for the reviewer pass on large, risky, or security-relevant diffs, on `devops` and `dba` output, and on high-stakes plans before execution; don't for read-only agents' output or routine small diffs; it replaces `quick-review`, never adds to it.
+- `security-auditor`: delegate for changes touching auth, permissions, crypto, secrets, untrusted input parsing, or dependencies, in parallel with `review`, including when `devops` touches secrets, IAM or permissions, or CI trust boundaries; don't for general correctness; it adds no reviewer pass of its own.
 - `browser-tester`: delegate when acceptance criteria need a real browser, after the reviewer pass; don't when tests already cover the criteria; route its failures back to `coder`.
 
 Review rules:
 
-- `coder` and `coder-max` output gets one reviewer pass before you report it done.
-- Read-only agents (`Explore`, `debugger`, `security-auditor`, `browser-tester`) get none. `architect` plans get one only when high-stakes.
+- `coder`, `coder-high`, `coder-max`, `devops`, and `dba` output gets one reviewer pass before you report it done: `quick-review` for small task-scoped coder diffs, `review` for `devops` and `dba`.
+- Read-only agents (`Explore`, `debugger`, `debugger-critical`, `security-auditor`, `browser-tester`) get none. `architect` plans get one only when high-stakes.
 - Don't start extra rounds of review or hardening. If a deeper review seems worth it, say so at the end.
 - Give reviewers the diff and the acceptance criteria, not the implementer's reasoning.
 
 ## Parallelism and waiting
 
-- Give each concurrent writer `isolation: "worktree"`.
+- Give each concurrent writer `isolation: "worktree"`. Worktrees branch from local `HEAD` only when `worktree.baseRef` is `"head"`. Under the default `"fresh"` they start from `origin/HEAD` and miss unpushed commits. Either way they miss uncommitted work, so commit what they depend on first.
 - Use an agent team when workers must talk to each other, as with competing debugging hypotheses, frontend/backend/test slices negotiating an interface, or an adversarial design debate. Keep teams to 3 to 5 teammates with disjoint files. Use plain subagents when workers only report back.
 - Workflows need the user's explicit opt-in, and this file can't grant it. When a task fans out over roughly five or more independent items, such as per-file audits, migrations, or multi-dimension reviews, say what a workflow would do and roughly what it would cost, then ask. Mention that "use a workflow" or `ultracode` opts in.
 - After launching a background agent, give the user a one-line status. Then do only work that doesn't overlap its task, or end the turn with that status; waiting on its notification counts as blocked. Its completion arrives as a notification, so don't poll, and never redo the search yourself while it runs.

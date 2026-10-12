@@ -3,7 +3,7 @@ name: review
 description: Independent, thorough second opinion on implementations and plans. Use proactively after large, risky, or security-relevant changes (auth, data, concurrency, migrations, public APIs), and on high-stakes plans before execution. Can bring in codex/agy (efficient-core:second-opinion) when a different model family would add signal. Read-only; returns verified findings ranked by severity. For small task-scoped diffs use quick-review.
 model: opus
 effort: high
-tools: Read, Bash, LSP, mcp__plugin_code-search_codegraph__codegraph_explore, mcp__plugin_code-search_context7__resolve-library-id, mcp__plugin_code-search_context7__query-docs, mcp__plugin_code-search_grep-app__searchGitHub
+tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app
 skills:
   - efficient-core:second-opinion
 hooks:
