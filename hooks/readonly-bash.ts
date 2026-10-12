@@ -15,7 +15,7 @@
 // The policy is a 1:1 port of readonly-bash.py. Only the tokenizer is replaced by the walker.
 
 import { readFileSync, writeSync } from 'node:fs'
-import { parse, reparse } from './shell/walk.ts'
+import { MAX_DEPTH, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand } from './shell/walk.ts'
 
 const SCRATCH_MSG = 'This agent is read-only; write scratch files under /tmp only.'
@@ -69,7 +69,7 @@ const tmpdir = (): string => (process.env.TMPDIR ?? '').replace(/\/+$/, '')
 function isScratch(path: string): boolean {
   if (['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/tty'].includes(path)) return true
   const norm = normpath(path)
-  if (/^\/tmp(\/.+)?$/.test(norm)) return true
+  if (/^\/tmp(\/[^\n]+)?$/.test(norm)) return true
   const t = tmpdir()
   return t.startsWith('/') && (norm === t || norm.startsWith(`${t}/`))
 }
@@ -223,7 +223,7 @@ function checkShell(cmd: string, args: Words): void {
 function checkSed(args: Words): void {
   for (const a of args) {
     if (a.startsWith('--in-place')) block('sed in-place edit')
-    if (/^-[A-Za-z]+.*$/.test(a) && !a.startsWith('--')) {
+    if (/^-[A-Za-z]+[^\n]*$/.test(a) && !a.startsWith('--')) {
       for (const ch of a.slice(1)) {
         if (ch === 'i') block('sed in-place edit')
         if ('efl'.includes(ch)) break   // the rest of the word is this option's value
@@ -309,7 +309,7 @@ function gitListing(rest: Words, mutatingShort: string, mutatingLong: ReadonlySe
   if (positional !== null && !listing) block('git branch/tag with a name creates one')
 }
 
-const GIT_CONFIG_SAFE = /^(?:color\..*|core\.quotepath|log\..*|diff\.renames|diff\.algorithm|blame\..*|core\.abbrev)$/i
+const GIT_CONFIG_SAFE = /^(?:color\.[^\n]*|core\.quotepath|log\.[^\n]*|diff\.renames|diff\.algorithm|blame\.[^\n]*|core\.abbrev)$/i
 
 function gitConfigOk(key: string, value: string): boolean {
   key = key.toLowerCase()
@@ -431,7 +431,7 @@ function ghFlagEnd(args: Words, start: number): number {
   while (i < args.length && args[i].startsWith('-')) {
     const a = args[i]
     if (GH_VALUED.has(a)) i++
-    else if (!(a === '--help' || a === '--version' || /^(-R.|--(repo|hostname)=)/.test(a))) block(`gh flag '${a}' before the subcommand`)
+    else if (!(a === '--help' || a === '--version' || /^(-R[^\n]|--(repo|hostname)=)/.test(a))) block(`gh flag '${a}' before the subcommand`)
     i++
   }
   return i
@@ -459,7 +459,7 @@ function checkGhApi(args: Words): void {
         }
         kind = name === '--method' ? 'X' : name === '--header' ? 'H' : null
       } else if (!GH_API_BOOL.has(name)) block(`unknown gh api flag '${name}'`)
-    } else if (/^-[A-Za-z]+.*$/.test(a)) {
+    } else if (/^-[A-Za-z]+[^\n]*$/.test(a)) {
       const cs = [...a]
       for (let pos = 1; pos < cs.length; pos++) {
         const ch = cs[pos]
@@ -800,8 +800,15 @@ const SQL_CLIENTS: Record<string, [string, string, string]> = {
   mysql: ['e', '--execute', 'hPuDSp'],
   mariadb: ['e', '--execute', 'hPuDSp'],
 }
-const SQL_EXPLAIN = /^explain\b\s*(\([^)]*\)|(?:(?:analy[sz]e|verbose|format(?:\s*=\s*|\s+)\w+)\s+)*)/i
-const SQL_READ = /^\(?\s*(select|show|table|describe|desc|values|with|use)\b/i
+// Python's str.isspace, which its `\s` follows. JS `\s` differs: it adds U+FEFF and lacks U+001C-U+001F,
+// so `--<U+FEFF>` would read as a comment that hides the rest of the line.
+const WS_CHARS = '\\t\\n\\v\\f\\r \\x1c-\\x1f\\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'
+const WS = `[${WS_CHARS}]`
+const isSpace = (c: string): boolean => new RegExp(`^${WS}$`).test(c)
+const strip = (s: string): string => s.replace(new RegExp(`^${WS}+|${WS}+$`, 'g'), '')
+const SQL_EXPLAIN = new RegExp(
+  `^explain\\b${WS}*(\\([^)]*\\)|(?:(?:analy[sz]e|verbose|format(?:${WS}*=${WS}*|${WS}+)\\w+)${WS}+)*)`, 'i')
+const SQL_READ = new RegExp(`^\\(?${WS}*(select|show|table|describe|desc|values|with|use)\\b`, 'i')
 const SQL_DML = /\b(insert|update|delete|merge)\b/i
 // SELECT forms that write: new tables, files, sequences, sessions, replication, large objects.
 // Best effort: user-defined functions can still have side effects.
@@ -809,9 +816,11 @@ const SQL_SIDE_EFFECT = new RegExp(
   '\\binto\\b|\\b(nextval|setval|pg_terminate_backend|pg_cancel_backend|' +
     'pg_reload_conf|pg_promote|pg_\\w*replication_slot\\w*|pg_stat\\w*reset\\w*|' +
     'pg_switch_wal|pg_create_restore_point|pg_logical_emit_message|' +
-    'pg_rotate_logfile|lo_\\w+|dblink\\w*)\\s*\\(',
+    `pg_rotate_logfile|lo_\\w+|dblink\\w*)${WS}*\\(`,
   'i',
 )
+const SQL_VERTICAL = new RegExp(`\\\\G${WS}*$`)
+const SQL_META = new RegExp(`^\\\\(d\\w*|l)\\+?(${WS}+[^\\\\${WS_CHARS}]+)?$`)
 // Long options that write a local file (psql -o and -L have short forms, handled below).
 const SQL_OUT_LONG: Record<string, string[]> = { psql: ['--output', '--log-file'], mysql: ['--tee'], mariadb: ['--tee'] }
 
@@ -885,7 +894,7 @@ function splitSql(cmd: string, text: string): string[] {
       if (j < 0) block(`${cmd} statement has an unterminated comment`)
       out += ' '
       i = j + 2
-    } else if ((text.startsWith('--', i) && (!mysql || i + 2 >= n || /\s/.test(text[i + 2]))) || (mysql && c === '#')) {
+    } else if ((text.startsWith('--', i) && (!mysql || i + 2 >= n || isSpace(text[i + 2]))) || (mysql && c === '#')) {
       const j = text.indexOf('\n', i)
       i = j < 0 ? n : j
     } else if (c === ';') {
@@ -898,17 +907,17 @@ function splitSql(cmd: string, text: string): string[] {
     }
   }
   stmts.push(out)
-  return stmts.map(s => s.trim()).filter(s => s)
+  return stmts.map(strip).filter(s => s)
 }
 
 function checkSqlStatement(cmd: string, stmt: string): void {
-  stmt = stmt.replace(/\\G\s*$/, '')   // mysql's vertical-output terminator
+  stmt = stmt.replace(SQL_VERTICAL, '')   // mysql's vertical-output terminator
   const explain = SQL_EXPLAIN.exec(stmt)
   if (explain) {   // plain EXPLAIN only plans; ANALYZE runs the statement, so it must read
     if (!/analy[sz]e/i.test(explain[0])) return
     stmt = stmt.slice(explain[0].length)
   }
-  const meta = /^\\(d\w*|l)\+?(\s+[^\\\s]+)?$/.test(stmt)
+  const meta = SQL_META.test(stmt)
   if (!meta && (!SQL_READ.test(stmt) || stmt.includes('\\') || SQL_SIDE_EFFECT.test(stmt) || (/\bwith\b/i.test(stmt) && SQL_DML.test(stmt)))) {
     block(`${cmd} statement is not a plain read (SELECT, EXPLAIN, SHOW, \\d ...): ${stmt.slice(0, 40)}`)
   }
@@ -1108,7 +1117,7 @@ function dropFlags(words: Words, valued: ReadonlySet<string> = NONE): Words {
 function stripWrappers(words: Words): Words {
   while (words.length) {
     const name = basename(words[0])
-    let rest = words.slice(1)
+    let rest: Words = words.slice(1)
     if (ASSIGNMENT.test(words[0])) {
       checkAssignment(words[0], words.every(w => ASSIGNMENT.test(w)))
       words = rest
@@ -1172,7 +1181,7 @@ function checkArgv(words: Words): void {
   words = stripWrappers(words)
   if (!words.length) return
   // `npx prisma@5 ...` runs prisma: drop a trailing @version, keeping a leading @scope.
-  let cmd = basename(words[0]).replace(/(?<=.)@[^/@]*$/, '')
+  let cmd = basename(words[0]).replace(/(?<=[^\n])@[^/@]*$/, '')
   const args = words.slice(1)
   if (/^python[0-9.]*$/.test(cmd)) cmd = 'python'
   else if (/^pip[0-9.]*$/.test(cmd)) cmd = 'pip'
@@ -1219,34 +1228,61 @@ function checkArgv(words: Words): void {
 
 const REDIR_OUT = set('>', '>>', '>|', '&>', '&>>', '>&', '<>')
 
-// An expanded word as the tokenizer saw it: its source text with quotes and escapes removed and
-// the expansions left as written, so `--out=$f` is still an option and `"/tmp/$d"` still scratch.
-const unquoted = (text: string): string => text.replace(/\\([\s\S])|["']/g, (_, c: string | undefined) => c ?? '')
+// An expanded word as the tokenizer saw it (the walker's `text`): quotes removed and expansions left
+// as written, so `--out=$f` is still an option and `"/tmp/$d"` still scratch.
+const word = (w: string | null, text: string | undefined): string => w ?? text ?? EXPANDED
 
-const word = (w: string | null, text: string | undefined): string => w ?? (text === undefined ? EXPANDED : unquoted(text))
+// bash reads `$"…"` as a translated string and zsh as a plain one, so its text can't be judged.
+const LOCALE = '$"'
+
+// bash and zsh evaluate an array subscript (and an arithmetic operand) even when it was quoted, so a
+// substitution in `a['$(…)']=1`, `unset 'a[$(…)]'` or `[[ -v 'a[$(…)]' ]]` runs.
+const SUBSCRIPT_SUB = /[A-Za-z_][A-Za-z0-9_]*\[[^\]]*(?:\$\(|`)/
+
+// Redirects already judged. Commands under one compound share its redirect arrays, so each array and
+// each redirect is checked once rather than once per command.
+const seenRedirects = new WeakSet<object>()
+
+function checkRedirects(c: ShellCommand): void {
+  if (seenRedirects.has(c.redirects)) return
+  seenRedirects.add(c.redirects)
+  for (const r of c.redirects) {
+    if (seenRedirects.has(r)) continue
+    seenRedirects.add(r)
+    const target = word(r.target, r.text)
+    if (r.target === null && target.includes(LOCALE)) block(`$"..." in redirect target '${target}'`)
+    const fdDup = (r.op === '>&' || r.op === '<&') && /^(\d+-?|-)$/.test(target)
+    if (REDIR_OUT.has(r.op) && !fdDup && !isScratch(target)) block(`redirect to non-scratch path '${target}'`)
+  }
+}
 
 // Check one simple command: its redirects first, then its assignments and words.
 function checkCommand(c: ShellCommand): void {
+  if (c.depth + c.nesting > MAX_DEPTH) block('command nesting too deep')
   let argv = c.argv.map((w, i) => word(w, c.text[i]))
   // unbash reads a leading `time` as the keyword and leaves its options as the command words.
   if (argv[0]?.startsWith('-')) argv = ['time', ...argv]
   // A subscript is dropped from the name; an expanded subscript leaves the name unknown.
   const assigns = c.assigns.map(a =>
     `${a.name === null ? EXPANDED : a.name.replace(/\[[\s\S]*$/, '')}${a.append ? '+' : ''}=${a.value ?? EXPANDED}`)
-  const targets = c.redirects.map(r => word(r.target, r.text))
-  const redirects = c.redirects.map((r, i) => `${r.fd ?? ''}${r.op}${targets[i]}`)
   try {
-    for (const [i, r] of c.redirects.entries()) {
-      const fdDup = (r.op === '>&' || r.op === '<&') && /^(\d+-?|-)$/.test(targets[i])
-      if (REDIR_OUT.has(r.op) && !fdDup && !isScratch(targets[i])) block(`redirect to non-scratch path '${targets[i]}'`)
+    checkRedirects(c)
+    for (const [i, w] of c.argv.entries()) {
+      if (w === null && c.text[i]?.includes(LOCALE)) block(`$"..." in '${c.text[i]}'`)
+    }
+    if (c.assigns.some(a => a.name !== null && /\$\(|`/.test(a.name)) || c.text.some(t => SUBSCRIPT_SUB.test(t))) {
+      block('array subscript with a command substitution runs it')
     }
     for (const a of argv) {
-      if (a.startsWith('-') && /[\n\r]/.test(a)) block('option word with an embedded newline')   // defeats the flag regexes
+      if (a.startsWith('-') && /[\n\r\u2028\u2029]/.test(a)) block('option word with an embedded newline')   // defeats the flag regexes
     }
     for (const a of assigns) checkAssignment(a, argv.length === 0)
     checkArgv(argv)
   } catch (e) {
-    if (e instanceof Block && e.segment === null) e.segment = [...assigns, ...argv, ...redirects].join(' ')
+    if (e instanceof Block && e.segment === null) {
+      const redirects = c.redirects.map(r => `${r.fd ?? ''}${r.op}${word(r.target, r.text)}`)
+      e.segment = [...assigns, ...argv, ...redirects].join(' ')
+    }
     throw e
   }
 }
@@ -1255,6 +1291,7 @@ function checkCommand(c: ShellCommand): void {
 function checkScript(text: string, depth: number): void {
   const r = depth === 0 ? parse(text) : reparse(text, depth)
   if (r.errors.length) throw new ParseFailure(r.errors[0].message)
+  if (SUBSCRIPT_SUB.test(text)) block('array subscript with a command substitution runs it')
   for (const c of r.commands) checkCommand(c)
 }
 

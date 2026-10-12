@@ -14,7 +14,7 @@ export type ShellRedirect = {
   fd: number | string | null
   // The literal target, or null when it holds an expansion.
   target: string | null
-  // The target's source text, as written ('' when there is none).
+  // The target read like `ShellCommand.text` ('' when there is none).
   text: string
 }
 
@@ -28,21 +28,26 @@ export type ShellCommand = {
   //   cares must treat them itself.
   // - An ANSI-C string ends at its first NUL, as in bash.
   argv: (string | null)[]
-  // Each word's source text, quotes and expansions as written, parallel to `argv`. A consumer
-  // that needs the literal parts of an expanded word (`--out=$f`, `$X/rm`) reads them here.
+  // Each word parallel to `argv` with its quotes removed and its escapes and ANSI-C strings decoded,
+  // but every expansion kept as written: `--out="$f"` reads `--out=$f`, `$'-i'$x` reads `-i$x`.
+  // A consumer that needs the literal parts of an expanded word reads them here.
   text: string[]
   // `NAME=value` prefixes. The name carries its subscript (`a[1]`), and is null when the
   // subscript holds an expansion. The value is null when it holds an expansion. `append` marks `+=`.
   assigns: { name: string | null; value: string | null; append: boolean }[]
   // The command's own redirects, then those of every compound command around it. A compound
-  // command that holds no simple command (`(( x )) > f`, `[[ -n x ]] > f`) yields one command
-  // with empty `argv` and `text` that carries its redirects, as a bare `> f` does.
+  // command with no simple command under its redirects (`(( x )) > f`, `[[ -n $(y) ]] > f`, whose
+  // substitution runs apart from them) yields one command with empty `argv` and `text` that carries
+  // them, as a bare `> f` does. Commands under one compound share its arrays: treat them as read-only,
+  // and compare redirect objects by identity to check each once.
   redirects: ShellRedirect[]
   heredocs: ShellHeredoc[]
   // Set when the command sits in a pipeline stage (including inside a subshell or group in it).
   // `earlier` holds every command emitted by the stages before it (rebuilt on each read, so O(n)).
   // `prev` holds the commands emitted by the previous stage, substitution commands (pipeline null) included.
   pipeline: { stage: number; readonly prev: readonly ShellCommand[]; readonly earlier: ShellCommand[] } | null
+  // How many command or process substitutions (`$(…)`, backticks, `<(…)`) enclose the command, 0 outside any.
+  nesting: number
   // 0 for the parsed text, +1 per `reparse` level.
   depth: number
 }
@@ -53,6 +58,9 @@ type Ctx = {
   pipeline: ShellCommand['pipeline']
   redirects: ShellRedirect[]
   heredocs: ShellHeredoc[]
+  nesting: number
+  // One flag per enclosing redirected compound, set when a command under it carries its redirects.
+  carriers: { hit: boolean }[]
 }
 
 type Node = { type: string; [key: string]: unknown }
@@ -102,6 +110,25 @@ function partText(p: Node, first: boolean, bare = true): string | null {
   }
 }
 
+// A part as a tokenizer that keeps expansions as written reads it: quotes removed, escapes and ANSI-C
+// strings decoded, and each expansion (`$x`, `$(…)`, `$"…"`, `{a,b}`) kept as its source text.
+function partSource(p: Node): string {
+  switch (p.type) {
+    case 'Literal':
+    case 'SingleQuoted':
+      return p.value as string
+    case 'AnsiCQuoted':
+      return (p.value as string).split('\u0000')[0]
+    case 'DoubleQuoted':
+      return (p.parts as Node[]).map(partSource).join('')
+    default:
+      return p.text as string
+  }
+}
+
+const source = (w: Word | undefined): string =>
+  !w ? '' : w.parts ? w.parts.map(p => partSource(p as unknown as Node)).join('') : w.value
+
 function literal(w: Word | undefined): string | null {
   if (!w) return null
   let s = ''
@@ -141,7 +168,7 @@ function convert(rs: readonly Redirection[]): { redirects: ShellRedirect[]; here
     if (r.type === 'HereDoc') {
       heredocs.push({ op: r.operator, fd: fdOf(r), body: r.body.text, quoted: r.delimiter?.quoted ?? false })
     } else {
-      redirects.push({ op: r.operator, fd: fdOf(r), target: literal(r.target), text: r.target?.text ?? '' })
+      redirects.push({ op: r.operator, fd: fdOf(r), target: literal(r.target), text: source(r.target) })
     }
   }
   return { redirects, heredocs }
@@ -152,20 +179,24 @@ function parseAt(text: string, depth: number): ShellParse {
   const errors: ParseError[] = []
 
   const emit = (c: Command, ctx: Ctx) => {
+    for (const m of ctx.carriers) m.hit = true
     const own = convert(c.redirects)
     const argv: (string | null)[] = []
     const text: string[] = []
     if (c.name) {
       argv.push(literal(c.name))
-      text.push(c.name.text)
+      text.push(source(c.name))
     }
     for (const a of c.args) {
-      text.push(a.text)
-      if (a.type === 'Word') argv.push(literal(a))
-      else {
+      if (a.type === 'Word') {
+        argv.push(literal(a))
+        text.push(source(a))
+      } else {
         const n = assignName(a)
         const v = a.value.type === 'Word' ? literal(a.value) : null
         argv.push(n === null || v === null ? null : `${n}${a.append ? '+' : ''}=${v}`)
+        const value = a.value.type === 'Word' ? source(a.value) : `(${a.value.elements.map(source).join(' ')})`
+        text.push(`${a.name}${a.index ? `[${source(a.index)}]` : ''}${a.append ? '+' : ''}=${value}`)
       }
     }
     commands.push({
@@ -176,9 +207,10 @@ function parseAt(text: string, depth: number): ShellParse {
           ? [{ name: assignName(p), value: p.value.type === 'Word' ? literal(p.value) : null, append: p.append ?? false }]
           : [],
       ),
-      redirects: [...own.redirects, ...ctx.redirects],
-      heredocs: [...own.heredocs, ...ctx.heredocs],
+      redirects: own.redirects.length ? [...own.redirects, ...ctx.redirects] : ctx.redirects,
+      heredocs: own.heredocs.length ? [...own.heredocs, ...ctx.heredocs] : ctx.heredocs,
       pipeline: ctx.pipeline,
+      nesting: ctx.nesting,
       depth,
     })
   }
@@ -198,12 +230,21 @@ function parseAt(text: string, depth: number): ShellParse {
       !node.script
     ) {
       errors.push({ message: 'unsupported substitution (nested too deep?); rewrite in plain bash or use a script file', pos: node.pos as number })
+    } else if (
+      node.type === 'ParameterExpansion' &&
+      (node.operation as { type?: string } | undefined)?.type === 'Replace' &&
+      /\$\(|`|[<>]\(/.test(node.text as string)
+    ) {
+      // unbash splits `${x/pattern/repl}` at the first `/` without regard to nesting, so a substitution
+      // in it would be walked as the wrong command.
+      errors.push({ message: 'substitution inside ${var/pattern/replacement}; rewrite in plain bash', pos: node.pos as number })
     }
     switch (node.type) {
       case 'Script':
-        // A substitution runs apart from the redirects and pipeline around it.
+        // A substitution runs apart from the redirects and pipeline around it. The top-level script
+        // enters at nesting -1, so its commands sit at 0.
         if (node.errors) errors.push(...(node.errors as ParseError[]))
-        visit(node.commands, { pipeline: null, redirects: [], heredocs: [] })
+        visit(node.commands, { pipeline: null, redirects: [], heredocs: [], nesting: ctx.nesting + 1, carriers: [] })
         return
       case 'Command': {
         const c = node as unknown as Command
@@ -239,12 +280,22 @@ function parseAt(text: string, depth: number): ShellParse {
       case 'Redirected': {
         const r = convert(node.redirects as Redirection[])
         visit(node.redirects, ctx)
-        const inner: Ctx = { ...ctx, redirects: [...r.redirects, ...ctx.redirects], heredocs: [...r.heredocs, ...ctx.heredocs] }
-        const start = commands.length
+        const carried = { hit: false }
+        const inner: Ctx = {
+          ...ctx,
+          redirects: r.redirects.length ? [...r.redirects, ...ctx.redirects] : ctx.redirects,
+          heredocs: r.heredocs.length ? [...r.heredocs, ...ctx.heredocs] : ctx.heredocs,
+          carriers: [...ctx.carriers, carried],
+        }
         visit(node.command, inner)
-        // `(( x )) > f` holds no simple command, so its redirects would otherwise vanish.
-        if (commands.length === start) {
-          commands.push({ argv: [], text: [], assigns: [], redirects: inner.redirects, heredocs: inner.heredocs, pipeline: ctx.pipeline, depth })
+        // `(( x )) > f` and `[[ -n $(y) ]] > f` hold no simple command under the redirect (a substitution's
+        // commands don't carry it), so its redirects would otherwise vanish.
+        if (!carried.hit) {
+          for (const m of ctx.carriers) m.hit = true
+          commands.push({
+            argv: [], text: [], assigns: [], redirects: inner.redirects, heredocs: inner.heredocs,
+            pipeline: ctx.pipeline, nesting: ctx.nesting, depth,
+          })
         }
         return
       }
@@ -257,7 +308,7 @@ function parseAt(text: string, depth: number): ShellParse {
   }
 
   try {
-    visit(unbash(text), { pipeline: null, redirects: [], heredocs: [] })
+    visit(unbash(text), { pipeline: null, redirects: [], heredocs: [], nesting: -1, carriers: [] })
   } catch (err) {
     // unbash's arithmetic parser (and this walk) recurse without a limit. Match on the name, since a realm may differ.
     if ((err as Error)?.name !== 'RangeError') throw err

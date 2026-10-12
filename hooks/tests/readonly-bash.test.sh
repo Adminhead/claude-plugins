@@ -850,6 +850,66 @@ cmd block 'gh api --method=$m x'
 cmd block 'PAGER+=cat git log'
 cmd allow 'for p in a b; do mkdir -p "/tmp/x/$p"; echo hi > "/tmp/x/$p.log"; done'
 
+# Holes the .py shares: the .ts blocks them, the .py lets them through.
+if [[ $HOOK == *.py ]]; then hole=allow; else hole=block; fi
+
+# Words spelled with ANSI-C or locale quoting are read as bash reads them.
+cmd block "git log \$'--output='\$f"
+cmd block "sed \$'-i'\$x f"
+cmd block "sort \$'-o'\$f x"
+cmd block "gh api x \$'-f'\$v"
+cmd block '$"rm" -rf /home/buck/x'
+cmd block 'npm $"install" evil'
+cmd block "dd \$'of='/home/buck/x\$X"
+cmd block "find . -exec sed \$'-i'\$X s/a/b/ {} +"
+cmd block "psql -c \"SELECT '--\$x'; DROP TABLE users;\""
+cmd "$hole" "sed \$'\\x2di'\$X f"
+
+# A redirect on a compound whose only commands sit in a substitution.
+cmd block '[[ -n $(echo x) ]] > out.txt'
+cmd block '[[ -n `echo x` ]] >> /etc/hosts'
+cmd block '(( $(echo 1) )) > out.txt'
+cmd block 'case $(echo x) in esac > out.txt'
+
+# unbash splits ${var/pattern/repl} at the first / without nesting.
+cmd block 'echo ${PWD/$(rm -rf /home/buck/x)/}'
+cmd block 'echo ${X/`rm -rf /home/buck/x`}'
+cmd block 'echo ${X/<(rm -rf /home/buck/x)}'
+cmd block 'echo ${X/a\/$(rm -rf /home/buck/x)/b}'
+
+# U+2028, U+2029 and U+FEFF are not the separators JS regexes take them for.
+cmd block "sed -i"$'\xe2\x80\xa8'" f"
+cmd block "gh api repos/o/r -f"$'\xe2\x80\xa9'"title=x"
+cmd block "gh api repos/o/r -F"$'\xe2\x80\xa9'"title=x"
+cmd block "mysql -e 'SELECT 1--"$'\xef\xbb\xbf'"x; DROP TABLE users;'"
+
+# More than 8 nested substitutions block, as in the .py.
+nested='x'
+for _ in {1..10}; do nested="echo \$($nested)"; done
+cmd block "$nested"
+nested='x'
+for _ in {1..8}; do nested="echo \$($nested)"; done
+cmd allow "$nested"
+
+# A substitution in an array subscript runs even when quoted.
+cmd "$hole" "a['\$(rm -rf /home/buck/x)']=1"
+cmd "$hole" "unset 'a[\$(rm -rf /home/buck/x)]'"
+cmd "$hole" "printf -v 'a[\$(rm -rf /home/buck/x)]' x"
+cmd "$hole" "[[ -v 'a[\$(rm -rf /home/buck/x)]' ]]"
+
+# A long body under many redirects is checked in time (the hook timeout lets an unchecked call through).
+big="{ $(printf 'ls; %.0s' {1..20000})} $(printf '> /tmp/f %.0s' {1..20000})"
+json=$(printf '%s' "$big" | jq -Rs '{tool_name:"Bash",tool_input:{command:.}}')
+start=$(date +%s%N)
+run allow "$((${#big} / 1024)) KB body under 20000 redirects" "$json"
+ms=$((($(date +%s%N) - start) / 1000000))
+if ((ms < 2000)); then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: %d KB command took %d ms (limit 2000)\n' "$((${#big} / 1024))" "$ms"
+fi
+
 # The frontmatter command must fail closed even if python3 is shadowed or the runtime is missing.
 case $HOOK in
   *.ts) frontmatter='bun --no-env-file --config=/dev/null "'"$HOOK"'" || exit 2' ;;
