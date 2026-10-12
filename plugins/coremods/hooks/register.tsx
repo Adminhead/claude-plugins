@@ -3,7 +3,7 @@ import { applyTask, buildView, PANE_COLUMNS, PANE_ID, paneRows, renderLine as ag
 import { parseNumstat, parseStatus, placeOf, renderLine as gitLine, type Snapshot } from './git-line/line'
 import { buildGit, TOOLS, TOOL_PREFIX, truncate } from './git-tools/git'
 import { cap, CHECK_SCRIPT, HELP, parseCommand, RUN_SCRIPT } from './tool-mgr/metrics'
-import { APPEND_SCRIPT, buildRecord, classify, logPath, MAX_COMMAND, type Rule } from './tool-mgr/rules'
+import { APPEND_SCRIPT, buildRecord, classify, logPath, type Rule } from './tool-mgr/rules'
 import { renderBand } from './usage-band/band'
 
 // The engine refuses a plugin that registers an event twice, and it follows `$` only through
@@ -277,8 +277,8 @@ export const register: Register = on => {
     if (typeof e.tool === 'string' && e.tool.startsWith(TOOL_PREFIX)) return { result: await runGitTool($, e) }
     const isBash = e.tool === 'Bash' && typeof e.command === 'string'
     let hit = null
-    // classify backtracks on pathological input, so a command over the log cap goes through unchecked.
-    if (isBash && e.command.length <= MAX_COMMAND) {
+    // classify denies what it cannot parse or what is too long; it throws only on our own bug, which lets the call through.
+    if (isBash) {
       try {
         hit = classify(e.command)
       } catch (err) {

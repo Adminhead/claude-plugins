@@ -1,112 +1,81 @@
 // Pure rules and formatting for tool-mgr. Nothing here touches `$`.
 
-export type Rule = 'sed-read' | 'heredoc-write' | 'echo-write'
+import { nestedScript, parse, reparse } from '../shell/walk'
+import type { ShellCommand, ShellParse } from '../shell/walk'
+
+export type Rule = 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long'
 export type Hit = { rule: Rule; message: string }
 
-const MESSAGES: Record<Rule, string> = {
-  'sed-read':
-    'tool-mgr: do not read files with sed. Use the built-in Read tool; pass offset and limit for a line range.',
+const MESSAGES = {
+  'sed-read': 'tool-mgr: do not read files with sed. Use the built-in Read tool; pass offset and limit for a line range.',
   'heredoc-write':
     'tool-mgr: do not write files with a heredoc in Bash. Use the built-in Write tool for a new file or Edit to change one.',
   'echo-write':
     'tool-mgr: do not write files with printf or echo in Bash. Use the built-in Write tool for a new file or Edit to change one.',
-}
+  'too-long': 'tool-mgr: this command is over 64 KB. Write it to a script file and run that.',
+} as const
 
-// Source of the heredoc pattern; group 3 is the body. Built per use so a global flag never carries lastIndex.
-const HEREDOC = String.raw`(?<!<)<<(?!<)-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n[ \t]*\2(?=\n|$)`
-const HEREDOC_OPEN = /(?<!<)<<(?!<)/
-
-// A heredoc body is data, not commands: drop it so its lines are not read as shell.
-// shortcut: the terminator must sit alone on its line and quoting is not parsed, so odd shell can slip by or false-hit. Fail-open is the intended direction.
-function stripHeredocBodies(command: string): string {
-  return command.replace(new RegExp(HEREDOC, 'g'), m => m.slice(0, m.indexOf('\n')))
-}
-
-// The shell-level text: heredoc bodies dropped and quoted spans emptied, so `>`, `;` or `|` inside quotes is not read as shell. `>|` becomes `>`.
-// shortcut: no nesting ($(...) inside quotes, escaped quotes in '...'); move to a real shell tokenizer if that bites.
-const shellText = (command: string) => stripHeredocBodies(command).replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, "''").replace(/>\|/g, '>')
-
-const SEGMENT_SPLIT = /(\|\||&&|\||;|\n)/
-const IN_PLACE = /(^|\s)(--in-place\S*|-[A-Za-z]*i\S*)(\s|$)/
-
-// A pipeline segment that starts with sed, edits nothing in place, and is not fed by a pipe reads a file.
-function sedRead(command: string): boolean {
-  const parts = shellText(command).split(SEGMENT_SPLIT)
-  for (let i = 0; i < parts.length; i += 2) {
-    const seg = parts[i].trim()
-    const fedByPipe = i > 0 && parts[i - 1] === '|'
-    if (/^sed(\s|$)/.test(seg) && !fedByPipe && !IN_PLACE.test(seg)) return true
-  }
-  return false
-}
+// Commands longer than this are denied unparsed.
+const MAX_PARSE = 64 * 1024
 
 const DEV_OK = /^\/dev\/(null|stderr|stdout|tty)$/
+const OUTPUT_OPS = new Set(['>', '>>', '>|', '&>', '&>>', '>&'])
 
-// `$((...))`, `((...))` and `[[...]]` use `>` as an operator, not a redirect.
-const OPERATOR_SPANS = /\$?\(\((?:[^)]|\)(?!\)))*\)\)|\[\[[^\]]*\]\]/g
+// An output redirect to anything but a harmless device. An fd dup (`>&2`, `>&-`) is not a file, and
+// `>&$fd` is unknown, so both pass. A target with an expansion counts as a file.
+const redirectsToFile = (c: ShellCommand) =>
+  c.redirects.some(r => {
+    if (!OUTPUT_OPS.has(r.op)) return false
+    if (r.target === null) return r.op !== '>&'
+    return !DEV_OK.test(r.target) && !(r.op === '>&' && /^(\d+-?|-)$/.test(r.target))
+  })
 
-// An output redirect (`>`, `>>`, `N>`, `&>`) to anything but a harmless device. fd dups like `>&2` are skipped.
-function redirectsToFile(text: string): boolean {
-  for (const m of text.replace(OPERATOR_SPANS, '').matchAll(/\d*>>?(?![>&])\s*([^\s;&|<>]+)/g)) if (!DEV_OK.test(m[1])) return true
-  return false
+// `tee` with a file argument (every non-flag argument is checked), not `tee /dev/null`.
+const teeFile = (c: ShellCommand) => c.argv[0] === 'tee' && c.argv.slice(1).some(a => a === null || (!a.startsWith('-') && !DEV_OK.test(a)))
+
+const IN_PLACE = /^(--in-place|-[A-Za-z]*i)/
+const PERL_IN_PLACE = /^(--in-place|-[plna]*i)/
+const hasArg = (c: ShellCommand, re: RegExp) => c.argv.slice(1).some(a => a !== null && re.test(a))
+
+const fedByPipe = (c: ShellCommand) => c.pipeline !== null && c.pipeline.stage > 0
+
+// A sed that edits nothing in place and is fed by neither a pipe, a here-string nor a heredoc reads a file.
+const sedRead = (c: ShellCommand) =>
+  c.argv[0] === 'sed' &&
+  !fedByPipe(c) &&
+  c.heredocs.length === 0 &&
+  !c.redirects.some(r => r.op === '<<<') &&
+  !hasArg(c, IN_PLACE)
+
+const isEcho = (c: ShellCommand | undefined) => {
+  const name = c?.argv[0] === 'builtin' || c?.argv[0] === 'command' ? c.argv[1] : c?.argv[0]
+  return name === 'printf' || name === 'echo'
 }
 
-// A `tee` segment with a file argument (every non-flag argument is checked), not `tee /dev/null`.
-const teeTargetsFile = (seg: string) => /^tee(\s|$)/.test(seg) && seg.split(/\s+/).slice(1).some(a => !a.startsWith('-') && !DEV_OK.test(a))
-
-const teeFile = (text: string) => text.split(SEGMENT_SPLIT).some(seg => teeTargetsFile(seg.trim()))
-
-const ECHO_CMD = /^[({\s]*(?:(?:then|do|else)\s+)?(?:(?:builtin|command)\s+)?(?:printf|echo)(?:\s|$)/
-
-// A printf/echo segment with an output redirect to a file, or piped into `tee <file>`.
-function echoWrite(command: string): boolean {
-  const parts = shellText(command).split(SEGMENT_SPLIT)
-  for (let i = 0; i < parts.length; i += 2) {
-    const seg = parts[i].trim()
-    if (ECHO_CMD.test(seg) && redirectsToFile(seg)) return true
-    const fedByEcho = i > 1 && parts[i - 1] === '|' && ECHO_CMD.test(parts[i - 2].trim())
-    if (fedByEcho && teeTargetsFile(seg)) return true
-  }
-  return false
-}
+// A printf/echo with an output redirect to a file, or piped straight into `tee <file>`.
+const echoWrite = (c: ShellCommand) => (isEcho(c) && redirectsToFile(c)) || (fedByPipe(c) && teeFile(c) && isEcho(c.pipeline!.earlier.at(-1)))
 
 const SCRIPT_INTERP = /^(?:python[\d.]*|node|bun|deno|ruby|perl)$/
 const SHELL_INTERP = /^(?:sh|bash|zsh)$/
 const WRAPPERS = new Set(['sudo', 'env', 'timeout', 'nice', 'nohup', 'exec', 'time', 'command', 'uv'])
-const LEADING_WORDS = new Set(['then', 'do', 'else', '!', '{'])
-const baseName = (t: string) => t.slice(t.lastIndexOf('/') + 1)
+const baseName = (t: string | null) => (t ?? '').slice((t ?? '').lastIndexOf('/') + 1)
+const kindOf = (t: string | null) => (SCRIPT_INTERP.test(baseName(t)) ? 'script' : SHELL_INTERP.test(baseName(t)) ? 'shell' : null)
 
-// What interpreter a pipeline segment runs as a script reader: its command word, possibly path-qualified or behind wrappers
+// What interpreter a command runs as a script reader: its command word, possibly path-qualified or behind wrappers
 // (sudo, env, timeout, nice, uv run, ...), and with no script file, only `-`, `/dev/stdin` or `run`. `node tool.js <<EOF` gets the heredoc as data.
 // shortcut: after a wrapper the first interpreter-named word is taken, even if it is really an option argument.
-function interpreterOf(seg: string): 'script' | 'shell' | null {
-  const toks = seg.trim().split(/\s+/)
-  let i = 0
-  while (i < toks.length && (/^\w+=/.test(toks[i]) || LEADING_WORDS.has(toks[i]))) i++
-  if (WRAPPERS.has(baseName(toks[i] ?? ''))) i = toks.findIndex((t, j) => j > i && (SCRIPT_INTERP.test(baseName(t)) || SHELL_INTERP.test(baseName(t))))
-  if (i < 0 || i >= toks.length) return null
-  const word = baseName(toks[i])
-  const kind = SCRIPT_INTERP.test(word) ? 'script' : SHELL_INTERP.test(word) ? 'shell' : null
-  const positional = toks.slice(i + 1).filter(a => a !== '' && (a === '-' || !/^-|^\d*[<>&]/.test(a)))
+function interpreterOf(c: ShellCommand): 'script' | 'shell' | null {
+  const i = WRAPPERS.has(baseName(c.argv[0])) ? c.argv.findIndex((t, j) => j > 0 && kindOf(t)) : 0
+  const kind = i < 0 ? null : kindOf(c.argv[i])
+  const positional = c.argv.slice(i + 1).filter(a => a === null || a === '-' || !a.startsWith('-'))
   return kind && positional.every(a => a === '-' || a === '/dev/stdin' || a === 'run') ? kind : null
 }
 
-// The interpreters that consume the heredoc whose `<<` sits at `at` in `line`: the segment holding it, and the next segment when a pipe follows.
-function consumers(line: string, at: number): ('script' | 'shell')[] {
-  const parts = line.split(/(\|\||&&|\||;|\(|`)/)
-  const found: ('script' | 'shell' | null)[] = []
-  let pos = 0
-  for (let i = 0; i < parts.length; i += 2) {
-    const end = pos + parts[i].length
-    if (at >= pos && at < end) {
-      found.push(interpreterOf(parts[i].slice(0, at - pos)))
-      if (parts[i + 1] === '|' && i + 2 < parts.length) found.push(interpreterOf(parts[i + 2]))
-      break
-    }
-    pos = end + (parts[i + 1]?.length ?? 0)
-  }
-  return found.filter(k => k !== null)
-}
+// The heredoc bodies an interpreter command reads: its own, and those of the command piped into it.
+const fedBodies = (c: ShellCommand) => [
+  ...c.heredocs,
+  ...(fedByPipe(c) ? c.pipeline!.earlier.filter(e => e.pipeline!.stage === c.pipeline!.stage - 1).flatMap(e => e.heredocs) : []),
+].map(h => h.body)
 
 const BODY_WRITES = new RegExp(
   [
@@ -121,37 +90,59 @@ const BODY_WRITES = new RegExp(
     String.raw`\b(?:File|IO)\.(?:bin)?write\b`,
   ].join('|'),
 )
-const PERL_IN_PLACE = /(^|\s)(--in-place\S*|-[plna]*i\S*)(\s|$)/
 
-// A shell fed a heredoc runs its body: a redirect to a file, tee to a file, or an in-place sed/perl edit writes files.
-function shellBodyWrites(body: string): boolean {
-  const text = shellText(body)
-  if (redirectsToFile(text) || teeFile(text)) return true
-  return text.split(SEGMENT_SPLIT).some(s => (/^sed\s/.test(s.trim()) && IN_PLACE.test(s)) || (/^perl\s/.test(s.trim()) && PERL_IN_PLACE.test(s)))
+// A command in a script that a shell reads from a heredoc: a redirect to a file, tee to a file, or an in-place sed/perl edit writes files.
+const shellBodyWrites = (c: ShellCommand) =>
+  redirectsToFile(c) || teeFile(c) || (c.argv[0] === 'sed' && hasArg(c, IN_PLACE)) || (c.argv[0] === 'perl' && hasArg(c, PERL_IN_PLACE))
+
+const hasHeredoc = (c: ShellCommand) => c.heredocs.length > 0
+
+// A command with a heredoc (not <<<), or one piped from a heredoc, that redirects to a real file or runs tee <file>, or an interpreter that reads
+// a heredoc body (its own, or the one piped into it) that writes files. Each heredoc is judged by its own command and body.
+// `bodyCommands` are the commands of every heredoc script a shell reads. Skipped on purpose: `python -c` and `node -e` with no heredoc.
+function heredocWrite(commands: ShellCommand[], bodyCommands: ShellCommand[]): boolean {
+  return (
+    commands.some(c => {
+      if ((hasHeredoc(c) || c.pipeline?.earlier.some(hasHeredoc)) && (redirectsToFile(c) || teeFile(c))) return true
+      return interpreterOf(c) === 'script' && fedBodies(c).some(b => BODY_WRITES.test(b))
+    }) || bodyCommands.some(shellBodyWrites)
+  )
 }
 
-// Heredoc (not <<<) together with a redirect to a real file, tee to a file, or a body that writes files and is read by an interpreter
-// (the heredoc's own command, or the command it is piped to). Each heredoc is judged by its own body.
-// Skipped on purpose: `python -c` and `node -e` with no heredoc.
-function heredocWrite(command: string): boolean {
-  const header = shellText(command)
-  if (!HEREDOC_OPEN.test(header)) return false
-  if (redirectsToFile(header) || teeFile(header)) return true
-  for (const m of command.matchAll(new RegExp(HEREDOC, 'g'))) {
-    const lineStart = command.lastIndexOf('\n', m.index) + 1
-    const line = command.slice(lineStart, m.index + m[0].indexOf('\n'))
-    for (const kind of consumers(line, m.index - lineStart)) {
-      if (kind === 'script' ? BODY_WRITES.test(m[3]) : shellBodyWrites(m[3])) return true
+type Scan = { commands: ShellCommand[]; bodyCommands: ShellCommand[]; errors: ShellParse['errors'] }
+
+// Parses a command and the scripts it hands to a shell: `sh -c STR` and `eval` bodies join `commands` (they are
+// checked like top-level commands), and heredoc bodies read by a shell join `bodyCommands` (checked for writes only).
+function scan(command: string): Scan {
+  const out: Scan = { commands: [], bodyCommands: [], errors: [] }
+  const add = (r: ShellParse, sink: ShellCommand[]) => {
+    out.errors.push(...r.errors)
+    for (const c of r.commands) {
+      sink.push(c)
+      const script = nestedScript(c.argv)
+      if (script !== null) add(reparse(script, c.depth + 1), sink)
     }
   }
-  return false
+  add(parse(command), out.commands)
+  for (const c of out.commands) {
+    if (interpreterOf(c) !== 'shell') continue
+    for (const body of fedBodies(c)) add(reparse(body, c.depth + 1), out.bodyCommands)
+  }
+  return out
 }
 
 export function classify(command: string): Hit | null {
-  const rule: Rule | null = sedRead(command) ? 'sed-read' : heredocWrite(command) ? 'heredoc-write' : echoWrite(command) ? 'echo-write' : null
+  if (command.length > MAX_PARSE) return { rule: 'too-long', message: MESSAGES['too-long'] }
+  const { commands, bodyCommands, errors } = scan(command)
+  if (errors.length > 0) {
+    // Deep inputs cascade into hundreds of errors; the first one names the cause.
+    return { rule: 'parse-error', message: `tool-mgr: could not parse this command (${errors[0].message}). Rewrite it in plain bash, or write a script file and run it.` }
+  }
+  const rule = commands.some(sedRead) ? 'sed-read' : heredocWrite(commands, bodyCommands) ? 'heredoc-write' : commands.some(echoWrite) ? 'echo-write' : null
   return rule && { rule, message: MESSAGES[rule] }
 }
 
+// The log keeps at most this many characters of a command.
 export const MAX_COMMAND = 4000
 const MAX_SUMMARY = 500
 const MAX_PART = 64

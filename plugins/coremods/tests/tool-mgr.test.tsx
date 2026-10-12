@@ -213,6 +213,38 @@ describe('classify', () => {
     expect(rule('git commit -F - <<EOF\nsed -n 1p f\nEOF')).toBeNull()
   })
 
+  test('sed fed by a here-string or a heredoc reads no file, but sed < file does', () => {
+    for (const c of ['sed -n p <<< "$x"', 'sed p <<EOF\nx\nEOF']) expect(rule(c)).toBeNull()
+    expect(rule('sed -n p < f')).toBe('sed-read')
+  })
+
+  test('rules see commands inside compound commands, substitutions, assignments and -c bodies', () => {
+    for (const c of ['if true; then sed -n 1p f; fi', 'echo $(sed -n 1p f)', "bash -c 'sed -n 1p f'", 'FOO=1 sed -n p f']) expect(rule(c)).toBe('sed-read')
+    for (const c of ['{ echo a; } > f', 'echo>f', 'echo hi >& f', "bash -lc 'echo hi > f'", "eval 'printf x | tee f'"]) expect(rule(c)).toBe('echo-write')
+    expect(rule("sh -c 'cat <<EOF > f\nx\nEOF'")).toBe('heredoc-write')
+  })
+
+  test('a redirect elsewhere in the command does not make a heredoc a write', () => {
+    expect(rule('ls > f; git commit -F - <<EOF\nmsg\nEOF')).toBeNull()
+  })
+
+  test('parse errors are reported, including those in nested scripts and heredoc bodies', () => {
+    expect(classify('echo $(')?.rule).toBe('parse-error')
+    expect(classify("bash -c 'echo $('")?.rule).toBe('parse-error')
+    expect(classify('bash <<EOF\necho $(\nEOF')?.rule).toBe('parse-error')
+    expect(classify('echo $(')?.message).toMatch(/plain bash, or write a script file/)
+  })
+
+  test('a command over 64 KB is denied unparsed', () => {
+    expect(classify('x'.repeat(65536))).toBeNull()
+    expect(classify('x'.repeat(65537))?.rule).toBe('too-long')
+  })
+
+  test('a long command is checked in full', () => {
+    expect(rule('echo ' + 'x'.repeat(10000) + ' > f')).toBe('echo-write')
+    expect(rule('sed -n 1p f ' + 'x'.repeat(10000))).toBe('sed-read')
+  })
+
   test('messages start with tool-mgr: and name the built-in tool', () => {
     expect(classify("sed -n 1p f")?.message).toMatch(/^tool-mgr: .*Read/)
     expect(classify('cat > f <<EOF\nx\nEOF')?.message).toMatch(/^tool-mgr: .*Write.*Edit/)
@@ -331,11 +363,20 @@ describe('tool.call hook', () => {
     expect(appends(runs)[0].argv[5]).toBe('sess1/___.._x.jsonl')
   })
 
-  test('a command over the cap goes through unchecked', async ($, on) => {
+  test('a command over the log cap is still checked, and the log keeps only its head', async ($, on) => {
     const { runs } = await start($, on)
     const out: any = await $.tool.call({ tool: 'Bash', command: 'sed -n 1p f ' + 'x'.repeat(5000) })
-    expect(out.deny).toBeUndefined()
-    expect(appends(runs)).toEqual([])
+    expect(out.deny).toMatch(/^tool-mgr: .*Read/)
+    expect(JSON.parse(appends(runs)[0].init.stdin).command).toHaveLength(4000)
+  })
+
+  test('a parse error and a command over 64 KB are denied and logged under their own rule', async ($, on) => {
+    const { runs } = await start($, on)
+    const bad: any = await $.tool.call({ tool: 'Bash', command: 'echo $(' })
+    expect(bad.deny).toMatch(/^tool-mgr: could not parse this command \(unterminated command substitution\)/)
+    const big: any = await $.tool.call({ tool: 'Bash', command: 'x'.repeat(65537) })
+    expect(big.deny).toMatch(/^tool-mgr: .*64 KB.*script file/)
+    expect(appends(runs).map(a => JSON.parse(a.init.stdin).blocked)).toEqual(['parse-error', 'too-long'])
   })
 
   test('calls that are not denied are not logged by the mod', async ($, on) => {
