@@ -139,7 +139,7 @@ The helper in `hooks/git-tools/git.ts` builds and validates the argv. The tools 
 
 ## tool-mgr
 
-Blocks two Bash habits that have a better built-in tool. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history.
+Blocks three Bash habits that have a better built-in tool. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history.
 
 ### Rules
 
@@ -148,14 +148,19 @@ A blocked call never runs. Claude sees a deny message that starts with `tool-mgr
 | Rule | Blocks | Use instead |
 | --- | --- | --- |
 | `sed-read` | A pipeline segment (split on `\|`, `&&`, `\|\|`, `;`, newline) that starts with `sed`, has no `-i`, `--in-place` or `-i.bak`, and is not fed by a pipe. `sed -n '1,20p' f` and `sed 's/a/b/' f` are blocked. `sed -i ... f` and `git log \| sed 's/a/b/'` pass | Read, with `offset` and `limit` for a line range |
-| `heredoc-write` | A heredoc (`<<`, not `<<<`) together with a `>` or `>>` redirect to anything but `/dev/null` or `&1`/`&2`, or with `tee <file>`, or fed to `python`, `python3`, `node`, `bun`, `deno`, `ruby` or `perl` when the body writes files (`open(..., 'w'/'a'/'x')`, `.write_text(`, `.write_bytes(`, `writeFileSync`, `writeFile(`, `appendFile`) | Write for a new file, Edit to change one |
+| `heredoc-write` | A heredoc (`<<`, not `<<<`) together with a `>` or `>>` redirect to anything but `/dev/null`, `/dev/stderr`, `/dev/stdout`, `/dev/tty` or an fd dup (`>&2`), or with `tee <file>`. Also a heredoc consumed by an interpreter on its line, in any shape (`python3 - <<EOF`, `python3 /dev/stdin <<EOF`, `cat <<EOF \| python3`, `cat <<'EOF' \| node -`), when the body writes files. For `python`, `node`, `bun`, `deno`, `ruby` and `perl` that means `open(..., 'w'/'a'/'x')`, `.open('w')`, `Path.write_text`/`write_bytes`, `shutil.copy*`/`move`, `os.replace`/`os.rename`, `fileinput.input(..., inplace=True)`, `writeFile`, `appendFile`, `copyFile` (and `Sync` forms), `createWriteStream`, `fs.rename`, `Bun.write`, `Deno.writeFile`/`writeTextFile`, `File.write`, `IO.write`, and Perl `open(FH, '>', ...)`. For `sh`, `bash` and `zsh` it means a redirect to a real file, `tee <file>`, or `sed -i`/`perl -i` in the body | Write for a new file, Edit to change one |
+| `echo-write` | A `printf` or `echo` segment (also `builtin`/`command` forms) with a `>`, `>>`, `>\|`, `N>` or `&>` redirect to anything but the devices above, or piped into `tee <file>`. `echo hi >> notes.md` and `cd x && printf x >out` are blocked. `echo hi >&2`, `printf x 2>/dev/null`, `echo "a > b"` and `printf x \| tee /dev/null` pass | Write for a new file, Edit to change one |
 
-Heredoc bodies are read as data, not shell, so `git commit -F - <<EOF`, `cat <<EOF` with no redirect, and `python3 - <<'EOF'` that only prints all pass.
+Heredoc bodies are read as data, not shell, so `git commit -F - <<EOF`, `cat <<EOF` with no redirect, and `python3 - <<'EOF'` that only prints all pass. Each heredoc is judged by its own body and by the command that reads it: the command it is attached to, or the one it is piped to on the same line. That command may be path-qualified (`.venv/bin/python`) or behind `sudo`, `env`, `timeout`, `nice`, `nohup`, `exec`, `time`, `command` or `uv run`, and it counts only when it reads its script from stdin (`-`, `/dev/stdin` or no script argument). So `node tool.js <<EOF` (data on stdin), `git commit -F - <<EOF` after `bun test &&`, and a commit message that mentions `write_text` or `overwriteFile` all pass.
 
 Known gaps and false positives:
 
 - `python3 - <<'EOF' > scratch` is blocked on purpose: it is a heredoc with a redirect to a file.
-- `python -c` and `node -e` with no heredoc are not checked.
+- `python -c` and `node -e` with no heredoc are not checked, nor are `sed -i` and `perl -pi -e` run directly.
+- An interpreter body with a variable mode (`open(p, mode)`), a write through `os.system` or `subprocess`, or a heredoc inside a quoted `$(...)` is not caught.
+- Only the segment that starts with `printf` or `echo` is checked: `printf x \| sed ... \| tee f` slips by, and so do `echo x \| sudo tee f` and `{ echo a; } > f`.
+- Redirect parsing is textual: `echo>f` without a space, a redirect split by a line continuation, and `>&word` (a redirect to a file named by a word) are not caught.
+- A heredoc whose pipe continues on a later line (`cat <<EOF |\n...\nEOF\npython3`) is not matched to its interpreter.
 - A `<<` inside quotes (`echo "a << b" > out.txt`) is not a heredoc.
 - A command longer than 4000 characters is not checked and goes through, because the rules backtrack badly on crafted long input. The log still records it, cut at 4000.
 - Quoted spans are blanked before the checks, so a `;`, `|` or `>` inside quotes is not read as shell. Nesting is not parsed: a `$(...)` inside quotes, or an escaped quote inside single quotes, can still slip by or cause a false block.

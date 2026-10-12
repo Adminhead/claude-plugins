@@ -23,8 +23,8 @@ describe('classify', () => {
   })
 
   test('a quoted << is not a heredoc', () => {
-    expect(rule('echo "a << b" > output.txt')).toBeNull()
-    expect(rule("echo 'a << b' > output.txt")).toBeNull()
+    expect(rule('echo "a << b" > output.txt')).toBe('echo-write')
+    expect(rule("echo 'a << b' > output.txt")).toBe('echo-write')
     expect(rule('cat > f <<EOF\nx\nEOF')).toBe('heredoc-write')
   })
 
@@ -56,8 +56,154 @@ describe('classify', () => {
       'cat <<EOF 2>&1\nhi\nEOF',
       'cat <<EOF > /dev/null\nhi\nEOF',
       'cat <<<"here string" > f',
-      'echo hi > f',
+      'ls > f',
       "python -c 'open(\"a\",\"w\")'",
+    ]) {
+      expect(rule(c)).toBeNull()
+    }
+  })
+
+  test('interpreter heredocs in any shape are blocked when the body writes files', () => {
+    for (const c of [
+      "python3 - <<'EOF'\nfrom pathlib import Path\nPath('a').open('w')\nEOF",
+      "python3 /dev/stdin <<EOF\nopen('a', 'w')\nEOF",
+      "cat <<EOF | python3\nPath('a').write_text('x')\nEOF",
+      "cat <<'EOF' | node -\nrequire('fs').createWriteStream('a')\nEOF",
+      "cd x && python3 - <<EOF\nimport shutil\nshutil.copy('a', 'b')\nEOF",
+      "python3 - <<EOF\nimport shutil\nshutil.move('a', 'b')\nEOF",
+      "python3 - <<EOF\nimport os\nos.replace('a', 'b')\nEOF",
+      "python3 - <<EOF\nos.rename('a', 'b')\nEOF",
+      "python3 - <<EOF\nfileinput.input('a', inplace=True)\nEOF",
+      "node <<EOF\nfs.promises.copyFile('a', 'b')\nEOF",
+      "node <<EOF\nfs.rename('a', 'b', cb)\nEOF",
+      "bun <<EOF\nBun.write('a', 'x')\nEOF",
+      "deno run - <<EOF\nawait Deno.writeTextFile('a', 'x')\nEOF",
+      "deno run - <<EOF\nawait Deno.writeFile('a', b)\nEOF",
+      "ruby <<EOF\nFile.write('a', 'x')\nEOF",
+      "ruby <<EOF\nIO.write('a', 'x')\nEOF",
+      "ruby <<EOF\nFile.open('a', 'w') { |f| f.puts 1 }\nEOF",
+      "perl <<EOF\nopen(my $fh, '>', 'a');\nEOF",
+      'perl <<EOF\nopen(FH, ">a");\nEOF',
+      "perl <<EOF\nopen($fh, '>>', 'a');\nEOF",
+      "bash <<EOF\necho a > f\nEOF",
+      "sh <<EOF\nls | tee out.txt\nEOF",
+      "zsh <<'EOF'\nsed -i 's/a/b/' f\nEOF",
+      "bash <<EOF\nperl -pi -e 's/a/b/' f\nEOF",
+      'cat >| f <<EOF\nx\nEOF',
+    ]) {
+      expect(rule(c)).toBe('heredoc-write')
+    }
+  })
+
+  test('interpreter heredocs that only read or print, and mere mentions, pass', () => {
+    for (const c of [
+      "python3 - <<EOF\nprint(open('f').read())\nEOF",
+      "cat <<EOF | python3\nprint(open('f').read())\nEOF",
+      "bash <<EOF\necho a\nls > /dev/null\necho b >&2\nEOF",
+      "sh <<EOF\nls | tee /dev/null\nEOF",
+      'git commit -F - <<EOF\nuse write_text and shutil.copy\nEOF',
+      'git commit -m "$(cat <<\'EOF\'\nfix node writeFile; python3 Path.write_text\nEOF\n)"',
+      'git commit -m "bump node" -F - <<EOF\nwriteFileSync\nEOF',
+      'cat <<EOF | jq .\n{"a": "writeFile"}\nEOF',
+      "python3 <<<'open(\"a\",\"w\")'",
+      "perl <<EOF\nopen(my $fh, '<', 'a');\nEOF",
+    ]) {
+      expect(rule(c)).toBeNull()
+    }
+  })
+
+  test('path-qualified and wrapped interpreters are blocked when the body writes files', () => {
+    for (const c of [
+      ".venv/bin/python - <<EOF\nopen('a', 'w')\nEOF",
+      "/usr/bin/python3 - <<EOF\nopen('a', 'w')\nEOF",
+      "/usr/bin/env python3 - <<EOF\nopen('a', 'w')\nEOF",
+      "timeout 60 python3 - <<EOF\nopen('a', 'w')\nEOF",
+      "sudo -u x python3 - <<EOF\nopen('a', 'w')\nEOF",
+      "uv run --with x python - <<EOF\nopen('a', 'w')\nEOF",
+      "FOO=1 nice -n 5 node - <<EOF\nrequire('fs').writeFileSync('a', 'x')\nEOF",
+      'cat <<EOF | tee /dev/null f\nx\nEOF',
+    ]) {
+      expect(rule(c)).toBe('heredoc-write')
+    }
+  })
+
+  test('each heredoc is judged by its own command and body', () => {
+    for (const c of [
+      'bun test && git commit -F - <<EOF\nfeat: add overwriteFile helper\nEOF',
+      'python3 -m pytest && git commit -F - <<EOF\nfix: os.rename( call\nEOF',
+      'node build.mjs; git commit -F - <<EOF\nuse fs.rename(\nEOF',
+      'python3 - <<EOF\nprint(1)\nEOF\ngit commit -F - <<MSG\nuse shutil.copy(\nMSG',
+      'bash <<EOF\necho hi\nEOF\ngit commit -F - <<MSG\nfix a > b\nMSG',
+      "node tool.js <<EOF\nrequire('fs').writeFileSync('a', 'x')\nEOF",
+      "python3 tool.py <<EOF\nopen('a', 'w')\nEOF",
+    ]) {
+      expect(rule(c)).toBeNull()
+    }
+    expect(rule("python3 - <<EOF\nprint(1)\nEOF\npython3 - <<MSG\nopen('a', 'w')\nMSG")).toBe('heredoc-write')
+  })
+
+  test('read-only code that resembles file APIs passes', () => {
+    for (const c of [
+      "python3 - <<EOF\ndf.drop(columns=['a'], inplace=True)\nEOF",
+      "python3 - <<EOF\ndf.rename(columns={'a': 'b'})\nEOF",
+      "python3 - <<EOF\nprint('rename(')\nEOF",
+      "node - <<EOF\nconsole.log('writeFile')\nEOF",
+      'node - <<EOF\noverwriteFile(x)\nEOF',
+    ]) {
+      expect(rule(c)).toBeNull()
+    }
+  })
+
+  test('shell bodies: only real in-place edits, files and tees count', () => {
+    for (const c of [
+      'bash <<EOF\nsed s/a/b/ f | grep -i foo\nEOF',
+      'bash <<EOF\nperl -Mstrict -e print\nEOF',
+      'bash <<EOF\nsed 1p f; find . -print\nEOF',
+      'bash <<EOF\necho tee file\nEOF',
+      'bash <<EOF\necho $((1 > 0))\nEOF',
+      'bash <<EOF\n[[ a > b ]] && ls\nEOF',
+      'bash <<EOF\n(( x > 3 ))\nEOF',
+    ]) {
+      expect(rule(c)).toBeNull()
+    }
+  })
+
+  test('printf and echo redirects to a file are blocked', () => {
+    for (const c of [
+      "printf '%s\\n' a > f",
+      'echo hi >> notes.md',
+      'cd x && printf x >out',
+      'echo a 1>f',
+      'echo a >| f',
+      'echo a &> f',
+      'builtin printf x > f',
+      'command printf x > f',
+      'echo hi 2>&1 > f',
+      'echo hi > "out file"',
+      '(echo hi > f)',
+      'printf x | tee f',
+      'echo x | tee -a f',
+      'echo x | tee /dev/null f',
+    ]) {
+      expect(rule(c)).toBe('echo-write')
+    }
+  })
+
+  test('printf and echo that write no file pass', () => {
+    for (const c of [
+      'echo hi',
+      'echo hi >&2',
+      'echo hi 1>&2',
+      'printf x 2>/dev/null',
+      'echo hi > /dev/null',
+      'echo hi > /dev/stderr',
+      'printf x > /dev/stdout',
+      'echo hi > /dev/tty',
+      'echo "a > b"',
+      "echo 'a > b'",
+      'printf x | cat',
+      'printf x | tee /dev/null',
+      'printf x | wc -c > count.txt',
     ]) {
       expect(rule(c)).toBeNull()
     }
@@ -70,6 +216,7 @@ describe('classify', () => {
   test('messages start with tool-mgr: and name the built-in tool', () => {
     expect(classify("sed -n 1p f")?.message).toMatch(/^tool-mgr: .*Read/)
     expect(classify('cat > f <<EOF\nx\nEOF')?.message).toMatch(/^tool-mgr: .*Write.*Edit/)
+    expect(classify('echo hi > f')?.message).toMatch(/^tool-mgr: .*printf or echo.*Write.*Edit/)
   })
 })
 
