@@ -1,7 +1,7 @@
 // Pure rules and formatting for tool-mgr. Nothing here touches `$`.
 
 import { nestedScript, parse, reparse } from '../shell/walk'
-import type { ShellCommand, ShellParse } from '../shell/walk'
+import type { ShellCommand, ShellParse, ShellRedirect } from '../shell/walk'
 
 export type Rule = 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long'
 export type Hit = { rule: Rule; message: string }
@@ -19,16 +19,16 @@ const MESSAGES = {
 const MAX_PARSE = 64 * 1024
 
 const DEV_OK = /^\/dev\/(null|stderr|stdout|tty)$/
-const OUTPUT_OPS = new Set(['>', '>>', '>|', '&>', '&>>', '>&'])
+const OUTPUT_OPS = new Set(['>', '>>', '>|', '&>', '&>>', '>&', '<>'])
 
 // An output redirect to anything but a harmless device. An fd dup (`>&2`, `>&-`) is not a file, and
 // `>&$fd` is unknown, so both pass. A target with an expansion counts as a file.
-const redirectsToFile = (c: ShellCommand) =>
-  c.redirects.some(r => {
-    if (!OUTPUT_OPS.has(r.op)) return false
-    if (r.target === null) return r.op !== '>&'
-    return !DEV_OK.test(r.target) && !(r.op === '>&' && /^(\d+-?|-)$/.test(r.target))
-  })
+const writesFile = (r: ShellRedirect) => {
+  if (!OUTPUT_OPS.has(r.op)) return false
+  if (r.target === null) return r.op !== '>&'
+  return !DEV_OK.test(r.target) && !(r.op === '>&' && /^(\d+-?|-)$/.test(r.target))
+}
+const redirectsToFile = (c: ShellCommand) => c.redirects.some(writesFile)
 
 // `tee` with a file argument (every non-flag argument is checked), not `tee /dev/null`.
 const teeFile = (c: ShellCommand) => c.argv[0] === 'tee' && c.argv.slice(1).some(a => a === null || (!a.startsWith('-') && !DEV_OK.test(a)))
@@ -39,21 +39,69 @@ const hasArg = (c: ShellCommand, re: RegExp) => c.argv.slice(1).some(a => a !== 
 
 const fedByPipe = (c: ShellCommand) => c.pipeline !== null && c.pipeline.stage > 0
 
-// A sed that edits nothing in place and is fed by neither a pipe, a here-string nor a heredoc reads a file.
+// The commands of the previous pipeline stage. `earlier` also holds commands from substitutions, which have no stage.
+const prevStage = (c: ShellCommand) => {
+  const p = c.pipeline
+  return p ? p.earlier.filter(e => e.pipeline?.stage === p.stage - 1) : []
+}
+
+// How many file operands a sed has: its non-option words, less the script when no -e/-f supplies it. `-` is stdin.
+// shortcut: a cluster like `-ne` is read for its first e/f/l only; move to a real option parser if that bites.
+function sedFileOperands(c: ShellCommand): number {
+  let words = 0
+  let scripted = false
+  const args = c.argv.slice(1)
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a === '--') {
+      words += args.slice(i + 1).length
+      break
+    }
+    if (a === null || a === '-' || !a.startsWith('-')) {
+      if (a !== '-') words++
+    } else if (a.startsWith('--')) {
+      if (/^--(expression|file)\b/.test(a)) scripted = true
+      if (/^--(expression|file|line-length)$/.test(a)) i++
+    } else {
+      const at = a.search(/[efl]/)
+      if (at >= 0 && a[at] !== 'l') scripted = true
+      if (at === a.length - 1) i++
+    }
+  }
+  return words - (scripted ? 0 : 1)
+}
+
+// A sed that edits nothing in place reads a file, unless it is fed by a pipe, or by a here-string or heredoc and has no file operand.
 const sedRead = (c: ShellCommand) =>
   c.argv[0] === 'sed' &&
   !fedByPipe(c) &&
-  c.heredocs.length === 0 &&
-  !c.redirects.some(r => r.op === '<<<') &&
-  !hasArg(c, IN_PLACE)
+  !hasArg(c, IN_PLACE) &&
+  !((c.heredocs.length > 0 || c.redirects.some(r => r.op === '<<<')) && sedFileOperands(c) <= 0)
 
 const isEcho = (c: ShellCommand | undefined) => {
   const name = c?.argv[0] === 'builtin' || c?.argv[0] === 'command' ? c.argv[1] : c?.argv[0]
   return name === 'printf' || name === 'echo'
 }
 
-// A printf/echo with an output redirect to a file, or piped straight into `tee <file>`.
-const echoWrite = (c: ShellCommand) => (isEcho(c) && redirectsToFile(c)) || (fedByPipe(c) && teeFile(c) && isEcho(c.pipeline!.earlier.at(-1)))
+// A file write that only printf/echo feed: every command under the redirect (its own, or a group's or loop's around it)
+// is printf/echo, or every command of the previous stage of a pipe into `tee <file>` is. A mixed group or pipe passes.
+function echoWrite(commands: ShellCommand[]): boolean {
+  const under = new Map<ShellRedirect, ShellCommand[]>()
+  for (const c of commands) {
+    for (const r of c.redirects) {
+      if (!writesFile(r)) continue
+      const members = under.get(r) ?? []
+      members.push(c)
+      under.set(r, members)
+    }
+  }
+  if ([...under.values()].some(cs => cs.every(isEcho))) return true
+  return commands.some(c => {
+    if (!teeFile(c)) return false
+    const prev = prevStage(c)
+    return prev.length > 0 && prev.every(isEcho)
+  })
+}
 
 const SCRIPT_INTERP = /^(?:python[\d.]*|node|bun|deno|ruby|perl)$/
 const SHELL_INTERP = /^(?:sh|bash|zsh)$/
@@ -74,17 +122,17 @@ function interpreterOf(c: ShellCommand): 'script' | 'shell' | null {
 // The heredoc bodies an interpreter command reads: its own, and those of the command piped into it.
 const fedBodies = (c: ShellCommand) => [
   ...c.heredocs,
-  ...(fedByPipe(c) ? c.pipeline!.earlier.filter(e => e.pipeline!.stage === c.pipeline!.stage - 1).flatMap(e => e.heredocs) : []),
+  ...prevStage(c).flatMap(e => e.heredocs),
 ].map(h => h.body)
 
 const BODY_WRITES = new RegExp(
   [
-    String.raw`\bopen\s*\([^,)]*,\s*(?:mode\s*=\s*)?['"][rwaxbt+]*[wax][rwaxbt+]*['"]|\bopen\s*\([^)]*\bmode\s*=\s*['"][rwaxbt+]*[wax][rwaxbt+]*['"]`, // python open(p, 'w'), ruby File.open(p, 'w')
-    String.raw`\.open\s*\(\s*(?:mode\s*=\s*)?['"][rwaxbt+]*[wax][rwaxbt+]*['"]`, // python Path(p).open('w')
-    String.raw`\bopen\b\s*\(?[^,)\n]*,\s*['"]\+?>`, // perl open(my $fh, '>', f), open(FH, ">f")
+    String.raw`\bopen\s*\([^,)]{0,500},\s*(?:mode\s*=\s*)?['"][rwaxbt+]{0,3}[wax][rwaxbt+]{0,3}['"]|\bopen\s*\([^)]{0,500}\bmode\s*=\s*['"][rwaxbt+]{0,3}[wax][rwaxbt+]{0,3}['"]`, // python open(p, 'w'), ruby File.open(p, 'w')
+    String.raw`\.open\s*\(\s*(?:mode\s*=\s*)?['"][rwaxbt+]{0,3}[wax][rwaxbt+]{0,3}['"]`, // python Path(p).open('w')
+    String.raw`\bopen\b\s*\(?[^,)\n]{0,500},\s*['"]\+?>`, // perl open(my $fh, '>', f), open(FH, ">f")
     String.raw`\.write_text\(|\.write_bytes\(`,
-    String.raw`\bshutil\.(?:copy\w*|move)\(|\bos\.replace\(|\bfileinput\.(?:input|FileInput)\([^)]*inplace\s*=\s*True`,
-    String.raw`\b(?:fs\.(?:promises\.)?|os\.|File\.|Path\([^)]*\)\.)rename(?:Sync)?\(`,
+    String.raw`\bshutil\.(?:copy\w*|move)\(|\bos\.replace\(|\bfileinput\.(?:input|FileInput)\([^)]{0,500}inplace\s*=\s*True`,
+    String.raw`\b(?:fs\.(?:promises\.)?|os\.|File\.|Path\([^)]{0,500}\)\.)rename(?:Sync)?\(`,
     String.raw`\b(?:writeFile|appendFile|copyFile)(?:Sync)?\(|\bcreateWriteStream\(`, // node fs, fs.promises
     String.raw`\bBun\.write\(|\bDeno\.write(?:Text)?File(?:Sync)?\(`,
     String.raw`\b(?:File|IO)\.(?:bin)?write\b`,
@@ -103,7 +151,8 @@ const hasHeredoc = (c: ShellCommand) => c.heredocs.length > 0
 function heredocWrite(commands: ShellCommand[], bodyCommands: ShellCommand[]): boolean {
   return (
     commands.some(c => {
-      if ((hasHeredoc(c) || c.pipeline?.earlier.some(hasHeredoc)) && (redirectsToFile(c) || teeFile(c))) return true
+      // The cheap test first: `earlier` is rebuilt on every read.
+      if ((redirectsToFile(c) || teeFile(c)) && (hasHeredoc(c) || c.pipeline?.earlier.some(e => e.pipeline !== null && hasHeredoc(e)))) return true
       return interpreterOf(c) === 'script' && fedBodies(c).some(b => BODY_WRITES.test(b))
     }) || bodyCommands.some(shellBodyWrites)
   )
@@ -138,7 +187,7 @@ export function classify(command: string): Hit | null {
     // Deep inputs cascade into hundreds of errors; the first one names the cause.
     return { rule: 'parse-error', message: `tool-mgr: could not parse this command (${errors[0].message}). Rewrite it in plain bash, or write a script file and run it.` }
   }
-  const rule = commands.some(sedRead) ? 'sed-read' : heredocWrite(commands, bodyCommands) ? 'heredoc-write' : commands.some(echoWrite) ? 'echo-write' : null
+  const rule = commands.some(sedRead) ? 'sed-read' : heredocWrite(commands, bodyCommands) ? 'heredoc-write' : echoWrite(commands) ? 'echo-write' : null
   return rule && { rule, message: MESSAGES[rule] }
 }
 

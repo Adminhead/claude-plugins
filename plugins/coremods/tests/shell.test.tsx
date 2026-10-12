@@ -229,6 +229,12 @@ describe('walker: errors', () => {
     expect(parse(inputs[2]).errors.length).toBeGreaterThan(0)
   })
 
+  test('arithmetic nested past the parser stack is an error, not a throw', () => {
+    const text = 'echo $((' + '('.repeat(12000) + '1' + ')'.repeat(12000) + '))'
+    expect(() => parse(text)).not.toThrow()
+    expect(parse(text).errors[0].message).toContain('nested too deep')
+  })
+
   test('deep quoted nesting past unbash\'s word limit is an error, not a literal', () => {
     for (const k of [10, 255, 257, 300]) {
       const r = parse(quotedDeep(k))

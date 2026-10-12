@@ -224,6 +224,39 @@ describe('classify', () => {
     expect(rule("sh -c 'cat <<EOF > f\nx\nEOF'")).toBe('heredoc-write')
   })
 
+  test('commands in a substitution are not stages of the pipeline around them', () => {
+    expect(rule('cat > f <<EOF\nx\nEOF\necho $(date) | bash')).toBe('heredoc-write')
+    expect(rule('echo $(date) | python3; echo hi > f')).toBe('echo-write')
+    expect(rule('cat $(ls) | python3 -')).toBeNull()
+    expect(rule('echo "$(date)" | tee f')).toBe('echo-write')
+    expect(rule('echo "v=$(git rev-parse HEAD)" | tee VERSION')).toBe('echo-write')
+  })
+
+  test('a sed fed by a here-string or heredoc that also names a file still reads it', () => {
+    for (const c of ['sed -n p secret.txt <<< x', 'sed -n p secret.txt <<EOF\nx\nEOF', 'sed -e p f <<< x', 'sed -n -e p -- f <<< x']) expect(rule(c)).toBe('sed-read')
+    for (const c of ['sed -n p <<< x', 'sed -e p <<< x', 'sed -ne p <<EOF\nx\nEOF', 'sed p - <<< x', 'sed --expression=p <<< x']) expect(rule(c)).toBeNull()
+  })
+
+  test('echo-write needs every command under the redirect or feeding the tee to be echo or printf', () => {
+    for (const c of ['{ echo a; echo b; } > f', 'for i in 1 2; do echo $i; done > f', 'echo a | tee f', '(printf a; echo b) >> f']) expect(rule(c)).toBe('echo-write')
+    for (const c of ['{ npm test; echo "exit=$?"; } 2>&1 | tee test.log', 'for f in *; do echo $f; wc -l $f; done > report', '{ echo a; ls; } > f', 'echo a | sort | tee f']) {
+      expect(rule(c)).toBeNull()
+    }
+  })
+
+  test('<> opens a file for writing', () => {
+    expect(rule('echo x 1<>f')).toBe('echo-write')
+    expect(rule('cat <<EOF 1<>f\nx\nEOF')).toBe('heredoc-write')
+  })
+
+  test('crafted long inputs are checked quickly', () => {
+    const t0 = performance.now()
+    expect(rule("python3 <<EOF\nopen(a,'" + 'w'.repeat(65000))).toBeNull()
+    expect(rule('cat <<EOF | ' + 'cat | '.repeat(10000) + 'tee f\nx\nEOF')).toBe('heredoc-write')
+    expect(rule('cat | '.repeat(10000) + 'cat')).toBeNull()
+    expect(performance.now() - t0).toBeLessThan(1000)
+  })
+
   test('a redirect elsewhere in the command does not make a heredoc a write', () => {
     expect(rule('ls > f; git commit -F - <<EOF\nmsg\nEOF')).toBeNull()
   })

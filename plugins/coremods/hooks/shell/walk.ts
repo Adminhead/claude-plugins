@@ -235,7 +235,13 @@ function parseAt(text: string, depth: number): ShellParse {
     }
   }
 
-  visit(unbash(text), { pipeline: null, redirects: [], heredocs: [] })
+  try {
+    visit(unbash(text), { pipeline: null, redirects: [], heredocs: [] })
+  } catch (err) {
+    // unbash's arithmetic parser (and this walk) recurse without a limit. Match on the name, since a realm may differ.
+    if ((err as Error)?.name !== 'RangeError') throw err
+    errors.push({ message: 'input nested too deep; rewrite in plain bash or use a script file', pos: 0 })
+  }
   return { commands, errors }
 }
 
