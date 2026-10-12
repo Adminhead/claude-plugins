@@ -9,7 +9,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: 'python3 -I "$HOME/.claude/hooks/readonly-bash.py" || exit 2'
+          command: 'bun --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2'
 color: orange
 ---
 
