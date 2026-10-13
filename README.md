@@ -59,6 +59,10 @@ A plugin directory can hold any of `skills/`, `agents/`, `hooks/`, `scripts/`, `
 
 `plugins/example` has a `hello` skill and a function hooks module. `register.ts` exports `register(on, options)`, and each hook has the signature `($, e, next)`.
 
+## Set up a machine
+
+Clone the repo, then run `scripts/install.sh`. Run it with `--dry-run` first to see every command it would make. It links `~/.local/bin/claude-tmux` to the launcher (backing up anything already there), registers the marketplaces, and installs the core plugins at user scope. Rerunning it is safe, and it never deletes anything.
+
 ## Use the marketplace
 
 | Task | Command |

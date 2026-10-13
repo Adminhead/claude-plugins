@@ -17,6 +17,7 @@ Run from the repo root.
 - `scripts/prompt-drift.sh [VERSION|PATH]` checks that a Claude Code upgrade hasn't broken the system-prompt override (`plugins/crew/prompts/system_override.md`). Run it after upgrading Claude Code.
 - `bash plugins/crew/scripts/tests/check.sh` runs every crew check: the agent checker and its tests, both read-only gate suites, the guard suite and the bash replay. It is the one entry point for the crew plugin.
 - `bash scripts/prompt-drift.test.sh` tests the drift script.
+- `bash scripts/install.test.sh` tests `scripts/install.sh` against a temp `HOME` and a stub `claude`.
 - `claude plugin validate --strict plugins/<name>` validates one plugin. `claude plugin validate --strict .` validates the marketplace.
 
 ## Releasing a plugin
