@@ -1,10 +1,9 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 33 plugins. Install one with `claude plugin install <plugin>@adminhead`.
+Claude Code plugin marketplace `adminhead`. It lists 32 plugins. Install one with `claude plugin install <plugin>@adminhead`. `plugins/example` is an unlisted template for new plugins.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
-| `example` | Template plugin showing a skill and a function hook. Copy it to start a new plugin. | [plugins/example](plugins/example) |
 | `code-search` | Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines. | [docs](docs/plugins/code-search.md) |
 | `git` | Git skills: focused commits, branches, history rewrites and recovery, and worktrees. | [docs](docs/plugins/git.md) |
 | `github` | GitHub skills (issues, issue breakdown, triage, pull requests and review comments, shipping commits through merge, releases, repository setup, code security, Actions, Dependabot and its PR sweeps) plus the GitHub remote MCP server. | [docs](docs/plugins/github.md) |

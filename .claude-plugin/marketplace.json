@@ -11,13 +11,6 @@
   ],
   "plugins": [
     {
-      "name": "example",
-      "source": "./plugins/example",
-      "description": "Template plugin showing a skill and a function hook. Copy it to start a new plugin.",
-      "version": "0.1.0",
-      "category": "development"
-    },
-    {
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines.",

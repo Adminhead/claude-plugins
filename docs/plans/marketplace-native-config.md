@@ -3,6 +3,13 @@
 Status: Planned, 2026-10-12. Not started. Reverses docs/plans/system-prompt.md Q9 once Q1 is approved. Depends on hooks-typescript-ast-bash.md slice 7c. Q1–Q5 resolved (see Resolved questions).
 Engine: Claude Code 2.1.296. Facts from code.claude.com/docs (plugins-reference, sub-agents, hooks, output-styles, plugin-marketplaces, fetched 2026-10-12), `claude --help`, `claude plugin --help`, and live `claude -p --plugin-dir` probes run 2026-10-12.
 
+## Status
+
+- In progress since 2026-10-12.
+- 7c soak not finished (about 11 h of quick-review on the `.ts` hook, no real `internal error`), so S2 takes the documented fallback: two `hooks.json` gate entries over disjoint agent sets, `.ts` for quick-review and `.py` for the other six. 7c later moves names between them.
+- S9: `example` dropped from the catalog and README (not installed anywhere, so no `renames`). Worktree removal and the `plugins/ripgrep` move were blocked by the permission classifier and are left for the operator.
+- S0: running.
+
 ## Goal
 
 - `~/.claude/agents`, `~/.claude/hooks` and `~/.claude/prompts` are no longer symlinks into the repo. Agents, guard hooks and the prompt file ship in one marketplace plugin installed at user scope.
