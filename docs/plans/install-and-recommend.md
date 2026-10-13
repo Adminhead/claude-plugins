@@ -1,6 +1,6 @@
 # Install script and plugin recommender
 
-Status: Slice 2 done. `setup` is on main as a cherry-pick of a812a02 (e7f27e0), not yet on crew-migration. Slice 1 not started, and it runs after marketplace-native-config.md, per that plan's Interaction section. Q1–Q5 resolved (see Decisions).
+Status: Done, 2026-10-12. Slice 1 `install.sh` (`80fc253`, `ca43920`; test, shellcheck and dry run pass; real run not exercised). Slice 2 `setup` (`e7f27e0`). Slice 3 docs and release: `setup` page and README row (`7e82889`), `setup` 0.1.0 installed at user scope. Open: the interactive recommender check in a scratch repo. Q1–Q5 resolved (see Decisions).
 Engine: Claude Code 2.1.296 (CLI syntax checked with `claude plugin * --help` and https://code.claude.com/docs/en/plugins/cli-reference).
 
 ## Goal
