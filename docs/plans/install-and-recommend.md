@@ -1,11 +1,11 @@
 # Install script and plugin recommender
 
-Status: Planned, 2026-10-12. Not started. Q1–Q5 resolved (see Decisions).
+Status: Slice 2 done. `setup` is on main as a cherry-pick of a812a02 (e7f27e0), not yet on crew-migration. Slice 1 not started, and it runs after marketplace-native-config.md, per that plan's Interaction section. Q1–Q5 resolved (see Decisions).
 Engine: Claude Code 2.1.296 (CLI syntax checked with `claude plugin * --help` and https://code.claude.com/docs/en/plugins/cli-reference).
 
 ## Goal
 
-- One command bootstraps a machine from a clone. It creates the three global symlinks, registers the marketplaces, and installs the user-scope plugin set. It is safe to rerun and never deletes anything.
+- One command bootstraps a machine from a clone. It links `~/.local/bin/claude-tmux` to the repo's launcher, registers the marketplaces, and installs the user-scope plugin set. It is safe to rerun and never deletes anything.
 - One user-invoked command inspects the current project and proposes matching adminhead plugins, each with a one-line reason. It skips installed plugins, installs only after the user confirms, and uses local or project scope.
 
 Done when:
@@ -56,23 +56,24 @@ Files: `scripts/install.sh` (new, executable), `scripts/install.test.sh` (new).
 
 Behavior, in order. Steps a–c write nothing.
 
-a. Parse `--dry-run` and `-h`. If `CLAUDE_CONFIG_DIR` is set and isn't `$HOME/.claude`, die, because agent hooks hard-code `$HOME/.claude/hooks`.
+a. Parse `--dry-run` and `-h`. If `CLAUDE_CONFIG_DIR` is set and isn't `$HOME/.claude`, die, because `ship-plugin` and the docs assume `~/.claude`.
 
 b. Preflight:
 - Require `claude`, `git`, `jq`, `python3`, `bun`, `node`, `npm`. Name every missing one in one error.
 - Warn, without failing, when `codegraph`, `gh` or `rg` is missing.
-- Check `$repo/{agents,hooks,prompts}` exist. `$repo` is the `pwd -P` of the script's parent directory.
+- Resolve `$repo`, the `pwd -P` of the script's parent directory.
 
 c. Run `claude plugin marketplace list --json`. If `adminhead` points at another source, die, naming the current source and noting that `claude plugin marketplace remove adminhead` would uninstall every adminhead plugin. Never remove it automatically.
 
-d. Links. For each of `agents`, `hooks`, `prompts`:
+d. Launcher link. `~/.local/bin/claude-tmux` → `$repo/scripts/claude-tmux.sh`:
 - Realpath already matches: print `ok`.
-- Else, if the target exists or is a dangling link: `bak=$(mktemp -d "$target.bak-$(date +%Y%m%d-%H%M%S).XXXX")`, `mv "$target" "$bak/"`, then `ln -s "$repo/$n" "$target" || { mv "$bak/$n" "$target"; die; }`. Print the backup path.
+- Else, if the target exists or is a dangling link: `bak=$(mktemp -d "$target.bak-$(date +%Y%m%d-%H%M%S).XXXX")`, `mv "$target" "$bak/"`, then `ln -s "$repo/scripts/claude-tmux.sh" "$target" || { mv "$bak/claude-tmux" "$target"; die; }`. Print the backup path.
 - Never `rm`.
+- Legacy `~/.claude/{agents,hooks,prompts}` symlinks: warn and point to the cutover (marketplace-native-config.md, slice 8). Never touch them.
 
 e. `marketplace add "$repo"` when `adminhead` is absent, else `marketplace update adminhead`.
 
-f. `REQUIRED=(coremods@adminhead efficient-core@adminhead efficient-testing@adminhead code-search@adminhead git@adminhead github@adminhead authoring@adminhead setup@adminhead)`. Run `claude plugin install "$id" --scope user` for each.
+f. `REQUIRED=(coremods@adminhead efficient-core@adminhead efficient-testing@adminhead code-search@adminhead crew@adminhead git@adminhead github@adminhead authoring@adminhead setup@adminhead)`. Run `claude plugin install "$id" --scope user` for each.
 
 g. Read back `claude plugin list --json`:
 - A required id missing at user scope: fail.
@@ -87,9 +88,9 @@ Every mutating command goes through `run() { if ((dry)); then printf '+'; printf
 Test (`scripts/install.test.sh`, in the style of `claude-tmux.test.sh`):
 - Setup: temp `HOME`, `unset CLAUDE_CONFIG_DIR`, a stub `claude` on `PATH` that appends argv to a log, returns canned JSON for `marketplace list --json` and `list --json` from files named by env vars, and exits 1 for a source named in `STUB_FAIL_ADD`.
 - Cases:
-  1. Fresh `HOME`: three links point at the repo dirs; the argv log matches the exact order of add, installs, third-party adds.
+  1. Fresh `HOME`: the launcher link points at `scripts/claude-tmux.sh`; the argv log matches the exact order of add, installs (crew included), third-party adds.
   2. Rerun with `adminhead` at the repo path: no new `.bak-*`; `marketplace update adminhead` runs.
-  3. Real dir with a file, wrong symlink, dangling symlink, and a pre-existing same-second `.bak-*`: each original lands in a unique backup with contents intact, links correct, old backup untouched.
+  3. A real file at the launcher path, a wrong symlink, a dangling symlink, and a pre-existing same-second `.bak-*`: each original lands in a unique backup with contents intact, the link correct, old backup untouched.
   4. `adminhead` at another path: nonzero exit, `$HOME/.claude` unchanged, no mutating stub calls.
   5. `CLAUDE_CONFIG_DIR=/elsewhere`: nonzero exit, `$HOME/.claude` unchanged.
   6. `--dry-run` on fresh `HOME`: no filesystem changes, only `list` calls logged, every planned command printed.
@@ -101,7 +102,7 @@ Acceptance: the eight cases pass, and a real run on this machine is a no-op that
 Checks, cheapest first:
 - `bash scripts/install.test.sh`
 - `shellcheck scripts/install.sh scripts/install.test.sh`, if installed
-- `scripts/install.sh --dry-run` here: three `ok` lines, `update adminhead`, the installs
+- `scripts/install.sh --dry-run` here: one `ok` line for the launcher link, `update adminhead`, the installs
 - One real `scripts/install.sh` in a terminal: links unchanged, every install "already installed". Also settles whether the github install needs `-y` without a TTY (UNCONFIRMED, probably not).
 
 Not tested: the missing-binary preflight (needs `PATH` surgery); checked by reading.
@@ -145,7 +146,7 @@ Procedure, body under about 80 lines:
    - MCP SDK: mcp
    - `sdkconfig`/`idf_component.yml`: efficient-esp
    - CDK/SAM: aws
-   - Never propose `example`.
+   - Never propose `example`, or `crew`, which is user scope only.
 5. **Confirm.** Rank by evidence; zero matches means "nothing to add" and stop. AskUserQuestion with multiSelect, at most 4 options per question and 4 questions; label is the plugin name, description is a one-line reason citing the evidence path. Past 16 matches, list the rest in text. Nothing selected or cancelled: no change.
 6. **Install.** From the target directory, `claude plugin install <p>@adminhead --scope <s>` per selection, then each `dependencies` entry as `<dep>@<marketplace> --scope <s>` so `prune` keeps it. If `claude-code-lsps` isn't registered, skip those and say how to add it. The skill never adds a third-party marketplace.
 7. **Report.** Read back `claude plugin list --json`; report each plugin installed or failed with the CLI message; tell the user to run `/reload-plugins`. For project scope, say `.claude/settings.json` changed and should be committed deliberately, and collaborators need the `adminhead` marketplace.
@@ -180,7 +181,7 @@ Check: the `ship-plugin` skill for `setup`.
 
 | Risk | Mitigation | Rollback |
 | --- | --- | --- |
-| The links change every session at once | Read-only validation before any write; unique, printed backups | Remove the link, `mv <bak>/<name> ~/.claude/<name>` |
+| The launcher link is replaced | Read-only validation before any write; unique, printed backups | Remove the link, then `mv <bak>/claude-tmux ~/.local/bin/claude-tmux` |
 | Re-registering `adminhead` from another clone | Script refuses; never runs `marketplace remove` | none needed |
 | Third-party marketplace hooks run shell at session start | Added last; already used here; noted in `efficient.md` Security | `claude plugin marketplace remove claude-code-lsps` |
 | Project-scope install lands in a committed file | Local default; project scope warns | Revert `.claude/settings.json` |

@@ -1,6 +1,6 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 32 plugins. Install one with `claude plugin install <plugin>@adminhead`. `plugins/example` is an unlisted template for new plugins.
+Claude Code plugin marketplace `adminhead`. It lists 33 plugins. Install one with `claude plugin install <plugin>@adminhead`. `plugins/example` is an unlisted template for new plugins.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
@@ -36,6 +36,7 @@ Claude Code plugin marketplace `adminhead`. It lists 32 plugins. Install one wit
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
 | `aws` | AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
 | `coremods` | A home for the core Claude Code mods: a git status line under the prompt, a usage band above it, an agent status line with an expandable panel, read-only git tools (`git_log`, `git_blame`, `git_show`) for Bash-less agents, and `tool-mgr`, which blocks `sed` file reads and heredoc, `printf` and `echo` file writes in Bash, denies dangerous commands (`rm -rf` of system paths, disk wipes, `sudo`), asks before piped installers and git force-pushes, and logs every tool call with DuckDB metrics (`/tool-mgr`; hooks need `bun` and `node`). Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/coremods.md) |
+| `crew` | The orchestrated-session crew: 14 subagents (coders, reviewers, debuggers, architect, devops, dba, scribe, browser tester) plus the orchestration main-thread agent, with a read-only Bash gate for the read-only agents, orchestration nudge hooks, and the orchestration system-prompt file. Agents are spawned as crew:<name>. | [docs](docs/plugins/crew.md) |
 
 ## Layout
 
@@ -48,13 +49,12 @@ plugins/
       plugin.json         name, version, description, author
     skills/<name>/SKILL.md
     agents/*.md
-    commands/*.md
-    hooks/hooks.json      e.g. { "modules": ["./register.ts"] }
-    hooks/register.ts     hooks module
+    hooks/hooks.json      hook config: classic hooks, or a "modules" list
+    hooks/register.ts     mods hooks module, when the plugin has one
     .mcp.json
 ```
 
-A plugin directory can hold any of `skills/`, `agents/`, `commands/`, `hooks/`, and `.mcp.json`. Only `plugin.json` is always present.
+A plugin directory can hold any of `skills/`, `agents/`, `hooks/`, `scripts/`, `prompts/`, and `.mcp.json`. Only `plugin.json` is always present.
 
 `plugins/example` has a `hello` skill and a function hooks module. `register.ts` exports `register(on, options)`, and each hook has the signature `($, e, next)`.
 

@@ -6,16 +6,17 @@
 
 - `plugins/<name>/` holds one plugin each, with `.claude-plugin/plugin.json`. The catalog is `.claude-plugin/marketplace.json`.
 - `docs/plugins/<name>.md` is the per-plugin page. Several plugins can share a page (`efficient-*` share `docs/plugins/efficient.md`). `docs/plans/` holds plans and `docs/research/` holds research notes.
-- `agents/`, `hooks/` and `prompts/` are global Claude config tracked here. `~/.claude/agents`, `~/.claude/hooks` and `~/.claude/prompts` are symlinks to these directories, so an edit takes effect in every session. Check for in-progress work before changing them. `agents/CLAUDE.md` holds the rules for writing and changing agents.
+- `plugins/crew/` holds the orchestrated-session crew: the 15 agents, the read-only Bash gates, the orchestration hooks and the system prompt file. Its agents are `crew:<name>`. `plugins/crew/docs/writing-agents.md` holds the rules for writing and changing agents, and its edit loop is `claude --plugin-dir plugins/crew`.
 - `scripts/` holds the checks and the `claude-tmux` launcher.
 
 ## Checks
 
 Run from the repo root.
 
-- `python3 scripts/agent-tools.py` checks each agent's `tools` and `disallowedTools` frontmatter: known tool names, and the read-only rules (no `memory`, no write tools, Bash only with the readonly-bash.py hook) for allowlist agents with no Edit/Write/NotebookEdit. Run it after editing `agents/*.md`.
-- `scripts/prompt-drift.sh [VERSION|PATH]` checks that a Claude Code upgrade hasn't broken the system-prompt override (`prompts/system_override.md`). Run it after upgrading Claude Code.
-- `bash scripts/agent-tools.test.sh`, `bash scripts/prompt-drift.test.sh`, `bash hooks/tests/orchestration-guard.test.sh` and `bash hooks/tests/readonly-bash.test.sh` test the scripts and hooks.
+- `python3 scripts/agent-tools.py` checks the crew agents in `plugins/crew/agents` (frontmatter, and the read-only rules for each agent in `READ_ONLY`) and the gate entries in `plugins/crew/hooks/hooks.json`. Run it after editing an agent or a gate.
+- `scripts/prompt-drift.sh [VERSION|PATH]` checks that a Claude Code upgrade hasn't broken the system-prompt override (`plugins/crew/prompts/system_override.md`). Run it after upgrading Claude Code.
+- `bash plugins/crew/scripts/tests/check.sh` runs every crew check: the agent checker and its tests, both read-only gate suites, the guard suite and the bash replay. It is the one entry point for the crew plugin.
+- `bash scripts/prompt-drift.test.sh` tests the drift script.
 - `claude plugin validate --strict plugins/<name>` validates one plugin. `claude plugin validate --strict .` validates the marketplace.
 
 ## Releasing a plugin
@@ -30,7 +31,7 @@ Commit to local `main`. Push only when asked.
 
 ## Commits
 
-Conventional Commits, lowercase subject: `feat(scope): ...`, `fix(scope): ...`, `docs: ...`, `docs(plan): ...`, `chore`, `test`. The scope is a plugin or area (`coremods`, `agents`, `hooks`, `scripts`). Stage explicit paths.
+Conventional Commits, lowercase subject: `feat(scope): ...`, `fix(scope): ...`, `docs: ...`, `docs(plan): ...`, `chore`, `test`. The scope is a plugin or area (`coremods`, `crew`, `scripts`). Stage explicit paths.
 
 ## Mods
 

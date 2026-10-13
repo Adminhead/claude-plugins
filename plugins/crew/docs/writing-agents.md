@@ -1,21 +1,33 @@
 # Agents
 
-Rules for building and updating the subagent definitions in this directory. Source: the Claude Code subagents reference (https://code.claude.com/docs/en/sub-agents), checked against Claude Code 2.1.296.
+Rules for building and updating the subagent definitions in `plugins/crew/agents/`. Source: the Claude Code subagents reference (https://code.claude.com/docs/en/sub-agents), checked against Claude Code 2.1.296.
 
 ## How these files load
 
-- `~/.claude/agents` is a symlink to this directory, so every file here is a user-scope agent in every session. Run `git status agents/` before editing, in case another session has work in progress.
-- Claude Code watches the directory. An edit applies to the next delegation within seconds, with no restart. `orchestration.md` is the exception, because it runs as the session itself (`claude --agent orchestration`, launched by `scripts/claude-tmux.sh`), so its changes apply at the next launch.
-- Scope precedence on a name clash: managed, then `--agents`, then project `.claude/agents/`, then user `~/.claude/agents/` (this directory), then plugin `agents/`.
-- The directory is scanned recursively. Identity comes only from the `name` field, never the filename or subfolder. When two files share a `name`, only one loads, picked by filesystem read order, so keep names unique.
-- Claude Code skips a file with no warning in the session in these cases:
-  - The opening `---` isn't line 1, or there's no `name`. The file counts as documentation, which is why this file is safe here. `scripts/agent-tools.py` exempts it by name.
+- The `crew` plugin is installed at user scope, so Claude Code loads a copy from `~/.claude/plugins/cache/adminhead/crew/<version>`, not from this repo. An edit here reaches sessions only after the edit loop below.
+- Every agent is scoped `crew:<name>`. The `name` field is the bare name, and the plugin prefix comes from the plugin. Spawn with `subagent_type: crew:<name>`. The Agent tool rejects a bare name. Because of the prefix, a plugin agent never clashes with a user or project agent of the same bare name.
+- The main thread is `crew:orchestration`, loaded with `claude --agent crew:orchestration`. It runs as the session itself, so its changes take effect at the next launch.
+- Identity comes only from the `name` field, never the filename. Keep names unique within the plugin.
+- Claude Code skips a file with no warning in these cases:
+  - The opening `---` isn't line 1, or there's no `name`.
   - `name` starts with `-`, contains `:`, or runs past 256 characters.
   - `name` has no `description`.
   - The YAML doesn't parse.
 
   Only the last three cases are written to the debug log, so run `claude --debug` when an agent goes missing.
+- A plugin agent file with no `name` still loads under its filename. That's why this file is in `docs/` and not in `agents/`.
+- Plugin agents ignore the frontmatter fields `hooks`, `mcpServers`, `permissionMode` and `initialPrompt`, and they ignore them silently. `scripts/agent-tools.py` bans all four. Guards go in `plugins/crew/hooks/hooks.json`, and the read-only Bash gate goes there too.
+- Read-only Bash is enforced by two `PreToolUse` Bash entries in `plugins/crew/hooks/hooks.json`. Each entry runs a gate that keys on `agent_type`. The gate membership is the `READ_ONLY` constant in `scripts/readonly-gate.ts` (quick-review) and `scripts/readonly-gate.py` (the other six). The two sets must stay disjoint. The split is temporary: slice 7c of `docs/plans/hooks-typescript-ast-bash.md` moves names from the `.py` gate to the `.ts` gate, and slice 7d deletes the `.py` gate.
+- Never spawn a read-only agent as an agent-team teammate. The gates are verified for foreground, background and resumed subagents only, so teammate coverage is unverified.
 - A subagent's system prompt is its body plus environment details, not the Claude Code system prompt. It also loads the CLAUDE.md hierarchy, git status, its preloaded skills, and the brief. It never sees the parent conversation.
+
+## Edit loop
+
+1. Edit files under `plugins/crew/`. Run `git status plugins/crew` first, in case another session has work in progress.
+2. Try the change with `claude --plugin-dir plugins/crew`. That copy fully replaces the installed one for that session, as the spike verified.
+3. Run `bash plugins/crew/scripts/tests/check.sh`.
+4. Ship. Bump `version` in `plugins/crew/.claude-plugin/plugin.json` and the `crew` entry in `.claude-plugin/marketplace.json` to the same new value, then run the ship-plugin skill on `crew`. An unchanged version means installed copies won't update.
+5. Run `/reload-plugins`, or relaunch. A running session keeps the hook paths of the copy it started with.
 
 ## File layout
 
@@ -31,12 +43,6 @@ tools: <allowlist, read-only agents only>
 disallowedTools: <writers only: Agent, mcp__claude-in-chrome, mcp__plugin_github_github>
 skills:
   - <plugin>:<skill>
-hooks:                             # read-only agents with Bash only
-  PreToolUse:
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: 'python3 -I "$HOME/.claude/hooks/readonly-bash.py" || exit 2'
 color: <one of the eight>
 ---
 
@@ -57,17 +63,17 @@ Report: <exact contents of the final message>. End with `escalate: <agent> — <
 
 | Class | Tool fields | Bash | Members |
 | --- | --- | --- | --- |
-| Read-only | `tools:` allowlist with none of Edit, Write, NotebookEdit | Only with the readonly-bash hook above | Explore, architect, debugger, debugger-critical, review, quick-review, security-auditor, browser-tester |
+| Read-only | `tools:` allowlist with none of Edit, Write, NotebookEdit | Only for the `READ_ONLY` members of the two gates | Explore, architect, debugger, debugger-critical, review, quick-review, security-auditor, browser-tester |
 | Writer | No `tools:`; `disallowedTools: Agent, mcp__claude-in-chrome, mcp__plugin_github_github`. For public GitHub code search they keep grep-app, and `gh` via Bash covers reads | Unrestricted | coder, coder-high, coder-max, devops, dba, scribe |
 | Main thread | No `tools:` (it would narrow the whole session) | Session rules | orchestration |
 
 `scripts/agent-tools.py` enforces these. A read-only agent may not have:
 
 - a `memory` key, which silently enables Read, Write and Edit
-- Skill, SendMessage, Monitor, Artifact or EnterWorktree
+- Skill, SendMessage, Monitor, Artifact, EnterWorktree, Agent or PowerShell
 - a server-level MCP grant (`mcp__<server>` or `mcp__<server>__*`) of a server not marked read-only
 - an MCP tool whose name contains a write verb
-- Bash without the readonly-bash hook, or the hook without Bash
+- Bash, unless it is in `READ_ONLY`
 
 A read-only agent that only disallows the writers still inherits everything else, so it must use an allowlist.
 
@@ -75,27 +81,24 @@ A read-only agent that only disallows the writers still inherits everything else
 
 | Field | Rule |
 | --- | --- |
-| `name`, `description` | Required. `name` is also the `agent_type` hooks receive, and what orchestration routes by. |
-| `tools`, `disallowedTools` | One-line comma-separated string, never YAML list form (agent-tools rule). `disallowedTools` applies first. An entry with a specifier, such as `Bash(git push *)`, removes the whole tool, so block commands with a hook or `permissions.deny` instead. Every name must be a known built-in or an MCP entry on a known server (`MCP_SERVERS` in `scripts/agent-tools.py`, a map from server id to a read-only flag; add the server there before using it). Prefer the server-level form `mcp__<server>`, which grants or removes every tool of the server, so new tools need no edit. Name a single tool only when a server mixes read and write tools, as with playwright for browser-tester. `Workflow` is removed from every subagent, so it needn't be denied. |
+| `name`, `description` | Required. `name` is the bare name. The scoped form `crew:<name>` is the `agent_type` hooks receive, and what orchestration routes by. |
+| `tools`, `disallowedTools` | One-line comma-separated string, never YAML list form (agent-tools rule). `disallowedTools` applies first. An entry with a specifier, such as `Bash(git push *)`, removes the whole tool, so block commands with a hook or `permissions.deny` instead. Every name must be a known built-in or an MCP entry on a known server (`MCP_SERVERS` in `scripts/agent-tools.py`, a map from server id to a read-only flag; add the server there before using it). Prefer the server-level form `mcp__<server>`, which grants or removes every tool of the server, so new tools need no edit. Name a single tool only when a server mixes read and write tools, as with the efficient-web playwright server for browser-tester. `Workflow` is removed from every subagent, so it needn't be denied. |
 | `model` | Use an alias: `haiku`, `sonnet` or `opus`. A family alias resolves to the main conversation's exact model when it belongs to the same family. A per-call `model` parameter overrides the frontmatter. |
 | `effort` | Set it explicitly. A per-call `effort` overrides it, and `CLAUDE_CODE_EFFORT_LEVEL` overrides both. Available levels depend on the model, so check before using `xhigh` or `max`. |
 | `skills` | Preload only what the agent needs on every run, at most 32. The full skill text is injected, which costs context on each spawn. A missing or disabled skill is skipped with only a debug-log warning, so preload only skills from user-scope plugins. Skills with `disable-model-invocation: true` can't be preloaded. |
-| `hooks` | Frontmatter hooks in this directory run without a trust prompt. A `Stop` hook becomes `SubagentStop`. Session hooks from settings and plugins also fire inside subagents. |
 | `color` | One of `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`. There are more agents than colors, so share a color within a family: red for debuggers and coder-max, orange for reviewers and security-auditor, and one color each for the other agents, reused across unrelated roles (yellow for Explore and devops, cyan for browser-tester and scribe). |
 
 Fields this roster doesn't use, and why:
 
-- `permissionMode`: ignored when the parent runs in auto, acceptEdits or bypass mode, which is how these sessions run.
+- `hooks`, `mcpServers`, `permissionMode`, `initialPrompt`: ignored by plugin agents and banned by the checker. Put guards in `plugins/crew/hooks/hooks.json`. browser-tester reaches the efficient-web playwright server through `tools`.
 - `isolation`: the orchestrator passes `isolation: "worktree"` per call. Set in frontmatter, it doesn't stop a named spawn from becoming a teammate when agent teams are on, and that teammate runs in the main checkout.
 - `memory`: banned for read-only agents, and no writer needs memory across sessions.
-- `background`, `maxTurns`, `initialPrompt`, `omitClaudeMd`, `experimental`: add one only with a concrete current use.
+- `background`, `maxTurns`, `omitClaudeMd`, `experimental`: add one only with a concrete current use.
 - Unknown or misspelled fields are ignored without an error, so match the camelCase exactly.
-
-`mcpServers` has one use. browser-tester declares its own playwright server so the browser stays scoped to that agent.
 
 ## Tools at runtime
 
-- Every subagent loses AskUserQuestion, EnterPlanMode, ScheduleWakeup, WaitForMcpServers, Workflow and EndConversation. It also loses ExitPlanMode unless its `permissionMode` is `plan`, and Agent at the nesting depth limit. A body must never tell the agent to ask the user. It stops and reports the question in its final message.
+- Every subagent loses AskUserQuestion, EnterPlanMode, ScheduleWakeup, WaitForMcpServers, Workflow and EndConversation. It also loses ExitPlanMode unless its `permissionMode` is `plan`, which a plugin agent can't set, and Agent at the nesting depth limit. A body must never tell the agent to ask the user. It stops and reports the question in its final message.
 - Background subagents, the default in interactive sessions, keep every MCP tool but only these built-ins: Read, Grep, Glob, LSP, Bash, PowerShell, Edit, Write, NotebookEdit, WebFetch, WebSearch, TodoWrite, Skill, ToolSearch, EnterWorktree, ExitWorktree, Monitor, TaskStop, SendMessage, Artifact and SubagentHandback. Don't write a procedure that depends on any other tool.
 - In a worktree-isolated agent, Claude Code refuses a Bash command when it can't prove that the git it runs stays inside the worktree. Name `git` directly. Running it through a wrapper or launcher, or with a computed command name, gets the command refused.
 - Worktrees branch from the base set by `worktree.baseRef` in user settings. Keep it `"head"`, which branches from the current local `HEAD`. The default, `"fresh"`, branches from the remote default branch (`origin/HEAD`), so a worktree agent misses every unpushed commit. In this repo, which commits to local `main` and pushes only on request, that means parallel slices build on stale code and the merge back diverges. Uncommitted changes never reach a worktree under either setting, so commit before spawning a worktree agent that needs them.
@@ -117,7 +120,7 @@ The description is the router's only signal, for both the orchestrator and autom
 - Ground rules are copied verbatim, never paraphrased:
   - Writers carry the three paragraphs under `## Ground rules` in `coder.md`.
   - Read-only agents carry the one paragraph in `debugger.md`. `security-auditor.md` adds a second paragraph that refuses destructive and evasion work.
-  - To change a ground rule, change every copy in the same commit (`rg -n '<phrase>' agents`).
+  - To change a ground rule, change every copy in the same commit (`rg -n '<phrase>' plugins/crew/agents`).
 - Write in the user's prose style (short declaratives, no announcing, no colon before a clause). Keep a body under about 40 lines. Move reference material to a preloaded skill instead.
 
 ## Roster and ladders
@@ -149,21 +152,21 @@ Ladders:
 
 ## Changing the roster
 
-1. Run `git status agents/` and read the files you will touch.
+1. Run `git status plugins/crew` and read the files you will touch.
 2. Write or edit the file to the layout above.
-3. Update every reference: `rg -n '<name>' agents hooks scripts plugins README.md CLAUDE.md docs/plugins`. Leave `docs/plans/` and `docs/research/` alone, since they are history.
+3. Update every reference: `rg -n '<name>' plugins/crew README.md CLAUDE.md docs/plugins`. Leave `docs/plans/` and `docs/research/` alone, since they are history.
 4. In `orchestration.md`, update the routing entry (delegate when, don't when, rule of thumb), the review rules, and the read-only list.
 5. When the agent implements or owns fixes, update the agent lists in `architect.md` and `security-auditor.md`.
 6. After a rename or removal, check `permissions.deny` entries such as `Agent(<name>)` in settings.
-7. Run the checks below, then a `quick-review` pass on the diff.
-8. Commit with `feat(agents): ...` or `refactor(agents): ...`, staging explicit paths.
+7. A change to read-only membership edits the `READ_ONLY` constant in `readonly-gate.ts` or `readonly-gate.py`, which must stay disjoint from the other. Keep the agent's `tools` allowlist in step with it.
+8. Run the checks below, then a `quick-review` pass on the diff.
+9. Commit with `feat(crew): ...` or `refactor(crew): ...`, staging explicit paths.
 
 ## Checks
 
 Run from the repo root.
 
-- `python3 scripts/agent-tools.py`: the tool and read-only rules.
-- `bash scripts/agent-tools.test.sh`: tests for that checker.
-- `claude plugin validate agents`: frontmatter parses. It doesn't flag a missing `name`.
-- `bash hooks/tests/orchestration-guard.test.sh`: run it when `orchestration.md` or the guard changes.
+- `bash plugins/crew/scripts/tests/check.sh`: the one entry point. It runs the agent checker and its tests, both read-only gate suites, the guard suite and the bash replay.
+- `python3 scripts/agent-tools.py`: the tool and read-only rules, and the `hooks.json` gate entries.
+- `claude plugin validate --strict plugins/crew`: manifest and frontmatter.
 - After a model or effort change, spawn the agent once and confirm the model in `/tasks`.
