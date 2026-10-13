@@ -9,8 +9,8 @@ Usage: orchestration-guard.py <stop|prompt|edit|ledger>   (hook JSON on stdin)
   prompt  UserPromptSubmit: injects R2 when an agent returns.
   edit    PostToolUse Edit|Write|NotebookEdit: injects R3 past the do-it-yourself threshold.
 
-Every mode is silent (exit 0, no output) unless agent_type == "orchestration" and
-agent_id is absent: frontmatter hooks also fire inside subagents. Every mode fails
+Every mode is silent (exit 0, no output) unless agent_type == "crew:orchestration"
+and agent_id is absent: plugin hooks also fire inside subagents. Every mode fails
 open, because these hooks only nudge and must never block a session.
 
 Payload fields (Claude Code 2.1.296, captured from PostToolUse):
@@ -190,7 +190,7 @@ def main():
     if mode not in ("stop", "prompt", "edit", "ledger"):
         return
     h = json.load(sys.stdin)
-    if not isinstance(h, dict) or h.get("agent_type") != "orchestration" or "agent_id" in h:
+    if not isinstance(h, dict) or h.get("agent_type") != "crew:orchestration" or "agent_id" in h:
         return
     if os.environ.get("ORCHESTRATION_GUARD_TEST_FAULT"):
         raise RuntimeError("injected fault")

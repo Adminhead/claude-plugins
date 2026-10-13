@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "bun --no-env-file --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.ts\" || exit 2" }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.py\" || exit 2" }]
+      }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/scripts/orchestration-guard.py\" stop" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/scripts/orchestration-guard.py\" prompt" }] }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "TaskCreate|TaskUpdate",
+        "hooks": [{ "type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/scripts/orchestration-guard.py\" ledger" }]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/scripts/orchestration-guard.py\" edit" }]
+      }
+    ]
+  }
+}
