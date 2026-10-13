@@ -1,6 +1,6 @@
 # efficient
 
-Cost-conscious engineering skills for Claude Code, split into 12 `efficient-*` plugins so a project enables only what it uses. The family covers coding, planning, debugging, testing, security review, research, experiments, prototypes, modernization, web work, and guidance for languages, frameworks, databases, auth, and ESP32 firmware. It adds 42 skills and no hooks or agents. Five skills ship scripts. Claude loads each skill on demand when its description matches the task, except three manual-only commands.
+Cost-conscious engineering skills for Claude Code, split into 12 `efficient-*` plugins so a project enables only what it uses. The family covers coding, planning, debugging, testing, security review, research, experiments, prototypes, modernization, web work, and guidance for languages, frameworks, databases, auth, and ESP32 firmware. It adds 44 skills and no hooks or agents. Five skills ship scripts. Claude loads each skill on demand when its description matches the task, except three manual-only commands.
 
 The family replaces the former `efficient` and `quality` plugins, which no longer exist. Two former `quality` skills moved outside the family: `agent-config-audit` to [authoring](authoring.md) and `production-readiness` to [infra](infra.md). The plugins have no dependencies on each other. Five language plugins depend on an LSP plugin from the third-party `claude-code-lsps` marketplace (see [LSP servers](#lsp-servers)). A skill that mentions a skill in another plugin says "if installed".
 
@@ -8,7 +8,7 @@ The family replaces the former `efficient` and `quality` plugins, which no longe
 
 | Plugin | Skills | Holds |
 | --- | --- | --- |
-| `efficient-core` | 12 | Process skills used in every project, plus the reviewers the `architect`, `review`, and `quick-review` agents preload |
+| `efficient-core` | 12 | Process skills used in every project. Several crew agents preload its skills, such as `second-opinion` for `architect` and `review` |
 | `efficient-testing` | 5 | Unit, end-to-end, and regression tests; the test runner; the test harness; test-gap audits |
 | `efficient-security` | 3 | Threat models, privacy review, and a manual security scan |
 | `efficient-go` | 3 | The Go language, CLI tools, and performance |
@@ -16,7 +16,7 @@ The family replaces the former `efficient` and `quality` plugins, which no longe
 | `efficient-js` | 7 | JavaScript, TypeScript, React, Vue, Vite, TanStack, and UI click-path audits |
 | `efficient-rust` | 1 | Rust |
 | `efficient-shell` | 1 | Bash scripting. Home for future shell-specific skills |
-| `efficient-web` | 2 | Front-end web development and web design |
+| `efficient-web` | 2 | Front-end web development and web design, plus a Playwright MCP server |
 | `efficient-auth` | 2 | Application-side auth and Better Auth |
 | `efficient-db` | 4 | Schema design, Postgres, MySQL, and Redis |
 | `efficient-esp` | 1 | ESP32 firmware with ESP-IDF. Home for future ESP-specific skills |
@@ -216,7 +216,7 @@ Install at user scope what every project uses. Enable the rest per project with 
 
 | Scope | Plugins | Why |
 | --- | --- | --- |
-| User | `efficient-core`, `efficient-testing`, `authoring` | Used in every project. `efficient-core` must be present because the `architect`, `review`, and `quick-review` agents preload `efficient-core:second-opinion` |
+| User | `efficient-core`, `efficient-testing`, `authoring` | Used in every project. `efficient-core` must be present because crew agents such as `architect`, `review`, and `coder` preload its skills |
 | User (already) | `git`, `code-search`, `github` | Unchanged |
 | Per project | `efficient-go`, `efficient-python`, `efficient-js`, `efficient-rust`, `efficient-shell` | Only for the languages the project uses |
 | Per project | `efficient-web`, `efficient-auth`, `efficient-db` | Only for projects with a UI, login, or a database |

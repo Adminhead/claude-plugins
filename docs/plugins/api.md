@@ -1,6 +1,6 @@
 # api
 
-Adds eight skills for designing and reviewing public APIs: REST contracts, idempotency and retries, webhooks, versioning and deprecation, gRPC, GraphQL, API keys, and OAuth providers. They produce designs, reviews, and written policies. None of them runs commands against a live service.
+Adds eight skills for designing and reviewing public APIs: REST contracts, idempotency and retries, webhooks, versioning and deprecation, gRPC, GraphQL, API keys, and OAuth providers. They produce designs, reviews, and written policies. Apart from the idempotency verify gates in Safety, none runs commands against a live service.
 
 ## What it adds
 

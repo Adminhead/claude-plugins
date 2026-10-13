@@ -70,13 +70,14 @@ Each Bash call starts both gate processes. In a measurement run on 2026-10-12, t
 
 ## Launcher
 
-`claude-tmux` starts orchestrated sessions. Link it at `~/.local/bin/claude-tmux`, pointing to `scripts/claude-tmux.sh`. Until `scripts/install.sh` does that, make the link by hand.
+`claude-tmux` starts orchestrated sessions. `scripts/install.sh` links it at `~/.local/bin/claude-tmux`, pointing to `scripts/claude-tmux.sh`. To link it by hand, run `ln -s <clone>/scripts/claude-tmux.sh ~/.local/bin/claude-tmux`.
 
 For a new session, the launcher:
 
 - Runs `claude plugin list --json` from the directory it starts in. It stops with the fix if `crew@adminhead` isn't enabled at user scope, or is disabled at project or local scope for that directory. Attaching to an existing session skips this check.
 - Starts `claude` with `--agent crew:orchestration`.
 - Appends `prompts/system_override.md` with `--append-system-prompt-file`. It reads the plugin's folder from the same JSON: `readFromFolder` (the repo, for the directory marketplace) when set, else `installPath`.
+- Sets `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, which turns off auto memory because claude-mem covers it.
 - Sets `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1`, which removes the built-in Explore and Plan agents for that session.
 
 Plain `claude` gets the stock prompt and doesn't run as `crew:orchestration`. Only the launcher sets those.

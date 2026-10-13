@@ -6,6 +6,12 @@ Requires Claude Code 2.1.289 or later. Mods shipped in 2.1.287, and 2.1.289 has 
 
 The mods share one hooks module, so they draw together. Above the prompt, the usage band replaces the engine's row and the agent line stacks beneath it. The git line sits under the prompt, in the engine's hint line.
 
+## Install
+
+```
+claude plugin install coremods@adminhead
+```
+
 ## git-line
 
 A Claude Code mod that draws a status line directly under the prompt, beneath the engine's hint line. It shows where the session is working and the state of its git repository. It adds no skills or commands.
@@ -123,12 +129,6 @@ Task counts come from `tool.call`. `TaskCreate` adds a task, `TaskUpdate` sets i
 
 If reading the agent list fails, the last line stays and the error is logged once.
 
-## Install
-
-```
-claude plugin install coremods@adminhead
-```
-
 ## git-tools
 
 Three read-only tools for subagents, served from the same hooks module: `mcp__coremods__git_log` (`rev`, `path`, `max_count` up to 100, default 20), `mcp__coremods__git_blame` (`path`, `rev`, `start_line`, `end_line`) and `mcp__coremods__git_show` (`rev`, `path`). Explore lists them in place of a shell.
@@ -139,7 +139,7 @@ The helper in `hooks/git-tools/git.ts` builds and validates the argv. The tools 
 
 ## tool-mgr
 
-Blocks three Bash habits that have a better built-in tool, denies a handful of dangerous commands (recursive deletes of system paths, disk wipes, `sudo`), asks before piped installers and git history rewrites, and denies a Bash command it cannot parse. It reads each command with a shell parser, so it sees through lists, pipelines, groups, loops, `$(...)` and `bash -c` bodies. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history.
+Blocks three Bash habits that have a better built-in tool, denies a handful of dangerous commands (recursive deletes of system paths, disk wipes, `sudo`), asks before piped installers and git history rewrites, and denies a Bash command it cannot parse. It reads each command with a shell parser, the vendored unbash library. `hooks/shell/walk.ts` flattens the parse tree into a list of commands, so the rules see through lists, pipelines, groups, loops, `$(...)` and `bash -c` bodies. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history.
 
 ### Rules
 
@@ -205,9 +205,9 @@ Six rules for commands that destroy a system or run unreviewed code. They stop a
 
 | Case | tool-mgr (mod) | readonly-bash | cloud-ops-guard |
 | --- | --- | --- | --- |
-| Parse error | Deny with the parser message and a hint to rewrite in plain bash or use a script file | Block, exit 2, as today | `ask`, as today |
-| Over 64 KB | Deny with a hint to write a script file and run it | No cap, as today | No cap, as today |
-| Exception in our code | Allow and log once (the ask hook keeps the verdict from below) | Block, exit 2, as today | `ask`, as today |
+| Parse error | Deny with the parser message and a hint to rewrite in plain bash or use a script file | Block, exit 2 | `ask` |
+| Over 64 KB | Deny with a hint to write a script file and run it | No cap | No cap |
+| Exception in our code | Allow and log once (the ask hook keeps the verdict from below) | Block, exit 2 | `ask` |
 
 A parse error is a property of the input, and Claude can fix it by rewriting. An exception is our bug, and Claude can't fix it, so failing closed would stop all Bash in every session. A failure in the log or the metrics never blocks a call.
 

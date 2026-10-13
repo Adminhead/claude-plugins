@@ -1,6 +1,30 @@
 # claude-plugins
 
-Claude Code plugin marketplace `adminhead`. It lists 34 plugins. Install one with `claude plugin install <plugin>@adminhead`. `plugins/example` is an unlisted template for new plugins.
+Claude Code plugin marketplace `adminhead`. It lists 34 plugins. `plugins/example` is an unlisted template for new plugins.
+
+## Quick start
+
+Add the marketplace once. Use a local clone, the GitHub repo (after it is pushed), or a git URL.
+
+| Task | Command |
+| --- | --- |
+| Add from a local clone | `claude plugin marketplace add /path/to/claude-plugins` |
+| Add from GitHub | `claude plugin marketplace add <owner>/claude-plugins` |
+| Add from a URL | `claude plugin marketplace add <url>` |
+| Install a plugin | `claude plugin install <plugin>@adminhead` |
+| Install for one project | `claude plugin install <plugin>@adminhead --scope local` |
+| Refresh the catalog | `claude plugin marketplace update adminhead` |
+| Update a plugin | `claude plugin update <plugin>@adminhead --scope <scope>` |
+| Disable a plugin | `claude plugin disable <plugin>@adminhead` |
+| Enable a plugin | `claude plugin enable <plugin>@adminhead` |
+| Uninstall a plugin | `claude plugin uninstall <plugin>@adminhead` |
+| List installed plugins | `claude plugin list` |
+
+`--scope` takes `user`, `project`, or `local`. Use the scope the plugin was installed at when you update or uninstall it. Uninstall defaults to `user`. `local` keeps the install to one checkout, for you.
+
+Restart Claude Code or run `/reload-plugins` to apply an install or update.
+
+Each plugin has a docs page, linked from the Docs column below. The `efficient-*` plugins share `docs/plugins/efficient.md`. To try a plugin without installing it, run `claude --plugin-dir plugins/<name>`.
 
 | Plugin | Description | Docs |
 | --- | --- | --- |
@@ -19,7 +43,7 @@ Claude Code plugin marketplace `adminhead`. It lists 34 plugins. Install one wit
 | `efficient-auth` | Authentication skills: login, sessions, and token validation for your own app, plus Better Auth. | [docs](docs/plugins/efficient.md) |
 | `efficient-db` | Database skills: schema design, Postgres, MySQL, and Redis. | [docs](docs/plugins/efficient.md) |
 | `efficient-esp` | ESP32 skills: ESP-IDF firmware engineering. | [docs](docs/plugins/efficient.md) |
-| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security. Includes a Stop hook that nudges you to check docs after code changes. | [docs](docs/plugins/authoring.md) |
+| `authoring` | Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security. Includes docs-sync hooks that nudge you to check docs after code changes. | [docs](docs/plugins/authoring.md) |
 | `devenv` | Configure, migrate, debug, and verify devenv.sh developer environments. | [docs](docs/plugins/devenv.md) |
 | `chezmoi` | Manage, migrate, and troubleshoot chezmoi-managed dotfiles. | [docs](docs/plugins/chezmoi.md) |
 | `pass-cli` | Use the Proton Pass CLI without exposing secrets. | [docs](docs/plugins/pass-cli.md) |
@@ -35,15 +59,55 @@ Claude Code plugin marketplace `adminhead`. It lists 34 plugins. Install one wit
 | `infra` | Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, Terraform, OpenTofu, Terragrunt, and Ansible, plus a guard hook for unsafe `tofu` and `aws` commands. | [docs](docs/plugins/infra.md) |
 | `mcp` | Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness. | [docs](docs/plugins/mcp.md) |
 | `aws` | AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server. | [docs](docs/plugins/aws.md) |
-| `coremods` | A home for the core Claude Code mods: a git status line under the prompt, a usage band above it, an agent status line with an expandable panel, read-only git tools (`git_log`, `git_blame`, `git_show`) for Bash-less agents, and `tool-mgr`, which blocks `sed` file reads and heredoc, `printf` and `echo` file writes in Bash, denies dangerous commands (`rm -rf` of system paths, disk wipes, `sudo`), asks before piped installers and git force-pushes, and logs every tool call with DuckDB metrics (`/tool-mgr`; hooks need `bun` and `node`). Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/coremods.md) |
+| `coremods` | A home for the core Claude Code mods: a git status line under the prompt, a usage band above it, an agent status line with an expandable panel, read-only git tools (`git_log`, `git_blame`, `git_show`) for Bash-less agents, and `tool-mgr`, which blocks `sed` file reads and heredoc, `printf` and `echo` file writes in Bash, denies dangerous commands (`rm -rf` of system paths, disk wipes, `sudo`), asks before piped installers, git force-pushes and `git reset --hard`, and logs every tool call with DuckDB metrics (`/tool-mgr`; the hooks need `bun`, `node` and `npm`). Requires Claude Code 2.1.289 or later. | [docs](docs/plugins/coremods.md) |
 | `setup` | Setup skills: recommend and install the adminhead plugins that fit the current project. | [docs](docs/plugins/setup.md) |
-| `crew` | The orchestrated-session crew: 14 subagents (coders, reviewers, debuggers, architect, devops, dba, scribe, browser tester) plus the orchestration main-thread agent, with a read-only Bash gate for the read-only agents, orchestration nudge hooks, and the orchestration system-prompt file. Agents are spawned as crew:<name>. | [docs](docs/plugins/crew.md) |
+| `crew` | The orchestrated-session crew: 14 subagents (coders, reviewers, debuggers, architect, devops, dba, scribe, security auditor, browser tester, and the Explore navigator) plus the orchestration main-thread agent, with a read-only Bash gate for the read-only agents, orchestration nudge hooks, and the orchestration system-prompt file. Agents are spawned as crew:<name>. | [docs](docs/plugins/crew.md) |
 
-## Layout
+## Set up a machine
+
+From a clone, run `scripts/install.sh`. Run it with `--dry-run` first. It prints every command it would run and changes nothing. Its flags are `--dry-run` and `-h`.
+
+It needs `claude`, `git`, `jq`, `python3`, `bun`, `node` and `npm` on `PATH`. It warns, without failing, when `codegraph`, `gh` or `rg` is missing.
+
+The script does the following.
+
+- Links `~/.local/bin/claude-tmux` to `scripts/claude-tmux.sh`. An existing file or link at that path moves into a `claude-tmux.bak-*` directory first.
+- Adds the `adminhead` marketplace from this clone, or updates it when it is already registered.
+- Adds the `claude-code-lsps` marketplace, which the language plugins need for their LSP servers.
+- Installs nine plugins at user scope: `coremods`, `efficient-core`, `efficient-testing`, `code-search`, `crew`, `git`, `github`, `authoring` and `setup`.
+- Adds the `conorbronsdon/avoid-ai-writing` marketplace and installs `avoid-ai-writing` from it.
+
+It stops before any change when `CLAUDE_CONFIG_DIR` points somewhere other than `~/.claude`, or when `adminhead` already points at another path. Rerunning it is safe, and it never deletes anything. It exits nonzero when a required plugin is missing. A disabled one only produces a warning.
+
+Restart Claude Code or run `/reload-plugins` when it finishes.
+
+### Launch Claude Code in tmux
+
+`claude-tmux` starts a tmux session that runs Claude Code as the `crew:orchestration` agent.
+
+```
+claude-tmux [-s NAME] [DIR] [CLAUDE_ARGS...]
+claude-tmux -l
+```
+
+Each git repo gets one session, named `claude-<repo name>`. Running the command again attaches to it. Inside tmux, it switches sessions. `-l` picks a session with `fzf`. A new session needs `crew` enabled at user scope. The launcher needs `tmux` and `jq`, and `-l` also needs `fzf`.
+
+### Pick plugins for a project
+
+Run `/setup:recommend-plugins [local|project]` from the main checkout of a project. The skill reads the project's files, proposes matching plugins, and installs the ones you confirm. `local` (the default) writes `.claude/settings.local.json`, which is gitignored. `project` writes `.claude/settings.json`, which you commit on purpose.
+
+## Using the crew plugin
+
+`crew` runs orchestrated sessions. `claude-tmux` starts a main-thread orchestrator that plans the work and routes it to subagents. Read-only Bash gates stop the review and debug agents from writing. See [docs/plugins/crew.md](docs/plugins/crew.md).
+
+## Contributing
+
+### Layout
 
 ```
 .claude-plugin/
   marketplace.json        marketplace manifest; lists every plugin
+docs/plugins/<name>.md    per-plugin docs page
 plugins/
   <name>/
     .claude-plugin/
@@ -53,28 +117,16 @@ plugins/
     hooks/hooks.json      hook config: classic hooks, or a "modules" list
     hooks/register.ts     mods hooks module, when the plugin has one
     .mcp.json
+scripts/                  repo checks and the claude-tmux launcher
 ```
+
+`plugin.json` can name another hook file in its `hooks` field. `authoring` does this with `hooks/docs-sync.json`.
 
 A plugin directory can hold any of `skills/`, `agents/`, `hooks/`, `scripts/`, `prompts/`, and `.mcp.json`. Only `plugin.json` is always present.
 
 `plugins/example` has a `hello` skill and a function hooks module. `register.ts` exports `register(on, options)`, and each hook has the signature `($, e, next)`.
 
-## Set up a machine
-
-Clone the repo, then run `scripts/install.sh`. Run it with `--dry-run` first to see every command it would make. It links `~/.local/bin/claude-tmux` to the launcher (backing up anything already there), registers the marketplaces, and installs the core plugins at user scope. Rerunning it is safe, and it never deletes anything.
-
-## Use the marketplace
-
-| Task | Command |
-| --- | --- |
-| Add (local path) | `claude plugin marketplace add /path/to/claude-plugins` |
-| Add (GitHub, once pushed) | `claude plugin marketplace add <owner>/claude-plugins` |
-| Add (URL) | `claude plugin marketplace add <url>` |
-| Install | `claude plugin install <plugin>@adminhead` |
-| Refresh | `claude plugin marketplace update adminhead` |
-| List marketplaces | `claude plugin marketplace list` |
-
-## Add a plugin
+### Add a plugin
 
 1. Copy the template.
    ```
@@ -92,11 +144,12 @@ Clone the repo, then run `scripts/install.sh`. Run it with `--dry-run` first to 
      "category": "development"
    }
    ```
-5. Validate (see Checks).
+5. Write `docs/plugins/<name>.md`, and add a row for the plugin to the table above.
+6. Validate (see Checks).
 
 The entry's `name` and `version` must match `plugin.json`.
 
-## Plugins hosted elsewhere
+### Plugins hosted elsewhere
 
 An entry can point at another repository. No local directory is needed.
 
@@ -110,23 +163,40 @@ An entry can point at another repository. No local directory is needed.
 }
 ```
 
-## Checks
+### Checks
+
+Run these from the repo root.
 
 | Purpose | Command |
 | --- | --- |
 | Validate the marketplace | `claude plugin validate --strict .` |
 | Validate one plugin | `claude plugin validate --strict plugins/<name>` |
+| Check the crew agents and gate entries | `python3 scripts/agent-tools.py` |
+| Run every crew check | `bash plugins/crew/scripts/tests/check.sh` |
+| Check a Claude Code upgrade against the crew prompt override | `scripts/prompt-drift.sh [VERSION\|PATH]` |
+| Test the drift script | `bash scripts/prompt-drift.test.sh` |
+| Test `install.sh` against a temp `HOME` and a stub `claude` | `bash scripts/install.test.sh` |
+| Test a plugin's mods hooks module | `claude plugin test plugins/<name>` |
 | Inspect an installed plugin | `claude plugin details <name>` |
+
+Run `agent-tools.py` after you edit a crew agent or a gate. Run `prompt-drift.sh` after you upgrade Claude Code.
 
 `--strict` turns warnings into errors. The plugin check also reports what each hooks module hooks and calls.
 
-## Release
+### Release
 
-```
-claude plugin tag plugins/<name>
-```
+Releases go through the `ship-plugin` skill, at `.claude/skills/ship-plugin/SKILL.md`. It validates the plugin, checks the records below, runs the plugin's tests, commits to local `main`, and updates the installed copy. It does not push. Push only when you ask.
 
-This creates the git tag `<name>--v<version>`. It fails unless the `plugin.json` version matches the marketplace entry version, so bump both together. By default it also refuses a dirty working tree or an existing tag.
+These records must agree before `ship-plugin` runs.
+
+- `version` in `plugins/<name>/.claude-plugin/plugin.json` equals the plugin's `version` in `.claude-plugin/marketplace.json`.
+- The version is higher than the one on `origin/main`. An unchanged version means installed copies don't update.
+- `docs/plugins/<name>.md` exists and names every skill under `plugins/<name>/skills/`.
+- `README.md` has a row for the plugin that links to its docs page.
+
+Bump both `version` fields together.
+
+`ship-plugin` does not create a git tag. To tag a shipped version, run `claude plugin tag plugins/<name>`. It creates `<name>--v<version>`, and it fails unless the `plugin.json` version matches the marketplace entry.
 
 | Flag | Effect |
 | --- | --- |
@@ -135,14 +205,6 @@ This creates the git tag `<name>--v<version>`. It fails unless the `plugin.json`
 | `--remote <name>` | Remote for `--push` (default `origin`) |
 | `-m, --message <msg>` | Tag annotation; `%s` is the version |
 | `-f, --force` | Skip the dirty-tree and existing-tag checks |
-
-## Develop hooks locally
-
-```
-claude --plugin-dir plugins/<name>
-```
-
-This loads the plugin for that session without installing it.
 
 ## Acknowledgements
 
