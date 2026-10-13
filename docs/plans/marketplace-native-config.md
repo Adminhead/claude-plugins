@@ -13,7 +13,11 @@ Engine: Claude Code 2.1.296. Facts from code.claude.com/docs (plugins-reference,
 - S2 review and security-audit fixes: `24eaa8f` (gate `timeout: 30` and `onFailure: "block"`, self-running checker, fixed sentinel). Open hypothesis: a split-pane teammate may carry no identity and pass as the main thread; agent teams are off on this account.
 - S5 done on `crew-migration` (`c929d8b`). The `setup` docs page and README row are on main (`7e82889`); the README count needs fixing to 34 at merge.
 - S7 done: `1bc4143`, reviewed; `8e52a12` docs follow-up. The `plugin list --json` field names match the real output.
-- Next, after the operator's swap: S1 freeze (`~/.claude/*.new` links staged), merge `crew-migration` into main, S6 ship and live checks, then S8 cutover.
+- S1 done: the operator swapped `~/.claude/{agents,hooks,prompts}` to `~/.claude/.adminhead-frozen` and relaunched.
+- Merged into main as `f835225`. `crew` 0.1.0 and `setup` 0.1.0 installed at user scope; efficient-web 0.2.1 updated in its three project installs; settings re-added to chezmoi.
+- S6 done, GO: 15 agents and 6 hook entries installed; `crew:coder` writes; all 7 read-only types denied by the plugin gate (`readonly-bash:` reason, `git status` allowed); orchestration body precedes the override (model self-report). The interactive Stop/R1 check is not run.
+- Finding: a `directory` marketplace runs plugins from `readFromFolder` (the repo), not the cache. Repo edits go live on `/reload-plugins` without a version bump, and the 14-day cache-cleanup risk does not apply. `790f769` makes the launcher read the prompt from `readFromFolder` too.
+- Next: S8 cutover, after every session started before the install has exited.
 - Deviation: the agent-writing rules are `plugins/crew/docs/writing-agents.md`, not `plugins/crew/CLAUDE.md`, because `validate --strict` fails on a plugin-root CLAUDE.md ("not loaded as project context"). Decisions and slice 5 still name the old path.
 
 ## Goal
