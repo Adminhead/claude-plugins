@@ -31,7 +31,7 @@ Old bare names no longer work. Use the `github:` prefix.
 | Tool names | `mcp__plugin_github_github__<tool>` |
 | Transport | HTTP, `https://api.githubcopilot.com/mcp/` |
 | Toolsets | GitHub's default toolset, read and write |
-| Auth | `scripts/mcp-headers.sh`, run as a `headersHelper` on each connection (Claude Code allows 10 seconds) |
+| Auth | `scripts/mcp-headers.sh`, run as a `headersHelper` on each connection |
 
 Five skills carry a note to prefer the MCP tools for reads and search when the server is connected: `github:issues`, `github:issue-breakdown`, `github:pr`, `github:pr-comments`, and `github:triage`. They keep using `gh` for writes, and tell Claude not to call the server's write tools.
 
@@ -43,7 +43,7 @@ Claude Code defers MCP tool definitions (tool search), so the size of the toolse
 
 `scripts/mcp-headers.sh` always runs `gh auth token --hostname github.com`. That returns the login `gh` has stored for github.com, in the keyring or `hosts.yml`, from `gh auth login`.
 
-- Env-only `gh` auth (`GH_TOKEN`, `GITHUB_TOKEN`) does not work for the server. Claude Code strips environment variables whose names contain `TOKEN`, `SECRET`, `PASSWORD`, `KEY`, or `AUTH` from a `headersHelper`'s environment (see "Which variables a helper can read" in code.claude.com/docs/en/mcp). A probe on Claude Code 2.1.288 confirmed it.
+- Env-only `gh` auth (`GH_TOKEN`, `GITHUB_TOKEN`) does not work for the server. Claude Code strips environment variables whose names contain `TOKEN`, `SECRET`, `PASSWORD`, `KEY`, or `AUTH` from a `headersHelper`'s environment (a dated probe on Claude Code 2.1.288; the public MCP docs don't describe helper environments as of 2026-10-13).
 - `--hostname github.com` keeps a GitHub Enterprise token from reaching `api.githubcopilot.com`, even when `GH_HOST` is set.
 - If `gh` is missing or has no stored github.com login, the helper exits non-zero and the server stays disconnected. `/mcp` shows it.
 - There is no override token variable. To change which token the server uses, change the stored login.
@@ -86,7 +86,7 @@ See the remote server guide in github/github-mcp-server (`docs/remote-server.md`
 
 - `gh`, authenticated (`gh auth status`). All twelve skills use it.
 - For the MCP server, the GitHub CLI with a stored github.com login (`gh auth login --hostname github.com`), and bash.
-- `gh` 2.94.0 or later for the native issue flags (`--type`, `--parent`, `--add-sub-issue`, `--blocked-by`, `--add-blocked-by`) used by `github:issues` and `github:issue-breakdown`. On an older `gh`, they fall back to `gh api` calls from `github:issues`'s API reference. The skills were checked against `gh` 2.102.0, so confirm a flag with `--help` before relying on it.
+- The native issue flags (`--type`, `--parent`, `--add-sub-issue`, `--blocked-by`, `--add-blocked-by`) used by `github:issues` and `github:issue-breakdown` exist in `gh` 2.102.0 (checked 2026-10-13). On a `gh` without them, the skills fall back to `gh api` calls from `github:issues`'s API reference. The skills were checked against that version, so confirm a flag with `--help` before relying on it on another version.
 - The `repo` token scope for issue metadata. Project field writes need the `project` scope (`gh auth refresh -s project`).
 - Admin rights on the repo for `github:repo-setup` writes (rulesets, settings) and for `github:code-security` settings. Secret scanning on private repos depends on your GitHub plan. If a feature is unavailable, the skill reports it and does not work around it.
 - `git` for `github:pr`, `github:ship`, and `github:release`.

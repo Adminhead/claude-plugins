@@ -95,7 +95,7 @@ Plain `claude` gets the stock prompt and doesn't run as `crew:orchestration`. On
 ## Requirements
 
 - bun and `python3` on `PATH`. Both gates run on every Bash call.
-- Claude Code 2.1.296, the version the agent and hook behavior was checked against. Later versions are UNCONFIRMED.
+- Claude Code 2.1.296, the version the agent and hook behavior was checked against. The local CLI reported 2.1.296 on 2026-10-13. Later versions are UNCONFIRMED.
 - The plugins the agents preload or call. Install `efficient-core` (`coder`, `architect`, `review` and others preload its skills) and `code-search` and `coremods` (agent tools name them). `scribe` preloads `avoid-ai-writing:avoid-ai-writing`, and `browser-tester` needs the efficient-web Playwright server. A missing skill or server is skipped without an error. `browser-tester` reports every criterion blocked when its server is absent.
 
 ## Install

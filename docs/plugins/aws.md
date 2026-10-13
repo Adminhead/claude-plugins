@@ -116,7 +116,7 @@ The plugin adds no technical block on `run_script`. Write (mutating) calls are b
 - **What the server can do.** `run_script` executes arbitrary boto3 calls with the permissions of the identity you signed in with. The server annotates it destructive. Nothing in the plugin limits which operations a script may call or what it returns.
 - **What limits it.** Three things. The IAM permissions of the role used for the OAuth sign-in set the ceiling. Claude Code's permission prompt appears for each MCP call and shows the code. The skills require explicit approval for writes (the user asks for the change), and confirm destructive or irreversible steps even when writes are allowed.
 - **Sign in with the right role.** For read-only work, use `ReadOnlyAccess` or a narrower custom policy, plus the sign-in permissions `signin:AuthorizeOAuth2Access` and `signin:CreateOAuth2Token` (the managed policy `AWSMCPSignInOAuthAccessPolicy` grants both). Do not sign in with an administrator role. When writes are intended, ensure the role has write permissions only where intended.
-- **Read-only is not secret-free.** `ReadOnlyAccess` is built from broad Get, List, and Describe grants, so it can read data such as S3 objects, DynamoDB items, log events, Lambda environment variables, and plain SSM parameters. Whether it includes `secretsmanager:GetSecretValue` is UNCONFIRMED; check the policy's current JSON before relying on it. Use a custom policy that excludes the data actions you do not want Claude to read.
+- **Read-only is not secret-free.** `ReadOnlyAccess` is built from broad Get, List, and Describe grants, so it can read data such as S3 objects, DynamoDB items, log events, Lambda environment variables, and plain SSM parameters. As checked on 2026-10-13 (policy version v188, docs.aws.amazon.com's ReadOnlyAccess reference), it does not grant `secretsmanager:GetSecretValue`. It grants `secretsmanager:Describe*`, `GetResourcePolicy` and `List*`. Use a custom policy that excludes the data actions you do not want Claude to read.
 - **Permission rules.** Claude Code matches an MCP tool by its full name in `permissions` (no parentheses). The tool names are `mcp__plugin_aws_aws-mcp__aws___run_script` and `mcp__plugin_aws_aws-mcp__aws___get_presigned_url`. To block the script tool entirely, in `.claude/settings.json` or your user settings:
 
   ```json
@@ -128,7 +128,7 @@ The plugin adds no technical block on `run_script`. Write (mutating) calls are b
 
 ### Regional endpoints
 
-`run_script` marks itself `_meta.anthropic/alwaysLoad: true`, but the server-level `alwaysLoad: false` in `.mcp.json` wins and keeps it deferred (verified with a probe plugin on Claude Code 2.1.288).
+`run_script` marks itself `_meta.anthropic/alwaysLoad: true`, but the server-level `alwaysLoad: false` in `.mcp.json` wins and keeps it deferred (dated probe with a test plugin on Claude Code 2.1.288).
 
 Only `us-east-1` is declared. Other regions have their own endpoint (`aws-mcp.<region>.api.aws`), which the plugin does not declare. The server's tools can still reach other regions through `region_name`.
 
@@ -136,7 +136,6 @@ Only `us-east-1` is declared. Other regions have their own endpoint (`aws-mcp.<r
 
 - Whether signing in from `/mcp` works at the first `run_script` 401 mid-session, and whether `?oauth=initialize` is needed.
 - The exact IAM permissions beyond the two Sign-in actions for calls made through `run_script` (they run as your role, so the usual per-service permissions apply).
-- Whether `ReadOnlyAccess` includes `secretsmanager:GetSecretValue` and other secret-reading actions.
 - Whether the server's tool list or annotations change with sign-in. The anonymous list shows eight tools.
 
 ## Limits

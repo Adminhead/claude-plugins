@@ -56,7 +56,7 @@ claude --plugin-dir plugins/tooling
 
 ## Limits
 
-- `tooling:pre-commit` was checked against prek 0.5 and pre-commit's docs. Example `rev` values are a starting point, and `prek update` refreshes them.
+- `tooling:pre-commit` was checked against prek 0.5 and pre-commit's docs. PyPI's latest prek on 2026-10-13 was 0.5.5. Example `rev` values are a starting point, and `prek update` refreshes them.
 - prek-only features (`prek.toml`, `repo: builtin`, `priorities`, glob mappings) break compatibility with upstream pre-commit. The skill keeps the YAML when the config must work with both.
 - A hook installs per clone, because the shim lives in `.git/hooks`. Document the install step or script it into the repo's setup command.
 - `repo: local` and `language: system` hooks run only where the tool exists, so CI needs the same setup.

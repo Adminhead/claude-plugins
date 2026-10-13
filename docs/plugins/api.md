@@ -58,7 +58,7 @@ The skills write designs, reviews, and policy documents. The rules that matter:
 ## Limits
 
 - Design guidance, not code generation. Server code belongs to the language skills, for example `efficient-go:golang` or `efficient-auth:auth`, if installed.
-- Standards move. `api:oauth-provider` records that OAuth 2.1 was still an Internet-Draft (revision 16) when it was checked, and `api:idempotency-retry` records that the `Idempotency-Key` header draft is expired. Recheck both before citing them.
+- Standards move. `api:oauth-provider` says OAuth 2.1 is still an Internet-Draft. On 2026-10-13, draft-ietf-oauth-v2-1-16 was the active working-group draft, last updated 2026-09-02. `api:idempotency-retry` says the `Idempotency-Key` header draft is expired. On the same date, draft-ietf-httpapi-idempotency-key-header-07 was expired. Recheck both before citing them.
 - Notice windows, retry schedules, and similar numbers in the skills are common practice, not standards. Write your own commitment.
 - Each skill's scope is narrow by design. `api:webhooks` does not cover receiving webhooks in your own app, and `api:keys` does not cover consuming another vendor's keys.
 

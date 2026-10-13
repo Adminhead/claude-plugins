@@ -2,7 +2,7 @@
 
 A home for the core Claude Code mods: a git status line, a usage band, an agent status line with an expandable panel, read-only git tools for subagents, and a Bash tool manager. Each mod is a section below. Only tool-mgr adds a command (`/tool-mgr`).
 
-Requires Claude Code 2.1.289 or later. Mods shipped in 2.1.287, and 2.1.289 has the `ui.render` fixes the usage band relies on.
+Requires Claude Code 2.1.289 or later. Claude Code 2.1.287 added mods. 2.1.289 fixed a crash when a mod's `ui.render` hook wrote a value that made a row throw (GitHub release notes for v2.1.287 and v2.1.289, checked 2026-10-13).
 
 The mods share one hooks module, so they draw together. Above the prompt, the usage band replaces the engine's row and the agent line stacks beneath it. The git line sits under the prompt, in the engine's hint line.
 

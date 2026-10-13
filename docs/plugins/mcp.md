@@ -17,7 +17,7 @@ Sources: some ideas were adapted from third-party skill collections. They are cr
 ## Requirements
 
 - No CLI is required for `mcp:design`.
-- `mcp:build` needs the toolchain of the SDK you choose. It also tests with the MCP Inspector (`npx @modelcontextprotocol/inspector@2.9.0`), which needs Node 22.19 or later.
+- `mcp:build` needs the toolchain of the SDK you choose. It also tests with the MCP Inspector (`npx @modelcontextprotocol/inspector@2.9.0`), which needs Node 22.19 or later (npm `engines` for 2.9.0, checked 2026-10-13).
 - `mcp:review` reads source. Its release QA pass starts the candidate server locally. Dependency audit commands (`npm audit`, `pip-audit`, `cargo audit`) are optional.
 
 ## Install

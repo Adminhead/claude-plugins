@@ -73,7 +73,7 @@ Use `sentry-mcp-self-hosted@adminhead` for self-hosted. `/plugin` does the same 
 
 ### sentry-mcp (remote, OAuth)
 
-- Run `/mcp`, pick `plugin:sentry-mcp:sentry`, and complete the browser sign-in. Sentry's server supports dynamic client registration (DCR), so no client ID is needed.
+- Run `/mcp`, pick `plugin:sentry-mcp:sentry`, and complete the browser sign-in. Sentry's MCP OAuth provider supports dynamic client registration (DCR), so no client ID is needed (per the getsentry/sentry-mcp OAuth docs, checked 2026-10-13).
 - Tools are named `mcp__plugin_sentry-mcp_sentry__*`.
 - Grant the scopes the consent screen asks for. Tools that write (for example project or event changes) need the matching write scopes.
 
@@ -83,10 +83,10 @@ Use `sentry-mcp-self-hosted@adminhead` for self-hosted. `/plugin` does the same 
 
   | Value | Notes |
   | --- | --- |
-  | Sentry host | Hostname only, for example `sentry.example.com`. A value with `http://` or `https://` is rejected. |
+  | Sentry host | Hostname only, for example `sentry.example.com`. A value with `http://` or `https://` is rejected (`@sentry/mcp-server` 0.42.0 source, checked 2026-10-13). |
   | Sentry user auth token | Scopes: `org:read`, `project:read`, `project:write`, `team:read`, `team:write`, `event:write` |
 
-- Requires Node 22.13 or later (the package's `engines` field) and network access to npm on first run.
+- Requires Node 22.13 or later. `@sentry/mcp-server` 0.42.0 declares `engines.node >=22.13` (checked 2026-10-13). It also needs network access to npm on first run.
 - The server's `SENTRY_URL` variable (a full `https://` URL) is an alternative to `SENTRY_HOST`. The plugin does not set it. `--insecure-http` for plain-HTTP hosts is not wired in.
 - The server's AI-powered search tools need an LLM key. The plugin sets `EMBEDDED_AGENT_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENROUTER_API_KEY` to empty strings, so a key in your shell is never inherited and spent, and those tools stay disabled. An empty `env` value does override an inherited one (checked with a stub server on Claude Code 2.1.288).
 - Seer tools are absent for hosts other than sentry.io. The server excludes them by default on self-hosted.

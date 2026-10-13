@@ -125,7 +125,7 @@ Installing `efficient-rust` also installs the `rust-analyzer` LSP plugin. Instal
 
 | Server | Endpoint | Browser | Run in | Download |
 | --- | --- | --- | --- | --- |
-| `@playwright/mcp@0.0.83` | stdio | Headless, isolated session. Output goes to `/tmp/playwright-mcp` | Node ≥18 | On first run via `npx` |
+| `@playwright/mcp@0.0.83` | stdio | Headless, isolated session. Output goes to `/tmp/playwright-mcp` | Node ≥18 (npm `engines` for 0.0.83, checked 2026-10-13) | On first run via `npx` |
 
 The server is pinned to 0.0.83 and started with `--headless --isolated --output-dir /tmp/playwright-mcp`, so it runs the same upstream code on every session and writes its files to one scratch directory. Change the pin in `plugins/efficient-web/.mcp.json` on purpose, after reviewing the release. The `crew` plugin's `browser-tester` agent uses this server.
 
@@ -284,7 +284,7 @@ Install each efficient plugin and its LSP plugin as a pair, at the same scope.
 
 - `claude-code-lsps` is a third-party marketplace. Its hooks run shell commands at every session start.
 - Those hooks install unpinned packages from the Go proxy, PyPI, and npm.
-- The marketplace is tracked at its `main` branch by choice. It was reviewed at commit `0395648`. Review its diff when you update it.
+- The marketplace is tracked at its `main` branch by choice. It was reviewed at commit `0395648`, a 2026-05-27 kotlin-lsp fix that is in the upstream repo (checked 2026-10-13). The local clone at `351b4e08` doesn't contain that commit. Review its diff when you update it.
 
 ### Maintainers
 

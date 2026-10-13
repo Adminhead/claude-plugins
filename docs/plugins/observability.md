@@ -24,7 +24,7 @@ Each skill uses only what its task needs.
 | `observability:dashboards` | A Grafana instance to export JSON from. Optional: the Terraform Grafana provider or the Foundation SDK |
 | `observability:postmortem` | None |
 
-`observability:promql` can also use the unmaintained `promql-cli` if it is already installed. The skill treats it as optional.
+`observability:promql` can also use `promql-cli` if it is already installed. Its owner archived the repo on 2026-03-29, so it is read-only (checked 2026-10-13). The skill treats it as optional.
 
 ## Install
 
