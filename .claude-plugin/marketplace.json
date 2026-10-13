@@ -107,7 +107,7 @@
       "name": "efficient-web",
       "source": "./plugins/efficient-web",
       "description": "Web skills: front-end web development and web design, plus a headless Playwright MCP browser.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {

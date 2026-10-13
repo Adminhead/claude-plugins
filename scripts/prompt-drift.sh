@@ -43,7 +43,7 @@ expected_slots=(
 # None crosses a template interpolation or non-ASCII character. The Sh2 injection and
 # Sh3 editing phrases end at their string-literal delimiter (`",`) because the same
 # sentences also occur once more in 2.1.296 as a separate copy; the suffix pins the
-# live one. Those two, unlike the rest, are not verbatim lines of prompts/system_override.md.
+# live one. Those two, unlike the rest, are not verbatim lines of plugins/crew/prompts/system_override.md.
 keep_phrases=(
   'Sh1|Dual-use security tools (C2 frameworks, credential testing, exploit development) require clear authorization context'
   'Sh1|You must NEVER generate or guess URLs for the user unless you are confident that the URLs are for helping the user with programming'

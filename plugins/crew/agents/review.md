@@ -6,12 +6,6 @@ effort: high
 tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app
 skills:
   - efficient-core:second-opinion
-hooks:
-  PreToolUse:
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: 'python3 -I "$HOME/.claude/hooks/readonly-bash.py" || exit 2'
 color: orange
 ---
 
