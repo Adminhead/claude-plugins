@@ -1,6 +1,6 @@
 # Marketplace-native agents, hooks and prompt
 
-Status: Planned, 2026-10-12. Not started. Reverses docs/plans/system-prompt.md Q9 once Q1 is approved. Depends on hooks-typescript-ast-bash.md slice 7c. Open questions Q1–Q5.
+Status: Planned, 2026-10-12. Not started. Reverses docs/plans/system-prompt.md Q9 once Q1 is approved. Depends on hooks-typescript-ast-bash.md slice 7c. Q1–Q5 resolved (see Resolved questions).
 Engine: Claude Code 2.1.296. Facts from code.claude.com/docs (plugins-reference, sub-agents, hooks, output-styles, plugin-marketplaces, fetched 2026-10-12), `claude --help`, `claude plugin --help`, and live `claude -p --plugin-dir` probes run 2026-10-12.
 
 ## Goal
@@ -11,8 +11,8 @@ Engine: Claude Code 2.1.296. Facts from code.claude.com/docs (plugins-reference,
 
 Done when:
 
-- `bash plugins/orchestration/scripts/tests/check.sh` passes.
-- `claude plugin validate --strict plugins/orchestration` and `claude plugin validate --strict .` pass.
+- `bash plugins/crew/scripts/tests/check.sh` passes.
+- `claude plugin validate --strict plugins/crew` and `claude plugin validate --strict .` pass.
 - The S6 live checks pass in a disposable repo.
 - After S8, `ls -la ~/.claude | rg 'agents|hooks|prompts'` shows nothing, and a new `claude-tmux` session passes the S6 checks again.
 
@@ -23,9 +23,9 @@ Done when:
 | `.claude-plugin/marketplace.json` | Catalog of 33 plugins, `renames`, cross-marketplace allowlist | Sound. `example` shouldn't be listed (gap 7) |
 | `plugins/<name>/` | One plugin each, explicit semver | Sound. All 33 pass `validate --strict` |
 | `docs/plugins/`, `docs/plans/`, `docs/research/` | Per-plugin pages, plans, research | Sound. Only `example` lacks a page |
-| `agents/` (15 agents plus `CLAUDE.md`) | User-scope agents through a symlink | Moves into `plugins/orchestration` |
-| `hooks/` | Two guards, a walker copy, tests, ignored `__pycache__` and stale `*.log` | Moves into `plugins/orchestration/scripts` |
-| `prompts/system_override.md` | Appended by the launcher | Moves into `plugins/orchestration/prompts` |
+| `agents/` (15 agents plus `CLAUDE.md`) | User-scope agents through a symlink | Moves into `plugins/crew` |
+| `hooks/` | Two guards, a walker copy, tests, ignored `__pycache__` and stale `*.log` | Moves into `plugins/crew/scripts` |
+| `prompts/system_override.md` | Appended by the launcher | Moves into `plugins/crew/prompts` |
 | `scripts/` | Checks, launcher, replay tool | Stays. Launcher and checks change paths |
 | `.claude/skills/ship-plugin` | Repo-local release skill | Sound. Runs `tests/check.sh` (S4 adds one) |
 | `.claude/worktrees/` | Two locked worktrees, dead lock pid, commits patch-equivalent on `main` | Stale (S9) |
@@ -56,24 +56,24 @@ Done when:
 
 ## Decisions
 
-- **New plugin `orchestration`, not coremods.** coremods is a TSX mods host needing 2.1.289; agents change far more often. Names: `orchestration:<agent>`, main thread `orchestration:orchestration` (Q2).
+- **New plugin `crew`, not coremods.** coremods is a TSX mods host needing 2.1.289; agents change far more often. Names: `crew:<agent>`, main thread `crew:orchestration` (Q2: user chose `crew`).
 - **Guards become plugin hooks gated on `agent_type`.**
-  - `hooks/hooks.json` runs `orchestration-guard.py` on Stop, UserPromptSubmit and PostToolUse (TaskCreate|TaskUpdate, Edit|Write|NotebookEdit). The gate constant becomes `orchestration:orchestration`, `agent_id` still absent.
+  - `hooks/hooks.json` runs `orchestration-guard.py` on Stop, UserPromptSubmit and PostToolUse (TaskCreate|TaskUpdate, Edit|Write|NotebookEdit). The gate constant becomes `crew:orchestration`, `agent_id` still absent.
   - A PreToolUse `Bash` entry runs `bun --no-env-file --config=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.ts" || exit 2`.
   - `readonly-gate.ts` has no static imports, reads stdin, holds `READ_ONLY` (the 7 scoped read-only names with Bash). For a type in the set it dynamically imports `readonly-bash.ts` and runs the check; any error exits 2. `agent_id` present and `agent_type` missing exits 2 with a named reason. Everything else exits 0.
   - `|| exit 2` keeps fail-closed. A missing bun blocks Bash everywhere: loud, not silent.
-- **Prompt parity.** `system_override.md` moves to `plugins/orchestration/prompts/`. The launcher resolves the user-scope `installPath` via `claude plugin list --json` and keeps `--append-system-prompt-file`. Merging into the agent body is a follow-up gated on a rendered-prompt diff.
-- **Routing prose keeps bare names.** `orchestration.md` gains one rule: spawn with `subagent_type: orchestration:<name>`; bare names elsewhere mean the same agent. If S6 shows misroutes, switch to scoped names everywhere.
-- **`agents/CLAUDE.md` becomes `plugins/orchestration/CLAUDE.md`**, since inside `agents/` it would load as an agent.
+- **Prompt parity.** `system_override.md` moves to `plugins/crew/prompts/`. The launcher resolves the user-scope `installPath` via `claude plugin list --json` and keeps `--append-system-prompt-file`. Merging into the agent body is a follow-up gated on a rendered-prompt diff.
+- **Routing prose keeps bare names.** `orchestration.md` gains one rule: spawn with `subagent_type: crew:<name>`; bare names elsewhere mean the same agent. If S6 shows misroutes, switch to scoped names everywhere.
+- **`agents/CLAUDE.md` becomes `plugins/crew/CLAUDE.md`**, since inside `agents/` it would load as an agent.
 - **No `dependencies` in `plugin.json`.** Declaring efficient-core, code-search and coremods would make disabling coremods fail; install.sh installs all three.
 - **readonly-bash is TypeScript only.** hooks-typescript slice 7c lands before S1. Fallback if 7c slips: two hooks.json entries with disjoint agent sets (`.py` and `.ts`).
-- **The walker stays a cmp-checked copy** (`plugins/orchestration/scripts/{shell,vendor}`), matching infra. Collapsing copies is gap 5.
+- **The walker stays a cmp-checked copy** (`plugins/crew/scripts/{shell,vendor}`), matching infra. Collapsing copies is gap 5.
 
 Rejected:
 
 | Option | Why it lost |
 | --- | --- |
-| Plugin `settings.json` `"agent": "orchestration:orchestration"` | Makes every session orchestration (contradicts system-prompt.md Q3); can't pass the append file or env |
+| Plugin `settings.json` `"agent": "crew:orchestration"` | Makes every session orchestration (contradicts system-prompt.md Q3); can't pass the append file or env |
 | `force-for-plugin` output style for the prompt | Applies to every session; behavior under `--agent` UNCONFIRMED |
 | Merge the prompt into the agent body now | Not equivalent: moves the text before the WebSearch hint |
 | Skills-dir plugin (`~/.claude/skills/orchestration`) | Needs a symlink into the repo |
@@ -132,14 +132,14 @@ Rollback: `ln -s <old target> ~/.claude/$n.new && mv -T ~/.claude/$n.new ~/.clau
 ### 2. Plugin scaffold, moves, gate
 
 Files:
-- `git mv agents/CLAUDE.md plugins/orchestration/CLAUDE.md` first, then `git mv agents/*.md plugins/orchestration/agents/`.
-- `git mv hooks/{orchestration-guard.py,readonly-bash.ts,shell,vendor} plugins/orchestration/scripts/`; `git mv hooks/tests plugins/orchestration/scripts/tests`. `readonly-bash.py` moves only if 7d hasn't run (it's the rollback).
-- `git mv prompts/system_override.md plugins/orchestration/prompts/`.
-- New: `plugins/orchestration/.claude-plugin/plugin.json` (0.1.0), `plugins/orchestration/hooks/hooks.json`, `plugins/orchestration/scripts/readonly-gate.ts`.
+- `git mv agents/CLAUDE.md plugins/crew/CLAUDE.md` first, then `git mv agents/*.md plugins/crew/agents/`.
+- `git mv hooks/{orchestration-guard.py,readonly-bash.ts,shell,vendor} plugins/crew/scripts/`; `git mv hooks/tests plugins/crew/scripts/tests`. `readonly-bash.py` moves only if 7d hasn't run (it's the rollback).
+- `git mv prompts/system_override.md plugins/crew/prompts/`.
+- New: `plugins/crew/.claude-plugin/plugin.json` (0.1.0), `plugins/crew/hooks/hooks.json`, `plugins/crew/scripts/readonly-gate.ts`.
 - Edit: `.claude-plugin/marketplace.json` entry, the guard constant, `.gitignore` (drop `hooks/*.log`).
 
 Tests:
-- `readonly-bash.test.sh` defaults `HOOK` to `readonly-gate.ts`; payloads gain `agent_type: "orchestration:review"` and an `agent_id`; the `cmp` path becomes `$hooks/../../coremods/hooks/$f`.
+- `readonly-bash.test.sh` defaults `HOOK` to `readonly-gate.ts`; payloads gain `agent_type: "crew:review"` and an `agent_id`; the `cmp` path becomes `$hooks/../../coremods/hooks/$f`.
 - New dispatch cases:
 
   | Payload | Expected |
@@ -156,25 +156,25 @@ Tests:
 
 Acceptance: guard test and both readonly-bash runs green; table passes; `cmp` checks pass; `validate --strict` passes for the plugin and the marketplace.
 
-Checks: `bash plugins/orchestration/scripts/tests/readonly-bash.test.sh`, `bash plugins/orchestration/scripts/tests/orchestration-guard.test.sh`, `bun scripts/bash-replay.ts` (zero changes toward allow), the two validates.
+Checks: `bash plugins/crew/scripts/tests/readonly-bash.test.sh`, `bash plugins/crew/scripts/tests/orchestration-guard.test.sh`, `bun scripts/bash-replay.ts` (zero changes toward allow), the two validates.
 
 ### 3. Agent definitions
 
-Files: `plugins/orchestration/agents/*.md`, `scripts/prompt-drift.sh` (comment path only).
+Files: `plugins/crew/agents/*.md`, `scripts/prompt-drift.sh` (comment path only).
 
 - Remove `hooks:` from the 7 read-only agents and `orchestration.md`.
 - Add the scoped-spawn rule to `orchestration.md`, plus the teammate rule if H9 required it.
 - browser-tester follows Q4. Under option b: `tools: Read, Bash, mcp__plugin_efficient-web_playwright`, `disallowedTools` names `browser_run_code_unsafe`, the body reports blocked when the server is absent, and efficient-web pins `@playwright/mcp@0.0.83 --headless --isolated --output-dir /tmp/playwright-mcp`.
 
-Acceptance: `rg -n '^hooks:|^mcpServers:|\$HOME/\.claude' plugins/orchestration/agents` finds nothing.
+Acceptance: `rg -n '^hooks:|^mcpServers:|\$HOME/\.claude' plugins/crew/agents` finds nothing.
 
 Check: `python3 scripts/agent-tools.py` after S4, then a quick-review pass.
 
 ### 4. Checker and `check.sh`
 
-Files: `scripts/agent-tools.py`, `scripts/agent-tools.test.sh`, `plugins/orchestration/scripts/tests/check.sh` (new).
+Files: `scripts/agent-tools.py`, `scripts/agent-tools.test.sh`, `plugins/crew/scripts/tests/check.sh` (new).
 
-- Default dir becomes `plugins/orchestration/agents`. Every `*.md` needs `name` and `description`; no `DOCS` exemption.
+- Default dir becomes `plugins/crew/agents`. Every `*.md` needs `name` and `description`; no `DOCS` exemption.
 - Ban `hooks`, `mcpServers`, `permissionMode`, `initialPrompt`.
 - Read-only rules: `READ_ONLY` is parsed from `readonly-gate.ts`; a member uses an allowlist without Edit, Write, NotebookEdit, Agent or PowerShell; Bash only for members; every member exists; allowlist agents without writers outside the set have no Bash.
 - Replace the frontmatter-hook rule with a `hooks.json` check: a PreToolUse `Bash` entry with exactly the gate command, plus the four guard entries.
@@ -182,39 +182,39 @@ Files: `scripts/agent-tools.py`, `scripts/agent-tools.test.sh`, `plugins/orchest
 - Negative fixtures for each new rule (dropped allowlist, `PowerShell`, `Agent`, wrong gate command, missing `hooks.json` entry).
 - `check.sh` runs agent-tools, its tests, both hook suites and the replay.
 
-Checks: `bash scripts/agent-tools.test.sh`, `bash plugins/orchestration/scripts/tests/check.sh`.
+Checks: `bash scripts/agent-tools.test.sh`, `bash plugins/crew/scripts/tests/check.sh`.
 
 ### 5. Docs and plan amendments
 
-- `docs/plugins/orchestration.md` (new): agents, scoped names, guards, launcher, dev loop.
-- `README.md`: `orchestration` row, layout fix.
+- `docs/plugins/crew.md` (new): agents, scoped names, guards, launcher, dev loop.
+- `README.md`: `crew` row, layout fix.
 - Root `CLAUDE.md`: layout bullet and Checks paths.
-- `plugins/orchestration/CLAUDE.md` "How these files load": scoped names, cache copies, ignored fields, hooks in `hooks.json`, edit loop.
+- `plugins/crew/CLAUDE.md` "How these files load": scoped names, cache copies, ignored fields, hooks in `hooks.json`, edit loop.
 - `docs/plans/install-and-recommend.md`: amendments under Interaction.
 - `docs/plans/hooks-typescript-ast-bash.md` Status: paths moved; 7d runs in the plugin.
 - `docs/plans/system-prompt.md` Q9: "superseded by marketplace-native-config.md".
 
-Acceptance: ship-plugin step 2 agrees for `orchestration`; `rg -n '~/.claude/(agents|hooks|prompts)|\$HOME/\.claude/(hooks|prompts)' README.md CLAUDE.md docs/plugins plugins scripts` returns only historical mentions.
+Acceptance: ship-plugin step 2 agrees for `crew`; `rg -n '~/.claude/(agents|hooks|prompts)|\$HOME/\.claude/(hooks|prompts)' README.md CLAUDE.md docs/plugins plugins scripts` returns only historical mentions.
 
 ### 6. Release, install, live checks
 
-1. ship-plugin `orchestration` (0.1.0).
-2. Operator: `claude plugin install orchestration@adminhead --scope user`, then `chezmoi re-add ~/.claude/settings.json`.
-3. In a disposable git repo, `claude -p --agent orchestration:orchestration --append-system-prompt-file <installPath>/prompts/system_override.md`:
-   - `claude plugin details orchestration@adminhead` lists 15 agents and 5 hook entries.
-   - `orchestration:coder` runs `touch sentinel` successfully.
+1. ship-plugin `crew` (0.1.0).
+2. Operator: `claude plugin install crew@adminhead --scope user`, then `chezmoi re-add ~/.claude/settings.json`.
+3. In a disposable git repo, `claude -p --agent crew:orchestration --append-system-prompt-file <installPath>/prompts/system_override.md`:
+   - `claude plugin details crew@adminhead` lists 15 agents and 5 hook entries.
+   - `crew:coder` runs `touch sentinel` successfully.
    - Each of the 7 read-only types gets it denied with a `readonly-bash:` reason and runs `git status`.
    - The prompt's first prose line is the orchestration body; `# Executing actions with care` follows.
    - Interactive operator check: create a task, end the turn; Stop blocks with R1.
 
-Rollback: `claude plugin uninstall orchestration@adminhead --keep-data`.
+Rollback: `claude plugin uninstall crew@adminhead --keep-data`.
 
 ### 7. Launcher
 
 Files: `scripts/claude-tmux.sh`, `scripts/claude-tmux.test.sh`.
 
-- New-session path only: run `claude plugin list --json` from `$dir`; require `orchestration@adminhead` enabled at user scope and not disabled at project or local scope for `$dir`; die naming the fix.
-- Launch with `--agent orchestration:orchestration --append-system-prompt-file "$installPath/prompts/system_override.md"` and `-e CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1` (Q3), keeping the auto-memory env.
+- New-session path only: run `claude plugin list --json` from `$dir`; require `crew@adminhead` enabled at user scope and not disabled at project or local scope for `$dir`; die naming the fix.
+- Launch with `--agent crew:orchestration --append-system-prompt-file "$installPath/prompts/system_override.md"` and `-e CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1` (Q3), keeping the auto-memory env.
 - Update help text.
 - Stub `claude` tests: enabled, missing, disabled-at-project, attach-skips-preflight.
 
@@ -243,9 +243,9 @@ Checks: `git worktree list`, `claude plugin validate --strict .`.
 - Step a: keep the `CLAUDE_CONFIG_DIR` refusal; ship-plugin and docs assume `~/.claude`.
 - Step b: drop the `$repo/{agents,hooks,prompts}` check.
 - Step d: one link, `~/.local/bin/claude-tmux` → `$repo/scripts/claude-tmux.sh`, same backup logic. Legacy `~/.claude/{agents,hooks,prompts}` symlinks: warn and point to S8; never touch them.
-- Step f: add `orchestration@adminhead` after `efficient-core`, `code-search`, `coremods`.
+- Step f: add `crew@adminhead` after `efficient-core`, `code-search`, `coremods`.
 - Tests: cases 1 and 3 assert the launcher link; case 5 keeps the refusal.
-- Slice 2 (setup recommender) is unchanged; it never proposes `orchestration` per project.
+- Slice 2 (setup recommender) is unchanged; it never proposes `crew` per project.
 - Order: this plan first, then install-and-recommend slice 1.
 
 ## Unavoidable symlinks and manual steps
@@ -286,7 +286,7 @@ Checks: `git worktree list`, `claude plugin validate --strict .`.
 2. **Read-only checker holes.** Class derived from tools; PowerShell and Agent not banned. S4 closes them.
 3. **No CI or local gate.** Root suites aren't wired to anything. Change: `scripts/check-all.sh` run by a prek pre-commit hook. GitHub Actions optional (private repo; whether `validate` needs auth in CI is UNCONFIRMED).
 4. **Unpinned third-party code.** `claude-code-lsps` is unpinned and runs shell at session start; efficient-web uses `@playwright/mcp@latest`. Change: pin Playwright (S3, Q4 b); constrain the five LSP dependencies (cross-marketplace constraint support UNCONFIRMED) or vendor five `.lsp.json` files and drop the marketplace.
-5. **Walker in three cmp-checked copies** (coremods, orchestration, infra). Change: test in-marketplace relative symlinks under directory install and `--plugin-dir`; adopt if both work.
+5. **Walker in three cmp-checked copies** (coremods, crew, infra). Change: test in-marketplace relative symlinks under directory install and `--plugin-dir`; adopt if both work.
 6. **No LICENSE or `license` fields.** Acknowledgements credit MIT sources without notices; better-auth/skills has no license. Low while private; must-fix before publishing.
 7. **`example` in the public catalog.** S9.
 8. **Stale state.** Locked worktrees, `plugins/ripgrep`, `hooks/__pycache__` and `*.log`. S9 and S2.
@@ -321,12 +321,12 @@ Codex (gpt-6-astra/xhigh), adversarial plan critique; each point checked against
 - `installed_plugins.json` is internal; only `claude plugin list --json` is used.
 - One user, one machine; `adminhead` stays a `directory` marketplace here. Adding it from GitHub elsewhere needs git credentials for the private repo (UNCONFIRMED).
 
-## Open questions
+## Resolved questions
 
-| # | Question | Options | Recommendation |
-| --- | --- | --- | --- |
-| Q1 | Approve reversing system-prompt.md Q9 and the dev-loop cost? | a) Approve, explicit versions plus `--plugin-dir` iteration. b) SHA versioning (omit `version`), breaks the CLAUDE.md release rule. c) Keep the symlinks | a |
-| Q2 | Plugin name | a) `orchestration`. b) Shorter, e.g. `crew` | a |
-| Q3 | Explore outside orchestrated sessions | a) Launcher-only env. b) chezmoi `env` for every session (also drops Plan). c) A real `~/.claude/agents/Explore.md` copy | a |
-| Q4 | browser-tester's browser | a) Pinned playwright in orchestration's `.mcp.json` (starts in every session). b) efficient-web's playwright, pinned there. c) playwright-cli via Bash | b |
-| Q5 | Who owns `~/.local/bin/claude-tmux` | a) install.sh links it with backup. b) chezmoi `symlink_` entry | a |
+| # | Question | Answer |
+| --- | --- | --- |
+| Q1 | Reverse system-prompt.md Q9 and accept the dev-loop cost? | Yes: explicit versions, `--plugin-dir` for iteration |
+| Q2 | Plugin name | `crew` |
+| Q3 | Explore outside orchestrated sessions | Launcher-only `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1` |
+| Q4 | browser-tester's browser | efficient-web's Playwright, pinned to 0.0.83 with `--output-dir` |
+| Q5 | Who owns `~/.local/bin/claude-tmux` | install.sh, with backup (default) |
