@@ -1003,7 +1003,9 @@ else
 fi
 
 # Dispatch: the gate checks only its READ_ONLY types and fails closed on a lost identity.
-touch_cmd="touch $scripts/x"
+# The command is only classified, never run. Its path is outside every scratch root, so the
+# verdict doesn't depend on where the checkout sits (a checkout under /tmp would be scratch).
+touch_cmd="touch /etc/crew-sentinel"
 as() { # as <expect> <label> <agent_type or "-" for none> <agent_id or "-" for none>
   local json
   json=$(jq -n --arg c "$touch_cmd" --arg t "$3" --arg i "$4" \
@@ -1021,6 +1023,22 @@ for t in "${READ_ONLY[@]}"; do
 done
 as block 'agent_id without agent_type' - a1
 as block 'agent_id with empty agent_type' '' a1
+
+# The checker run directly (no gate, no identity) blocks a write and allows a read.
+for spec in "block:$touch_cmd" "allow:ls"; do
+  json=$(jq -n --arg c "${spec#*:}" '{tool_name:"Bash",tool_input:{command:$c}}')
+  rc=0
+  case $HOOK in
+    *.ts) printf '%s' "$json" | bun --no-env-file --config=/dev/null "$scripts/readonly-bash.ts" >/dev/null 2>&1 || rc=$? ;;
+    *) printf '%s' "$json" | python3 -I "$scripts/readonly-bash.py" >/dev/null 2>&1 || rc=$? ;;
+  esac
+  if { [[ ${spec%%:*} == block && $rc -eq 2 ]] || [[ ${spec%%:*} == allow && $rc -eq 0 ]]; }; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf 'FAIL: checker run directly, %s: rc=%s\n' "$spec" "$rc"
+  fi
+done
 
 # With the checker gone, a member blocks (loudly) and a writer is unaffected.
 alone=$(mktemp -d)

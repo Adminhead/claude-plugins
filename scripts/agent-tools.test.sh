@@ -14,6 +14,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 CG='mcp__plugin_code-search_codegraph__codegraph_explore'
 PW=mcp__plugin_efficient-web_playwright
 TS_CMD='bun --no-env-file --config=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.ts" || exit 2'
+PY_CMD='python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.py" || exit 2'
 STOP_CMD='python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/orchestration-guard.py" stop'
 
 # scaffold CASE: a fixture plugin with both gates, the good hooks.json, and one member per gate
@@ -229,6 +230,15 @@ expect r8-wrong 1 "hooks.json: 8: missing PreToolUse Bash command \`python3 -I \
 hooks.json: 8: PreToolUse Bash command \`python3 \"\${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.py\" || exit 2\` is not an exact gate command"
 hooks_edit r8-nostop 'del(.hooks.Stop)'
 expect r8-nostop 1 "hooks.json: 8: missing Stop command \`$STOP_CMD\`"
+# A gate hook without the timeout or onFailure fields fails open on a timeout.
+hooks_edit r8-notimeout '(.hooks.PreToolUse[] | select(.hooks[0].command | contains("gate.ts")) | .hooks[0]) |= del(.timeout)'
+expect r8-notimeout 1 "hooks.json: 8: gate command \`$TS_CMD\` needs \`timeout: 30\`"
+hooks_edit r8-slow '(.hooks.PreToolUse[] | select(.hooks[0].command | contains("gate.ts")) | .hooks[0].timeout) = 600'
+expect r8-slow 1 "hooks.json: 8: gate command \`$TS_CMD\` needs \`timeout: 30\`"
+hooks_edit r8-noonfailure '(.hooks.PreToolUse[] | select(.hooks[0].command | contains("gate.py")) | .hooks[0]) |= del(.onFailure)'
+expect r8-noonfailure 1 "hooks.json: 8: gate command \`$PY_CMD\` needs \`onFailure: \"block\"\`"
+hooks_edit r8-continue '(.hooks.PreToolUse[] | select(.hooks[0].command | contains("gate.py")) | .hooks[0].onFailure) = "continue"'
+expect r8-continue 1 "hooks.json: 8: gate command \`$PY_CMD\` needs \`onFailure: \"block\"\`"
 hooks_edit r8-nomatcher '.hooks.PreToolUse |= map(del(.matcher))'
 expect r8-nomatcher 1 "hooks.json: 8: missing PreToolUse Bash command \`$TS_CMD\`
 hooks.json: 8: missing PreToolUse Bash command \`python3 -I \"\${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.py\" || exit 2\`"

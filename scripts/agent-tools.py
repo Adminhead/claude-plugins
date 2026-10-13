@@ -21,8 +21,8 @@ Rules:
      ignore without warning.
   7  READ_ONLY is declared in both gates, the two sets are disjoint, every name is `crew:<agent>`, and
      every member has an agent file.
-  8  hooks.json holds both exact gate commands as PreToolUse `Bash` hooks, plus the four
-     orchestration-guard entries.
+  8  hooks.json holds both exact gate commands as PreToolUse `Bash` hooks, each with `timeout: 30` and
+     `onFailure: "block"`, plus the four orchestration-guard entries.
 
 Prints one `<file>: <rule>: <detail>` line per violation and exits 1, or
 `agent-tools: ok (<n> agents)` and exits 0.
@@ -63,6 +63,8 @@ MAIN_THREAD = "orchestration.md"  # runs as the session itself, so it is exempt 
 
 TS_GATE_CMD = 'bun --no-env-file --config=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.ts" || exit 2'
 PY_GATE_CMD = 'python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.py" || exit 2'
+# Fields both gate hooks must carry (Claude Code 2.1.295+ for onFailure).
+GATE_FIELDS = {"timeout": 30, "onFailure": "block"}
 GUARD = 'python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/orchestration-guard.py" %s'
 # (event, matcher, command) for every hooks.json entry the plugin needs.
 EXPECTED_HOOKS = [
@@ -214,20 +216,26 @@ def check_hooks(plugin):
     except (OSError, ValueError, KeyError, TypeError) as e:
         return [f"hooks.json: 8: unreadable or no `hooks` ({type(e).__name__})"]
 
-    def commands(event, matcher):
+    def hooks_for(event, matcher):
         found = []
         for entry in events.get(event, []) if isinstance(events, dict) else []:
             if isinstance(entry, dict) and entry.get("matcher") == matcher:
-                found += [h.get("command") for h in entry.get("hooks", []) if isinstance(h, dict)]
+                found += [h for h in entry.get("hooks", []) if isinstance(h, dict)]
         return found
 
     out = []
     for event, matcher, cmd in EXPECTED_HOOKS:
-        if cmd not in commands(event, matcher):
+        matching = [h for h in hooks_for(event, matcher) if h.get("command") == cmd]
+        if not matching:
             out.append(f"hooks.json: 8: missing {event}{f' {matcher}' if matcher else ''} command `{cmd}`")
-    for cmd in commands("PreToolUse", "Bash"):
-        if "readonly-gate" in str(cmd) and cmd not in (TS_GATE_CMD, PY_GATE_CMD):
-            out.append(f"hooks.json: 8: PreToolUse Bash command `{cmd}` is not an exact gate command")
+        elif cmd in (TS_GATE_CMD, PY_GATE_CMD):
+            # A timed-out or failed hook otherwise lets the call through, so `|| exit 2` alone isn't a gate.
+            for field, want in GATE_FIELDS.items():
+                if not any(h.get(field) == want for h in matching):
+                    out.append(f"hooks.json: 8: gate command `{cmd}` needs `{field}: {json.dumps(want)}`")
+    for h in hooks_for("PreToolUse", "Bash"):
+        if "readonly-gate" in str(h.get("command")) and h.get("command") not in (TS_GATE_CMD, PY_GATE_CMD):
+            out.append(f"hooks.json: 8: PreToolUse Bash command `{h.get('command')}` is not an exact gate command")
     return out
 
 

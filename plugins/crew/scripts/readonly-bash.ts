@@ -1326,3 +1326,14 @@ export function run(input: string): number {
   if (message) writeSync(2, `${message}\n`)
   return status
 }
+
+// Run directly rather than through readonly-gate.ts, it checks every payload and fails closed.
+if (import.meta.main) {
+  let status = 2
+  try {
+    status = run(await Bun.stdin.text())
+  } catch (e) {
+    writeSync(2, `readonly-bash: internal error (${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}); blocking.\n`)
+  }
+  process.exit(status)
+}
