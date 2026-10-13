@@ -107,7 +107,7 @@
       "name": "efficient-web",
       "source": "./plugins/efficient-web",
       "description": "Web skills: front-end web development and web design, plus a headless Playwright MCP browser.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -268,6 +268,13 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Setup skills: recommend and install the adminhead plugins that fit the current project.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "crew",
+      "source": "./plugins/crew",
+      "description": "The orchestrated-session crew: 14 subagents (coders, reviewers, debuggers, architect, devops, dba, scribe, browser tester) plus the orchestration main-thread agent, with a read-only Bash gate for the read-only agents, orchestration nudge hooks, and the orchestration system-prompt file. Agents are spawned as crew:<name>.",
       "version": "0.1.0",
       "category": "development"
     }

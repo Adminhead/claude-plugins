@@ -1,20 +1,19 @@
-#!/usr/bin/env -S bun --no-env-file --config=/dev/null
-// PreToolUse hook for read-only subagents: blocks Bash commands that mutate files.
+// Bash check for read-only subagents: blocks Bash commands that mutate files.
 //
 // This is an ACCIDENT GUARD, not a sandbox. It parses the command with the shell AST walker
 // and pattern-matches known mutating commands. It is easy to evade on purpose (`python -c`,
 // `curl -o`, variable indirection like `$CMD`, scripts that write), and exists to stop a
 // read-only agent from mutating files by mistake.
 //
-// Contract (https://code.claude.com/docs/en/hooks): hook JSON arrives on stdin with the command
-// at .tool_input.command. Exit 2 blocks the tool call and stderr is shown to Claude; exit 0
+// Contract (https://code.claude.com/docs/en/hooks): the hook JSON has the command at
+// .tool_input.command. Exit 2 blocks the tool call and stderr is shown to Claude; exit 0
 // allows. Every error path also exits 2, because any other nonzero exit (such as 1) lets the
-// command run. Run it as `bun --no-env-file --config=/dev/null <path> || exit 2`, so a load
-// failure or a missing bun also blocks.
+// command run. readonly-gate.ts imports this module for read-only agents and exits with the
+// status run() returns.
 //
 // The policy is a 1:1 port of readonly-bash.py. Only the tokenizer is replaced by the walker.
 
-import { readFileSync, writeSync } from 'node:fs'
+import { writeSync } from 'node:fs'
 import { MAX_DEPTH, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand } from './shell/walk.ts'
 
@@ -1295,11 +1294,11 @@ function checkScript(text: string, depth: number): void {
   for (const c of r.commands) checkCommand(c)
 }
 
-function main(): void {
+function main(input: string): void {
   if (process.env.READONLY_BASH_TEST_FAULT) throw new Error('injected fault')
   let data: unknown
   try {
-    data = JSON.parse(readFileSync(0, 'utf8'))
+    data = JSON.parse(input)
   } catch (e) {
     if (e instanceof SyntaxError) throw new ParseFailure(e.message)
     throw e
@@ -1311,18 +1310,30 @@ function main(): void {
   checkScript(command, 0)
 }
 
-let status = 0
-let message = ''
-try {
-  main()
-} catch (e) {
-  status = 2
-  if (e instanceof Block) message = `readonly-bash: blocked${e.segment ? ` '${e.segment}'` : ''} (${e.reason}). ${SCRATCH_MSG}`
-  else if (e instanceof ParseFailure) message = `readonly-bash: blocked (parse error: ${e.message}). ${SCRATCH_MSG}`
-  else message = `readonly-bash: internal error (${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}); blocking.`
-}
-try {
+// Checks one hook payload (the raw stdin text). Writes the reason to stderr on a block and
+// returns the exit status: 0 allows, 2 blocks.
+export function run(input: string): number {
+  let status = 0
+  let message = ''
+  try {
+    main(input)
+  } catch (e) {
+    status = 2
+    if (e instanceof Block) message = `readonly-bash: blocked${e.segment ? ` '${e.segment}'` : ''} (${e.reason}). ${SCRATCH_MSG}`
+    else if (e instanceof ParseFailure) message = `readonly-bash: blocked (parse error: ${e.message}). ${SCRATCH_MSG}`
+    else message = `readonly-bash: internal error (${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}); blocking.`
+  }
   if (message) writeSync(2, `${message}\n`)
-} finally {
+  return status
+}
+
+// Run directly rather than through readonly-gate.ts, it checks every payload and fails closed.
+if (import.meta.main) {
+  let status = 2
+  try {
+    status = run(await Bun.stdin.text())
+  } catch (e) {
+    writeSync(2, `readonly-bash: internal error (${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}); blocking.\n`)
+  }
   process.exit(status)
 }

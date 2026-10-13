@@ -30,7 +30,7 @@ check() { # check <label> <needle or "" for silent>
   fi
 }
 
-base() { jq -nc --arg s "$SID" --arg c "$CWD" '{session_id:$s,cwd:$c,agent_type:"orchestration",prompt_id:"p1"}'; }
+base() { jq -nc --arg s "$SID" --arg c "$CWD" '{session_id:$s,cwd:$c,agent_type:"crew:orchestration",prompt_id:"p1"}'; }
 
 create() { # create <id> <subject>
   hook ledger "$(base | jq -c --arg i "$1" --arg t "$2" '. + {hook_event_name:"PostToolUse",tool_name:"TaskCreate",tool_input:{subject:$t},tool_response:{task:{id:$i,subject:$t}}}')"
@@ -129,6 +129,7 @@ for m in stop prompt edit ledger; do
   new_session
   hook "$m" "$(base | jq -c '. + {agent_id:"sub1",prompt:"<agent-message from=\"x\">",tool_name:"Write",tool_input:{file_path:"a",content:"1\n2"}}')"; check "$m: agent_id present" ''
   hook "$m" "$(base | jq -c '. + {agent_type:"coder",prompt:"<agent-message from=\"x\">"}')"; check "$m: other agent_type" ''
+  hook "$m" "$(base | jq -c '. + {agent_type:"orchestration",prompt:"<agent-message from=\"x\">"}')"; check "$m: bare orchestration is silent" ''
   hook "$m" "$(base | jq -c 'del(.agent_type)')"; check "$m: no agent_type" ''
   hook "$m" '{not json'; check "$m: malformed stdin" ''
   hook "$m" ''; check "$m: empty stdin" ''

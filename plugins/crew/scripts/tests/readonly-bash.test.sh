@@ -1,27 +1,60 @@
 #!/usr/bin/env bash
-# Tests for readonly-bash: feeds hook-shaped JSON and asserts allow/block.
-# HOOK picks the implementation (default readonly-bash.py; HOOK=hooks/readonly-bash.ts for the port).
+# Tests for the read-only Bash gates: feeds hook-shaped JSON and asserts allow/block.
+# HOOK picks the gate (default readonly-gate.py; HOOK=plugins/crew/scripts/readonly-gate.ts for the port).
 # shellcheck disable=SC2016  # literal $ in test commands is intentional
 set -uo pipefail
 
-hooks="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HOOK="$(realpath "${HOOK:-$hooks/readonly-bash.py}")"
+scripts="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOOK="$(realpath "${HOOK:-$scripts/readonly-gate.py}")"
 pass=0
 fail=0
 
+# Each gate owns a disjoint set of read-only agent types; AGENT is one member of this gate's set.
+if [[ $HOOK == *.py ]]; then
+  AGENT=crew:review
+  READ_ONLY=(crew:architect crew:security-auditor crew:review crew:browser-tester crew:debugger crew:debugger-critical)
+else
+  AGENT=crew:quick-review
+  READ_ONLY=(crew:quick-review)
+fi
+# Every payload carries a subagent identity; the dispatch cases at the end vary it.
+ID='"agent_type":"'"$AGENT"'","agent_id":"a1"'
+
+invoke() { # invoke <gate path>: runs a gate the way hooks.json does, payload on stdin
+  case $1 in
+    *.ts) bun --no-env-file --config=/dev/null "$1" ;;
+    *) python3 -I "$1" ;;
+  esac
+}
+
 # The walker copies must match their coremods source byte for byte.
 for f in shell/walk.ts vendor/unbash.js vendor/unbash.d.ts; do
-  if cmp -s "$hooks/$f" "$hooks/../plugins/coremods/hooks/$f"; then
+  if cmp -s "$scripts/$f" "$scripts/../../coremods/hooks/$f"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
-    printf 'FAIL: hooks/%s differs from plugins/coremods/hooks/%s\n' "$f" "$f"
+    printf 'FAIL: plugins/crew/scripts/%s differs from plugins/coremods/hooks/%s\n' "$f" "$f"
   fi
 done
 
+# The READ_ONLY constant in the gate is the set the dispatch cases below assume, and the two gates are disjoint.
+gate_set() { grep -oE 'crew:[a-z-]+' "$1"; }
+if [[ "$(gate_set "$HOOK" | sort)" == "$(printf '%s\n' "${READ_ONLY[@]}" | sort)" ]]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: READ_ONLY in %s differs from the test list\n' "$HOOK"
+fi
+if [[ -z "$(comm -12 <(gate_set "$scripts/readonly-gate.py" | sort) <(gate_set "$scripts/readonly-gate.ts" | sort))" ]]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: the .py and .ts gates share an agent type\n'
+fi
+
 run() { # run <expect: allow|block> <label> <raw stdin>
   local expect="$1" label="$2" input="$3" rc=0 err
-  err=$(printf '%s' "$input" | "$HOOK" 2>&1 >/dev/null) || rc=$?
+  err=$(printf '%s' "$input" | invoke "$HOOK" 2>&1 >/dev/null) || rc=$?
   local got=allow
   [[ $rc -eq 2 ]] && got=block
   # A block caused by a crash is not a pass.
@@ -36,7 +69,7 @@ run() { # run <expect: allow|block> <label> <raw stdin>
 
 cmd() { # cmd <expect> <command string>
   local json
-  json=$(jq -n --arg c "$2" '{tool_name:"Bash",tool_input:{command:$c}}')
+  json=$(jq -n --arg c "$2" '{'"$ID"',tool_name:"Bash",tool_input:{command:$c}}')
   run "$1" "$2" "$json"
 }
 
@@ -66,9 +99,9 @@ cmd block 'git branch -D foo'
 cmd block 'find . -delete'
 cmd block 'sudo ls'
 cmd block 'echo a &> out.txt'
-run block 'empty JSON' '{}'
+run block 'empty JSON' '{'"$ID"'}'
 run block 'malformed JSON' '{not json'
-run block 'empty command' '{"tool_input":{"command":""}}'
+run block 'empty command' '{'"$ID"',"tool_input":{"command":""}}'
 
 # Allowed
 cmd allow 'git diff HEAD~1'
@@ -234,8 +267,8 @@ cmd allow 'mktemp'
 cmd allow 'sed -n 1,5p f'
 cmd allow 'git log --output=/tmp/log'
 cmd block 'git log --output=log.txt'
-run block 'non-string command' '{"tool_input":{"command":5}}'
-run block 'null command' '{"tool_input":{"command":null}}'
+run block 'non-string command' '{'"$ID"',"tool_input":{"command":5}}'
+run block 'null command' '{'"$ID"',"tool_input":{"command":null}}'
 run block 'non-object JSON' '[1,2]'
 
 # Arithmetic after keywords; cp/ln/install write only the destination
@@ -916,7 +949,7 @@ cmd allow "aws ec2 describe-instances --query 'Reservations[?Tags[?Key==\`x\`]]'
 
 # A long body under many redirects is checked in time (the hook timeout lets an unchecked call through).
 big="{ $(printf 'ls; %.0s' {1..20000})} $(printf '> /tmp/f %.0s' {1..20000})"
-json=$(printf '%s' "$big" | jq -Rs '{tool_name:"Bash",tool_input:{command:.}}')
+json=$(printf '%s' "$big" | jq -Rs '{'"$ID"',tool_name:"Bash",tool_input:{command:.}}')
 start=$(date +%s%N)
 run allow "$((${#big} / 1024)) KB body under 20000 redirects" "$json"
 ms=$((($(date +%s%N) - start) / 1000000))
@@ -927,21 +960,21 @@ else
   printf 'FAIL: %d KB command took %d ms (limit 2000)\n' "$((${#big} / 1024))" "$ms"
 fi
 
-# The frontmatter command must fail closed even if python3 is shadowed or the runtime is missing.
+# The hooks.json command must fail closed even if python3 is shadowed or the runtime is missing.
 case $HOOK in
-  *.ts) frontmatter='bun --no-env-file --config=/dev/null "'"$HOOK"'" || exit 2' ;;
-  *) frontmatter='python3 -I "'"$HOOK"'" || exit 2' ;;
+  *.ts) hookcmd='bun --no-env-file --config=/dev/null "'"$HOOK"'" || exit 2' ;;
+  *) hookcmd='python3 -I "'"$HOOK"'" || exit 2' ;;
 esac
 fm() { # fm <expect> <label> <command> [env assignments...]
   local expect="$1" label="$2" c="$3" rc=0 json
   shift 3
-  json=$(jq -n --arg c "$c" '{tool_name:"Bash",tool_input:{command:$c}}')
-  printf '%s' "$json" | env "$@" "$BASH" -c "$frontmatter" >/dev/null 2>&1 || rc=$?
+  json=$(jq -n --arg c "$c" '{'"$ID"',tool_name:"Bash",tool_input:{command:$c}}')
+  printf '%s' "$json" | env "$@" "$BASH" -c "$hookcmd" >/dev/null 2>&1 || rc=$?
   if { [[ $expect == block && $rc -eq 2 ]] || [[ $expect == allow && $rc -eq 0 ]]; }; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
-    printf 'FAIL (frontmatter %s, rc=%s): %s\n' "$expect" "$rc" "$label"
+    printf 'FAIL (hook command %s, rc=%s): %s\n' "$expect" "$rc" "$label"
   fi
 }
 shadow=$(mktemp -d)
@@ -952,7 +985,7 @@ rm -rf "$shadow"
 fm block 'missing runtime blocks' 'ls' PATH=/nonexistent
 
 # The block message names /tmp, since TMPDIR is empty in agent Bash.
-err=$(jq -n '{tool_input:{command:"touch a"}}' | "$HOOK" 2>&1 >/dev/null) || true
+err=$(jq -n '{'"$ID"',tool_input:{command:"touch a"}}' | invoke "$HOOK" 2>&1 >/dev/null) || true
 if [[ "$err" == *"under /tmp only"* && "$err" != *TMPDIR* ]]; then
   pass=$((pass + 1))
 else
@@ -961,13 +994,67 @@ else
 fi
 
 # An injected crash must exit 2 with an internal-error message.
-err=$(printf '{"tool_input":{"command":"ls"}}' | READONLY_BASH_TEST_FAULT=1 "$HOOK" 2>&1 >/dev/null) && rc=0 || rc=$?
+err=$(printf '{%s,"tool_input":{"command":"ls"}}' "$ID" | READONLY_BASH_TEST_FAULT=1 invoke "$HOOK" 2>&1 >/dev/null) && rc=0 || rc=$?
 if [[ $rc -eq 2 && "$err" == *"internal error"* ]]; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
   printf 'FAIL: injected fault gave rc=%s: %s\n' "$rc" "$err"
 fi
+
+# Dispatch: the gate checks only its READ_ONLY types and fails closed on a lost identity.
+# The command is only classified, never run. Its path is outside every scratch root, so the
+# verdict doesn't depend on where the checkout sits (a checkout under /tmp would be scratch).
+touch_cmd="touch /etc/crew-sentinel"
+as() { # as <expect> <label> <agent_type or "-" for none> <agent_id or "-" for none>
+  local json
+  json=$(jq -n --arg c "$touch_cmd" --arg t "$3" --arg i "$4" \
+    '{tool_name:"Bash",tool_input:{command:$c}} + (if $t != "-" then {agent_type:$t} else {} end) + (if $i != "-" then {agent_id:$i} else {} end)')
+  run "$1" "$2" "$json"
+}
+as allow 'writer type' crew:coder a1
+as allow 'bare architect' architect a1
+as allow 'bare quick-review' quick-review a1
+as allow 'no identity (plain main thread)' - -
+as allow 'main thread running a writer type, no agent_id' crew:coder -
+for t in "${READ_ONLY[@]}"; do
+  as block "read-only type $t" "$t" a1
+  as block "read-only type $t as main thread" "$t" -
+done
+as block 'agent_id without agent_type' - a1
+as block 'agent_id with empty agent_type' '' a1
+
+# The checker run directly (no gate, no identity) blocks a write and allows a read.
+for spec in "block:$touch_cmd" "allow:ls"; do
+  json=$(jq -n --arg c "${spec#*:}" '{tool_name:"Bash",tool_input:{command:$c}}')
+  rc=0
+  case $HOOK in
+    *.ts) printf '%s' "$json" | bun --no-env-file --config=/dev/null "$scripts/readonly-bash.ts" >/dev/null 2>&1 || rc=$? ;;
+    *) printf '%s' "$json" | python3 -I "$scripts/readonly-bash.py" >/dev/null 2>&1 || rc=$? ;;
+  esac
+  if { [[ ${spec%%:*} == block && $rc -eq 2 ]] || [[ ${spec%%:*} == allow && $rc -eq 0 ]]; }; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf 'FAIL: checker run directly, %s: rc=%s\n' "$spec" "$rc"
+  fi
+done
+
+# With the checker gone, a member blocks (loudly) and a writer is unaffected.
+alone=$(mktemp -d)
+cp "$HOOK" "$alone/"
+for spec in "block:${READ_ONLY[0]}" "allow:crew:coder"; do
+  json=$(jq -n --arg c "$touch_cmd" --arg t "${spec#*:}" '{tool_name:"Bash",tool_input:{command:$c},agent_type:$t,agent_id:"a1"}')
+  rc=0
+  err=$(printf '%s' "$json" | invoke "$alone/${HOOK##*/}" 2>&1 >/dev/null) || rc=$?
+  if [[ ${spec%%:*} == block && $rc -eq 2 && "$err" == *"readonly-gate: internal error"* ]] || [[ ${spec%%:*} == allow && $rc -eq 0 ]]; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf 'FAIL: checker removed, %s: rc=%s %s\n' "$spec" "$rc" "$err"
+  fi
+done
+rm -rf "$alone"
 
 printf '%d passed, %d failed\n' "$pass" "$fail"
 ((fail == 0))

@@ -125,9 +125,9 @@ Installing `efficient-rust` also installs the `rust-analyzer` LSP plugin. Instal
 
 | Server | Endpoint | Browser | Run in | Download |
 | --- | --- | --- | --- | --- |
-| `@playwright/mcp@latest` | stdio | Headless, isolated session | Node ≥18 | On first run via `npx` |
+| `@playwright/mcp@0.0.83` | stdio | Headless, isolated session. Output goes to `/tmp/playwright-mcp` | Node ≥18 | On first run via `npx` |
 
-Using `@latest` means each session start may run a newer, unreviewed upstream release of `@playwright/mcp`.
+The server is pinned to 0.0.83 and started with `--headless --isolated --output-dir /tmp/playwright-mcp`, so it runs the same upstream code on every session and writes its files to one scratch directory. Change the pin in `plugins/efficient-web/.mcp.json` on purpose, after reviewing the release. The `crew` plugin's `browser-tester` agent uses this server.
 
 The Playwright MCP server gives interactive inspection tools for the browser: navigate, take accessibility snapshots, click and type, capture console and network logs, and take screenshots at a set viewport. Use it for ad-hoc browser diagnostics alongside the `playwright-cli:playwright-cli` (if installed) skill (for scriptable, repeatable runs) and the claude-in-chrome (if available) skill (for the user's real browser). Do not enable the `playwright@claude-plugins-official` Playwright MCP server at the same time.
 

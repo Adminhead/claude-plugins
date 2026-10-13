@@ -4,12 +4,6 @@ description: Fast, focused read-only review of small, task-scoped changes. Use p
 model: sonnet
 effort: medium
 tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph
-hooks:
-  PreToolUse:
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: 'bun --no-env-file --config=/dev/null "$HOME/.claude/hooks/readonly-bash.ts" || exit 2'
 color: orange
 ---
 
