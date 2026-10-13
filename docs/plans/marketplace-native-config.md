@@ -10,8 +10,10 @@ Engine: Claude Code 2.1.296. Facts from code.claude.com/docs (plugins-reference,
 - S9: `example` dropped from the catalog and README (not installed anywhere, so no `renames`). Worktree removal and the `plugins/ripgrep` move were blocked by the permission classifier and are left for the operator.
 - S0: GO. The spike verified foreground, background and resumed gating. Teammate gating is untested. `--plugin-dir` shadows the installed copy.
 - S2–S4 done: `9b78a00`, `36f1bd4`, `039df09`, `68e7bc7`.
-- S5 done on `crew-migration`. The `setup` docs page and README row wait until `setup` reaches that branch (it is on main as `e7f27e0`).
-- S1 freeze is staged and waits on the operator's symlink swap.
+- S2 review and security-audit fixes: `24eaa8f` (gate `timeout: 30` and `onFailure: "block"`, self-running checker, fixed sentinel). Open hypothesis: a split-pane teammate may carry no identity and pass as the main thread; agent teams are off on this account.
+- S5 done on `crew-migration` (`c929d8b`). The `setup` docs page and README row are on main (`7e82889`); the README count needs fixing to 34 at merge.
+- S7 done: `1bc4143`, reviewed; `8e52a12` docs follow-up. The `plugin list --json` field names match the real output.
+- Next, after the operator's swap: S1 freeze (`~/.claude/*.new` links staged), merge `crew-migration` into main, S6 ship and live checks, then S8 cutover.
 - Deviation: the agent-writing rules are `plugins/crew/docs/writing-agents.md`, not `plugins/crew/CLAUDE.md`, because `validate --strict` fails on a plugin-root CLAUDE.md ("not loaded as project context"). Decisions and slice 5 still name the old path.
 
 ## Goal
