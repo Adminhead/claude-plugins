@@ -76,20 +76,20 @@ For a new session, the launcher:
 
 - Runs `claude plugin list --json` from the directory it starts in. It stops with the fix if `crew@adminhead` isn't enabled at user scope, or is disabled at project or local scope for that directory. Attaching to an existing session skips this check.
 - Starts `claude` with `--agent crew:orchestration`.
-- Appends `prompts/system_override.md` from the plugin's install path, which it reads from the same JSON. The file is appended with `--append-system-prompt-file`.
+- Appends `prompts/system_override.md` with `--append-system-prompt-file`. It reads the plugin's folder from the same JSON: `readFromFolder` (the repo, for the directory marketplace) when set, else `installPath`.
 - Sets `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1`, which removes the built-in Explore and Plan agents for that session.
 
 Plain `claude` gets the stock prompt and doesn't run as `crew:orchestration`. Only the launcher sets those.
 
 ## Dev loop
 
-Iterate with the plugin directory, not the installed copy.
+`adminhead` is a directory marketplace, so the installed plugin runs from `plugins/crew/` in this repo. Edits go live in every session at its next `/reload-plugins` or relaunch.
 
 1. Edit files under `plugins/crew/`.
-2. Run `claude --plugin-dir plugins/crew`. That copy fully replaces the installed one for the session. The spike verified this.
-3. Run `bash plugins/crew/scripts/tests/check.sh`.
-4. Ship with `ship-plugin crew`, after bumping `version` in `plugins/crew/.claude-plugin/plugin.json` and the `crew` entry in `.claude-plugin/marketplace.json` to the same new value.
-5. Run `/reload-plugins`, or relaunch. A session that started before the ship keeps the hook paths of the old copy until it reloads.
+2. Run `bash plugins/crew/scripts/tests/check.sh`.
+3. Optionally try a risky change in one session first with `claude --plugin-dir <copy of plugins/crew>`, which fully replaces the installed one for that session.
+4. Run `/reload-plugins`, or relaunch.
+5. Release with a version bump and `ship-plugin crew`, which matters for installs from a git source.
 
 ## Requirements
 

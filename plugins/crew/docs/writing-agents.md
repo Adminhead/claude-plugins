@@ -4,7 +4,7 @@ Rules for building and updating the subagent definitions in `plugins/crew/agents
 
 ## How these files load
 
-- The `crew` plugin is installed at user scope, so Claude Code loads a copy from `~/.claude/plugins/cache/adminhead/crew/<version>`, not from this repo. An edit here reaches sessions only after the edit loop below.
+- The `crew` plugin is installed at user scope from the `adminhead` directory marketplace, so Claude Code runs it straight from this repo (`readFromFolder` in `claude plugin list --json`), not from the cache copy. An edit here reaches a running session at its next `/reload-plugins` or relaunch, with no version bump. Run the checks before reloading, because every session picks up the edit.
 - Every agent is scoped `crew:<name>`. The `name` field is the bare name, and the plugin prefix comes from the plugin. Spawn with `subagent_type: crew:<name>`. The Agent tool rejects a bare name. Because of the prefix, a plugin agent never clashes with a user or project agent of the same bare name.
 - The main thread is `crew:orchestration`, loaded with `claude --agent crew:orchestration`. It runs as the session itself, so its changes take effect at the next launch.
 - Identity comes only from the `name` field, never the filename. Keep names unique within the plugin.
@@ -24,10 +24,10 @@ Rules for building and updating the subagent definitions in `plugins/crew/agents
 ## Edit loop
 
 1. Edit files under `plugins/crew/`. Run `git status plugins/crew` first, in case another session has work in progress.
-2. Try the change with `claude --plugin-dir plugins/crew`. That copy fully replaces the installed one for that session, as the spike verified.
-3. Run `bash plugins/crew/scripts/tests/check.sh`.
-4. Ship. Bump `version` in `plugins/crew/.claude-plugin/plugin.json` and the `crew` entry in `.claude-plugin/marketplace.json` to the same new value, then run the ship-plugin skill on `crew`. An unchanged version means installed copies won't update.
-5. Run `/reload-plugins`, or relaunch. A running session keeps the hook paths of the copy it started with.
+2. Run `bash plugins/crew/scripts/tests/check.sh`.
+3. Optionally try a risky change in one session first with `claude --plugin-dir <copy of plugins/crew>`. That copy fully replaces the installed one for that session, as the spike verified.
+4. Run `/reload-plugins`, or relaunch. Since the plugin runs from this repo, that is what puts the edit live.
+5. Release with a version bump in `plugins/crew/.claude-plugin/plugin.json` and the `crew` entry in `.claude-plugin/marketplace.json`, then the ship-plugin skill on `crew`. This matters for installs from a git source, which do read the versioned cache.
 
 ## File layout
 
