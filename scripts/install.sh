@@ -90,8 +90,9 @@ else
   run claude plugin marketplace add "$repo"
 fi
 
+failed=()
 for id in "${REQUIRED[@]}"; do
-  run claude plugin install "$id" --scope user || { warn "install failed: $id"; rc=1; }
+  run claude plugin install "$id" --scope user || { warn "install failed: $id"; failed+=("$id"); rc=1; }
 done
 
 # Nothing was installed under --dry-run, so there is nothing to read back.
@@ -101,7 +102,7 @@ if ((!dry)); then
     state=$(jq -r --arg id "$id" '[.[] | select(.id == $id and .scope == "user")]
       | if length == 0 then "missing" elif .[0].enabled == false then "disabled" else "ok" end' <<<"$installed")
     case $state in
-      missing) warn "$id is not installed at user scope"; rc=1 ;;
+      missing) warn "$id is not installed at user scope"; [[ " ${failed[*]} " == *" $id "* ]] || failed+=("$id"); rc=1 ;;
       disabled) warn "$id is installed but disabled; run: claude plugin enable $id --scope user" ;;
     esac
   done
@@ -115,5 +116,9 @@ else
   warn "could not add conorbronsdon/avoid-ai-writing"; rc=1
 fi
 
-echo "Restart Claude Code or run /reload-plugins. coremods installs DuckDB at the next session start."
+if ((${#failed[@]})); then
+  echo "error: ${#failed[@]} required plugin(s) not installed: ${failed[*]}" >&2
+else
+  echo "Restart Claude Code or run /reload-plugins. coremods installs DuckDB at the next session start."
+fi
 exit "$rc"

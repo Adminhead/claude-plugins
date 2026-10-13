@@ -125,5 +125,6 @@ mutating | grep -qx 'plugin install avoid-ai-writing@conorbronsdon-skills --scop
 reset; list_with crew > "$STUB_LIST"
 if "$script" >/dev/null 2>"$tmp/err"; then fail "8: exit 0"; fi
 grep -q 'crew@adminhead' "$tmp/err" || fail "8: error does not name crew"
+[[ $(tail -n1 "$tmp/err") == "error: 1 required plugin(s) not installed: crew@adminhead" ]] || fail "8: no final summary: $(tail -n1 "$tmp/err")"
 
 echo "all install checks passed"
