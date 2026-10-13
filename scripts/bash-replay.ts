@@ -3,7 +3,7 @@
 // prints counts and 160-character excerpts. Local dev tool: transcripts can hold secrets, so
 // never commit or paste its output beyond counts and a few short excerpts.
 //
-//   bun --no-env-file --config=/dev/null scripts/bash-replay.ts [--limit N] [A [B]]
+//   bun --no-env-file --config=/dev/null scripts/bash-replay.ts [--limit N] [--agent-type T] [A [B]]
 //
 // A checker is `path/to/module.ts#exportName` (a function from the command text to a JSON value)
 // or `hook:<shell command>` (a PreToolUse hook: the payload goes on stdin, and the verdict is the
@@ -18,6 +18,10 @@ import { parse } from '../plugins/coremods/hooks/shell/walk'
 const args = process.argv.slice(2)
 const limitAt = args.indexOf('--limit')
 const limit = limitAt >= 0 ? Number(args.splice(limitAt, 2)[1]) : Infinity
+// A hook: checker's payload carries a subagent identity, since the gates only check read-only
+// agent types. The default is in readonly-gate.py's set; use crew:quick-review for readonly-gate.ts.
+const typeAt = args.indexOf('--agent-type')
+const agentType = typeAt >= 0 ? args.splice(typeAt, 2)[1] : 'crew:review'
 const specs = args
 
 const excerpt = (s: string) => s.replace(/\s+/g, ' ').trim().slice(0, 160)
@@ -44,7 +48,7 @@ async function load(spec: string): Promise<Checker> {
     const cmd = spec.slice(5)
     return command => {
       const p = Bun.spawnSync(['sh', '-c', cmd], {
-        stdin: Buffer.from(JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command } })),
+        stdin: Buffer.from(JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', agent_type: agentType, agent_id: 'replay', tool_input: { command } })),
       })
       let decision = ''
       try {
