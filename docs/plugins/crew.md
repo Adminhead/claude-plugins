@@ -2,7 +2,7 @@
 
 The orchestrated-session crew. It ships the 15 agents that `claude-tmux` sessions run, the read-only Bash gates and orchestration hooks that guard them, and the system prompt file the launcher appends. It replaces the three `~/.claude` symlinks (`agents`, `hooks`, `prompts`) that used to point into this repo. The cutover that removes those links is slice 8 of [marketplace-native-config.md](../plans/marketplace-native-config.md).
 
-Install it at user scope. The launcher's check for user scope lands in slice 7, and the plugin is not meant for individual projects. The plugin ships no skills. Its agents preload skills from other plugins (see [Requirements](#requirements)).
+Install it at user scope; `claude-tmux` refuses to start without it there, and the plugin is not meant for individual projects. The plugin ships no skills. Its agents preload skills from other plugins (see [Requirements](#requirements)).
 
 ## Agents
 
@@ -71,8 +71,6 @@ Each Bash call starts both gate processes. In a measurement run on 2026-10-12, t
 ## Launcher
 
 `claude-tmux` starts orchestrated sessions. Link it at `~/.local/bin/claude-tmux`, pointing to `scripts/claude-tmux.sh`. Until `scripts/install.sh` does that, make the link by hand.
-
-This is the target after slice 7 of the marketplace plan. Until slice 7 lands, `scripts/claude-tmux.sh` still reads the `~/.claude` paths.
 
 For a new session, the launcher:
 
