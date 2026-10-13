@@ -84,6 +84,13 @@ recorded crew-on "$tmp|-n crew-on $launch"
 [[ $(cat "$tmp/env.crew-on") == "1 1" ]] || fail "crew-on env: '$(cat "$tmp/env.crew-on")'"
 grep -qx 'plugin list --json' "$tmp/plugin-calls" || fail "preflight did not list plugins"
 
+# A directory-backed install takes the prompt from readFromFolder, not the cache
+mkdir -p "$tmp/src/crew/prompts" && : > "$tmp/src/crew/prompts/system_override.md"
+plugins '{"id":"crew@adminhead","scope":"user","enabled":true,"installPath":"'"$installPath"'","readFromFolder":"'"$tmp/src/crew"'"}'
+run -s crew-folder "$tmp"
+recorded crew-folder "$tmp|-n crew-folder --agent crew:orchestration --append-system-prompt-file $tmp/src/crew/prompts/system_override.md"
+plugins "$user_crew"
+
 # Missing or disabled at user scope: die with the fix
 plugins ''
 expect_die crew-missing "$tmp" "claude plugin install crew@adminhead --scope user"

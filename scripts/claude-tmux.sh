@@ -46,7 +46,8 @@ preflight() {
   [[ $(jq -r .enabled <<<"$user_crew") == true ]] || die "crew@adminhead is disabled at user scope; run: claude plugin enable crew@adminhead --scope user"
   off_scope=$(jq -r --arg dir "$dir" '[.[] | select(.id == "crew@adminhead" and (.scope == "project" or .scope == "local") and .projectPath == $dir and .enabled == false) | .scope][0] // empty' <<<"$plugins")
   [[ -z $off_scope ]] || die "crew@adminhead is disabled at $off_scope scope for $dir; run: claude plugin enable crew@adminhead --scope $off_scope"
-  prompt=$(jq -r .installPath <<<"$user_crew")/prompts/system_override.md
+  # A directory marketplace runs the plugin from readFromFolder, not the cache copy.
+  prompt=$(jq -r '.readFromFolder // .installPath' <<<"$user_crew")/prompts/system_override.md
   [[ -f $prompt ]] || die "missing $prompt"
 }
 
