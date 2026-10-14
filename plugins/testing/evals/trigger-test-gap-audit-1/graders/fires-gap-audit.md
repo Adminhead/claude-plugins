@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"efficient-testing:gap-audit"'
+input_match: '"skill"\s*:\s*"testing:gap-audit"'
 ---

@@ -13,7 +13,7 @@ kubectl rollout undo deployment/<name>                    # previous revision
 kubectl rollout undo deployment/<name> --to-revision=<n>
 ```
 
-Other platforms: redeploy the previous pinned image or artifact, flip the blue-green selector or load balancer back, or set canary weight to zero. For GitOps clusters, revert the commit and let the controller sync, since `rollout undo` is overwritten by the next sync (see `infra:gitops`).
+Other platforms: redeploy the previous pinned image or artifact, flip the blue-green selector or load balancer back, or set canary weight to zero. For GitOps clusters, revert the commit and let the controller sync, since `rollout undo` is overwritten by the next sync (see `deploy:gitops`).
 
 A rollback command only changes the workload. Data written by the new version, applied migrations, and sent messages stay where they are.
 

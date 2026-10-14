@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Review a workload against the six AWS Well-Architected pillars and find cost savings, using its infrastructure-as-code (Terraform, CloudFormation, SAM, CDK) and, when asked or when no IaC exists, the live account through read-only CLI calls. Produces findings rated High, Medium, or Low per pillar, plus optimization candidates backed by CloudWatch utilization and Cost Explorer. Use when asked for a Well-Architected review, an AWS architecture or cost audit, or right-sizing candidates. Not for general release readiness (infra:production-readiness, if installed), listing resources (aws:resource-query), or incident investigation (aws:cloudwatch-investigation).
+description: Review a workload against the six AWS Well-Architected pillars and find cost savings, using its infrastructure-as-code (Terraform, CloudFormation, SAM, CDK) and, when asked or when no IaC exists, the live account through read-only CLI calls. Produces findings rated High, Medium, or Low per pillar, plus optimization candidates backed by CloudWatch utilization and Cost Explorer. Use when asked for a Well-Architected review, an AWS architecture or cost audit, or right-sizing candidates. Not for general release readiness (deploy:production-readiness, if installed), listing resources (aws:resource-query), or incident investigation (aws:cloudwatch-investigation).
 ---
 
 # AWS architecture review

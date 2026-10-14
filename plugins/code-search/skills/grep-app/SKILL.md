@@ -1,6 +1,6 @@
 ---
 name: grep-app
-description: Search public GitHub code with grep.app's searchGitHub MCP tool to see how real projects use an API, library option, config key, or error string. Use when you need real-world usage examples, want to know how others call or configure something, check whether a flag or API is actually used in the wild, or see how others hit or fix an exact error message. Not for library docs or API reference (`code-search:context7`), your own repo (`code-search:codegraph` or `code-search:ripgrep`), private repos, issues, or PRs (the github plugin's MCP server or `gh search code`, if installed), or broad cited research (efficient-core:research, if installed).
+description: Search public GitHub code with grep.app's searchGitHub MCP tool to see how real projects use an API, library option, config key, or error string. Use when you need real-world usage examples, want to know how others call or configure something, check whether a flag or API is actually used in the wild, or see how others hit or fix an exact error message. Not for library docs or API reference (`code-search:context7`), your own repo (`code-search:codegraph` or `code-search:ripgrep`), private repos, issues, or PRs (the github plugin's MCP server or `gh search code`, if installed), or broad cited research (research:research).
 ---
 
 # grep.app
@@ -15,7 +15,7 @@ description: Search public GitHub code with grep.app's searchGitHub MCP tool to 
 - Cross-library integration, where two libraries meet in one file.
 - Checking that an API or flag is used in the wild before relying on it.
 
-For anything else, route elsewhere: docs and API reference to `code-search:context7`, your own repo to `code-search:codegraph` or `code-search:ripgrep`, private code, issues, and PRs to the github plugin or `gh search code`, cited research to `efficient-core:research`.
+For anything else, route elsewhere: docs and API reference to `code-search:context7`, your own repo to `code-search:codegraph` or `code-search:ripgrep`, private code, issues, and PRs to the github plugin or `gh search code`, cited research to `research:research`.
 
 ## Parameters
 

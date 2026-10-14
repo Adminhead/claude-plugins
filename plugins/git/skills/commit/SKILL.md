@@ -1,11 +1,11 @@
 ---
 name: commit
-description: "Write or create Git commits that follow the repository's message convention, including release-please and commitlint Conventional Commits. Use when asked to \"write a commit message\", \"write the commit message for the staged change\", \"commit the staged changes\", \"commit this\", split changes into several commits, or fix a commit message, including when only the message text is wanted. Reads the diff and recent history to pick the type, scope, and format. Not for pushing, opening PRs, or merging (`github:ship`, if installed) or for history rewriting (`git:history`)."
+description: "Write or create Git commits that follow the repository's message convention, including release-please and commitlint Conventional Commits. Use when asked to \"write a commit message\", \"write the commit message for the staged change\", \"commit the staged changes\", \"commit this\", split changes into several commits, or fix a commit message, including when only the message text is wanted. Reads the diff and recent history to pick the type, scope, and format. Not for pushing, opening PRs, or merging (`github:ship`) or for history rewriting (`git:history`)."
 ---
 
 # Git Commit
 
-Build commits from the actual diff, in the repository's own convention. A request to commit authorizes creating commits. It does not authorize pushing (for push, PR, or merge requests, use `github:ship`, if installed), amending, rebasing, resetting, stashing, force-pushing, skipping hooks, or changing Git config.
+Build commits from the actual diff, in the repository's own convention. A request to commit authorizes creating commits. It does not authorize pushing (for push, PR, or merge requests, use `github:ship`), amending, rebasing, resetting, stashing, force-pushing, skipping hooks, or changing Git config.
 
 ## Boundaries
 

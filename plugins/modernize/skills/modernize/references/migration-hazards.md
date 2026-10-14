@@ -70,7 +70,7 @@ The examples cover Node, Python, Go, and Postgres, and the classes apply to any 
 
 **Action.** Choose one path and write it down: an in-place or dump-and-restore upgrade with steps and rollback, or an explicit decision to reset disposable data. Keep the old version available for rollback.
 
-**Example.** Postgres documents three major-upgrade paths (a logical dump and restore with `pg_dumpall`, `pg_upgrade`, and logical replication to a new server), and states that file-system-level copies don't work across majors. Postgres refuses to start a data directory from an incompatible version. See `efficient-db:postgres`, if installed, for the database side.
+**Example.** Postgres documents three major-upgrade paths (a logical dump and restore with `pg_dumpall`, `pg_upgrade`, and logical replication to a new server), and states that file-system-level copies don't work across majors. Postgres refuses to start a data directory from an incompatible version. See `db:postgres`, if installed, for the database side.
 
 ## H6. A temporary weak state that outlives its phase
 

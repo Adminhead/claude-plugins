@@ -49,5 +49,5 @@ Set `spec.decryption` on the Kustomization with `provider: sops` and a Secret ho
 ## Both tools
 
 - Never commit a `Secret` manifest with `data` or `stringData` values.
-- Secrets decrypted into the cluster are ordinary Kubernetes Secrets. Enable encryption at rest, and restrict who can `get` them (`infra:kubernetes` references/rbac.md).
+- Secrets decrypted into the cluster are ordinary Kubernetes Secrets. Enable encryption at rest, and restrict who can `get` them (`deploy:kubernetes` references/rbac.md).
 - Check for leaks before committing: scan for private keys, tokens, and base64 `data:` blocks in diffs.

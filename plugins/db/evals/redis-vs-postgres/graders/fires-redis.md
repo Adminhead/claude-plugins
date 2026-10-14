@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"efficient-db:redis"'
+input_match: '"skill"\s*:\s*"db:redis"'
 ---

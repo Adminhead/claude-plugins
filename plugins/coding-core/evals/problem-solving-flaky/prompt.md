@@ -1,6 +1,6 @@
 ---
 name: problem-solving-flaky
-description: An intermittent CI failure of unknown cause routes to efficient-core:problem-solving, not coding.
+description: An intermittent CI failure of unknown cause routes to coding-core:problem-solving, not coding.
 tags: [routing]
 runs: 1
 max_turns: 5

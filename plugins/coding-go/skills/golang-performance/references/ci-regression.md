@@ -25,7 +25,7 @@ For a self-managed approach, build both refs with `go test -c`, alternate the ru
 
 ## Workflow shape
 
-A job that checks out the base ref and head ref (full history, `fetch-depth: 0`), runs the comparison, uploads the benchstat text as an artifact, and fails when a metric on a named hot-path benchmark exceeds the threshold. Pin or reference the actions per the repo's convention (`github:actions` if installed). Run it on pull requests that touch the packages with benchmarks rather than on every change.
+A job that checks out the base ref and head ref (full history, `fetch-depth: 0`), runs the comparison, uploads the benchstat text as an artifact, and fails when a metric on a named hot-path benchmark exceeds the threshold. Pin or reference the actions per the repo's convention (`github-admin:actions` if installed). Run it on pull requests that touch the packages with benchmarks rather than on every change.
 
 ## Dedicated runners
 

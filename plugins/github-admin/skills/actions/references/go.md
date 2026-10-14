@@ -1,6 +1,6 @@
 # Go projects
 
-Read when a workflow builds, tests, or releases a Go module. Action versions and refs follow the policy in SKILL.md, and permissions and triggers follow [security](security.md). Language-level testing practice lives in `efficient-go:golang`, if installed.
+Read when a workflow builds, tests, or releases a Go module. Action versions and refs follow the policy in SKILL.md, and permissions and triggers follow [security](security.md). Language-level testing practice lives in `coding-go:golang`, if installed.
 
 ## Test job
 
@@ -23,6 +23,6 @@ Read when a workflow builds, tests, or releases a Go module. Action versions and
 
 ## Dependency updates
 
-Group minor and patch updates into one Dependabot PR per ecosystem and leave major updates separate, since majors may break the build. `github:dependabot` has the config in its options and recipes reference.
+Group minor and patch updates into one Dependabot PR per ecosystem and leave major updates separate, since majors may break the build. `github-admin:dependabot` has the config in its options and recipes reference.
 
 For auto-merging Dependabot PRs, test the PR author rather than the triggering actor: `github.event.pull_request.user.login == 'dependabot[bot]'` together with a repository check, with `dependabot/fetch-metadata` supplying the update type. `github.actor` changes when someone else re-runs the workflow, so it is a weaker guard. Auto-merge still depends on required checks and branch protection, which are the real gate. `pull_request` runs triggered by Dependabot start with a read-only token and no user-defined secrets, but a `permissions:` block (`contents: write`, `pull-requests: write`) raises the token for the merge job. Use `on: pull_request` with the PR-author guard and `dependabot/fetch-metadata`, as in GitHub's documented example. Don't switch to `pull_request_target` for this, since it adds privilege without need ([GitHub's guidance](https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automating-dependabot-with-github-actions)).

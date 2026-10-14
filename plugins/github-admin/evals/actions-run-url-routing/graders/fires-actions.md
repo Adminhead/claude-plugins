@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"github:actions"'
+input_match: '"skill"\s*:\s*"github-admin:actions"'
 ---

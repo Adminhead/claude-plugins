@@ -1,6 +1,6 @@
 ---
 name: trigger-research-1
-description: A realistic request that should load efficient-core:research.
+description: A realistic request that should load research:research.
 tags: [trigger]
 runs: 1
 max_turns: 6

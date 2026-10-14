@@ -1,6 +1,6 @@
 ---
 name: idempotency-retry
-description: Design idempotency keys and safe retries for HTTP APIs, on both sides - client-minted keys scoped per account, payload-mismatch rejection, an atomic claim in the database, absent, in-flight, and complete states with recovery jobs, replay windows - and client retry policy with an allowlist, full-jitter backoff, bounded attempts, retry budgets, and deadline propagation. Use when adding an Idempotency-Key header, fixing duplicate or double-submitted writes, auditing an idempotency implementation for races, or writing retry guidance and SDK retry defaults. Not for the shape of error responses (api:rest-design), webhook delivery retries (api:webhooks), or Postgres locking and index details (efficient-db:postgres, if installed).
+description: Design idempotency keys and safe retries for HTTP APIs, on both sides - client-minted keys scoped per account, payload-mismatch rejection, an atomic claim in the database, absent, in-flight, and complete states with recovery jobs, replay windows - and client retry policy with an allowlist, full-jitter backoff, bounded attempts, retry budgets, and deadline propagation. Use when adding an Idempotency-Key header, fixing duplicate or double-submitted writes, auditing an idempotency implementation for races, or writing retry guidance and SDK retry defaults. Not for the shape of error responses (api:rest-design), webhook delivery retries (api:webhooks), or Postgres locking and index details (db:postgres, if installed).
 ---
 
 # Idempotency keys and safe retries
@@ -75,7 +75,7 @@ Run recovery as background jobs. A completer pushes abandoned in-flight requests
 - Bound both attempts and total duration, and log each retry (attempt, error, next wait).
 - Add a fleet retry budget. Stop retrying once retries exceed a set share of traffic over a sliding window, because 100 instances each retrying 3 times amplify load 300x while each looks reasonable.
 - Set one overall deadline at the top and budget per-attempt timeouts inside it. Do not create a fresh overall timeout per attempt.
-- Use the language's retry library (tenacity, Resilience4j, or equivalent) before hand-rolling. See `efficient-python:python` (if installed) for its reliability guidance and `efficient-core:coding` (if installed) for the repo-wide retry policy.
+- Use the language's retry library (tenacity, Resilience4j, or equivalent) before hand-rolling. See `coding-python:python` (if installed) for its reliability guidance and `coding-core:coding` for the repo-wide retry policy.
 - For SDKs you ship, default retries on, with jitter and a small attempt cap, and auto-generate keys for unsafe operations. Defaults are the contract for callers who never read docs.
 
 ## Document the contract

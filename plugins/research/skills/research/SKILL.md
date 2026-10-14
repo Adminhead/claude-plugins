@@ -1,6 +1,6 @@
 ---
 name: research
-description: Answer an external, decision-relevant question by finding, reading, weighing, and synthesizing sources with traceable citations. Use for "compare X vs Y", "is it true that…", "what's the current policy/state of…", or explaining a topic from authoritative sources. Not for a single library/API docs lookup (code-search:context7, if installed), real-world code examples from public GitHub (code-search:grep-app, if installed), large list-building or lead generation (Exa agent_run or exa:search/exa:exa-agent, if installed), implementation plans (efficient-core:planning), or debugging (efficient-core:problem-solving).
+description: Answer an external, decision-relevant question by finding, reading, weighing, and synthesizing sources with traceable citations. Use for "compare X vs Y", "is it true that…", "what's the current policy/state of…", or explaining a topic from authoritative sources. Not for a single library/API docs lookup (code-search:context7), real-world code examples from public GitHub (code-search:grep-app), large list-building or lead generation (Exa agent_run or exa:search/exa:exa-agent, if installed), implementation plans (coding-core:planning), or debugging (coding-core:problem-solving).
 ---
 
 # Efficient Research

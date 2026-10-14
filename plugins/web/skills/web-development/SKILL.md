@@ -1,6 +1,6 @@
 ---
 name: web-development
-description: "Build or repair a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard/focus behavior, request/response contracts, server-side validation, error mapping, and measured delivery performance, verified in a real browser. Use for a form, page, or flow that must work for real users, HTTP API contract changes, or browser/network bugs. Not for React/TanStack internals, visual design decisions, or auth/session logic (efficient-auth:auth, if installed)."
+description: "Build or repair a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard/focus behavior, request/response contracts, server-side validation, error mapping, and measured delivery performance, verified in a real browser. Use for a form, page, or flow that must work for real users, HTTP API contract changes, or browser/network bugs. Not for React/TanStack internals, visual design decisions, or auth/session logic (auth:auth, if installed)."
 ---
 
 # Efficient Web Development
@@ -9,11 +9,11 @@ Deliver a small working vertical slice, from the browser entry point through its
 
 Hand off what this skill does not own:
 
-- React component and state mechanics go to `efficient-js:react`, if installed.
-- TanStack routing and server state go to `efficient-js:tanstack`, if installed.
-- Visual hierarchy, variants, and interaction intent go to `efficient-web:web-design`. Implement its acceptance criteria rather than inventing them.
-- Login, sessions, tokens, and authorization rules go to `efficient-auth:auth`, if installed.
-- Unit and regression test scope goes to `efficient-testing:unit`. Browser suites go to `efficient-testing:e2e`, both if installed.
+- React component and state mechanics go to `coding-js:react`, if installed.
+- TanStack routing and server state go to `coding-js:tanstack`, if installed.
+- Visual hierarchy, variants, and interaction intent go to `web:web-design`. Implement its acceptance criteria rather than inventing them.
+- Login, sessions, tokens, and authorization rules go to `auth:auth`, if installed.
+- Unit and regression test scope goes to `testing:unit`. Browser suites go to `testing:e2e`.
 
 ## 1. Establish the user contract
 
@@ -88,6 +88,6 @@ Check these only when they affect the requested path:
 - Run the narrowest checks that reach the change, then exercise the real journey in a browser. Cover the success path and each required failure or recovery state.
 - For accessibility or responsive changes, also walk the keyboard path, inspect the accessibility tree, and check the narrow and zoomed layouts.
 - For a bug, reproduce the symptom before fixing it when practical. Keep a regression test or durable reproduction.
-- **When browser evidence or failure diagnosis is needed, read [references/browser-diagnostics.md](references/browser-diagnostics.md).** It covers the Playwright MCP (efficient-web), `playwright-cli:playwright-cli` (if installed), the claude-in-chrome skill, and what to capture.
+- **When browser evidence or failure diagnosis is needed, read [references/browser-diagnostics.md](references/browser-diagnostics.md).** It covers the Playwright MCP (web), `playwright-cli:playwright-cli` (if installed), the claude-in-chrome skill, and what to capture.
 
 Stop when the requested journey has direct evidence at the affected boundaries. Don't broaden the change into a framework migration, redesign, cleanup, or unmeasured optimization.

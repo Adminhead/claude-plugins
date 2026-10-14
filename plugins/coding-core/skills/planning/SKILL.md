@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Write, review, or revise an implementation plan whose scope, verification, and reruns are proportionate to risk, cutting cost without dropping required outcomes. Use when asked to "plan this", "review this plan", "what's the cheapest way to verify", or when a task spans several slices or risky boundaries; also for acceptance criteria on an ambiguous or high-risk change, a plan several agents will execute, work too big for one session, and on request ("grill me") a stress-test of a plan. Not for claude-mem phased plans meant for /do execution (claude-mem:make-plan), legacy-system migration plans (efficient-core:modernize), single bounded edits (efficient-core:coding), measured autonomous experiment loops (efficient-core:experiment-loop), or throwaway prototypes (efficient-core:prototype).
+description: Write, review, or revise an implementation plan whose scope, verification, and reruns are proportionate to risk, cutting cost without dropping required outcomes. Use when asked to "plan this", "review this plan", "what's the cheapest way to verify", or when a task spans several slices or risky boundaries; also for acceptance criteria on an ambiguous or high-risk change, a plan several agents will execute, work too big for one session, and on request ("grill me") a stress-test of a plan. Not for claude-mem phased plans meant for /do execution (claude-mem:make-plan), legacy-system migration plans (modernize:modernize, if installed), single bounded edits (coding-core:coding), measured autonomous experiment loops (experiment-loop:experiment-loop, if installed), or throwaway prototypes (prototype:prototype, if installed).
 ---
 
 # Efficient Planning
@@ -65,7 +65,7 @@ Make verification rows specific. Name the affected boundary and the rerun trigge
 
 ## What a plan must require
 
-- A regression test or equally durable reproduction for every bug fix; use `efficient-testing:unit`, if installed, to scope it. If infeasible, the plan says why and names the strongest practical evidence.
+- A regression test or equally durable reproduction for every bug fix; use `testing:unit` to scope it. If infeasible, the plan says why and names the strongest practical evidence.
 - Coverage of combinations, platforms, permissions, configurations, or integrations only when impact requires them.
 - Baseline failures recorded separately, never blamed on the change or silently ignored.
 - Proportionate verification of docs, runbooks, and config guidance that people or automation will act on.

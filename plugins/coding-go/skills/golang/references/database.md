@@ -1,6 +1,6 @@
 # Go database access
 
-Read this when writing or reviewing `database/sql`, `sqlx`, or `pgx` code. Schema design belongs to `efficient-db:database-design`, and locking, indexing, and query plans belong to `efficient-db:postgres`, both if installed. Use the data-access style the repo already has, including its ORM, rather than replacing it.
+Read this when writing or reviewing `database/sql`, `sqlx`, or `pgx` code. Schema design belongs to `db:database-design`, if installed, and locking, indexing, and query plans belong to `db:postgres`, both if installed. Use the data-access style the repo already has, including its ORM, rather than replacing it.
 
 ## database/sql
 

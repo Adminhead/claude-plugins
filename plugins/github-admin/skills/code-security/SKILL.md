@@ -1,6 +1,6 @@
 ---
 name: code-security
-description: Configure and triage GitHub's security features with gh. Covers secret scanning, push protection and blocked-push recovery, paths-ignore exclusions, delegated bypass, private vulnerability reporting, and alert triage for secret scanning, code scanning, and Dependabot. Use when enabling these features, a push is blocked for a secret, or an alert needs a decision. Not for Dependabot config files (`github:dependabot`), CodeQL workflow setup (`github:actions`), or local scans before commit (`efficient-security:audit`, if installed).
+description: Configure and triage GitHub's security features with gh. Covers secret scanning, push protection and blocked-push recovery, paths-ignore exclusions, delegated bypass, private vulnerability reporting, and alert triage for secret scanning, code scanning, and Dependabot. Use when enabling these features, a push is blocked for a secret, or an alert needs a decision. Not for Dependabot config files (`github-admin:dependabot`), CodeQL workflow setup (`github-admin:actions`), or local scans before commit (`security:audit`, if installed).
 ---
 
 # GitHub Code Security
@@ -111,7 +111,7 @@ Closing an alert is a write. The API values are:
 | Code scanning | `PATCH .../code-scanning/alerts/<n>` with `state=dismissed` | `dismissed_reason`: `false positive`, `won't fix`, `used in tests`; optional `dismissed_comment` |
 | Dependabot | `PATCH .../dependabot/alerts/<n>` with `state=dismissed` | `dismissed_reason`: `fix_started`, `inaccurate`, `no_bandwidth`, `not_used`, `tolerable_risk`; optional `dismissed_comment` |
 
-Use `revoked` for a secret scanning alert only after the credential was actually revoked. Write a dismissal comment that states the evidence. Fixes for Dependabot alerts go through `github:dependabot`. Patching code that CodeQL flags is a normal code change.
+Use `revoked` for a secret scanning alert only after the credential was actually revoked. Write a dismissal comment that states the evidence. Fixes for Dependabot alerts go through `github-admin:dependabot`. Patching code that CodeQL flags is a normal code change.
 
 ## Rewrite history (last resort)
 

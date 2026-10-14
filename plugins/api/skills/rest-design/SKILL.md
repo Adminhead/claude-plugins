@@ -1,6 +1,6 @@
 ---
 name: rest-design
-description: Design and review REST/HTTP API contracts for external consumers - resource and method semantics, status codes, one RFC 9457 error envelope, pagination, filtering, rate-limit signaling, and Hyrum's-Law compatibility - and run a contract-first workflow with OpenAPI, linting, contract tests, and two-way consumer drift checks. Use when designing a new API surface, reviewing an OpenAPI spec or existing endpoints for consistency, standardizing error responses, or changing a contract that other teams or clients depend on. Not for GraphQL (api:graphql), gRPC (api:grpc), versioning and deprecation policy (api:versioning), idempotency keys and retries (api:idempotency-retry), or browser-side handling of an API contract (efficient-web:web-development, if installed).
+description: Design and review REST/HTTP API contracts for external consumers - resource and method semantics, status codes, one RFC 9457 error envelope, pagination, filtering, rate-limit signaling, and Hyrum's-Law compatibility - and run a contract-first workflow with OpenAPI, linting, contract tests, and two-way consumer drift checks. Use when designing a new API surface, reviewing an OpenAPI spec or existing endpoints for consistency, standardizing error responses, or changing a contract that other teams or clients depend on. Not for GraphQL (api:graphql), gRPC (api:grpc), versioning and deprecation policy (api:versioning), idempotency keys and retries (api:idempotency-retry), or browser-side handling of an API contract (web:web-development, if installed).
 ---
 
 # REST contract design and review
@@ -30,7 +30,7 @@ Design or review an HTTP API as a contract that consumers depend on. The goal is
 - Return one error envelope on every endpoint, built on RFC 9457 problem details. Details and the code taxonomy are in [references/errors.md](references/errors.md).
 - Paginate every collection that can grow, with a default and a maximum page size. Choose offset, cursor, or keyset once and use it across the surface.
 - Signal rate limits on every response that counts against a limit and send `429` with `Retry-After` when throttling. See [references/rate-limits.md](references/rate-limits.md).
-- Unsafe operations that clients may retry need an idempotency mechanism. Use `api:idempotency-retry` for the design, and `efficient-web:web-development` references/api-contract-review.md (if installed) for the browser-side view of the same contract.
+- Unsafe operations that clients may retry need an idempotency mechanism. Use `api:idempotency-retry` for the design, and `web:web-development`, if installed, references/api-contract-review.md (if installed) for the browser-side view of the same contract.
 - Authenticate with one model across the surface. For issuing keys to your own consumers use `api:keys`; for acting as an OAuth server use `api:oauth-provider`.
 
 ## Change a contract safely

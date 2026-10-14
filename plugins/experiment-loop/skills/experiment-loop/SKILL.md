@@ -1,6 +1,6 @@
 ---
 name: experiment-loop
-description: Run a bounded autonomous optimize-and-measure loop on a dedicated git branch, with one hypothesis per commit, a fixed metric command, keep-or-revert decisions, and a results log. Use when the user wants many unattended experiments against a measurable goal such as benchmark time, bundle size, memory, or test pass rate. Not for a single optimization (efficient-core:coding, efficient-core:problem-solving), planning the surrounding work (efficient-core:planning), pure polling or scheduling (the /loop and /schedule built-ins), or goals with no command that measures them.
+description: Run a bounded autonomous optimize-and-measure loop on a dedicated git branch, with one hypothesis per commit, a fixed metric command, keep-or-revert decisions, and a results log. Use when the user wants many unattended experiments against a measurable goal such as benchmark time, bundle size, memory, or test pass rate. Not for a single optimization (coding-core:coding, coding-core:problem-solving), planning the surrounding work (coding-core:planning), pure polling or scheduling (the /loop and /schedule built-ins), or goals with no command that measures them.
 ---
 
 # Experiment Loop
@@ -35,7 +35,7 @@ Keep the judge outside the loop's reach. The metric command, benchmark inputs, a
 
 ## Branch and baseline
 
-1. Confirm this is a git repository with a clean working tree. If there are uncommitted changes, stop and ask whether to commit or stash them, or to run in a separate worktree (`git:worktree` if installed). The loop's commits and reverts must never mix with the user's work.
+1. Confirm this is a git repository with a clean working tree. If there are uncommitted changes, stop and ask whether to commit or stash them, or to run in a separate worktree (`git:worktree`). The loop's commits and reverts must never mix with the user's work.
 2. Create a dedicated branch (`git switch -c experiment/<tag>`, for example with today's date). All experiments happen there.
 3. Create `results.tsv` and `run.log` in the repo root and add both names to the file at `"$(git rev-parse --git-path info/exclude)"` (in a linked worktree `.git` is a file, so don't hardcode the path), which keeps them untracked without touching a tracked file. Header for the log: `experiment`, `commit`, `metric`, `status`, `description`, separated by tabs.
 4. Run the metric command on the unmodified code and log it as experiment 0, status `baseline`. For a noisy metric, run it several times and note the spread. A later gain only counts when it exceeds that noise.

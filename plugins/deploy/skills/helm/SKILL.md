@@ -1,6 +1,6 @@
 ---
 name: helm
-description: Author, validate, and release Helm charts, covering chart layout, Chart.yaml, values design and schema, template helpers, dependencies, lint and template checks, diff before upgrade, atomic upgrades, OCI registries and provenance, and install or upgrade troubleshooting. Use when creating or changing a chart, packaging or publishing one, or debugging a failed helm install or upgrade. Not for plain manifests or Kustomize (infra:kubernetes), Argo CD or Flux delivery (infra:gitops), or Dockerfiles (infra:docker).
+description: Author, validate, and release Helm charts, covering chart layout, Chart.yaml, values design and schema, template helpers, dependencies, lint and template checks, diff before upgrade, atomic upgrades, OCI registries and provenance, and install or upgrade troubleshooting. Use when creating or changing a chart, packaging or publishing one, or debugging a failed helm install or upgrade. Not for plain manifests or Kustomize (deploy:kubernetes), Argo CD or Flux delivery (deploy:gitops), or Dockerfiles (deploy:docker).
 allowed-tools:
   - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/validate-chart.sh *)
 ---
@@ -26,7 +26,7 @@ Build charts that render to valid, hardened manifests from a small, documented v
    ```
 
    It runs `helm lint --strict`, renders the chart once per values file, and schema-checks the output with `kubeconform` when installed. Run it for the default values and for each environment values file the chart ships.
-4. **Review the rendered output.** `helm template <release> <chart-dir> -f <values>` and read it against the checklist in `infra:kubernetes` (pinned image, requests, probes, restricted securityContext).
+4. **Review the rendered output.** `helm template <release> <chart-dir> -f <values>` and read it against the checklist in `deploy:kubernetes` (pinned image, requests, probes, restricted securityContext).
 5. **Preview the change.** For an existing release, `helm diff upgrade <release> <chart> -f <values> -n <ns>` shows what an upgrade would modify. It needs the `helm-diff` plugin. See [release](references/release.md).
 6. **Release** with approval, following [release](references/release.md) for upgrade flags, OCI publishing, and signing.
 

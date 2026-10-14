@@ -1,6 +1,6 @@
 ---
 name: actions
-description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run, including when the user pastes a github.com/<owner>/<repo>/actions/runs/<id> or /job/<id> URL or says "CI failed" or "the build is red". Not for Dependabot config (github:dependabot) or triggering dispatches, releases (`github:release`), or deployments.
+description: Create, modify, review, and debug GitHub Actions workflows and custom actions with least-privilege permissions and a clear trust boundary. Use when editing .github/workflows/*.yml, action.yml, or .github/actions/, choosing action versions, or diagnosing a failed or stuck run, including when the user pastes a github.com/<owner>/<repo>/actions/runs/<id> or /job/<id> URL or says "CI failed" or "the build is red". Not for Dependabot config (github-admin:dependabot) or triggering dispatches, releases (`github:release`), or deployments.
 ---
 
 # GitHub Actions

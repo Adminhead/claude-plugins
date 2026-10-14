@@ -1,6 +1,6 @@
 ---
 name: ansible
-description: Write, review, and run Ansible playbooks, roles, and inventories safely, covering the project's runner, inventory and group_vars layout, idempotency proof (a rerun showing changed=0), check mode and its limits, validate hooks, handlers, vault or sops secrets, no_log, FQCN modules, and become. Use when editing a playbook, role, or inventory, running ansible-playbook or ansible-lint, rerunning a play to confirm nothing changes, using --check, --diff, --limit, or --tags, or fixing a task that reports changed every run. Real runs against hosts only when asked. Not for Terraform or OpenTofu (infra:terraform), Dockerfiles or Compose (infra:docker), Kubernetes manifests (infra:kubernetes), or Nix.
+description: Write, review, and run Ansible playbooks, roles, and inventories safely, covering the project's runner, inventory and group_vars layout, idempotency proof (a rerun showing changed=0), check mode and its limits, validate hooks, handlers, vault or sops secrets, no_log, FQCN modules, and become. Use when editing a playbook, role, or inventory, running ansible-playbook or ansible-lint, rerunning a play to confirm nothing changes, using --check, --diff, --limit, or --tags, or fixing a task that reports changed every run. Real runs against hosts only when asked. Not for Terraform or OpenTofu (infra:terraform), Dockerfiles or Compose (deploy:docker, if installed), Kubernetes manifests (deploy:kubernetes, if installed), or Nix.
 ---
 
 # Ansible

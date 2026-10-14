@@ -39,7 +39,7 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev
 ```
 
-Pin the uv image to a version, as the guide advises. `UV_LINK_MODE=copy` avoids hard-link warnings when the cache and target sit on different filesystems. In GitHub Actions, install uv with `astral-sh/setup-uv` (pin `version`, and set `enable-cache: true` if the repo wants caching), following `github:actions` for the ref format.
+Pin the uv image to a version, as the guide advises. `UV_LINK_MODE=copy` avoids hard-link warnings when the cache and target sit on different filesystems. In GitHub Actions, install uv with `astral-sh/setup-uv` (pin `version`, and set `enable-cache: true` if the repo wants caching), following `github-admin:actions`, if installed, for the ref format.
 
 ## Python versions
 

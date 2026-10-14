@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"efficient-testing:unit"'
+input_match: '"skill"\s*:\s*"testing:unit"'
 ---

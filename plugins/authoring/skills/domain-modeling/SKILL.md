@@ -12,7 +12,7 @@ Change the project's model deliberately, and write each result down the moment i
 - A single-context repo keeps one `GLOSSARY.md` at the root.
 - A multi-context repo keeps a `GLOSSARY-MAP.md` at the root that lists each context, where its glossary lives, and how the contexts relate, plus one `GLOSSARY.md` per context. Read the map first, and ask which context a topic belongs to when it is unclear.
 - Create a glossary when the first term is resolved, not before. Read `references/glossary-format.md` before writing or editing one.
-- ADRs follow `authoring:adr-writing` (if installed), including its location rules for `docs/adr/`.
+- ADRs follow `authoring:adr-writing`, including its location rules for `docs/adr/`.
 
 ## During the session
 

@@ -1,6 +1,6 @@
 ---
 name: dependabot-prs-routing
-description: A request to merge the open Dependabot PRs routes to github:dependabot-prs, not github:dependabot.
+description: A request to merge the open Dependabot PRs routes to github-admin:dependabot-prs, not github-admin:dependabot.
 tags: [routing]
 runs: 1
 max_turns: 6

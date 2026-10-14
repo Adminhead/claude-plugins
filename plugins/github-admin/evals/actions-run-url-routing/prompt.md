@@ -1,6 +1,6 @@
 ---
 name: actions-run-url-routing
-description: A pasted Actions run URL with "CI failed" routes to github:actions.
+description: A pasted Actions run URL with "CI failed" routes to github-admin:actions.
 tags: [routing]
 runs: 1
 max_turns: 6

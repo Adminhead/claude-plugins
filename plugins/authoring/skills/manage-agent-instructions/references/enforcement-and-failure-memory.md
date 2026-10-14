@@ -69,7 +69,7 @@ Guidance goes stale silently. Check the cheap, definite claims with a script:
 - failure notes without a prevention;
 - CI jobs that reference removed scripts.
 
-`authoring:docs-audit` (if installed) includes a read-only drift script for documented commands, links, and environment variables.
+`authoring:docs-audit` includes a read-only drift script for documented commands, links, and environment variables.
 
 ## Review list
 

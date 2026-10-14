@@ -103,7 +103,7 @@ Check existence and uniform use only, then defer.
 
 - A versioning scheme exists: `api:versioning`.
 - Unsafe retries are covered by idempotency keys or documented: `api:idempotency-retry`.
-- One auth model covers the surface: `api:keys`, `api:oauth-provider`, or `efficient-auth:auth` (if installed).
+- One auth model covers the surface: `api:keys`, `api:oauth-provider`, or `auth:auth` (if installed).
 - Rate limits are signaled: rate-limits.md.
 - Every endpoint is documented: reference-gates.md.
 

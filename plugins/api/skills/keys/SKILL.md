@@ -1,6 +1,6 @@
 ---
 name: keys
-description: Design the API-key system a platform issues to its own API consumers: key format with prefix and checksum, hash-only storage and lookup, scopes, dual-key rotation, last-used telemetry, service-account ownership, and offboarding. Use when building or hardening key issuance for a public or partner API, deciding keys versus OAuth, or planning key rotation and revocation. Not for logging in to your own app or validating tokens (efficient-auth:auth, if installed), OAuth authorization-server design (api:oauth-provider), webhook signing (api:webhooks), or consuming another vendor's keys.
+description: Design the API-key system a platform issues to its own API consumers: key format with prefix and checksum, hash-only storage and lookup, scopes, dual-key rotation, last-used telemetry, service-account ownership, and offboarding. Use when building or hardening key issuance for a public or partner API, deciding keys versus OAuth, or planning key rotation and revocation. Not for logging in to your own app or validating tokens (auth:auth, if installed), OAuth authorization-server design (api:oauth-provider), webhook signing (api:webhooks), or consuming another vendor's keys.
 ---
 
 # API keys you issue
@@ -12,7 +12,7 @@ A key identifies the calling application, not a user. Design the system so a lea
 Decide per surface, since mature platforms run both.
 
 - Use a static key when no user is in the flow: server-to-server calls, sandboxes, public or read-mostly data, per-caller rate limits.
-- Use OAuth (`api:oauth-provider` if installed) when a third-party app acts for a user, or when cross-org machine traffic on sensitive data justifies short-lived scoped tokens.
+- Use OAuth (`api:oauth-provider`) when a third-party app acts for a user, or when cross-org machine traffic on sensitive data justifies short-lived scoped tokens.
 - If you find yourself adding expiry, per-request scopes, and fine-grained revocation to a static key, you are rebuilding OAuth. Adopt the real thing. Redirect URIs and consent screens for a server calling itself are over-engineering.
 - Never ship a long-lived key to a browser or other semi-trusted client. Mint a short-lived scoped token server-side. For CI and agent workloads, prefer workload identity federation, where the environment attests and no stored secret exists.
 

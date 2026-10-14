@@ -67,7 +67,7 @@ Pick the form of a schema change that avoids a table rewrite or a long `ACCESS E
 - **`ADD COLUMN` with a constant default** stores the default in the catalog, so it is fast even on a large table. A volatile default (such as `clock_timestamp()`), a stored generated column, an identity column, or a column whose domain has constraints rewrites the table and its indexes.
 - **`ADD COLUMN ... NOT NULL` with no default fails** on a populated table with `column "x" contains null values`. It doesn't rewrite. Stage it instead:
   1. Add the column as nullable.
-  2. Backfill in bounded batches (see `efficient-db:database-design` `references/migrations.md`).
+  2. Backfill in bounded batches (see `db:database-design` `references/migrations.md`).
   3. `ALTER TABLE t ADD CONSTRAINT t_x_nn CHECK (x IS NOT NULL) NOT VALID;`
   4. `ALTER TABLE t VALIDATE CONSTRAINT t_x_nn;` which scans the table without blocking writes.
   5. `ALTER TABLE t ALTER COLUMN x SET NOT NULL;` which skips its own scan because the valid `CHECK` proves no nulls exist.
@@ -76,7 +76,7 @@ Pick the form of a schema change that avoids a table rewrite or a long `ACCESS E
   On Postgres 18, `ADD CONSTRAINT ... NOT NULL x NOT VALID` followed by `VALIDATE CONSTRAINT` works directly. Use the `CHECK` path on older versions.
 - **Foreign keys and checks.** `ADD CONSTRAINT ... NOT VALID` takes its lock briefly and skips the scan. `VALIDATE CONSTRAINT` then checks existing rows while concurrent writes continue. `ADD FOREIGN KEY` needs only `SHARE ROW EXCLUSIVE`, on both tables.
 - **Indexes.** `CREATE INDEX CONCURRENTLY` and `DROP INDEX CONCURRENTLY` can't run in a transaction block. Check `indisvalid` after a failed build, as described in the SKILL.md operational step.
-- **Type changes** and other rewrites need an expand-contract plan from `efficient-db:database-design`, not an in-place `ALTER`.
+- **Type changes** and other rewrites need an expand-contract plan from `db:database-design`, not an in-place `ALTER`.
 
 ## Row-level security
 

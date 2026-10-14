@@ -1,6 +1,6 @@
 # Release publishing workflow
 
-Read this when writing or reviewing a CI workflow that builds and uploads a distribution to PyPI. This skill writes the workflow file. It doesn't register the trusted publisher, run the release, or handle credentials. Those steps belong to the repository owner. Workflow syntax and action refs follow `github:actions` if installed (explicit user ref, then repo convention, then the repo's majority, else `@vN`). The placeholders below stand for whatever that policy picks.
+Read this when writing or reviewing a CI workflow that builds and uploads a distribution to PyPI. This skill writes the workflow file. It doesn't register the trusted publisher, run the release, or handle credentials. Those steps belong to the repository owner. Workflow syntax and action refs follow `github-admin:actions` if installed (explicit user ref, then repo convention, then the repo's majority, else `@vN`). The placeholders below stand for whatever that policy picks.
 
 ## Use OIDC trusted publishing, not tokens
 

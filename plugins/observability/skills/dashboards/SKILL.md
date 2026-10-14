@@ -11,7 +11,7 @@ A dashboard is for answering questions during operation, not for showing every m
 
 1. Write the operator questions first: Is it healthy? Where is the bottleneck? What changed? What should someone do? Ask the user for the audience and the failure they fear.
 2. Choose the method. Use RED (rate, errors, duration) for services and USE (utilization, saturation, errors) for resources. Grafana recommends alerting on RED symptoms.
-3. Inspect an existing dashboard and the data source first: metric names, labels, variable conventions, and the current JSON schema. Do not invent metrics. Query the backend (`observability:promql`, if installed) to confirm each one exists.
+3. Inspect an existing dashboard and the data source first: metric names, labels, variable conventions, and the current JSON schema. Do not invent metrics. Query the backend (`observability:promql`) to confirm each one exists.
 4. Build the smallest board that answers the questions, top to bottom: overview (health, big numbers), performance (latency and traffic trends), resources (saturation), then service-specific detail.
 5. Cut every panel that no question needs. A panel earns its place by changing what someone does.
 6. Save the dashboard as code and review the diff (`references/provisioning.md`).

@@ -1,6 +1,6 @@
 ---
 name: dependabot-prs
-description: "Sweep a repo's open Dependabot pull requests: group them by ecosystem, merge the green ones one at a time, ask Dependabot to rebase stale ones, rerun flaky checks, and report red ones with a result table. Use when asked to \"merge the dependabot PRs\", \"run through the dependabot PRs\", or clear a Dependabot backlog. Merges only PRs whose checks pass. Not for Dependabot config (`github:dependabot`), failing-check diagnosis (`github:actions`), or reviewing non-Dependabot PRs (`github:triage`)."
+description: "Sweep a repo's open Dependabot pull requests: group them by ecosystem, merge the green ones one at a time, ask Dependabot to rebase stale ones, rerun flaky checks, and report red ones with a result table. Use when asked to \"merge the dependabot PRs\", \"run through the dependabot PRs\", or clear a Dependabot backlog. Merges only PRs whose checks pass. Not for Dependabot config (`github-admin:dependabot`), failing-check diagnosis (`github-admin:actions`), or reviewing non-Dependabot PRs (`github:triage`)."
 ---
 
 # Dependabot PR sweep
@@ -26,7 +26,7 @@ Merge the open Dependabot PRs that are safe to merge, and report the rest. The u
    - After each merge, go on to the next PR and re-check it from scratch. Don't merge from the initial listing.
 4. **Handle the rest, per PR:**
    - **Stale** (`mergeable` is `CONFLICTING`, or the branch is behind and the repo requires up-to-date branches): comment `@dependabot rebase` with `gh pr comment <n> --body "@dependabot rebase"`. Re-check it after the other PRs. If it is still not ready, report it.
-   - **Flaky** (a failed check whose log shows a transient error, per `github:actions` `references/failure-classes.md` if installed): rerun it once with `gh run rerun <run-id> --failed`, watch it, and merge if it turns green.
+   - **Flaky** (a failed check whose log shows a transient error, per `github-admin:actions` `references/failure-classes.md` if installed): rerun it once with `gh run rerun <run-id> --failed`, watch it, and merge if it turns green.
    - **Red** (a real failure after at most one rerun): leave it alone and report the failing check and the first error line.
 5. **Report** a table with one row per PR and no PR left out:
 
@@ -35,4 +35,4 @@ Merge the open Dependabot PRs that are safe to merge, and report the rest. The u
    | #12 | npm | lodash 4.17.20 to 4.17.21 | merged | squash |
    | #15 | pip | requests 2.31 to 2.32 | red | `test_api` fails: ... |
 
-   Results are `merged`, `rebase requested`, `rerun`, `red`, or `skipped` with the reason. End by offering to fix the red ones (`github:actions` for workflow causes, if installed).
+   Results are `merged`, `rebase requested`, `rerun`, `red`, or `skipped` with the reason. End by offering to fix the red ones (`github-admin:actions` for workflow causes).

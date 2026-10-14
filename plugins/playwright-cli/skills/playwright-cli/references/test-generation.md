@@ -18,4 +18,4 @@ Read this only when the user explicitly asks for generated Playwright action cod
 
 5. Report the recorded scenario, any setup assumptions, and the generated output location or capture method. Review generated code before using it: page structure and locators can change, and recording alone does not prove the intended outcome.
 
-To author, run, or maintain a Playwright Test suite, use the `efficient-testing:e2e` skill if installed instead. `generate-locator <ref>` gives a Playwright locator for one element.
+To author, run, or maintain a Playwright Test suite, use the `testing:e2e` skill instead. `generate-locator <ref>` gives a Playwright locator for one element.

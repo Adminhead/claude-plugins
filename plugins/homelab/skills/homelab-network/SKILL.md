@@ -1,6 +1,6 @@
 ---
 name: homelab-network
-description: Plan and stage home or homelab network changes with a read-only-first contract, covering required inventory, VLAN and trust-zone plans, default-deny rules between zones, Pi-hole or AdGuard DNS cutover with a fallback, WireGuard split versus full tunnel, and interface error diagnosis. Use when splitting a flat network into VLANs, moving DHCP clients to a local resolver, adding VPN access, or reviewing a change that could lock the operator out. Not for cloud networking (`aws:architecture-review`, if installed), Kubernetes NetworkPolicy (infra:kubernetes), or container networking (infra:docker).
+description: Plan and stage home or homelab network changes with a read-only-first contract, covering required inventory, VLAN and trust-zone plans, default-deny rules between zones, Pi-hole or AdGuard DNS cutover with a fallback, WireGuard split versus full tunnel, and interface error diagnosis. Use when splitting a flat network into VLANs, moving DHCP clients to a local resolver, adding VPN access, or reviewing a change that could lock the operator out. Not for cloud networking (`aws:architecture-review`, if installed), Kubernetes NetworkPolicy (deploy:kubernetes, if installed), or container networking (deploy:docker, if installed).
 ---
 
 # Homelab network changes

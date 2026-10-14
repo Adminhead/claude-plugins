@@ -1,6 +1,6 @@
 ---
 name: bash
-description: Write, review, and test defensive Bash scripts, covering strict mode and its holes, quoting, arrays, trap cleanup, temp files, argument parsing, dry-run, ShellCheck config and findings, and Bats tests. Use when writing or changing *.sh, *.bash, or *.bats files, CI or hook scripts, or when fixing ShellCheck warnings and shell failures. Not for generic code changes (`efficient-core:coding`, if installed), generic test strategy (`efficient-testing:unit`, if installed), chezmoi run_ scripts (`chezmoi:chezmoi`, if installed), or wiring the shellcheck pre-commit hook (`tooling:pre-commit`, if installed).
+description: Write, review, and test defensive Bash scripts, covering strict mode and its holes, quoting, arrays, trap cleanup, temp files, argument parsing, dry-run, ShellCheck config and findings, and Bats tests. Use when writing or changing *.sh, *.bash, or *.bats files, CI or hook scripts, or when fixing ShellCheck warnings and shell failures. Not for generic code changes (`coding-core:coding`), generic test strategy (`testing:unit`), chezmoi run_ scripts (`chezmoi:chezmoi`, if installed), or wiring the shellcheck pre-commit hook (`tooling:pre-commit`, if installed).
 ---
 
 # Efficient Bash

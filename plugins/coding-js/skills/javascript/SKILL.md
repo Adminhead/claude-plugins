@@ -1,6 +1,6 @@
 ---
 name: javascript
-description: JavaScript runtime semantics for ESM vs CommonJS, module side effects, promises and the event loop, async ownership and cleanup, browser vs Node/Bun/Deno/edge boundaries, measured performance, and focused JS tests. Use when writing, reviewing, or debugging *.js/*.mjs/*.cjs or runtime behavior of any JS/TS code (import errors, unhandled rejections, leaks, ordering bugs). Not for type-level work (efficient-js:typescript), React (efficient-js:react), Vite configuration and bundling (efficient-js:vite), or HTML/CSS/a11y (efficient-web:web-development, if installed).
+description: JavaScript runtime semantics for ESM vs CommonJS, module side effects, promises and the event loop, async ownership and cleanup, browser vs Node/Bun/Deno/edge boundaries, measured performance, and focused JS tests. Use when writing, reviewing, or debugging *.js/*.mjs/*.cjs or runtime behavior of any JS/TS code (import errors, unhandled rejections, leaks, ordering bugs). Not for type-level work (coding-js:typescript), React (coding-js:react), Vite configuration and bundling (coding-js:vite), or HTML/CSS/a11y (web:web-development, if installed).
 ---
 
 # Efficient JavaScript
@@ -58,7 +58,7 @@ Classify each async path as a returned promise, callback, event listener, timer,
 - Restore globals, env vars, module caches, timers, network stubs, and listeners after each test.
 - Use fake timers only when scheduling is the contract, and flush exactly the queues the test depends on.
 - Prefer a real small collaborator or an injected boundary over a mock that repeats production logic.
-- Use `efficient-testing:unit`, if installed, to pick which cases to add.
+- Use `testing:unit` to pick which cases to add.
 
 ## Validate
 

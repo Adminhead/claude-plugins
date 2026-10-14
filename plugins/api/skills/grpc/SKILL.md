@@ -1,6 +1,6 @@
 ---
 name: grpc
-description: Design and review gRPC and protobuf contracts: whether gRPC belongs at the edge at all, AIP package and versioning conventions, buf lint and breaking gates, compatibility review of .proto diffs across wire, ProtoJSON, generated code, and behavior, unary-by-default streaming, google.rpc.Status errors, and gateway mapping traps. Use when adding or changing .proto files or RPC methods, reviewing a proto diff for rollout safety, setting up buf, or exposing gRPC through Envoy, grpc-gateway, or Connect. Not for Go server code (efficient-go:golang, if installed), REST contracts (api:rest-design), retry and backoff policy (api:idempotency-retry), or version-sunset policy (api:versioning).
+description: Design and review gRPC and protobuf contracts: whether gRPC belongs at the edge at all, AIP package and versioning conventions, buf lint and breaking gates, compatibility review of .proto diffs across wire, ProtoJSON, generated code, and behavior, unary-by-default streaming, google.rpc.Status errors, and gateway mapping traps. Use when adding or changing .proto files or RPC methods, reviewing a proto diff for rollout safety, setting up buf, or exposing gRPC through Envoy, grpc-gateway, or Connect. Not for Go server code (coding-go:golang, if installed), REST contracts (api:rest-design), retry and backoff policy (api:idempotency-retry), or version-sunset policy (api:versioning).
 ---
 
 # gRPC and protobuf contracts
@@ -75,7 +75,7 @@ Expose unary RPCs by default and record every streaming method as a decision. Se
 
 - Return `google.rpc.Status`. Per AIP-193, every error includes an `ErrorInfo` in `details`, and `message` is developer-facing English. Use the most specific canonical code. Mapping everything to `UNKNOWN` or `INTERNAL` flattens dashboards and breaks client retry logic.
 - Clients set a deadline, because gRPC has none by default. Servers stop spawned work when the call is cancelled, and pass the remaining deadline downstream.
-- gRPC has no default retry policy. A response header commits the RPC and ends retry attempts. Never retry a mutating RPC on `UNAVAILABLE` or `DEADLINE_EXCEEDED` without an idempotency key or server-side deduplication (`api:idempotency-retry` if installed). AIP-194 treats only `UNAVAILABLE` as retryable by default.
+- gRPC has no default retry policy. A response header commits the RPC and ends retry attempts. Never retry a mutating RPC on `UNAVAILABLE` or `DEADLINE_EXCEEDED` without an idempotency key or server-side deduplication (`api:idempotency-retry`). AIP-194 treats only `UNAVAILABLE` as retryable by default.
 - Read `references/errors-and-gateways.md` before wiring errors through Envoy, grpc-gateway, or Connect. The HTTP status line there is lossy, and the gRPC project forbids servers from deriving HTTP status from its client-side table.
 
 ## Auth and exposure at a public edge
@@ -87,7 +87,7 @@ Expose unary RPCs by default and record every streaming method as a decision. Se
 
 ## Report
 
-State the verdict or design decisions, the buf commands you ran with their results, and which risks stayed unverified. Go server mechanics (interceptors, `status.Error`, context cancellation) belong to `efficient-go:golang` if installed.
+State the verdict or design decisions, the buf commands you ran with their results, and which risks stayed unverified. Go server mechanics (interceptors, `status.Error`, context cancellation) belong to `coding-go:golang` if installed.
 
 ## Sources checked
 

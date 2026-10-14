@@ -1,6 +1,6 @@
 ---
 name: kubernetes
-description: Write and review Kubernetes manifests (Deployments, Services, probes, resources, RBAC, NetworkPolicy, Pod Security Standards, Jobs, HPA, PDB, Kustomize) and triage failing workloads with read-only kubectl. Use when creating or changing manifests, hardening a namespace or workload, validating YAML, or diagnosing CrashLoopBackOff, OOMKilled, ImagePullBackOff, or Pending pods. Not for Helm charts (infra:helm), Argo CD or Flux setup (infra:gitops), Dockerfiles (infra:docker), or rollout planning (infra:rollout).
+description: Write and review Kubernetes manifests (Deployments, Services, probes, resources, RBAC, NetworkPolicy, Pod Security Standards, Jobs, HPA, PDB, Kustomize) and triage failing workloads with read-only kubectl. Use when creating or changing manifests, hardening a namespace or workload, validating YAML, or diagnosing CrashLoopBackOff, OOMKilled, ImagePullBackOff, or Pending pods. Not for Helm charts (deploy:helm), Argo CD or Flux setup (deploy:gitops), Dockerfiles (deploy:docker), or rollout planning (deploy:rollout).
 ---
 
 # Kubernetes manifests and triage
@@ -41,19 +41,19 @@ kubectl diff -f <path>                                                      # wh
 - Use `kubeconform`, not the unmaintained `kubeval`. It validates against JSON schemas only, so it can't catch what the API server enforces. The server-side dry run covers that gap.
 - Custom resources need extra schemas. Point `-schema-location` at a CRD schema catalog or the CRD's own schema, or pass `-ignore-missing-schemas` and say that those resources went unchecked.
 - `kube-linter lint <path>` and `kube-score score <path>` add best-practice checks (missing limits, probes, security context). They run locally. Treat their output as findings to weigh, since some rules won't fit every workload.
-- For Helm output, pipe `helm template` into `kubeconform` (see `infra:helm`).
+- For Helm output, pipe `helm template` into `kubeconform` (see `deploy:helm`).
 
 ## Environments with Kustomize
 
-Use Kustomize (built into `kubectl`) for per-environment variation of plain manifests. Use Helm (`infra:helm`) when you distribute a configurable package.
+Use Kustomize (built into `kubectl`) for per-environment variation of plain manifests. Use Helm (`deploy:helm`) when you distribute a configurable package.
 
 - Layout: `base/` holds the manifests and a `kustomization.yaml`. `overlays/<env>/kustomization.yaml` lists `resources: [../../base]` plus `patches`, `images`, and `replicas`.
 - Render with `kubectl kustomize overlays/<env>` and apply with `kubectl apply -k overlays/<env>`. Render and read the output before applying.
-- Keep secrets out of overlays. Use an external secret store or SOPS (see `infra:gitops`).
+- Keep secrets out of overlays. Use an external secret store or SOPS (see `deploy:gitops`).
 
 ## Secrets and config
 
-- A Secret's values are base64-encoded, not encrypted. Enable encryption at rest on the cluster, and keep Secret manifests out of Git unless they are sealed or sourced from an external store (`infra:gitops`).
+- A Secret's values are base64-encoded, not encrypted. Enable encryption at rest on the cluster, and keep Secret manifests out of Git unless they are sealed or sourced from an external store (`deploy:gitops`).
 - Put non-sensitive settings in a ConfigMap, and mount files with `readOnly: true`. Never put credentials in a ConfigMap.
 - Env vars from `secretKeyRef` are easy but visible to anything that can read the pod spec's environment. Mount a Secret as a file for sensitive values.
 

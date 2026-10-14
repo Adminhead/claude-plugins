@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"efficient-core:planning"'
+input_match: '"skill"\s*:\s*"coding-core:planning"'
 min: 0
 max: 0
 arm: both

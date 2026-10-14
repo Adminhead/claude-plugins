@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"efficient-core:problem-solving"'
+input_match: '"skill"\s*:\s*"coding-core:problem-solving"'
 ---

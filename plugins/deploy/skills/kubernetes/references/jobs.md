@@ -52,4 +52,4 @@ spec:
 - `concurrencyPolicy: Forbid` skips a run while the previous one is active. Use `Replace` only when the work is safe to cancel.
 - Make the work idempotent. A Job can run a pod more than once, and a CronJob can miss or double-fire around outages.
 - Jobs get the same `securityContext` and ServiceAccount rules as Deployments, and they need requests if the namespace has a ResourceQuota.
-- Database migrations as Jobs must stay compatible with the previous app version for one release. See `infra:rollout`.
+- Database migrations as Jobs must stay compatible with the previous app version for one release. See `deploy:rollout`.

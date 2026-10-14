@@ -1,13 +1,13 @@
 ---
 name: better-auth
-description: "Add, configure, or debug the Better Auth TypeScript library: version-matched docs lookup, server and client setup, database adapters (Drizzle, Prisma, Kysely), schema generation with the auth CLI, route handlers per framework, sessions and secondary storage, plugin imports, rate limits, trusted origins, and email/password, two-factor, and organization plugins. Use when a project imports better-auth, has an auth.ts betterAuth() config, or the user names Better Auth. Not for general auth policy, ownership checks, or IDOR review (efficient-auth:auth), or Auth.js, Clerk, and other libraries."
+description: "Add, configure, or debug the Better Auth TypeScript library: version-matched docs lookup, server and client setup, database adapters (Drizzle, Prisma, Kysely), schema generation with the auth CLI, route handlers per framework, sessions and secondary storage, plugin imports, rate limits, trusted origins, and email/password, two-factor, and organization plugins. Use when a project imports better-auth, has an auth.ts betterAuth() config, or the user names Better Auth. Not for general auth policy, ownership checks, or IDOR review (auth:auth), or Auth.js, Clerk, and other libraries."
 ---
 
 # Efficient Better Auth
 
 Better Auth is configured in a server `betterAuth({ ... })` call, with a matching client and a database schema that plugins extend. Its API changes between releases, so ground every option, import path, and CLI flag in the documentation for the installed version, not memory.
 
-`efficient-auth:auth` owns the policy: server-side authorization, ownership and tenant checks, cookie and CSRF rules, and redirect validation. Use it for the review of what these settings must achieve. This skill covers how to express them in Better Auth.
+`auth:auth` owns the policy: server-side authorization, ownership and tenant checks, cookie and CSRF rules, and redirect validation. Use it for the review of what these settings must achieve. This skill covers how to express them in Better Auth.
 
 ## 1. Match the docs to the installed version
 
@@ -43,7 +43,7 @@ Read [references/setup.md](references/setup.md) for install, environment variabl
 
 - **Re-run the CLI after any plugin change.** Plugins add tables and columns, and missing schema surfaces as runtime errors. Type errors after adding a plugin usually mean a stale generated schema or client plugin.
 - **The config uses the ORM's model key, not the table name.** For Drizzle the adapter reads the key in the `schema` object you pass. To use a table named `users`, map it (`user: schema.users`) or set `user.modelName`.
-- **Sessions go to `secondaryStorage` first.** When it is configured, sessions, verification records, and rate-limit counters are stored there and not in the database. Set `session.storeSessionInDatabase: true` to also keep sessions in the database. When the store is Redis, use an eviction policy that won't drop live sessions (see `efficient-db:redis`, if installed).
+- **Sessions go to `secondaryStorage` first.** When it is configured, sessions, verification records, and rate-limit counters are stored there and not in the database. Set `session.storeSessionInDatabase: true` to also keep sessions in the database. When the store is Redis, use an eviction policy that won't drop live sessions (see `db:redis`, if installed).
 - **The cookie cache omits custom session fields.** Fields added with the custom session plugin are never cached, so they are re-fetched on each call.
 - **Without a database, sessions are stateless.** The session lives in the cookie, so revocation is limited. Changing `session.cookieCache.version` invalidates all of them.
 - **`auth.api` calls skip rate limiting.** Rate limits apply to client requests only, and are off by default in development.
@@ -65,7 +65,7 @@ Each plugin needs the server plugin, the matching client plugin, and a schema re
 
 ## 6. Security settings
 
-Express the `efficient-auth:auth` policy with these options, and confirm each against the docs for the installed version.
+Express the `auth:auth` policy with these options, and confirm each against the docs for the installed version.
 
 - **Secret.** Set it from the environment. Production throws when no secret is configured. `secrets` supports versioned rotation.
 - **Trusted origins.** `trustedOrigins` gates origin checks and callback URLs. List exact origins, and remove localhost from production. Wildcards must be deliberate.
@@ -87,4 +87,4 @@ Read these only for the feature at hand.
 
 ## 8. Verify
 
-Run a real flow against a disposable database: sign up, verify, sign in, read the session on the server (`auth.api.getSession({ headers })`), and sign out. Exercise each plugin's failure path (bad code, expired token, wrong origin). Then check logs and responses for leaked tokens, and use `efficient-auth:auth` section 7 for the cross-user denial check.
+Run a real flow against a disposable database: sign up, verify, sign in, read the session on the server (`auth.api.getSession({ headers })`), and sign out. Exercise each plugin's failure path (bad code, expired token, wrong origin). Then check logs and responses for leaked tokens, and use `auth:auth` section 7 for the cross-user denial check.

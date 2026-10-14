@@ -1,6 +1,6 @@
 ---
 name: agent-config-audit
-description: Security review of Claude Code and agent configuration (CLAUDE.md, settings.json, .mcp.json, hooks, subagent definitions) for injection text, over-broad permissions, secrets, shell-injectable commands, unpinned MCP packages, and fail-open hooks. Read-only and model-driven; runs no scanner. Use when reviewing a repo's .claude/ directory before trusting it, after changing permissions, hooks, or MCP servers, or when onboarding to an unfamiliar repo. Not for bloat or staleness cleanup (authoring:config-audit), code or dependency security (efficient-security:audit, if installed), or trimming permission prompts (fewer-permission-prompts).
+description: Security review of Claude Code and agent configuration (CLAUDE.md, settings.json, .mcp.json, hooks, subagent definitions) for injection text, over-broad permissions, secrets, shell-injectable commands, unpinned MCP packages, and fail-open hooks. Read-only and model-driven; runs no scanner. Use when reviewing a repo's .claude/ directory before trusting it, after changing permissions, hooks, or MCP servers, or when onboarding to an unfamiliar repo. Not for bloat or staleness cleanup (authoring:config-audit), code or dependency security (security:audit, if installed), or trimming permission prompts (fewer-permission-prompts).
 allowed-tools:
   - Read(~/.claude/**)
 ---

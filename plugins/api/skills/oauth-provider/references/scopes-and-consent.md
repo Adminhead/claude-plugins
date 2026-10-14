@@ -5,7 +5,7 @@ Read when defining a scope set or building the consent screen.
 ## Scope design
 
 1. Start from `resource:action`, with read and write split and read-only as the default grant.
-2. Make scopes additive. To change what a scope grants, add a new scope and deprecate the old one on a published schedule (`api:versioning` if installed). A scope change can also invalidate refresh tokens and force re-consent.
+2. Make scopes additive. To change what a scope grants, add a new scope and deprecate the old one on a published schedule (`api:versioning`). A scope change can also invalidate refresh tokens and force re-consent.
 3. Split a scope when resource types differ in sensitivity. Four history scopes for four conversation types cost more decisions but stop a direct-message grant from silently covering private channels. Accept the scope count.
 4. If both app-identity and user-delegated access exist, store the token type with the scope definition. The same name can mean "act as the app" on one and "act as the user" on the other, so make the binding explicit.
 5. Put high-privilege and org-wide scopes behind admin consent.

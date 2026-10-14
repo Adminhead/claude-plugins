@@ -1,6 +1,6 @@
 ---
 name: gap-audit
-description: Read-only audit of missing, weak, and stale tests for a repo, PR, feature, or route. Maps source files against tests with a bundled script, ranks gaps P0 to P3 by behavior and risk (never by coverage percentage), separates confirmed from inferred gaps, and proposes exact tests. Use when asked what tests are missing, whether test coverage is enough, or what regression tests a change needs. Not for writing tests (`efficient-testing:harness` generates them, `efficient-testing:unit` writes one), running them (`efficient-testing:run`), bug hunting, or security review (`efficient-security:audit`, if installed).
+description: Read-only audit of missing, weak, and stale tests for a repo, PR, feature, or route. Maps source files against tests with a bundled script, ranks gaps P0 to P3 by behavior and risk (never by coverage percentage), separates confirmed from inferred gaps, and proposes exact tests. Use when asked what tests are missing, whether test coverage is enough, or what regression tests a change needs. Not for writing tests (`testing:harness` generates them, `testing:unit` writes one), running them (`testing:run`), bug hunting, or security review (`security:audit`, if installed).
 allowed-tools:
   - Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/coverage_map.py)
   - Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/coverage_map.py *)

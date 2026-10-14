@@ -85,4 +85,4 @@ Each code has a wiki page at `https://www.shellcheck.net/wiki/SC<number>` with g
 
 - `shfmt` formats shell. Use it only when the repo has an `.editorconfig` or a CI step for it, and run `shfmt -d` to see the diff without writing.
 - To run ShellCheck on commit, see `tooling:pre-commit` if installed.
-- In CI, run `shellcheck` over `git ls-files '*.sh'` (and add `*.bash` and `*.bats` as needed). GitHub-hosted Ubuntu runners include it. Pin any action or tool installer the way `github:actions` does, if installed, or follow the repo's existing convention.
+- In CI, run `shellcheck` over `git ls-files '*.sh'` (and add `*.bash` and `*.bats` as needed). GitHub-hosted Ubuntu runners include it. Pin any action or tool installer the way `github-admin:actions` does, if installed, or follow the repo's existing convention.

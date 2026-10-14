@@ -20,4 +20,4 @@ The decisions belong to the user. Never answer your own questions to keep the se
 Recommended: <answer and one-line reason>
 ```
 
-If the plan leans on overloaded or fuzzy domain terms, `authoring:domain-modeling` (if installed) can record the settled terms in a glossary as they firm up.
+If the plan leans on overloaded or fuzzy domain terms, `authoring:domain-modeling` can record the settled terms in a glossary as they firm up.

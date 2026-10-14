@@ -1,6 +1,6 @@
 ---
 name: repo-setup
-description: Audit and set up a GitHub repository's surface with gh. Covers label taxonomy, issue forms, PR template, CODEOWNERS, SECURITY.md, CONTRIBUTING.md, and branch or tag rulesets, with a dry-run plan and an applied/skipped/failed report. Use when creating or tidying a repo, or when asked to add rulesets, templates, or labels. Not for workflow content (`github:actions`), Dependabot config (`github:dependabot`), security features (`github:code-security`), or agent instruction files (`authoring:manage-agent-instructions`, if installed).
+description: Audit and set up a GitHub repository's surface with gh. Covers label taxonomy, issue forms, PR template, CODEOWNERS, SECURITY.md, CONTRIBUTING.md, and branch or tag rulesets, with a dry-run plan and an applied/skipped/failed report. Use when creating or tidying a repo, or when asked to add rulesets, templates, or labels. Not for workflow content (`github-admin:actions`), Dependabot config (`github-admin:dependabot`), security features (`github-admin:code-security`), or agent instruction files (`authoring:manage-agent-instructions`).
 ---
 
 # GitHub Repo Setup
@@ -39,7 +39,7 @@ Run in this order. Skip any module the repo already satisfies.
 | Issue forms | `.github/ISSUE_TEMPLATE/*.yml` plus `config.yml` | [community files](references/community-files.md) |
 | PR template | `.github/PULL_REQUEST_TEMPLATE.md` | [community files](references/community-files.md) |
 | Ownership and policy | `CODEOWNERS`, `SECURITY.md`, `CONTRIBUTING.md` | [community files](references/community-files.md) |
-| CI | Default workflow | Hand off to `github:actions`. It owns triggers, permissions, and action refs |
+| CI | Default workflow | Hand off to `github-admin:actions`. It owns triggers, permissions, and action refs |
 | Rulesets | Branch and tag protection through the REST API | [rulesets](references/rulesets.md). Read it before any ruleset write |
 
 Prefer rulesets to legacy branch protection. They layer, can be switched to `evaluate` or `disabled` without deleting, and can be listed and audited through one API.

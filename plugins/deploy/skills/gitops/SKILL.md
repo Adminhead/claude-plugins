@@ -1,6 +1,6 @@
 ---
 name: gitops
-description: Set up and review GitOps delivery to Kubernetes with Argo CD or Flux, covering the OpenGitOps principles, repo layout, Application and Kustomization setup, per-environment sync policy (prune, selfHeal, sync windows, retry), health checks, and secrets with External Secrets, Sealed Secrets, or SOPS. Use when choosing between Argo CD and Flux, bootstrapping a cluster from Git, writing Application, ApplicationSet, GitRepository, or Kustomization resources, or debugging sync and drift. Not for writing the workload manifests (infra:kubernetes), Helm chart authoring (infra:helm), or rollout strategy and rollback criteria (infra:rollout).
+description: Set up and review GitOps delivery to Kubernetes with Argo CD or Flux, covering the OpenGitOps principles, repo layout, Application and Kustomization setup, per-environment sync policy (prune, selfHeal, sync windows, retry), health checks, and secrets with External Secrets, Sealed Secrets, or SOPS. Use when choosing between Argo CD and Flux, bootstrapping a cluster from Git, writing Application, ApplicationSet, GitRepository, or Kustomization resources, or debugging sync and drift. Not for writing the workload manifests (deploy:kubernetes), Helm chart authoring (deploy:helm), or rollout strategy and rollback criteria (deploy:rollout).
 ---
 
 # GitOps with Argo CD or Flux
@@ -74,13 +74,13 @@ Argo CD leaves `prune` and `selfHeal` off unless you set them, and doesn't retry
 2. **Pick the tool** with the table above, or follow what the repo already uses.
 3. **Write the resources** from [argocd](references/argocd.md) or [flux](references/flux.md). Apply the sync policy table per environment.
 4. **Handle secrets** with [secrets](references/secrets.md). Plaintext Secrets never go in the repo.
-5. **Validate** the rendered manifests the way `infra:kubernetes` describes (`kubeconform`, server-side dry run). Render Kustomize and Helm sources locally first.
+5. **Validate** the rendered manifests the way `deploy:kubernetes` describes (`kubeconform`, server-side dry run). Render Kustomize and Helm sources locally first.
 6. **Preview**: `argocd app diff <app>` or `flux diff kustomization <name> --path <dir>` shows the change before it merges.
 7. **Verify after merge** with `argocd app get <app>` or `flux get kustomizations`. Healthy and Synced (Argo CD) or Ready (Flux) is the done signal. Confirm the workload itself with `kubectl rollout status`.
 
 ## Progressive delivery
 
-Canary and blue-green rollouts need a controller on top of GitOps, such as Argo Rollouts or Flagger. The GitOps tool syncs the `Rollout` or `Canary` resource, and the controller shifts traffic and promotes or aborts by metric. Strategy choice, promotion gates, and rollback criteria are in `infra:rollout`.
+Canary and blue-green rollouts need a controller on top of GitOps, such as Argo Rollouts or Flagger. The GitOps tool syncs the `Rollout` or `Canary` resource, and the controller shifts traffic and promotes or aborts by metric. Strategy choice, promotion gates, and rollback criteria are in `deploy:rollout`.
 
 ## References
 

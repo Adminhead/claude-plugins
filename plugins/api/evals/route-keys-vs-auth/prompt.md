@@ -1,6 +1,6 @@
 ---
 name: route-keys-vs-auth
-description: Issuing and storing customer API keys goes to api:keys, not efficient-auth:auth.
+description: Issuing and storing customer API keys goes to api:keys, not auth:auth, if installed.
 tags: [routing]
 runs: 1
 max_turns: 6

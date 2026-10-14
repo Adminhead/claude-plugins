@@ -1,6 +1,6 @@
 ---
 name: termwright
-description: Drive and test terminal UI (TUI) apps with the termwright CLI through YAML step files, one-shot screen or PNG capture, or a daemon session for step-by-step interaction. Use when you need to see or interact with a TUI or full-screen terminal program (menus, curses, ratatui apps) from Bash. Not for browser automation (playwright-cli:playwright-cli) or for developing termwright's Rust library.
+description: Drive and test terminal UI (TUI) apps with the termwright CLI through YAML step files, one-shot screen or PNG capture, or a daemon session for step-by-step interaction. Use when you need to see or interact with a TUI or full-screen terminal program (menus, curses, ratatui apps) from Bash. Not for browser automation (playwright-cli:playwright-cli, if installed) or for developing termwright's Rust library.
 ---
 
 # termwright

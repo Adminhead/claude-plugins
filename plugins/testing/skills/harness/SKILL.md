@@ -1,6 +1,6 @@
 ---
 name: harness
-description: Generate unit and integration tests for functions added or changed on the current branch (or a given path or symbol), run them with the /efficient-testing:run runner, and return a compact report. Manual command (/efficient-testing:harness).
+description: Generate unit and integration tests for functions added or changed on the current branch (or a given path or symbol), run them with the /testing:run runner, and return a compact report. Manual command (/testing:harness).
 disable-model-invocation: true
 argument-hint: "[path|symbol]"
 context: fork
@@ -22,7 +22,7 @@ Each changed file lists its hunks as new-file line ranges. The name after `in` i
 
 - If `.codegraph/` exists at the repo root, call `codegraph_explore` with the changed symbol names. One call returns their source, callers, and existing tests.
 - Otherwise, read only the functions around the listed line ranges, then find the nearest existing test for each module (same directory, or the mirrored path under the test root).
-- Load `efficient-testing:unit` and follow it for choosing cases and writing discriminating tests.
+- Load `testing:unit` and follow it for choosing cases and writing discriminating tests.
 - Learn the conventions from the nearest test file: framework, fixtures, factories, naming, and placement.
 
 ## 2. Plan cases

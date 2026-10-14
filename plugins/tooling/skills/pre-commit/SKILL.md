@@ -1,6 +1,6 @@
 ---
 name: pre-commit
-description: Set up and maintain commit-time hooks with prek (preferred) or pre-commit, using a pinned .pre-commit-config.yaml, installed Git shims, all-files runs, hook updates, and CI parity. Use when adding or configuring pre-commit hooks, running hooks across a repo, updating hook revisions, or wiring hooks into CI. Node repos that want Husky and lint-staged get a reference. Not for repairing a failing hook (`tooling:hook-repair`), repos where devenv manages hooks (devenv:devenv), GitHub Actions authoring (github:actions), or deciding which linter to adopt.
+description: Set up and maintain commit-time hooks with prek (preferred) or pre-commit, using a pinned .pre-commit-config.yaml, installed Git shims, all-files runs, hook updates, and CI parity. Use when adding or configuring pre-commit hooks, running hooks across a repo, updating hook revisions, or wiring hooks into CI. Node repos that want Husky and lint-staged get a reference. Not for repairing a failing hook (`tooling:hook-repair`), repos where devenv manages hooks (devenv:devenv, if installed), GitHub Actions authoring (github-admin:actions, if installed), or deciding which linter to adopt.
 ---
 
 # Commit-time hooks with prek or pre-commit
@@ -104,7 +104,7 @@ prek run --all-files
 
 The command exits nonzero when a hook fails or modifies files. Other points:
 
-- Check out the repo, install a pinned prek, and run it. For GitHub Actions, `j178/prek-action` wraps the install and run. Pin it by SHA per the repo's action-pinning convention (`github:actions` if installed).
+- Check out the repo, install a pinned prek, and run it. For GitHub Actions, `j178/prek-action` wraps the install and run. Pin it by SHA per the repo's action-pinning convention (`github-admin:actions` if installed).
 - `--from-ref origin/main --to-ref HEAD` needs both refs in the checkout, so use a deeper fetch. Fall back to `--all-files` when history is shallow.
 - Use `prek update --check` in a scheduled job to flag stale revs without rewriting the file.
 - pre-commit.ci is a hosted alternative for GitHub repos. It runs the config, can push autofix commits to pull requests, and opens autoupdate PRs. Configure it through the `ci:` key (`autofix_prs`, `autoupdate_schedule`, `skip`). It only supports hooks from remote repositories, so `repo: local` and `language: system` hooks must go in `ci: skip`. It sends your code to a third-party service, so confirm the user wants it before adding the key or the app.

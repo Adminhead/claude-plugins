@@ -1,11 +1,11 @@
 ---
 name: database-design
-description: "Portable relational schema design and review: entities, keys, relationships, NOT NULL/UNIQUE/CHECK/FK constraints and delete actions, normalization vs justified denormalization, logical access paths, and expand-contract migrations with backfills. Use when adding or changing tables, ORM models, or migrations, or reviewing a data model. Not for PostgreSQL query plans, index types, locking, or ops (efficient-db:postgres), MySQL/MariaDB specifics (efficient-db:mysql), or caching/queues on Redis (efficient-db:redis)."
+description: "Portable relational schema design and review: entities, keys, relationships, NOT NULL/UNIQUE/CHECK/FK constraints and delete actions, normalization vs justified denormalization, logical access paths, and expand-contract migrations with backfills. Use when adding or changing tables, ORM models, or migrations, or reviewing a data model. Not for PostgreSQL query plans, index types, locking, or ops (db:postgres), MySQL/MariaDB specifics (db:mysql), or caching/queues on Redis (db:redis)."
 ---
 
 # Efficient Database Design
 
-Make a relational model enforce its business rules and support its known reads and writes. The output is a reviewable logical schema and a migration plan. Vendor SQL, index types, plan analysis, replication, backups, and server tuning are out of scope. For PostgreSQL implementation or measurement, use `efficient-db:postgres`.
+Make a relational model enforce its business rules and support its known reads and writes. The output is a reviewable logical schema and a migration plan. Vendor SQL, index types, plan analysis, replication, backups, and server tuning are out of scope. For PostgreSQL implementation or measurement, use `db:postgres`.
 
 ## 1. Establish the change boundary
 
@@ -54,7 +54,7 @@ For each entity, name its stable identity, its required and optional facts, its 
 - For each important read, record its filters, joins, ordering, expected result size, frequency, and the write cost of supporting it.
 - Give relationship lookups and parent delete and update paths an intentional access path. Index a foreign key when the workload needs it, not by blanket rule. The usual reason is a parent delete or key update that scans the child table, for example under `ON DELETE CASCADE`. Write-heavy tables pay for unused indexes.
 - Tie each proposed index to the query it serves and its write and storage cost. Don't index by column name, guessed selectivity, or future scale.
-- Engine-specific index types and plan inspection belong to `efficient-db:postgres` (and `efficient-db:mysql`). Postgres type defaults, such as `timestamptz`, `text`, and identity keys, are in `efficient-db:postgres` `references/schema-design.md`.
+- Engine-specific index types and plan inspection belong to `db:postgres` (and `db:mysql`). Postgres type defaults, such as `timestamptz`, `text`, and identity keys, are in `db:postgres` `references/schema-design.md`.
 
 ## 7. Migration plan
 
@@ -73,7 +73,7 @@ For each entity, name its stable identity, its required and optional facts, its 
 - Trace every invariant to exactly one enforcement point, and every important operation to an access path.
 - Against a disposable database, using the real migration tool, write representative valid and invalid rows. Check that the constraints reject what they should.
 - Upgrade from a realistic pre-change schema and data sample. Then verify row counts, required fields, referential integrity, uniqueness, and preserved historical meaning.
-- Use `authoring:adr-writing`, if installed, when a consequential, long-lived choice needs a durable decision record.
+- Use `authoring:adr-writing` when a consequential, long-lived choice needs a durable decision record.
 
 ## Stop conditions
 

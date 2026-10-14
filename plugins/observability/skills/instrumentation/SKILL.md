@@ -1,6 +1,6 @@
 ---
 name: instrumentation
-description: Add and review production observability in application code, covering structured logs, metrics, OpenTelemetry traces, profiles, and alerts, plus SLIs, SLOs, and burn-rate alerts. Language-agnostic with short Go, Python, and TypeScript snippets. Use when instrumenting a service, adding spans or metrics, correlating logs with traces, choosing metric labels, defining alerts or SLOs, or checking that a feature is observable. Not for writing PromQL or Prometheus config (`observability:promql`), Grafana dashboards (`observability:dashboards`), incident write-ups (`observability:postmortem`), or Sentry SDK setup (`sentry:sentry`, if installed).
+description: Add and review production observability in application code, covering structured logs, metrics, OpenTelemetry traces, profiles, and alerts, plus SLIs, SLOs, and burn-rate alerts. Language-agnostic with short Go, Python, and TypeScript snippets. Use when instrumenting a service, adding spans or metrics, correlating logs with traces, choosing metric labels, defining alerts or SLOs, or checking that a feature is observable. Not for writing PromQL or Prometheus config (`observability:promql`), Grafana dashboards (`observability:dashboards`), incident write-ups (`observability:postmortem`), or Sentry SDK setup (`sentry-core:sentry`, if installed).
 ---
 
 # Instrumentation
@@ -53,4 +53,4 @@ Pick the cheapest signal that answers the question. Metrics detect, traces local
 - `references/slo.md`. Read when defining SLIs, SLOs, error budgets, or burn-rate alerts.
 - `references/profiling.md`. Read when enabling pprof or continuous profiling.
 
-For Sentry error tracking setup, use `sentry:sentry` if it is installed. This skill covers the OpenTelemetry and Prometheus path.
+For Sentry error tracking setup, use `sentry-core:sentry` if it is installed. This skill covers the OpenTelemetry and Prometheus path.

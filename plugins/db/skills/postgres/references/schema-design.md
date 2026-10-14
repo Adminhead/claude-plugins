@@ -1,6 +1,6 @@
 # PostgreSQL schema design
 
-Read this when choosing Postgres types, keys, constraints, or partitioning for a new or changed table. Entities, relationships, and normalization come first in `efficient-db:database-design`. This file covers what Postgres adds. Behavior below was checked on Postgres 18.6. Confirm version-specific items against the target server's docs.
+Read this when choosing Postgres types, keys, constraints, or partitioning for a new or changed table. Entities, relationships, and normalization come first in `db:database-design`. This file covers what Postgres adds. Behavior below was checked on Postgres 18.6. Confirm version-specific items against the target server's docs.
 
 ## Type defaults
 

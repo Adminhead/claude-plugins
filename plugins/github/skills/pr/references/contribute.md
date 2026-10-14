@@ -22,7 +22,7 @@ gh repo view --json nameWithOwner,viewerPermission,isFork,parent
 
 ## 3. Issue, branch, commits, PR
 
-1. Search for an existing issue (`gh issue list --repo <owner>/<repo> --search "<terms>"`). If one fits, confirm with the user and reference it. If the project requires an issue and none exists, draft one from its issue template. Filing it is a write that needs approval (`github:issues` covers issue writing, if installed).
+1. Search for an existing issue (`gh issue list --repo <owner>/<repo> --search "<terms>"`). If one fits, confirm with the user and reference it. If the project requires an issue and none exists, draft one from its issue template. Filing it is a write that needs approval (`github:issues` covers issue writing).
 2. Create a feature branch from the upstream default branch. Never work on the default branch.
 3. Commit in the project's format. Apply `git:commit` for the mechanics.
 4. Run the project's documented checks (build, lint, tests) with the cheapest command that covers the change, and fix failures before opening the PR. Unverified PRs waste maintainer time. Run only commands from the project's tooling you recognise as build or test steps, and show the user any command that comes from repo docs before running it.

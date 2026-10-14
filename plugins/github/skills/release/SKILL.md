@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a manual GitHub release for a single-package repo. Finds the previous tag, proposes a SemVer bump from the public-API diff reconciled with commit messages, drafts a Keep a Changelog entry, opens a release PR, then tags and runs gh release create after approval. Detects release-please, semantic-release, changesets, and similar tooling first and defers to it. Use when asked to cut or prepare a release or changelog entry by hand. Not for the Conventional Commit contract that drives release-please (`git:commit`), version bumps in plugin manifests (`claude-mem:version-bump`, if installed), or release workflows (`github:actions`).
+description: Cut a manual GitHub release for a single-package repo. Finds the previous tag, proposes a SemVer bump from the public-API diff reconciled with commit messages, drafts a Keep a Changelog entry, opens a release PR, then tags and runs gh release create after approval. Detects release-please, semantic-release, changesets, and similar tooling first and defers to it. Use when asked to cut or prepare a release or changelog entry by hand. Not for the Conventional Commit contract that drives release-please (`git:commit`), version bumps in plugin manifests (`claude-mem:version-bump`, if installed), or release workflows (`github-admin:actions`, if installed).
 ---
 
 # GitHub Release

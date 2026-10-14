@@ -1,6 +1,6 @@
 ---
 name: issue-breakdown
-description: Turn a spec, plan, or conversation into a reviewed set of linked GitHub issues, cut as vertical slices with blocking edges, and publish them with gh after approval. Use when the user wants a plan, spec, or requirements list split into issues, wants unmet spec requirements filed, or wants a spec itself written up as an issue. Not for filing or editing one issue (`github:issues`), triaging issues that already exist (`github:triage`), or planning the work without publishing it (`efficient-core:planning` if installed).
+description: Turn a spec, plan, or conversation into a reviewed set of linked GitHub issues, cut as vertical slices with blocking edges, and publish them with gh after approval. Use when the user wants a plan, spec, or requirements list split into issues, wants unmet spec requirements filed, or wants a spec itself written up as an issue. Not for filing or editing one issue (`github:issues`), triaging issues that already exist (`github:triage`), or planning the work without publishing it (`coding-core:planning`).
 ---
 
 # Break work into GitHub issues

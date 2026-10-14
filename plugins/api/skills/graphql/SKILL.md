@@ -1,6 +1,6 @@
 ---
 name: graphql
-description: Design and review a public GraphQL API: whether GraphQL fits at all, schema naming and nullability, the Node interface, input and payload types, Relay cursor connections, typed error results, depth, breadth and cost ceilings, introspection, the federation trust boundary, and persisted-query policy. Use when designing or reviewing a GraphQL schema that third-party developers will query, setting query limits, or exposing a federated graph. Not for gqlgen or other server code (efficient-go:golang, if installed), REST contracts (api:rest-design), rate-limit headers (api:rest-design), or deprecation policy (api:versioning).
+description: Design and review a public GraphQL API: whether GraphQL fits at all, schema naming and nullability, the Node interface, input and payload types, Relay cursor connections, typed error results, depth, breadth and cost ceilings, introspection, the federation trust boundary, and persisted-query policy. Use when designing or reviewing a GraphQL schema that third-party developers will query, setting query limits, or exposing a federated graph. Not for gqlgen or other server code (coding-go:golang, if installed), REST contracts (api:rest-design), rate-limit headers (api:rest-design), or deprecation policy (api:versioning).
 ---
 
 # Public GraphQL API design
@@ -15,7 +15,7 @@ For a public API the default is REST. Choose GraphQL only when a trigger holds, 
 - Clients need nested, variable data that REST would serve with many round trips or a growing set of purpose-built endpoints.
 - Round-trip count dominates load time for the consumers.
 
-REST gets URL-keyed HTTP caching, a fixed endpoint list to learn, and the widest tooling for free. GraphQL needs those rebuilt. Offering both is a valid result. If no trigger holds, stop and use `api:rest-design` if installed.
+REST gets URL-keyed HTTP caching, a fixed endpoint list to learn, and the widest tooling for free. GraphQL needs those rebuilt. Offering both is a valid result. If no trigger holds, stop and use `api:rest-design`.
 
 If first-party and third-party clients share the endpoint, design for the third party. A surface safe for strangers serves your own apps, and the reverse is false.
 
@@ -84,7 +84,7 @@ Federation is internal composition, not public exposure. Make the router the onl
 
 ## Evolution
 
-GraphQL evolves one live schema with field-level `@deprecated`. Shape types so they can grow: payload objects can gain fields, while a bare scalar return can't. A result union can gain members only as a dangerous change that clients must be ready for. A date-versioned GraphQL API is also legitimate, so record the chosen stance for `api:versioning` if installed. Deprecation still costs integrators work, so don't treat it as free.
+GraphQL evolves one live schema with field-level `@deprecated`. Shape types so they can grow: payload objects can gain fields, while a bare scalar return can't. A result union can gain members only as a dangerous change that clients must be ready for. A date-versioned GraphQL API is also legitimate, so record the chosen stance for `api:versioning`. Deprecation still costs integrators work, so don't treat it as free.
 
 ## Review output
 

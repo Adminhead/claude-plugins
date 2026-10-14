@@ -1,6 +1,6 @@
 ---
 name: context7
-description: Look up current, version-specific documentation for a library, framework, SDK, or CLI with Context7's `resolve-library-id` and `query-docs` tools. Use when writing or fixing code against a specific library API, checking an option, config key, signature, or migration step, or when the installed version may be newer than training data. Not for real-world usage across public GitHub (`code-search:grep-app`), your own repo (`code-search:codegraph` or `code-search:ripgrep`), or broad cited research (`efficient-core:research`, if installed).
+description: Look up current, version-specific documentation for a library, framework, SDK, or CLI with Context7's `resolve-library-id` and `query-docs` tools. Use when writing or fixing code against a specific library API, checking an option, config key, signature, or migration step, or when the installed version may be newer than training data. Not for real-world usage across public GitHub (`code-search:grep-app`), your own repo (`code-search:codegraph` or `code-search:ripgrep`), or broad cited research (`research:research`).
 ---
 
 # Context7
@@ -16,7 +16,7 @@ If those tools are missing but another Context7 server is connected (the claude.
 - A migration step between major versions.
 - The installed version may be newer than your training data.
 
-For anything else, route elsewhere: how projects use something in practice to `code-search:grep-app`, your own repo to `code-search:codegraph` or `code-search:ripgrep`, broad cited research to `efficient-core:research`.
+For anything else, route elsewhere: how projects use something in practice to `code-search:grep-app`, your own repo to `code-search:codegraph` or `code-search:ripgrep`, broad cited research to `research:research`.
 
 ## How
 

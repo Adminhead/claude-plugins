@@ -1,6 +1,6 @@
 ---
 name: python
-description: Python idiom and diagnosis for typing, exceptions, resource lifetimes, asyncio, stdlib choices, profiling, and pytest. Use when writing, reviewing, or debugging *.py code, or when pyproject.toml tooling (ruff, mypy, pyright, pytest, uv) shapes the change. Not for building or releasing distributions (efficient-python:python-packaging) or FastAPI routes and dependencies (efficient-python:fastapi).
+description: Python idiom and diagnosis for typing, exceptions, resource lifetimes, asyncio, stdlib choices, profiling, and pytest. Use when writing, reviewing, or debugging *.py code, or when pyproject.toml tooling (ruff, mypy, pyright, pytest, uv) shapes the change. Not for building or releasing distributions (coding-python:python-packaging) or FastAPI routes and dependencies (coding-python:fastapi).
 ---
 
 # Efficient Python
@@ -54,7 +54,7 @@ Preserve the public contract (results, raised exceptions, ordering, side effects
 
 - Keep importable code in the established layout. Don't mutate `sys.path` or rely on the current directory.
 - Change dependencies, extras, or lockfiles only when the behavior requires it, and only through the project's resolver (`uv add`, `uv lock`, `poetry add`). Never hand-edit a lockfile.
-- For build config, package data, entry points, or wheel/sdist work, switch to `efficient-python:python-packaging`.
+- For build config, package data, entry points, or wheel/sdist work, switch to `coding-python:python-packaging`.
 
 ## Validate
 
@@ -63,7 +63,7 @@ Preserve the public contract (results, raised exceptions, ordering, side effects
 - Exercise what the type checker can't prove, such as the raised exception, resource closure, import behavior, and task completion or cancellation.
 - `python -X dev` (or `-W error::ResourceWarning`) surfaces unclosed resources. `PYTHONASYNCIODEBUG=1` reports slow callbacks and never-awaited coroutines.
 - When the repo uses pytest, read [references/pytest.md](references/pytest.md) before adding or changing tests.
-- Use `efficient-testing:unit`, if installed, to choose which regression tests to add.
+- Use `testing:unit` to choose which regression tests to add.
 
 ## Reliability and observability
 
@@ -81,4 +81,4 @@ Before changing code for speed or memory, read [references/performance.md](refer
 | Type error | Runtime contract; narrow at the boundary, then fix the annotation or code | `cast`, `Any`, or a broad ignore |
 | `ResourceWarning` or pending-task warning | The owner and exit path of the resource or task | Sleeps, finalizers, test-order luck |
 | Async hang or lost cancellation | A minimized task graph; awaits, timeouts, shutdown | Retries or swallowing `CancelledError` |
-| Works in checkout, fails installed | The built artifact (see `efficient-python:python-packaging`) | Patching `sys.path` |
+| Works in checkout, fails installed | The built artifact (see `coding-python:python-packaging`) | Patching `sys.path` |

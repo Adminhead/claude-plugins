@@ -1,6 +1,6 @@
 ---
 name: docker
-description: Write and review Dockerfiles, Compose files, and .dockerignore with multi-stage builds, cache-friendly layer order, non-root and hardened runtime settings, safe secret handling, and container debugging. Use when creating or changing a Dockerfile, compose.yaml, or .dockerignore, shrinking or hardening an image, wiring services, or diagnosing a container that won't build, start, or connect. Not for Kubernetes manifests (infra:kubernetes), Helm charts (infra:helm), CI workflow authoring (github:actions, if installed), or rollout planning (infra:rollout).
+description: Write and review Dockerfiles, Compose files, and .dockerignore with multi-stage builds, cache-friendly layer order, non-root and hardened runtime settings, safe secret handling, and container debugging. Use when creating or changing a Dockerfile, compose.yaml, or .dockerignore, shrinking or hardening an image, wiring services, or diagnosing a container that won't build, start, or connect. Not for Kubernetes manifests (deploy:kubernetes), Helm charts (deploy:helm), CI workflow authoring (github-admin:actions, if installed), or rollout planning (deploy:rollout).
 ---
 
 # Docker and Compose
@@ -21,7 +21,7 @@ Change Dockerfiles and Compose files from what the repo already builds and runs.
 - **Keep the runtime stage small.** Start from a slim or distroless base and copy artifacts with `COPY --from=build`. Build tools, compilers, and test dependencies stay in earlier stages. Distroless images have no shell, so use exec-form commands and a healthcheck that does not need `sh` or `wget`.
 - **Run as a non-root user.** Create a user (or use a distroless `nonroot` tag) and set `USER` before `CMD`. Use `COPY --chown` so files are owned correctly without an extra layer.
 - **Use exec-form `CMD` and `ENTRYPOINT`** (`["node", "dist/server.js"]`). Shell form wraps the process in `sh -c`, so SIGTERM never reaches the app and shutdown waits for the kill timeout.
-- **Add a `HEALTHCHECK`** for long-running services that Compose or a plain Docker host supervises. Kubernetes ignores it and uses its own probes (`infra:kubernetes`).
+- **Add a `HEALTHCHECK`** for long-running services that Compose or a plain Docker host supervises. Kubernetes ignores it and uses its own probes (`deploy:kubernetes`).
 - **Set `NODE_ENV=production` and similar runtime flags** in the runtime stage only.
 - **Merge related `RUN` steps** that must share a cache lifetime, such as `apt-get update && apt-get install -y --no-install-recommends ... && rm -rf /var/lib/apt/lists/*`. Don't merge unrelated steps, because one change then invalidates all of them.
 
@@ -75,7 +75,7 @@ Read [compose](references/compose.md) before writing or restructuring a Compose 
 - Keep dev-only settings in `compose.override.yaml` (auto-loaded) and production settings in a file selected with `-f`.
 - Validate with `docker compose config --quiet` after every edit.
 
-Compose suits a single host. When a workload needs several hosts, rolling updates, or self-healing, use an orchestrator (`infra:kubernetes`).
+Compose suits a single host. When a workload needs several hosts, rolling updates, or self-healing, use an orchestrator (`deploy:kubernetes`).
 
 ## Runtime hardening
 

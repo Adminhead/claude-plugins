@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"sentry:sentry"'
+input_match: '"skill"\s*:\s*"sentry-core:sentry"'
 ---

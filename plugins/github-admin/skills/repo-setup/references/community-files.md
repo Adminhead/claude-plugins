@@ -37,7 +37,7 @@ Place at `.github/CODEOWNERS` (also valid at the root or `docs/`). Last matching
 
 ## SECURITY.md
 
-State supported versions, how to report privately, and what response to expect. Prefer GitHub private vulnerability reporting (`https://github.com/<owner>/<repo>/security/advisories/new`) over an email address, and turn the feature on in settings. Enabling it is a settings write, so route it through `github:code-security`.
+State supported versions, how to report privately, and what response to expect. Prefer GitHub private vulnerability reporting (`https://github.com/<owner>/<repo>/security/advisories/new`) over an email address, and turn the feature on in settings. Enabling it is a settings write, so route it through `github-admin:code-security`.
 
 ## CONTRIBUTING.md
 

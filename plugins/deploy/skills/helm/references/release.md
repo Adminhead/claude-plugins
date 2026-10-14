@@ -35,7 +35,7 @@ Match the flag to the installed major (`helm version`). Helm 4 still accepts `--
 
 - Pin the chart with `--version` for registry charts so a deploy is reproducible.
 - `--reuse-values` merges new values onto the last release's values and silently keeps stale keys. Prefer passing the full values files every time, or `--reset-then-reuse-values` when you need to keep the last release's overrides.
-- A rollback restores manifests, not data. Database migrations stay applied (`infra:rollout`).
+- A rollback restores manifests, not data. Database migrations stay applied (`deploy:rollout`).
 - Don't pass secrets with `--set`. They land in shell history and in release records. Use an existing Secret or a values file kept out of Git.
 
 ## OCI registries

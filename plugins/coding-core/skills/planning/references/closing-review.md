@@ -11,7 +11,7 @@ Check the draft for:
 - completion conditions with no observable evidence, and steps with no verification
 - open questions, whether stated or hidden in the wording
 
-Match the reviewer to the plan. For a multi-slice, risky, or multi-agent plan, use an independent read-only reviewer: a reviewer subagent, or `efficient-core:second-opinion`. Give it the plan and the acceptance criteria, not your reasoning. For a small plan, review it yourself against the list above.
+Match the reviewer to the plan. For a multi-slice, risky, or multi-agent plan, use an independent read-only reviewer: a reviewer subagent, or `review:second-opinion`. Give it the plan and the acceptance criteria, not your reasoning. For a small plan, review it yourself against the list above.
 
 Fix the findings and review again. Stop after 3 rounds and report what is still open.
 

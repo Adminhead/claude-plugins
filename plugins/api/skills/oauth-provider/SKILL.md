@@ -1,11 +1,11 @@
 ---
 name: oauth-provider
-description: Design the OAuth 2.1 authorization-server side of an API: grant and PKCE profile per RFC 9700, redirect matching, token lifetimes, refresh rotation with reuse detection, scope taxonomy and token-type binding, consent screens with partial grants, client registration, and discovery metadata. Use when a platform lets third-party apps act on users' behalf, when building an authorization server or MCP auth server, or when reviewing an issuer's token and scope policy. Not for the app side of login, callbacks, or token validation (efficient-auth:auth, if installed), API-key issuance (api:keys), or choosing an identity vendor.
+description: Design the OAuth 2.1 authorization-server side of an API: grant and PKCE profile per RFC 9700, redirect matching, token lifetimes, refresh rotation with reuse detection, scope taxonomy and token-type binding, consent screens with partial grants, client registration, and discovery metadata. Use when a platform lets third-party apps act on users' behalf, when building an authorization server or MCP auth server, or when reviewing an issuer's token and scope policy. Not for the app side of login, callbacks, or token validation (auth:auth, if installed), API-key issuance (api:keys), or choosing an identity vendor.
 ---
 
 # OAuth provider (issuer side)
 
-This skill covers the server that issues tokens. Code in an app that signs users in or validates tokens belongs to `efficient-auth:auth` if installed. The target is the OAuth 2.1 profile. RFC 9700 (BCP 240, January 2025) is final. The consolidated OAuth 2.1 document (draft-ietf-oauth-v2-1) was still an Internet-Draft, revision 16, when this skill was checked, so cite it as a draft and recheck before calling it an RFC.
+This skill covers the server that issues tokens. Code in an app that signs users in or validates tokens belongs to `auth:auth` if installed. The target is the OAuth 2.1 profile. RFC 9700 (BCP 240, January 2025) is final. The consolidated OAuth 2.1 document (draft-ietf-oauth-v2-1) was still an Internet-Draft, revision 16, when this skill was checked, so cite it as a draft and recheck before calling it an RFC.
 
 ## Ask first
 

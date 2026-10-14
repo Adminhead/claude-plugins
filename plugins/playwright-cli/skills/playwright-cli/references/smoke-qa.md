@@ -57,7 +57,7 @@ done
 
 When the task is to show the effect of a change, make the two captures comparable.
 
-- Capture the before state first. If the change is already made, build the old revision in a separate `git worktree` (`git:worktree` if installed) instead of reverting the working tree.
+- Capture the before state first. If the change is already made, build the old revision in a separate `git worktree` (`git:worktree`) instead of reverting the working tree.
 - Use the same width, height, URL, and screenshot target for both. For an element, pass the same ref or selector to `screenshot`. Avoid `--hires`, which captures device pixels and makes pairs differ by display.
 - Take one capture per interactive state (hover, open menu, error, selected) for both sides, and move the pointer away before the "selected" capture. A single resting capture doesn't cover them.
 

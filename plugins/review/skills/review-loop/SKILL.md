@@ -1,6 +1,6 @@
 ---
 name: review-loop
-description: Run a review, fix, re-review loop on a diff until a reviewer approves, with findings kept in one file so each round checks only what was flagged. Use when a finished change needs review plus fixes ("review and fix until clean", "loop review on this branch"), or when a reviewer's findings must be fixed and re-verified without reviewing everything again. Unlike efficient-core:second-opinion, which is read-only and never fixes, this loop dispatches a fixer between rounds. Not for writing plans (efficient-core:planning), a single read-only review (efficient-core:second-opinion), or executing a multi-slice plan (efficient-core:implement-plan).
+description: Run a review, fix, re-review loop on a diff until a reviewer approves, with findings kept in one file so each round checks only what was flagged. Use when a finished change needs review plus fixes ("review and fix until clean", "loop review on this branch"), or when a reviewer's findings must be fixed and re-verified without reviewing everything again. Unlike review:second-opinion, which is read-only and never fixes, this loop dispatches a fixer between rounds. Not for writing plans (coding-core:planning), a single read-only review (review:second-opinion), or executing a multi-slice plan (coding-core:implement-plan).
 ---
 
 # Review Loop

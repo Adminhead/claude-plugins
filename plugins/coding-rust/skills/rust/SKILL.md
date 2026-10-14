@@ -1,6 +1,6 @@
 ---
 name: rust
-description: Rust ownership, borrowing, lifetimes, Result/error boundaries, traits and modules, Cargo workspaces and features, async/concurrency, unsafe, and measured performance. Use when writing, reviewing, or debugging *.rs files or Cargo.toml crates, including borrow-checker fights, error-type design, tokio task lifecycles, clippy failures, or unsafe review. Not for generic test strategy (efficient-testing:unit, if installed).
+description: Rust ownership, borrowing, lifetimes, Result/error boundaries, traits and modules, Cargo workspaces and features, async/concurrency, unsafe, and measured performance. Use when writing, reviewing, or debugging *.rs files or Cargo.toml crates, including borrow-checker fights, error-type design, tokio task lifecycles, clippy failures, or unsafe review. Not for generic test strategy (testing:unit).
 ---
 
 # Efficient Rust

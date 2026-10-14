@@ -1,6 +1,6 @@
 ---
 name: poka-yoke
-description: Design or audit code so a mistake cannot be expressed, rather than documenting it. Ranks every hazard on a ladder (control, warning, detection, and docs-only), applies contact, fixed-value, and motion-step lenses, and states what the new design makes impossible. After an incident it separates the defect, the mistake, and the hazard, then sweeps for other instances. Use when designing an interface, schema, or state machine to be hard to misuse, auditing for footguns, or closing a recurring bug class. Not for finding bugs already on the page (`efficient-core:second-opinion`), language idiom (`efficient-js:typescript`, `efficient-python:python`, if installed), or schema constraints alone (`efficient-db:database-design`, if installed).
+description: Design or audit code so a mistake cannot be expressed, rather than documenting it. Ranks every hazard on a ladder (control, warning, detection, and docs-only), applies contact, fixed-value, and motion-step lenses, and states what the new design makes impossible. After an incident it separates the defect, the mistake, and the hazard, then sweeps for other instances. Use when designing an interface, schema, or state machine to be hard to misuse, auditing for footguns, or closing a recurring bug class. Not for finding bugs already on the page (`review:second-opinion`), language idiom (`coding-js:typescript`, if installed, `coding-python:python`, if installed), or schema constraints alone (`db:database-design`, if installed).
 ---
 
 # Poka-yoke
@@ -54,7 +54,7 @@ Apply these moves in roughly this order.
 
 Close by naming what the design now makes impossible, and what you left possible on purpose and why. A design with unstated limits gets trusted past them.
 
-Language mechanics (branded types, typestate, exhaustiveness helpers) belong to the language skills, if installed: `efficient-js:typescript`, `efficient-python:python`, `efficient-go:golang`, `efficient-rust:rust`, and `efficient-db:database-design` for constraints.
+Language mechanics (branded types, typestate, exhaustiveness helpers) belong to the language skills, if installed: `coding-js:typescript`, if installed, `coding-python:python`, if installed, `coding-go:golang`, if installed, `coding-rust:rust`, if installed, and `db:database-design`, if installed, for constraints.
 
 ## Auditing existing code
 

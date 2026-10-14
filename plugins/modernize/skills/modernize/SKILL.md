@@ -1,6 +1,6 @@
 ---
 name: modernize
-description: Plan the modernization of a legacy system (a runtime, framework, or dependency upgrade, a migration, or a rewrite) with a time-boxed feasibility spike, a testability milestone, a safety ladder, hazard red-teaming of each phase, and phased exit criteria. Use when asked to "modernize this", "plan the migration", "how do we get off this stack", or to plan a major version upgrade. Not for general implementation plans (efficient-core:planning), mapping a codebase (authoring:map-codebase, if installed), executing the migration (efficient-core:coding), or recording a single decision (authoring:adr-writing, if installed).
+description: Plan the modernization of a legacy system (a runtime, framework, or dependency upgrade, a migration, or a rewrite) with a time-boxed feasibility spike, a testability milestone, a safety ladder, hazard red-teaming of each phase, and phased exit criteria. Use when asked to "modernize this", "plan the migration", "how do we get off this stack", or to plan a major version upgrade. Not for general implementation plans (coding-core:planning), mapping a codebase (authoring:map-codebase), executing the migration (coding-core:coding), or recording a single decision (authoring:adr-writing).
 ---
 
 # Modernize
@@ -9,7 +9,7 @@ Produce a phased plan to upgrade, migrate, or rewrite a legacy system. This skil
 
 ## Workflow
 
-1. **Get the evidence base.** Use an existing architecture document or README the user points to. Otherwise map the system first, with `authoring:map-codebase` if installed or a direct read of the manifests, entry points, deployment files, and test setup. Collect the stack with versions, the main functional areas, known pain points, and how it runs and deploys. Trust the map, and open a file only to check a specific detail, such as whether a declared dependency is used.
+1. **Get the evidence base.** Use an existing architecture document or README the user points to. Otherwise map the system first, with `authoring:map-codebase` or a direct read of the manifests, entry points, deployment files, and test setup. Collect the stack with versions, the main functional areas, known pain points, and how it runs and deploys. Trust the map, and open a file only to check a specific detail, such as whether a declared dependency is used.
 
 2. **Run a time-boxed feasibility spike.** Set a hard limit (for example half a day) and ask whether the system can run even once, not whether CI can go green. Run the spike in a scratch worktree or container with a frozen-lockfile install (`npm ci`, `uv sync --frozen`, and the like) and discard it afterward, so the user's checkout stays untouched. Per component, record what you observe.
    - Do dependencies install from a committed lockfile without hand-patching?
@@ -34,7 +34,7 @@ Produce a phased plan to upgrade, migrate, or rewrite a legacy system. This skil
    4. Rewrite. Require an explicit reason for each, because "it's old" is not one.
    5. Remove dead code and features with no use.
 
-   Record each choice and why. Use `authoring:adr-writing` if installed for decisions that need a durable record.
+   Record each choice and why. Use `authoring:adr-writing` for decisions that need a durable record.
 
 7. **Red-team every phase against the hazard catalog** before it is implemented. Read `references/migration-hazards.md`. For each hazard, decide whether the phase triggers it, run its detection probe against the real repo, and fold the plan action into the phase's tasks and exit criteria. Record the hazards you checked and cleared along with those that fired, since a skipped hazard looks the same as a missed one.
 
@@ -44,6 +44,6 @@ Produce a phased plan to upgrade, migrate, or rewrite a legacy system. This skil
 
 ## Output
 
-Before presenting the plan, run the closing review in `efficient-core:planning` (`references/closing-review.md`): gap review, blocking decisions through AskUserQuestion, then save. Return the plan in the conversation as well. Include the spike results, the milestone and strategy per component, the target rung, the approach per component, the hazard checks, the phases, and the open decisions that need the user. Keep the plan proportionate to the system. A small service needs a few phases and a short hazard pass.
+Before presenting the plan, run the closing review in `coding-core:planning` (`references/closing-review.md`): gap review, blocking decisions through AskUserQuestion, then save. Return the plan in the conversation as well. Include the spike results, the milestone and strategy per component, the target rung, the approach per component, the hazard checks, the phases, and the open decisions that need the user. Keep the plan proportionate to the system. A small service needs a few phases and a short hazard pass.
 
-For the work itself, hand each phase to `efficient-core:coding` and the tests it needs to `efficient-testing:unit`, if installed. For a Postgres major upgrade, `efficient-db:postgres`, if installed, covers the database side.
+For the work itself, hand each phase to `coding-core:coding` and the tests it needs to `testing:unit`. For a Postgres major upgrade, `db:postgres`, if installed, covers the database side.

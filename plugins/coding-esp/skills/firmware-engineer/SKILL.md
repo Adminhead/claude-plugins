@@ -1,6 +1,6 @@
 ---
 name: firmware-engineer
-description: Write, review, and debug ESP-IDF firmware for ESP32-family chips, covering FreeRTOS tasks, GPIO/I2C/SPI/UART/ADC drivers, Wi-Fi/BLE, OTA and rollback, Secure Boot and flash encryption, LVGL displays, partitions and sdkconfig, panic and log triage, memory and sleep tuning, and idf.py build/flash/monitor. Use when working in an ESP-IDF project (sdkconfig, CMakeLists.txt, idf_component.yml, partitions CSV) or reading Guru Meditation output. Focused on ESP-IDF; Arduino-ESP32 and PlatformIO projects get general embedded C guidance only. Not for bugs with no ESP angle (`efficient-core:problem-solving`, if installed) or general shell scripts (`efficient-shell:bash`, if installed).
+description: Write, review, and debug ESP-IDF firmware for ESP32-family chips, covering FreeRTOS tasks, GPIO/I2C/SPI/UART/ADC drivers, Wi-Fi/BLE, OTA and rollback, Secure Boot and flash encryption, LVGL displays, partitions and sdkconfig, panic and log triage, memory and sleep tuning, and idf.py build/flash/monitor. Use when working in an ESP-IDF project (sdkconfig, CMakeLists.txt, idf_component.yml, partitions CSV) or reading Guru Meditation output. Focused on ESP-IDF; Arduino-ESP32 and PlatformIO projects get general embedded C guidance only. Not for bugs with no ESP angle (`coding-core:problem-solving`) or general shell scripts (`coding-shell:bash`, if installed).
 ---
 
 # ESP-IDF Firmware Engineer

@@ -7,7 +7,7 @@ description: Review or revise code, docs, or an implemented UI to strip unsuppor
 
 Make an artifact more direct and intentional. "Slop" is an editorial diagnosis, not a claim about who wrote it. Preserve requirements, established conventions, and constraints with a demonstrated purpose.
 
-Use it for review-only requests or requested revisions of code, prose, or a built web interface. Don't use it to invent product direction, replace a design system, or rewrite an unfamiliar subsystem. For sentence-level AI tells in prose, `avoid-ai-writing:avoid-ai-writing` (if installed) has the pattern catalog. For design direction, use `efficient-web:web-design`, if installed.
+Use it for review-only requests or requested revisions of code, prose, or a built web interface. Don't use it to invent product direction, replace a design system, or rewrite an unfamiliar subsystem. For sentence-level AI tells in prose, `avoid-ai-writing:avoid-ai-writing` (if installed) has the pattern catalog. For design direction, use `web:web-design`, if installed.
 
 ## Workflow
 

@@ -19,7 +19,7 @@ Prefer SLO burn-rate alerts (`slo.md`) over fixed thresholds for user-facing ser
 - Use `rate()` in alert expressions. `irate()` reacts to one pair of samples and flaps.
 - Label severity (page or ticket) and route on it. A page means a human must act now.
 - Annotations carry a summary, the affected service, and a `runbook_url`. A rule without a runbook link sends the responder to guess.
-- Test rules with `promtool test rules` (see `observability:promql`, if installed).
+- Test rules with `promtool test rules` (see `observability:promql`).
 - Delete alerts nobody acts on. Each one trains responders to ignore the next.
 
 Generic rule libraries (such as awesome-prometheus-alerts) are a good starting point for dependencies like databases and brokers. Review thresholds against your own baselines before enabling them.

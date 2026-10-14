@@ -33,15 +33,15 @@ Use the level argument if given. Otherwise infer it from the context and take th
 
 ## Steps
 
-1. **Branch.** At `push` level, stay on the current branch, including the default branch; the request authorizes it. At `pr` or `merge` level on the default branch, create a branch named by the repo's convention (`git:branch`, if installed) and carry the working changes onto it.
-2. **Commit.** Run `git status --short --branch`, `git diff`, `git diff --staged`, and `git log --oneline -15`. Use the repo's message convention (`git:commit`, if installed, holds the rules; otherwise match recent history and use Conventional Commits). Stage explicit paths, leave unrelated or sensitive files out, and report them. Commit and let hooks run. If a hook fails, fix what it reports and make a new commit. With nothing to commit and unpushed commits ahead, go on to push.
+1. **Branch.** At `push` level, stay on the current branch, including the default branch; the request authorizes it. At `pr` or `merge` level on the default branch, create a branch named by the repo's convention (`git:branch`) and carry the working changes onto it.
+2. **Commit.** Run `git status --short --branch`, `git diff`, `git diff --staged`, and `git log --oneline -15`. Use the repo's message convention (`git:commit` holds the rules; otherwise match recent history and use Conventional Commits). Stage explicit paths, leave unrelated or sensitive files out, and report them. Commit and let hooks run. If a hook fails, fix what it reports and make a new commit. With nothing to commit and unpushed commits ahead, go on to push.
 3. **Push.** Run `git push`, or `git push -u origin <branch>` when no upstream exists. On a non-fast-forward rejection, stop and report. Don't rebase to make it fit. If branch protection rejects a push to the default branch, stop and offer the `pr` level.
 4. **Open the PR** (`pr`, `merge`). If the branch already has one (`gh pr list --head <branch>`), reuse it. Otherwise run `gh pr create --base <default> --title ... --body-file ...` as a ready PR. Title in the repo's convention. Body is a short summary from the context and any test evidence it names. Then run `gh pr checks --watch`.
 5. **Merge** (`merge`), only when every check passed. No checks configured counts as passing.
    - Pick the method from `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`, preferring squash.
    - Run `gh pr merge --<method> --delete-branch`. A branch-protection refusal is a stop, not a reason to retry with flags.
    - Switch to the default branch and fast-forward it (`git switch <default>`, `git pull --ff-only`). In a linked worktree where the default branch is checked out elsewhere, skip the switch and report it. Don't remove the worktree.
-6. **On failed checks,** stop shipping. Summarize `gh run view <id> --log-failed` in the report. The invoking session fixes it, with the failed-run procedure in `github:actions` if installed, and runs ship again.
+6. **On failed checks,** stop shipping. Summarize `gh run view <id> --log-failed` in the report. The invoking session fixes it, with the failed-run procedure in `github-admin:actions` if installed, and runs ship again.
 
 ## Report
 

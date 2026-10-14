@@ -1,6 +1,6 @@
 ---
 name: playwright-cli
-description: Drive a headless, isolated browser from Bash with playwright-cli to inspect pages, fill forms, extract data, capture screenshots, and debug network or console issues. Use for ad-hoc browser automation against a URL or local dev server. Not for the user's real logged-in Chrome (claude-in-chrome) or for writing and running Playwright Test suites (efficient-testing:e2e, if installed).
+description: Drive a headless, isolated browser from Bash with playwright-cli to inspect pages, fill forms, extract data, capture screenshots, and debug network or console issues. Use for ad-hoc browser automation against a URL or local dev server. Not for the user's real logged-in Chrome (claude-in-chrome) or for writing and running Playwright Test suites (testing:e2e).
 allowed-tools: Bash(playwright-cli:*)
 ---
 
@@ -50,4 +50,4 @@ For exact flags, run `playwright-cli --help <command>`. The package also ships d
 - **Dialogs.** Read the dialog text and consequence before `dialog-accept` or `dialog-dismiss`.
 - **Failures.** Read [failure recovery](references/failure-recovery.md) before retrying or collecting diagnostics. Tracing, video, routes, and `run-code` are diagnostic tools, not normal steps.
 - **Smoke QA.** For a pre-ship browser check with a SHIP or DO NOT SHIP verdict (console and network smoke, interaction, breakpoints, accessibility), read [smoke QA](references/smoke-qa.md).
-- **Recording.** Only when the user wants generated Playwright code, read [recording](references/test-generation.md). For authoring or maintaining a test suite, use the `efficient-testing:e2e` skill if installed.
+- **Recording.** Only when the user wants generated Playwright code, read [recording](references/test-generation.md). For authoring or maintaining a test suite, use the `testing:e2e` skill.

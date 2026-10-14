@@ -1,6 +1,6 @@
 ---
 name: golang-performance
-description: Measurement-first Go performance work: benchmarks compared with benchstat, pprof and execution-trace reading, escape analysis and inlining checks, GC and GOMEMLIMIT tuning, a bottleneck-to-fix table, and CI regression checks. Use when a Go program is slow, allocates too much, or uses too much memory, when writing or comparing benchmarks, reading a profile, or claiming a speedup. Not for idiomatic Go or correctness (`efficient-go:golang`), general test strategy (`efficient-testing:unit`, if installed), production metrics and dashboards (`observability:instrumentation`, if installed), or CI workflow authoring (`github:actions`, if installed).
+description: Measurement-first Go performance work: benchmarks compared with benchstat, pprof and execution-trace reading, escape analysis and inlining checks, GC and GOMEMLIMIT tuning, a bottleneck-to-fix table, and CI regression checks. Use when a Go program is slow, allocates too much, or uses too much memory, when writing or comparing benchmarks, reading a profile, or claiming a speedup. Not for idiomatic Go or correctness (`coding-go:golang`), general test strategy (`testing:unit`), production metrics and dashboards (`observability:instrumentation`, if installed), or CI workflow authoring (`github-admin:actions`, if installed).
 ---
 
 # Go performance
@@ -38,4 +38,4 @@ Measure first, change one thing, measure again with the same method. A speedup c
 
 ## CI regression checks
 
-Compare base and head in the same job on the same runner, with `-count` of 10 or more and `benchstat`, and set the threshold well above shared-runner noise. Read [references/ci-regression.md](references/ci-regression.md) when adding or tuning such a check. Follow the repo's action-pinning convention (`github:actions` if installed) when you write the workflow.
+Compare base and head in the same job on the same runner, with `-count` of 10 or more and `benchstat`, and set the threshold well above shared-runner noise. Read [references/ci-regression.md](references/ci-regression.md) when adding or tuning such a check. Follow the repo's action-pinning convention (`github-admin:actions` if installed) when you write the workflow.

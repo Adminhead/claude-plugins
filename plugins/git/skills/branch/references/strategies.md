@@ -28,4 +28,4 @@ The merge method decides what lands in history, so check repo settings and the P
 
 ## Protecting long-lived branches
 
-Changes to branch protection or rulesets are repo-settings writes that need the user's approval. If the repo has `github:repo-setup` installed, use it for rulesets.
+Changes to branch protection or rulesets are repo-settings writes that need the user's approval. If the repo has `github-admin:repo-setup` installed, use it for rulesets.
