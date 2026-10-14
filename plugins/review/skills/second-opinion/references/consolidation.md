@@ -1,6 +1,6 @@
 # Consolidating parallel reviews
 
-Read this when you hold two or more reports on the same artifact (dual-review reviewers, `consult.sh` replies, or an audit subagent and your own review) and must produce one list.
+Read this when you hold two or more reports on the same artifact (dual-review reviewers, `consult` replies or focused passes, or an audit subagent and your own review) and must produce one list.
 
 ## Merge rules
 

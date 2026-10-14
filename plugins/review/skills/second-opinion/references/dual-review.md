@@ -1,6 +1,6 @@
 # Dual review gate
 
-Read this when output must pass a review before it ships and a single reviewer's blind spots are the risk: a release-bound diff, a migration, generated docs with factual claims, or a plan you will execute without further human review. It uses two Agent subagents of the same model family, so no code leaves the machine. For an outside model family, use `consult.sh` as the main skill describes.
+Read this when output must pass a review before it ships and a single reviewer's blind spots are the risk: a release-bound diff, a migration, generated docs with factual claims, or a plan you will execute without further human review. It uses two Agent subagents of the same model family, so no code leaves the machine. For an outside model family, use the `consult` tool as the main skill describes.
 
 Skip it for drafts, exploration, and anything a build, test, or linter can decide. Run those checks first, and spend reviewers on what only judgment can catch.
 
@@ -35,4 +35,4 @@ A reviewer that shares your context shares your assumptions. Two reviewers with 
 | Both pass everything | Reviewers read the task as confirmation | Tell them their job is to find problems, and require evidence for each PASS |
 | Style preferences reported as failures | Subjective criteria | Keep only criteria with a checkable pass condition |
 | A fix breaks something else | Fix scope too wide | Fix only flagged issues and use fresh reviewers each round |
-| Both miss the same thing | Same model family, same blind spot | Add a `consult.sh` call to a different family for high-stakes work, or have the person spot-check |
+| Both miss the same thing | Same model family, same blind spot | Add a `consult` call to a different family for high-stakes work, or have the person spot-check |

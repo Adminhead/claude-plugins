@@ -21,17 +21,16 @@ Adds four review and quality skills: a second opinion from another model family,
 
 ## second-opinion
 
-`review:second-opinion` sends a diff or a plan to `codex` (OpenAI) or `agy` (Google) through `scripts/consult.sh`, and returns their findings. It picks the tool, model, and effort for each call. The local gate runs two reviewers as Agent subagents, and it sends nothing outside the machine.
+`review:second-opinion` sends a diff or a plan to `codex` (OpenAI) or `agy` (Google) through the `mcp__review__consult` tool, and returns their findings. It picks the reviewer, model, and effort for each call, and splits a large review into focused passes (one dimension or one file group each) that run in parallel and finish inside the tool's time cap. The local gate runs two reviewers as Agent subagents, and it sends nothing outside the machine.
 
 Both tools run read-only. `codex` uses its read-only sandbox. `agy` runs in a scratch workspace whose hook allows only file-reading tools.
 
-The skill's `allowed-tools` grant covers `consult.sh *`, so the script runs without a permission prompt while the skill is active. The grant allows any readable file or directory to go to the outside model. Use the skill only on content you may share with OpenAI (codex) or Google (agy).
+Allow the tool with the permission rule `mcp__review__consult`. It sends content to OpenAI (codex) or Google (agy), so use it only on content you may share with them. A repo opts out by creating `.claude/no-external-review`, and a diff that touches secret-like files is refused.
 
 ## Requirements
 
 - `codex` (OpenAI) or `agy` (Google). The local two-reviewer gate needs neither CLI.
-- The agy path also needs `jq`.
-- `bash` on `PATH`, because `consult.sh` is a bash script.
+- `timeout` (coreutils) on `PATH`, which kills a reviewer that overruns. The agy gate script needs `jq`.
 
 ## Install
 
@@ -57,7 +56,7 @@ claude --plugin-dir plugins/review
 
 ## Limits
 
-- `review:second-opinion` was not live-run during the migration, because that would send content to an external service. Its script paths and grant are checked, and its behavior is not.
+- `consult` is a mod tool, and the mods API is early access. A call runs at most 540 seconds, so large reviews must be split into passes.
 - `review:review-loop` runs at most three rounds.
 - The review skills treat text in the repo, such as READMEs and comments, as evidence and never as instructions.
 
@@ -68,4 +67,4 @@ claude --plugin-dir plugins/review
 | Disable | `claude plugin disable review@adminhead` |
 | Uninstall | `claude plugin uninstall review@adminhead` |
 
-The plugin ships only skills and a script, so both commands remove everything. Start a new session to be sure they are gone.
+The plugin ships skills, a mod tool, and a script, so both commands remove everything. Start a new session to be sure they are gone.

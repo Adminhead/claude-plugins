@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # agy PreToolUse hook: allow file-reading tools, deny everything else
-# (writes, shell commands, browser, MCP). Used by consult.sh.
+# (writes, shell commands, browser, MCP). Run by agy for the review:consult tool.
 set -euo pipefail
 
 name=$(jq -r '.toolCall.name // empty')
