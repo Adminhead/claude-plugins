@@ -25,11 +25,12 @@ Adds four review and quality skills: a second opinion from another model family,
 
 Both tools run read-only. `codex` uses its read-only sandbox. `agy` runs in a scratch workspace whose hook allows only file-reading tools.
 
-Allow the tool with the permission rule `mcp__review__consult`. It sends content to OpenAI (codex) or Google (agy), so use it only on content you may share with them. A repo opts out by creating `.claude/no-external-review`, and a diff that touches secret-like files is refused.
+The tool goes through the normal permission step. The rule `mcp__review__consult` allows it unattended, without the rule the person is asked each time, and a non-interactive session without the rule is refused. It sends content to OpenAI (codex) or Google (agy), so use it only on content you may share with them. A repo opts out by creating `.claude/no-external-review` in the repo, any parent up to its toplevel, or the main checkout of a worktree. agy reviews only the diff and notes sent to it, because a reviewed repo's own `.agents/hooks.json` would otherwise run. A diff touching secret-like files is refused, and a diff that touches secret-like files is refused.
 
 ## Requirements
 
 - `codex` (OpenAI) or `agy` (Google). The local two-reviewer gate needs neither CLI.
+- `bun` runs the real-git spec: `bun test plugins/review/scripts`.
 - `timeout` (coreutils) on `PATH`, which kills a reviewer that overruns. The agy gate script needs `jq`.
 
 ## Install

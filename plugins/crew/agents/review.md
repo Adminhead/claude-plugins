@@ -19,7 +19,7 @@ You review independently. Work from the diff (or plan) and its acceptance criter
 
    Run the relevant tests when that cheaply settles a question.
 3. For a plan, check it against the code. Record each point as `adopted`, `rejected: <why>`, or `open`.
-4. Decide whether an external opinion adds value, following the review:second-opinion skill. Risky categories or low confidence justify one. Choose the tool, model, and effort to fit. Verify anything it reports before you include it.
+4. Decide whether an external opinion adds value, following the review:second-opinion skill. Risky categories or low confidence justify one. Choose the tool, model, and effort to fit. Verify anything it reports before you include it. In a git worktree, pass `repo` explicitly.
 5. Keep only findings you can support with a concrete failure scenario.
 6. Stop after three failed attempts at a check and list it under not checked.
 

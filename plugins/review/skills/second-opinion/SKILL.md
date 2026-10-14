@@ -16,7 +16,7 @@ Ask an outside model to check your work. Its reply is evidence to weigh, not a v
 ## 2. Pick the reviewer: one by default
 
 - **codex** for diff review. It reads git ranges and hunts code-level bugs well.
-- **agy** for plan critique and for large context (many files, long specs). Gemini differs from both Claude and GPT, which gives the most independent view.
+- **agy** for plan critique and for long specs. It sees only the diff and notes you send, not the repo, so put the context it needs in `notes`. Gemini differs from both Claude and GPT, which gives the most independent view.
 - **Both** only when stakes are high (security, data loss, irreversible migration, an architecture choice with several viable options), or when the first reply conflicts with your analysis or leaves you unsure. Run the second after reading the first, as a tiebreaker, not in parallel.
 
 ## 3. Pick model and effort
@@ -59,7 +59,7 @@ Count changed lines with `git diff --stat`. A plan section is one heading with i
 
 ## 5. Run it
 
-Call `mcp__review__consult`. It is a tool, not a shell command, so no permission grant or heredoc is involved.
+Call `mcp__review__consult`. It is a tool, not a shell command. The engine's permission rules apply to it: an allow rule for `mcp__review__consult` runs it unattended, otherwise the person is asked first, and an unattended session without the rule is refused.
 
 | Input | Meaning |
 |---|---|
@@ -67,7 +67,7 @@ Call `mcp__review__consult`. It is a tool, not a shell command, so no permission
 | `mode` | `diff` reviews changes in a git repo. `plan` critiques the plan in `notes` |
 | `model`, `effort` | From the matrix above |
 | `notes` | Plan mode: the plan and what to attack (required). Diff mode: the dimension or file group for this pass |
-| `repo` | Directory to review. Defaults to the session directory |
+| `repo` | Directory to review, inside the session's git repo. Defaults to that repo's toplevel. Pass it explicitly when you work in a git worktree |
 | `base` or `commit` | Diff mode. Default is the uncommitted changes. `base: "main"` reviews `main...HEAD`. `commit` reviews one commit |
 | `timeoutSec` | At most 540. Default 480 |
 
@@ -78,7 +78,7 @@ mcp__review__consult { cli: "codex", mode: "diff", model: "gpt-6-astra", effort:
   base: "main", notes: "Pass: security only. Files: auth/session.py, auth/tokens.py." }
 ```
 
-Both reviewers run read-only. codex uses its read-only sandbox. agy runs in a scratch workspace whose hook allows only file-reading tools. The tool kills the reviewer when `timeoutSec` passes.
+Both reviewers run read-only. codex uses its read-only sandbox. agy runs in an empty scratch workspace, without the reviewed repo (a repo's own `.agents/hooks.json` would run as code), and its hook allows only file-reading tools. The tool kills the reviewer when `timeoutSec` passes.
 
 A failed call returns a tool error and never an empty reply:
 

@@ -68,8 +68,8 @@ describe('validate', () => {
 
 describe('blockedFiles', () => {
   test('secret-like names are blocked, examples and ordinary files are not', () => {
-    const names = ['a.py', '.env', 'cfg/.env.local', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt', '.env.example', 'x/.env.sample']
-    expect(blockedFiles(names.join('\n'))).toEqual(['.env', 'cfg/.env.local', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt'])
+    const names = ['a.py', '.env', 'cfg/.env.local', 'cl\u00e9.pem', 'd\u00e9/.env', 'we"ird.pem', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt', '.env.example', 'x/.env.sample']
+    expect(blockedFiles(names.join('\0'))).toEqual(['.env', 'cfg/.env.local', 'cl\u00e9.pem', 'd\u00e9/.env', 'we"ird.pem', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt'])
   })
 
   test('a path too long to scan is blocked unread', () => {
@@ -97,12 +97,12 @@ describe('argv building', () => {
     expect(call.stdin).toContain('plan text')
   })
 
-  test('agy runs in the workspace with the repo added, under timeout', () => {
+  test('agy runs in the workspace without the repo, under timeout', () => {
     const c = ok({ cli: 'agy', model: 'gemini-3.1-pro-high', effort: 'high', timeoutSec: 60 })
     const call = agyCall(c, REPO, '/tmp/ws')
     expect(call.cwd).toBe('/tmp/ws')
     expect(call.argv.slice(0, 5)).toEqual(['timeout', '-k', '5', '60', 'agy'])
-    expect(call.argv).toEqual(expect.arrayContaining(['--add-dir', REPO, '--model', 'gemini-3.1-pro-high', '--effort', 'high', '-p']))
+    expect(call.argv).toEqual(expect.arrayContaining(['--model', 'gemini-3.1-pro-high', '--effort', 'high', '-p']))
     expect(call.argv.at(-1)).toContain('/tmp/ws/review-input.md')
   })
 
@@ -158,8 +158,9 @@ describe('output', () => {
 
 describe('consult tool', () => {
   const calls: any[] = []
-  async function start($: any, on: any, run: (argv: string[], e: any) => { exitCode: number; stdout?: string; stderr?: string }) {
+  async function start($: any, on: any, run: (argv: string[], e: any) => { exitCode: number; stdout?: string; stderr?: string }, decision = 'allow') {
     calls.length = 0
+    on('tool.check', async () => ({ decision }))
     on('session.cwd', async () => ({ value: REPO }))
     on('session.start', async () => ({ cwd: REPO }))
     on('process.run', async (_$: any, e: any) => {
@@ -171,9 +172,8 @@ describe('consult tool', () => {
   }
   const base = { tool: 'mcp__review__consult', cli: 'codex', model: 'gpt-6-sol', effort: 'high', mode: 'diff' }
   const happy = (argv: string[]) => {
-    if (argv[0] === 'sh') return { exitCode: 0, stdout: REPO + '\n' }
-    if (argv.includes('rev-parse')) return { exitCode: 0, stdout: '.git\n' }
-    if (argv.includes('--name-only') || argv.includes('ls-files')) return { exitCode: 0, stdout: 'a.py\n' }
+    if (argv[0] === 'sh') return { exitCode: 0, stdout: REPO + '\n' + REPO + '\n' }
+    if (argv.includes('--name-only') || argv.includes('ls-files')) return { exitCode: 0, stdout: 'a.py\0' }
     return { exitCode: 0, stdout: 'No significant findings.\n' }
   }
 
@@ -185,6 +185,19 @@ describe('consult tool', () => {
     expect(codex).toHaveLength(1)
     expect(codex[0].init.stdin).toContain('focus')
     expect(codex[0].init.timeoutMs).toBe((480 + 5 + 10) * 1000)
+  })
+
+  test('the engine permission verdict gates the call: deny and an unanswerable ask run nothing', async ($, on) => {
+    await start($, on, happy, 'deny')
+    expect(((await $.tool.call(base)) as any).deny).toMatch(/not permitted/)
+    expect(calls).toHaveLength(0)
+  })
+
+  test('an ask with nobody to ask is refused', async ($, on) => {
+    await start($, on, happy, 'ask')
+    const out: any = await $.tool.call(base)
+    expect(out.deny).toMatch(/needs approval|permission check failed/)
+    expect(calls).toHaveLength(0)
   })
 
   test('invalid input is refused and nothing runs', async ($, on) => {
@@ -202,14 +215,14 @@ describe('consult tool', () => {
   })
 
   test('a secret-like file in the diff blocks the send', async ($, on) => {
-    await start($, on, argv => (argv.includes('--name-only') ? { exitCode: 0, stdout: 'a.py\n.env\n' } : happy(argv)))
+    await start($, on, argv => (argv.includes('--name-only') ? { exitCode: 0, stdout: 'a.py\0.env\0' } : happy(argv)))
     const out: any = await $.tool.call(base)
     expect(out.deny).toMatch(/secret-like files.*\.env/)
     expect(calls.filter(c => c.argv.includes('codex'))).toHaveLength(0)
   })
 
   test('diff mode outside git is an error', async ($, on) => {
-    await start($, on, argv => (argv.includes('rev-parse') ? { exitCode: 128 } : happy(argv)))
+    await start($, on, argv => (argv[0] === 'sh' && argv[2].includes('--git-common-dir') ? { exitCode: 0, stdout: REPO + '\n\n' } : happy(argv)))
     expect(((await $.tool.call(base)) as any).deny).toMatch(/needs a git repo/)
   })
 

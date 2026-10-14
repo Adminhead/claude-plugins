@@ -91,8 +91,9 @@ export function validate(input: Record<string, any>): Checked {
   return { ok: { cli, mode, model, effort, notes, repo: repo as string | undefined, base: base as string | undefined, commit: commit as string | undefined, timeoutSec: t } }
 }
 
-// Hardened git: no repo-configured program runs (fsmonitor, pager, external diff or textconv).
-const HARDEN = ['-c', 'core.fsmonitor=false', '-c', 'core.pager=cat', '-c', 'diff.external=']
+// Hardened git: the repo's config cannot run a pager, fsmonitor, external diff, textconv or signature
+// check. Clean/smudge filter drivers can still run, since the diff reads the worktree.
+const HARDEN = ['-c', 'core.fsmonitor=false', '-c', 'core.pager=cat', '-c', 'diff.external=', '-c', 'log.showSignature=false', '-c', 'core.quotePath=false']
 const git = (repo: string, ...a: string[]) => ['git', '-C', repo, '--no-pager', '--literal-pathspecs', ...HARDEN, ...a]
 const NO_EXT = ['--no-ext-diff', '--no-textconv']
 
@@ -102,11 +103,12 @@ export function target(c: Consult): string {
   return 'the uncommitted changes (git diff HEAD plus untracked files)'
 }
 
-// Commands whose combined stdout lists the files a diff-mode review would send.
+// Commands whose combined stdout lists, NUL-separated, the files a diff-mode review would send.
+// `repo` is the git toplevel, so the untracked listing covers the whole repo.
 export function fileListArgvs(c: Consult, repo: string): string[][] {
-  if (c.base) return [git(repo, 'diff', '--name-only', `${c.base}...HEAD`)]
-  if (c.commit) return [git(repo, 'show', '--name-only', '--format=', c.commit)]
-  return [git(repo, 'diff', '--name-only', 'HEAD'), git(repo, 'ls-files', '--others', '--exclude-standard')]
+  if (c.base) return [git(repo, 'diff', '--name-only', '-z', `${c.base}...HEAD`)]
+  if (c.commit) return [git(repo, 'show', '--name-only', '-z', '--format=', c.commit)]
+  return [git(repo, 'diff', '--name-only', '-z', 'HEAD'), git(repo, 'ls-files', '-z', '--others', '--exclude-standard')]
 }
 
 // The tracked part of the diff, for agy's input file. In the default mode untracked files follow (UNTRACKED_DIFF).
@@ -116,23 +118,35 @@ export function diffArgv(c: Consult, repo: string): string[] {
   return git(repo, 'diff', ...NO_EXT, 'HEAD')
 }
 
-export const gitDirArgv = (repo: string) => git(repo, 'rev-parse', '--git-dir')
+// Takes the git toplevel as $1. `diff --no-index` exits 1 when files differ, so the pipeline's status is ignored.
+const GIT_SH = 'git -c core.fsmonitor=false -c core.pager=cat -c diff.external= -c log.showSignature=false -c core.quotePath=false --no-pager --literal-pathspecs'
+export const UNTRACKED_DIFF = `cd -- "$1" && ${GIT_SH} ls-files -z --others --exclude-standard | xargs -0 -n1 ${GIT_SH} diff --no-index --no-ext-diff --no-textconv -- /dev/null || true`
 
-// `diff --no-index` exits 1 when files differ, so the pipeline's status is ignored.
-export const UNTRACKED_DIFF =
-  'git -C "$1" ls-files --others --exclude-standard -z | (cd "$1" && xargs -0 -n1 git -c core.fsmonitor=false -c core.pager=cat -c diff.external= --no-pager diff --no-index --no-ext-diff --no-textconv -- /dev/null) || true'
-
-// Resolves the repo and applies the opt-out marker. Exit 2: no such directory. Exit 3: opted out.
-export const PREFLIGHT =
-  'cd "$1" 2>/dev/null || { echo "no such directory: $1" >&2; exit 2; }; ' +
-  'if [ -e .claude/no-external-review ]; then echo "external review disabled for this repo ($PWD/.claude/no-external-review)" >&2; exit 3; fi; pwd -P'
+// $1: the repo to review ('' for the default), $2: the session directory. Prints the resolved repo, then its
+// git toplevel (an empty line outside git). Exit 2: no such directory, or outside the session's repo.
+// Exit 3: a .claude/no-external-review marker in the repo, an ancestor up to the session's toplevel, or the main checkout.
+export const PREFLIGHT = [
+  'cd -- "$2" 2>/dev/null || { echo "no such directory: $2" >&2; exit 2; }',
+  'root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD',
+  'root=$(cd -- "$root" && pwd -P)',
+  'dir=${1:-$root}',
+  'cd -- "$dir" 2>/dev/null || { echo "no such directory: $dir" >&2; exit 2; }',
+  'dir=$(pwd -P)',
+  'case "$dir/" in "$root"/*) ;; *) echo "repo $dir is outside $root" >&2; exit 2 ;; esac',
+  'blocked() { if [ -e "$1/.claude/no-external-review" ]; then echo "external review disabled for this repo ($1/.claude/no-external-review)" >&2; exit 3; fi; }',
+  'd=$dir; while :; do blocked "$d"; [ "$d" = "$root" ] && break; d=$(dirname "$d"); done',
+  'top=$(git rev-parse --show-toplevel 2>/dev/null) && top=$(cd -- "$top" && pwd -P) || top=',
+  '[ -z "$top" ] || blocked "$top"',
+  'common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && blocked "$(dirname "$common")"',
+  'printf "%s\\n%s\\n" "$dir" "$top"',
+].join('\n')
 
 export const WRITE_FILE = 'mkdir -p "$(dirname "$1")" && cat > "$1"'
 
+// `names` is NUL-separated, as `git ... -z` prints it.
 export function blockedFiles(names: string): string[] {
   return names
-    .split('\n')
-    .map(n => n.trim())
+    .split('\0')
     .filter(n => n !== '' && (n.length > MAX_PATH || (SECRET.test(n) && !SECRET_OK.test(n))))
 }
 
@@ -172,8 +186,8 @@ export function agyInputText(c: Consult, diff: string): string {
 }
 
 export function agyCall(c: Consult, repo: string, ws: string): { argv: string[]; cwd: string } {
-  const prompt = `${preamble(c, repo)}\n\nBefore anything else, read ${ws}/${AGY_INPUT} in full (use as many view_file calls as it takes). It holds the requester's notes and any diff under review. Shell commands are disabled; read repository files with view_file.`
-  return { argv: guarded(c, ['agy', '--add-dir', repo, '--model', c.model, '--effort', c.effort, '-p', prompt]), cwd: ws }
+  const prompt = `${preamble(c, repo)}\n\nBefore anything else, read ${ws}/${AGY_INPUT} in full (use as many view_file calls as it takes). It holds the requester's notes and any diff under review. Shell commands are disabled. The repository itself is not in your workspace, so judge from that file alone.`
+  return { argv: guarded(c, ['agy', '--model', c.model, '--effort', c.effort, '-p', prompt]), cwd: ws }
 }
 
 export function clip(text: string, max: number, what: string): string {

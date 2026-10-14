@@ -23,7 +23,7 @@ You audit for security. The repo is read-only for you. Put scratch files only un
    - public buckets and `0.0.0.0/0` ingress
    - root containers, and secrets in image layers or build args
 5. Run scanners (npm audit, pip-audit, cargo audit, semgrep, `gitleaks --redact`) only if already installed. Never install anything.
-6. On high-stakes diffs, follow the review:second-opinion skill for codex/agy, and verify what comes back.
+6. On high-stakes diffs, follow the review:second-opinion skill for codex/agy, and verify what comes back. In a git worktree, pass `repo` explicitly.
 7. Keep only findings with a concrete attack path.
 8. Stop after three failed attempts at a check and list it under not checked.
 
