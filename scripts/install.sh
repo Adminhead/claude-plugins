@@ -8,12 +8,10 @@ usage() {
 Usage: scripts/install.sh [--dry-run]
 
 Links ~/.local/bin/claude-tmux to this clone's launcher, registers the adminhead
-marketplace and the third-party ones, and installs the plugins at user scope.
+marketplace and the third-party ones, and installs baseline (the everyday plugin set) at user scope.
 --dry-run prints every command that would change something.
 EOF
 }
-
-REQUIRED=(coremods@adminhead efficient-core@adminhead efficient-testing@adminhead code-search@adminhead crew@adminhead git@adminhead github@adminhead authoring@adminhead setup@adminhead)
 
 dry=0
 rc=0
@@ -90,10 +88,17 @@ else
   run claude plugin marketplace add "$repo"
 fi
 
+# baseline depends on the everyday plugins, so one install pulls them in. Re-running install
+# (unlike `plugin update`) also installs a dependency added to baseline since the last run.
+manifest=$repo/plugins/baseline/.claude-plugin/plugin.json
+[[ -f $manifest ]] || die "missing $manifest"
+members=$(jq -r '.dependencies[]?' "$manifest") || die "cannot read dependencies from $manifest"
+[[ -n $members ]] || die "$manifest lists no dependencies"
+REQUIRED=(baseline@adminhead)
+while IFS= read -r m; do REQUIRED+=("$m@adminhead"); done <<<"$members"
+
 failed=()
-for id in "${REQUIRED[@]}"; do
-  run claude plugin install "$id" --scope user || { warn "install failed: $id"; failed+=("$id"); rc=1; }
-done
+run claude plugin install baseline@adminhead --scope user || { warn "install failed: baseline@adminhead"; failed+=(baseline@adminhead); rc=1; }
 
 # Nothing was installed under --dry-run, so there is nothing to read back.
 if ((!dry)); then
@@ -102,9 +107,12 @@ if ((!dry)); then
     state=$(jq -r --arg id "$id" '[.[] | select(.id == $id and .scope == "user")]
       | if length == 0 then "missing" elif .[0].enabled == false then "disabled" else "ok" end' <<<"$installed")
     case $state in
-      missing) warn "$id is not installed at user scope"; [[ " ${failed[*]} " == *" $id "* ]] || failed+=("$id"); rc=1 ;;
+      missing) warn "$id is not installed at user scope" ;;
       disabled) warn "$id is installed but disabled; run: claude plugin enable $id --scope user" ;;
+      *) continue ;;
     esac
+    [[ " ${failed[*]} " == *" $id "* ]] || failed+=("$id")
+    rc=1
   done
 fi
 

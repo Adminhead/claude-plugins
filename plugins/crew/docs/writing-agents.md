@@ -82,15 +82,15 @@ A read-only agent that only disallows the writers still inherits everything else
 | Field | Rule |
 | --- | --- |
 | `name`, `description` | Required. `name` is the bare name. The scoped form `crew:<name>` is the `agent_type` hooks receive, and what orchestration routes by. |
-| `tools`, `disallowedTools` | One-line comma-separated string, never YAML list form (agent-tools rule). `disallowedTools` applies first. An entry with a specifier, such as `Bash(git push *)`, removes the whole tool, so block commands with a hook or `permissions.deny` instead. Every name must be a known built-in or an MCP entry on a known server (`MCP_SERVERS` in `scripts/agent-tools.py`, a map from server id to a read-only flag; add the server there before using it). Prefer the server-level form `mcp__<server>`, which grants or removes every tool of the server, so new tools need no edit. Name a single tool only when a server mixes read and write tools, as with the efficient-web playwright server for browser-tester. `Workflow` is removed from every subagent, so it needn't be denied. |
+| `tools`, `disallowedTools` | One-line comma-separated string, never YAML list form (agent-tools rule). `disallowedTools` applies first. An entry with a specifier, such as `Bash(git push *)`, removes the whole tool, so block commands with a hook or `permissions.deny` instead. Every name must be a known built-in or an MCP entry on a known server (`MCP_SERVERS` in `scripts/agent-tools.py`, a map from server id to a read-only flag; add the server there before using it). Prefer the server-level form `mcp__<server>`, which grants or removes every tool of the server, so new tools need no edit. Name a single tool only when a server mixes read and write tools, as with the web playwright server for browser-tester. `Workflow` is removed from every subagent, so it needn't be denied. |
 | `model` | Use an alias: `haiku`, `sonnet` or `opus`. A family alias resolves to the main conversation's exact model when it belongs to the same family. A per-call `model` parameter overrides the frontmatter. |
 | `effort` | Set it explicitly. A per-call `effort` overrides it, and `CLAUDE_CODE_EFFORT_LEVEL` overrides both. Available levels depend on the model, so check before using `xhigh` or `max`. |
-| `skills` | Preload only what the agent needs on every run, at most 32. The full skill text is injected, which costs context on each spawn. A missing or disabled skill is skipped with only a debug-log warning, so preload only skills from user-scope plugins. Skills with `disable-model-invocation: true` can't be preloaded. |
+| `skills` | Preload only what the agent needs on every run, at most 32. The full skill text is injected, which costs context on each spawn. A missing or disabled skill is skipped with only a debug-log warning, so preload only skills from user-scope plugins. `scripts/agent-tools.py` fails any adminhead preload that doesn't resolve to `plugins/<p>/skills/<s>/SKILL.md`. Skills with `disable-model-invocation: true` can't be preloaded. |
 | `color` | One of `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`. There are more agents than colors, so share a color within a family: red for debuggers and coder-max, orange for reviewers and security-auditor, and one color each for the other agents, reused across unrelated roles (yellow for Explore and devops, cyan for browser-tester and scribe). |
 
 Fields this roster doesn't use, and why:
 
-- `hooks`, `mcpServers`, `permissionMode`, `initialPrompt`: ignored by plugin agents and banned by the checker. Put guards in `plugins/crew/hooks/hooks.json`. browser-tester reaches the efficient-web playwright server through `tools`.
+- `hooks`, `mcpServers`, `permissionMode`, `initialPrompt`: ignored by plugin agents and banned by the checker. Put guards in `plugins/crew/hooks/hooks.json`. browser-tester reaches the web playwright server through `tools`.
 - `isolation`: the orchestrator passes `isolation: "worktree"` per call. Set in frontmatter, it doesn't stop a named spawn from becoming a teammate when agent teams are on, and that teammate runs in the main checkout.
 - `memory`: banned for read-only agents, and no writer needs memory across sessions.
 - `background`, `maxTurns`, `omitClaudeMd`, `experimental`: add one only with a concrete current use.
@@ -167,6 +167,6 @@ Ladders:
 Run from the repo root.
 
 - `bash plugins/crew/scripts/tests/check.sh`: the one entry point. It runs the agent checker and its tests, both read-only gate suites, the guard suite and the bash replay.
-- `python3 scripts/agent-tools.py`: the tool and read-only rules, and the `hooks.json` gate entries.
+- `python3 scripts/agent-tools.py`: the tool and read-only rules, skill preload resolution, and the `hooks.json` gate entries.
 - `claude plugin validate --strict plugins/crew`: manifest and frontmatter.
 - After a model or effort change, spawn the agent once and confirm the model in `/tasks`.

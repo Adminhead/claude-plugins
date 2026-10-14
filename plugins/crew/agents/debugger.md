@@ -3,9 +3,9 @@ name: debugger
 description: Read-only root-cause diagnosis for failures with an unknown cause. Use proactively for failing or flaky tests, unexpected behavior, errors with no known cause, and regressions, before anyone edits code. Hands off to debugger-critical when it can't confirm the cause or the failure involves concurrency, data loss, security, or production. Not for fixes with a known cause (coder) or planning (architect). Returns the root cause, a repro command, a hypotheses table, the target path:line, and a fix recommendation.
 model: sonnet
 effort: high
-tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app, mcp__plugin_efficient-core_exa
+tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app, mcp__plugin_research_exa
 skills:
-  - efficient-core:problem-solving
+  - coding-core:problem-solving
 color: red
 ---
 

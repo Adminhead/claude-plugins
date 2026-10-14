@@ -5,8 +5,8 @@ model: opus
 effort: medium
 disallowedTools: Agent, mcp__claude-in-chrome, mcp__plugin_github_github
 skills:
-  - efficient-core:coding
-  - efficient-core:problem-solving
+  - coding-core:coding
+  - coding-core:problem-solving
 color: red
 ---
 

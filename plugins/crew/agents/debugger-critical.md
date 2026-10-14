@@ -3,9 +3,9 @@ name: debugger-critical
 description: Read-only root-cause diagnosis for failures debugger could not confirm, and for high-stakes failures (concurrency, data loss or corruption, security, production incidents). Use proactively when debugger hands back `escalate: debugger-critical`. Not for first-pass diagnosis (debugger), fixes with a known cause (coder), or planning (architect). Returns the root cause, a repro command, a hypotheses table, the target path:line, and a fix recommendation.
 model: opus
 effort: high
-tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app, mcp__plugin_efficient-core_exa
+tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app, mcp__plugin_research_exa
 skills:
-  - efficient-core:problem-solving
+  - coding-core:problem-solving
 color: red
 ---
 
