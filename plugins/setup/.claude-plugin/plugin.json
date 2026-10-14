@@ -1,6 +1,6 @@
 {
   "name": "setup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Setup skills: recommend and install the adminhead plugins that fit the current project.",
   "author": {
     "name": "Buck Brady",

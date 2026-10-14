@@ -7,7 +7,7 @@ description: Make the smallest correct, maintainable code change for a bounded f
 
 Turn a bounded code request into the smallest change that satisfies its observable contract. Clear, conventional code is part of the deliverable, not optional polish.
 
-Use `coding-core:planning` when the work needs a plan, `testing:unit` for focused unit or regression evidence, and `coding-core:problem-solving` when a failure has no known cause or reliable reproduction. Language and framework idiom lives in the language skills, if installed (`coding-python:python`, if installed, `coding-js:typescript`, if installed, `coding-go:golang`, if installed, `coding-rust:rust`, if installed, and so on).
+Use `coding-core:planning` when the work needs a plan, `testing:unit` for focused unit or regression evidence, and `coding-core:problem-solving` when a failure has no known cause or reliable reproduction. Language and framework idiom lives in the language skills, if installed (`coding-python:python`, `coding-js:typescript`, `coding-go:golang`, `coding-rust:rust`, and so on).
 
 ## Workflow
 

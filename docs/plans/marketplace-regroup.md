@@ -244,8 +244,10 @@ Files to touch:
 
 Repo proof (both must print nothing):
 
+`docs/plugins/coding.md` is skipped because its old-to-new table names the moved skills on purpose.
+
 ```sh
-rg -n --hidden -g '!.git' -g '!docs/plans/**' -g '!docs/research/**' -g '!**/evals/results/**' -g '!**/node_modules/**' -g '!.claude-plugin/marketplace.json' \
+rg -n --hidden -g '!.git' -g '!docs/plans/**' -g '!docs/research/**' -g '!**/evals/results/**' -g '!**/node_modules/**' -g '!.claude-plugin/marketplace.json' -g '!docs/plugins/coding.md' \
   -e '\befficient-(core|testing|security|db|auth|web|go|js|python|rust|shell|esp)\b' -e 'plugin_efficient-' \
   -e '\bsentry(:sentry|@adminhead)\b' -e 'plugins/efficient' \
   -e 'infra:(docker|kubernetes|helm|gitops|rollout|production-readiness|homelab-network)\b' \

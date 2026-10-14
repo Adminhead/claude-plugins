@@ -21,14 +21,14 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "development"
     },
     {
       "name": "git",
       "source": "./plugins/git",
       "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "category": "development"
     },
     {
@@ -198,7 +198,7 @@
       "name": "authoring",
       "source": "./plugins/authoring",
       "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security.",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "category": "development"
     },
     {
@@ -247,42 +247,42 @@
       "name": "playwright-cli",
       "source": "./plugins/playwright-cli",
       "description": "Drive a headless, isolated browser from Bash with playwright-cli.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "testing"
     },
     {
       "name": "termwright",
       "source": "./plugins/termwright",
       "description": "Drive and test terminal UI apps with the termwright CLI.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "testing"
     },
     {
       "name": "accessibility",
       "source": "./plugins/accessibility",
       "description": "Accessibility skills: manual screen-reader and keyboard testing of web journeys.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "testing"
     },
     {
       "name": "tooling",
       "source": "./plugins/tooling",
       "description": "Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit, and repairing failing hooks.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
       "name": "observability",
       "source": "./plugins/observability",
       "description": "Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "api",
       "source": "./plugins/api",
       "description": "Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -317,7 +317,7 @@
       "name": "aws",
       "source": "./plugins/aws",
       "description": "AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -331,7 +331,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Setup skills: recommend and install the adminhead plugins that fit the current project.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {

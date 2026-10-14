@@ -54,7 +54,7 @@ Apply these moves in roughly this order.
 
 Close by naming what the design now makes impossible, and what you left possible on purpose and why. A design with unstated limits gets trusted past them.
 
-Language mechanics (branded types, typestate, exhaustiveness helpers) belong to the language skills, if installed: `coding-js:typescript`, if installed, `coding-python:python`, if installed, `coding-go:golang`, if installed, `coding-rust:rust`, if installed, and `db:database-design`, if installed, for constraints.
+Language mechanics (branded types, typestate, exhaustiveness helpers) belong to the language skills, if installed: `coding-js:typescript`, `coding-python:python`, `coding-go:golang`, `coding-rust:rust`, and `db:database-design` for constraints.
 
 ## Auditing existing code
 

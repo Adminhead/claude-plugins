@@ -1,6 +1,6 @@
 {
   "name": "code-search",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines.",
   "author": {
     "name": "Buck Brady",

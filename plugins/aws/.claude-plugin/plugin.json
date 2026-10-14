@@ -1,6 +1,6 @@
 {
   "name": "aws",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server.",
   "author": {"name": "Buck Brady", "email": "bbrady145@gmail.com"}
 }
