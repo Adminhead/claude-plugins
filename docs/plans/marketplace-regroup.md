@@ -183,6 +183,37 @@ A content baseline loses because it can't toggle pieces, it mixes unrelated conc
 - Cost: about 400 listing characters in every session with the language plugin, Sentry or not.
 - The `profile-changes-output` eval (Python/Flask) loses the Python notes in its sandbox. Its graders check profile behavior, so the risk is low, but record it.
 
+### 4.5 consult as a mod tool (S3b)
+
+Decided 2026-10-13: replace `consult.sh` with a full mod tool in `review`, not a wrapper, and split second-opinion reviews into focused passes that each finish inside the mod process cap.
+
+Why:
+
+- The allow rule becomes `mcp__review__consult`, with no version or path in it (fixes H6).
+- Read-only agents get a typed tool in `tools:` instead of a Bash exception in the crew gate. The current exception (`readonly-bash.test.sh:118`) points at a dead path.
+- The input schema validates tool, mode, model family and effort.
+
+Limits (mods API `claude-code.d.ts`, written by 2.1.277):
+
+- `$.process.run` times out after ten minutes at most and buffers output until exit.
+- Mods have no fs, `node:` or `process`. Temp files go through `$.process.run` (`mktemp -d`, `sh -c 'cat > "$1"'` with stdin).
+- The API is early access.
+
+Design:
+
+- `plugins/review/hooks/register.tsx` registers `consult` at `session.start` and serves it from a `tool.call` hook. Pure logic (input validation, prompt and argv building, output clipping) lives in side files under `plugins/review/hooks/consult/` with `claude plugin test` tests. `hooks/hooks.json` declares the module.
+- Input: `tool` (codex|agy), `mode` (diff|plan), `model`, `effort` (same matrix as today), `notes` (inline text, length-bounded), `repo`, `base` or `commit`, `timeoutSec` (≤ 540, default 480).
+- codex runs read-only with the notes on stdin. agy runs in a temp workspace whose PreToolUse hook is `agy-gate.sh`, which stays a script under `$.plugin.root` because agy executes it.
+- Timeout, failure and the log tail come back as a tool error with the exit status, never as an empty success.
+- `consult.sh` and `tests/check.sh` are deleted; their cases move to the mod tests.
+
+Skill change (second-opinion):
+
+- Split a review into focused passes, each one consult call sized to finish in about 8 minutes: one dimension (correctness, security, tests, plan feasibility) or one file group per pass.
+- Give a sizing rule (diff lines or plan sections per pass, effort per size) and run independent passes in parallel.
+- Merge pass results through `references/consolidation.md`.
+- A pass that times out gets split again, not retried at higher effort.
+
 ## 5. Rejected alternatives
 
 | Alternative | Why it lost |
@@ -251,7 +282,7 @@ Cutover (S6) runs as one sequence with no other Claude sessions open (`pgrep -af
 3. `git merge --ff-only regroup`, then `claude plugin marketplace update adminhead`.
 4. Trigger renames with `claude plugin list` (S0 H1). That rewrites `enabledPlugins` at every scope but drops the old install records, so the new names are enabled yet not installed. Immediately run `claude plugin install baseline@adminhead --scope user`, then `claude plugin install <new>@adminhead --scope <s>` for every renamed plugin in the step 1 inventory (scope and projectPath each), plus its LSP dependency, before any working session.
 5. Per §3.3: install deploy wherever infra is enabled, homelab where used, github-admin at user scope. Ask about prototype, experiment-loop, modernize.
-6. Replace the consult.sh allow rule with the path S0 captured, then `chezmoi re-add ~/.claude/settings.json`.
+6. Replace the consult.sh allow rule with `mcp__review__consult` (S3b), then `chezmoi re-add ~/.claude/settings.json`.
 7. Fresh session, `/reload-plugins`, then the S5 probes and both §6 proofs.
 
 ## 8. Slices
@@ -265,6 +296,7 @@ All work happens on branch `regroup` in a worktree under `.claude/worktrees/`. M
 | S2a | Rename references outside crew; "if installed" only for per-project targets; list every imperative reference and confirm it targets the same plugin or a baseline member | `plugins/**` minus crew | S1 | §6 repo proof empty; every grader `plugin:skill` resolves; descriptions ≤1024 chars | §6 `rg` plus a one-off resolver | coder |
 | S2b | Sentry per Q3 (A: grader only; B: §4.4) | `plugins/sentry-core/**`, `plugins/coding-*/skills/sentry` | S1 | B: all relative links resolve; no-sentry-core behavior written into each skill | link resolver | coder-high |
 | S3 | Crew, scripts, setup: preloads, tool names, devops route; new agent-tools rule that each adminhead `skills:` entry resolves to a `SKILL.md`, with a negative fixture; `install.sh` installs baseline and verifies each member from its `plugin.json`, with fixtures for missing, disabled, wrong-scope and partial-failure; setup markers | `plugins/crew/**`, `scripts/agent-tools*`, `scripts/install*`, `plugins/setup/**` | S1 (parallel with S2) | all checks green, including new rules | agent-tools, crew check.sh, install.test.sh | coder-high |
+| S3b | consult mod tool and focused-pass skill (§4.5); grant `mcp__review__consult` to the agents that preload second-opinion; drop the gate exception and its test case | `plugins/review/**`, `plugins/crew/agents/*.md` tools lines, `plugins/crew/scripts/tests/readonly-bash.test.sh`, `scripts/agent-tools.py` | S3 | `claude plugin test plugins/review` and `validate` pass; a live consult call per tool returns findings under the cap; the skill names the pass-splitting rule | `claude plugin test plugins/review`; crew check.sh; one live codex call | coder-high |
 | S4 | Docs: pages, README rows, CLAUDE.md layout line, crew/setup/code-search docs | `docs/plugins/**`, README.md, CLAUDE.md | S1 (parallel) | every catalog plugin has a README row and a page naming each skill | one-off records-agree script plus §6 `rg` | scribe |
 | S5 | Branch verification: moved suites from new paths; `claude --plugin-dir` probes for preload H1s, an Exa call, Playwright visible with the unsafe tool denied, no-sentry-core behavior; paid eval smoke on moved cases (`--runs 1`, under $3, only with approval); `review` on the full diff | — | S2–S4 | all green; no `plugin_errors`; lost negatives recorded | as listed | orchestrator + review |
 | S6 | Cutover (§7), with user authorization | settings, installs | S5 | §1 post-cutover conditions | §6 settings proof; fresh-session probes | devops |
