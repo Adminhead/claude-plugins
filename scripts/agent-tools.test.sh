@@ -12,7 +12,7 @@ trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 CG='mcp__plugin_code-search_codegraph__codegraph_explore'
-PW=mcp__plugin_efficient-web_playwright
+PW=mcp__plugin_web_playwright
 TS_CMD='bun --no-env-file --config=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.ts" || exit 2'
 PY_CMD='python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.py" || exit 2'
 STOP_CMD='python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/orchestration-guard.py" stop'
@@ -103,7 +103,7 @@ expect ok-builtins 0 "$(ok 1)"
 # Server-level grants: bare and `__*` forms of a read-only server pass in a read-only agent.
 agent ok-server-grant ro "tools: Read, Glob, Grep, mcp__plugin_code-search_codegraph, mcp__coremods"
 expect ok-server-grant 0 "$(ok 1)"
-agent ok-server-star ro "tools: Read, Glob, Grep, mcp__plugin_efficient-core_exa__*"
+agent ok-server-star ro "tools: Read, Glob, Grep, mcp__plugin_research_exa__*"
 expect ok-server-star 0 "$(ok 1)"
 # A writer may deny a whole server and individual tools of a mixed one.
 agent ok-dis-server coder "disallowedTools: Agent, mcp__claude-in-chrome, mcp__plugin_github_github__create_branch"
@@ -123,7 +123,7 @@ V=mcp__plugin_code-search_grep-app__create_thing
 agent r4-verb a "tools: Read, Glob, Grep, $V"
 expect r4-verb 1 "a.md: 4: read-only agent has MCP tool \`$V\` with a write verb"
 # A verb in the server part of the name does not count.
-agent ok-verb-server ro "tools: Read, Glob, Grep, mcp__plugin_efficient-core_exa__web_fetch_exa"
+agent ok-verb-server ro "tools: Read, Glob, Grep, mcp__plugin_research_exa__web_fetch_exa"
 expect ok-verb-server 0 "$(ok 1)"
 # The coremods git tools are known MCP tools; a write verb on that server still fails.
 agent ok-coremods ro "tools: Read, Glob, Grep, mcp__coremods__git_log"
@@ -248,6 +248,20 @@ expect r8-bad 1 "hooks.json: 8: unreadable or no \`hooks\` (JSONDecodeError)"
 scaffold r8-gone
 rm "$tmp/r8-gone/hooks/hooks.json"
 expect r8-gone 1 "hooks.json: 8: unreadable or no \`hooks\` (FileNotFoundError)"
+
+# Rule 9: skills preloads resolve under the plugins dir (the fixture's parent, $tmp); third-party names pass.
+mkdir -p "$tmp/pl/skills/s" && : >"$tmp/pl/skills/s/SKILL.md"
+agent ok-preload a "tools: Read, Glob, Grep
+skills:
+  - pl:s
+  - avoid-ai-writing:avoid-ai-writing"
+expect ok-preload 0 "$(ok 1)"
+agent r9-missing a "tools: Read, Glob, Grep
+skills:
+  - pl:gone
+  - efficient-core:coding"
+expect r9-missing 1 "a.md: 9: skills preload \`pl:gone\` does not resolve to plugins/pl/skills/gone/SKILL.md
+a.md: 9: skills preload \`efficient-core:coding\` does not resolve to plugins/efficient-core/skills/coding/SKILL.md"
 
 # Parse failures: list-form tools, no frontmatter, unreadable file.
 agent parse-list a "tools:

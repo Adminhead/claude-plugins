@@ -27,7 +27,7 @@ Run `claude plugin list --json` across all marketplaces. A plugin is effective h
 - Skip effective adminhead plugins.
 - Report disabled ones and suggest `claude plugin enable`.
 - Flag official `gopls-lsp`, `pyright-lsp` and `typescript-lsp` that would duplicate a proposed language plugin. Don't remove them.
-- Offer to repair an installed `efficient-<lang>` whose LSP dependency isn't installed at the same scope.
+- Offer to repair an installed `coding-<lang>` whose LSP dependency isn't installed at the same scope.
 
 ## 4. Inspect
 
@@ -35,26 +35,30 @@ List files with `git ls-files --cached --others --exclude-standard`, or outside 
 
 Markers are hints. The catalog descriptions decide which plugin fits.
 
-- `go.mod`: efficient-go
-- `pyproject`, `requirements*`: efficient-python
-- `package.json`, `tsconfig`: efficient-js, plus efficient-web for React, Vue or Vite
-- `Cargo.toml`: efficient-rust
-- `*.sh`: efficient-shell
-- Dockerfile, Kubernetes, Helm, `*.tf`, Ansible: infra
-- `.github/workflows`: github
-- Sentry config or `@sentry/*`: sentry
+- `go.mod`: coding-go
+- `pyproject`, `requirements*`: coding-python
+- `package.json`, `tsconfig`: coding-js, plus web for React, Vue or Vite
+- `Cargo.toml`: coding-rust
+- `*.sh`: coding-shell
+- `sdkconfig`, `idf_component.yml`: coding-esp
+- Terraform, OpenTofu (`*.tf`) or Ansible: infra
+- Dockerfile, Kubernetes manifests, Helm charts, Argo CD or Flux config: deploy
+- VLAN, WireGuard, router or DNS config for a home network: homelab
+- `.github/workflows`, `.github/dependabot.yml`: github-admin
+- Sentry config or `@sentry/*`: sentry-core
 - `devenv.nix`: devenv
 - `.chezmoi*`: chezmoi
-- migrations, `schema.sql`, Prisma: efficient-db
-- auth libraries: efficient-auth
+- migrations, `schema.sql`, Prisma: db
+- auth libraries: auth
+- security-sensitive code (secrets, crypto, input parsing): security
+- test runner config or test files: testing
 - OpenAPI, proto, GraphQL: api
 - Prometheus or Grafana: observability
 - `.pre-commit-config`, `.editorconfig`: tooling
 - MCP SDK: mcp
-- `sdkconfig`, `idf_component.yml`: efficient-esp
 - CDK or SAM: aws
 
-Never propose `crew`, `coremods` or `example`. They are user-scope or template plugins, not per-project ones.
+Never propose `baseline`, `crew`, `coremods` or `example`. `baseline` is the user-scope default set (`scripts/install.sh` installs it with its members), and the others are user-scope or template plugins, not per-project ones.
 
 ## 5. Confirm
 

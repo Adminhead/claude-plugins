@@ -23,6 +23,8 @@ Rules:
      every member has an agent file.
   8  hooks.json holds both exact gate commands as PreToolUse `Bash` hooks, each with `timeout: 30` and
      `onFailure: "block"`, plus the four orchestration-guard entries.
+  9  every `skills` preload `<plugin>:<skill>` resolves to plugins/<plugin>/skills/<skill>/SKILL.md, except
+     plugins outside this marketplace (THIRD_PARTY).
 
 Prints one `<file>: <rule>: <detail>` line per violation and exits 1, or
 `agent-tools: ok (<n> agents)` and exits 0.
@@ -43,15 +45,15 @@ MCP_SERVERS = {
     "plugin_code-search_codegraph": True,
     "plugin_code-search_context7": True,
     "plugin_code-search_grep-app": True,
-    "plugin_efficient-core_exa": True,
+    "plugin_research_exa": True,
     "coremods": True,
-    "plugin_efficient-web_playwright": False,
+    "plugin_web_playwright": False,
     "plugin_github_github": False,
     "claude-in-chrome": False,
 }
 # Agents that may take a server-level grant of a server with write tools: browser-tester drives a
 # browser and disallows the one tool that runs arbitrary code.
-WRITE_SERVER_GRANTS = {"browser-tester": {"plugin_efficient-web_playwright"}}
+WRITE_SERVER_GRANTS = {"browser-tester": {"plugin_web_playwright"}}
 WRITERS = {"Edit", "Write", "NotebookEdit"}
 READONLY_BANNED = ["Skill", "SendMessage", "Monitor", "Artifact", "EnterWorktree", "Agent", "PowerShell"]
 WRITE_VERBS = (
@@ -59,6 +61,7 @@ WRITE_VERBS = (
     "save", "add", "comment", "assign", "fork", "request", "run", "send", "close", "remove", "set", "post",
 )
 IGNORED_FIELDS = ("hooks", "mcpServers", "permissionMode", "initialPrompt")
+THIRD_PARTY = {"avoid-ai-writing"}  # preload prefixes that name plugins from other marketplaces
 MAIN_THREAD = "orchestration.md"  # runs as the session itself, so it is exempt from rules 3-4
 
 TS_GATE_CMD = 'bun --no-env-file --config=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/readonly-gate.ts" || exit 2'
@@ -115,7 +118,13 @@ def parse_frontmatter(fm):
     return keys, errors
 
 
-def check(path, read_only):
+def preloads(fm):
+    """Return the entries of the `skills:` list in a frontmatter block."""
+    m = re.search(r"^skills:[ \t]*\n((?:[ \t]+-[ \t]*\S.*\n?)+)", fm + "\n", re.M)
+    return re.findall(r"^[ \t]+-[ \t]*(\S+)", m.group(1), re.M) if m else []
+
+
+def check(path, read_only, plugins):
     out = []
     v = lambda rule, detail: out.append(f"{path.name}: {rule}: {detail}")
     try:
@@ -138,6 +147,10 @@ def check(path, read_only):
     for k in IGNORED_FIELDS:
         if k in keys:
             v("6", f"`{k}` is ignored in plugin agents")
+    for entry in preloads(fm):
+        plugin, _, skill = entry.partition(":")
+        if plugin not in THIRD_PARTY and not (plugins / plugin / "skills" / skill / "SKILL.md").is_file():
+            v("9", f"skills preload `{entry}` does not resolve to plugins/{plugin}/skills/{skill}/SKILL.md")
     if path.name == MAIN_THREAD:
         # A `tools` key would narrow the whole session, not just this agent.
         if "tools" in keys:
@@ -247,7 +260,7 @@ def main():
         return 1
     sets, problems = gate_sets(root.parent)
     read_only = set().union(*sets.values())
-    problems += [p for f in files for p in check(f, read_only)]
+    problems += [p for f in files for p in check(f, read_only, root.parent.parent)]
     stems = {f.stem for f in files}  # agent files are named after `name`
     problems += [f"readonly-gate: 7: READ_ONLY member `{n}` has no agent file" for n in sorted(read_only) if n.split(":", 1)[-1] not in stems]
     problems += check_hooks(root.parent)

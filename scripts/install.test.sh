@@ -13,7 +13,7 @@ export STUB_LOG=$tmp/calls STUB_MKT=$tmp/markets.json STUB_LIST=$tmp/list.json
 export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config} XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache} XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
 export HOME=$tmp/home
-unset CLAUDE_CONFIG_DIR STUB_FAIL_ADD
+unset CLAUDE_CONFIG_DIR STUB_FAIL_ADD STUB_FAIL_INSTALL
 cat > "$tmp/bin/claude" <<'EOF'
 #!/bin/sh
 echo "$*" >> "$STUB_LOG"
@@ -21,13 +21,14 @@ case "$*" in
   "plugin marketplace list --json") cat "$STUB_MKT" ;;
   "plugin list --json") cat "$STUB_LIST" ;;
   "plugin marketplace add "*) [ "$4" = "${STUB_FAIL_ADD:-}" ] && exit 1 ;;
+  "plugin install "*) [ "$3" = "${STUB_FAIL_INSTALL:-}" ] && exit 1 ;;
 esac
 exit 0
 EOF
 chmod +x "$tmp/bin/claude"
 export PATH=$tmp/bin:$PATH
 
-required=(coremods efficient-core efficient-testing code-search crew git github authoring setup)
+mapfile -t required < <(echo baseline; jq -r '.dependencies[]' "$repo/plugins/baseline/.claude-plugin/plugin.json")
 launcher=$HOME/.local/bin/claude-tmux
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -40,13 +41,12 @@ list_with() { # list_with SKIP: plugin list json with every required id at user 
 }
 reset() { # fresh HOME, no marketplaces, all plugins listed, empty call log
   rm -rf "$HOME" "$STUB_LOG"; mkdir -p "$HOME/.claude"; : > "$STUB_LOG"
-  echo '[]' > "$STUB_MKT"; list_with > "$STUB_LIST"; unset STUB_FAIL_ADD
+  echo '[]' > "$STUB_MKT"; list_with > "$STUB_LIST"; unset STUB_FAIL_ADD STUB_FAIL_INSTALL
 }
 mutating() { grep -v -e '^plugin list --json$' -e '^plugin marketplace list --json$' "$STUB_LOG" || true; }
 baks() { find "$HOME/.local/bin" -maxdepth 1 -name 'claude-tmux.bak-*' | wc -l; }
 
-expected_installs=""
-for id in "${required[@]}"; do expected_installs+="plugin install $id@adminhead --scope user"$'\n'; done
+expected_installs="plugin install baseline@adminhead --scope user"$'\n'
 third_party="plugin marketplace add boostvolt/claude-code-lsps
 plugin marketplace add conorbronsdon/avoid-ai-writing
 plugin install avoid-ai-writing@conorbronsdon-skills --scope user"
@@ -109,7 +109,7 @@ out=$("$script" --dry-run 2>&1) || fail "6: dry run failed"
 [[ ! -e $HOME/.local ]] || fail "6: created launcher dir"
 for line in "+ ln -s $repo/scripts/claude-tmux.sh $launcher" \
   "+ claude plugin marketplace add $repo" \
-  "+ claude plugin install crew@adminhead --scope user" \
+  "+ claude plugin install baseline@adminhead --scope user" \
   "+ claude plugin marketplace add boostvolt/claude-code-lsps" \
   "+ claude plugin install avoid-ai-writing@conorbronsdon-skills --scope user"; do
   [[ $out == *"$line"* ]] || fail "6: missing '$line'"
@@ -118,7 +118,7 @@ done
 # 7. Third-party add fails: required installs still run, then nonzero exit
 reset
 if STUB_FAIL_ADD=boostvolt/claude-code-lsps "$script" >/dev/null 2>&1; then fail "7: exit 0"; fi
-mutating | grep -qx 'plugin install crew@adminhead --scope user' || fail "7: required installs missing"
+mutating | grep -qx 'plugin install baseline@adminhead --scope user' || fail "7: required installs missing"
 mutating | grep -qx 'plugin install avoid-ai-writing@conorbronsdon-skills --scope user' || fail "7: later step skipped"
 
 # 8. Read-back misses one required id: nonzero exit
@@ -126,5 +126,25 @@ reset; list_with crew > "$STUB_LIST"
 if "$script" >/dev/null 2>"$tmp/err"; then fail "8: exit 0"; fi
 grep -q 'crew@adminhead' "$tmp/err" || fail "8: error does not name crew"
 [[ $(tail -n1 "$tmp/err") == "error: 1 required plugin(s) not installed: crew@adminhead" ]] || fail "8: no final summary: $(tail -n1 "$tmp/err")"
+
+# 9. A member is installed but disabled: nonzero exit, error names it and the fix
+reset; list_with | jq -c 'map(if .id == "crew@adminhead" then .enabled = false else . end)' > "$STUB_LIST"
+if "$script" >/dev/null 2>"$tmp/err"; then fail "9: exit 0"; fi
+grep -q 'crew@adminhead is installed but disabled; run: claude plugin enable crew@adminhead --scope user' "$tmp/err" || fail "9: no disabled message"
+[[ $(tail -n1 "$tmp/err") == "error: 1 required plugin(s) not installed: crew@adminhead" ]] || fail "9: no final summary"
+
+# 10. A member exists only at project scope: it is not installed at user scope
+reset; list_with | jq -c 'map(if .id == "crew@adminhead" then .scope = "project" else . end)' > "$STUB_LIST"
+if "$script" >/dev/null 2>"$tmp/err"; then fail "10: exit 0"; fi
+grep -q 'crew@adminhead is not installed at user scope' "$tmp/err" || fail "10: no scope message"
+
+# 11. Partial install: the baseline install fails and only coremods landed; every gap is named
+reset; list_with | jq -c 'map(select(.id == "coremods@adminhead"))' > "$STUB_LIST"
+if STUB_FAIL_INSTALL=baseline@adminhead "$script" >/dev/null 2>"$tmp/err"; then fail "11: exit 0"; fi
+grep -q 'install failed: baseline@adminhead' "$tmp/err" || fail "11: no install failure message"
+for id in "${required[@]}"; do
+  [[ $id == coremods ]] || grep -q "$id@adminhead" "$tmp/err" || fail "11: $id not reported"
+done
+mutating | grep -qx 'plugin install avoid-ai-writing@conorbronsdon-skills --scope user' || fail "11: later step skipped"
 
 echo "all install checks passed"
