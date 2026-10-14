@@ -16,8 +16,8 @@ Run `claude plugin validate --strict plugins/<name>`, then `claude plugin valida
 
 - The `version` in `plugins/<name>/.claude-plugin/plugin.json` matches the plugin's entry in `.claude-plugin/marketplace.json`.
 - The version is higher than the published one (`git show origin/main:plugins/<name>/.claude-plugin/plugin.json`), or the plugin is new there. An unchanged version means installed copies won't update.
-- `docs/plugins/<name>.md` exists and names every skill under `plugins/<name>/skills/`.
-- `README.md` has a row for the plugin that links to its docs page.
+- `README.md` has a row for the plugin that links to its docs page. That page is `docs/plugins/<name>.md` or a family page shared with related plugins (such as `coding.md` or `github.md`).
+- The linked page exists and names every skill under `plugins/<name>/skills/`.
 
 Fix drift in these records yourself. Ask before changing anything else.
 

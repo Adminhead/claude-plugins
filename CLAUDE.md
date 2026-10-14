@@ -25,7 +25,7 @@ Run from the repo root.
 Use the `ship-plugin` skill (`.claude/skills/ship-plugin/SKILL.md`). Before it runs, these records must agree for the plugin:
 
 - `version` in `plugins/<name>/.claude-plugin/plugin.json` equals the entry in `.claude-plugin/marketplace.json` and is higher than on `origin/main`. An unchanged version means installed copies don't update.
-- `docs/plugins/<name>.md` exists and names every skill under `plugins/<name>/skills/`.
+- The docs page the README row links to (`docs/plugins/<name>.md` or a family page) exists and names every skill under `plugins/<name>/skills/`.
 - `README.md` has a row for the plugin that links to its docs page.
 
 Commit to local `main`. Push only when asked.
