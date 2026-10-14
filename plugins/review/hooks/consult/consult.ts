@@ -78,6 +78,7 @@ export function validate(input: Record<string, any>): Checked {
   if (notes.length > MAX_NOTES) return { error: `notes is ${notes.length} characters; the limit is ${MAX_NOTES}. Split the review into smaller passes.` }
   if (mode === 'plan' && notes.trim() === '') return { error: 'plan mode needs the plan in notes' }
   const repo = optional(input.repo, 'repo', 1024)
+  if (typeof repo === 'string' && /[\r\n]/.test(repo)) return { error: 'repo must not contain a newline' }
   const base = optional(input.base, 'base', 200)
   const commit = optional(input.commit, 'commit', 200)
   for (const v of [repo, base, commit]) if (typeof v === 'object') return v
@@ -150,11 +151,11 @@ export function blockedFiles(names: string): string[] {
     .filter(n => n !== '' && (n.length > MAX_PATH || (SECRET.test(n) && !SECRET_OK.test(n))))
 }
 
-export function preamble(c: Consult, repo: string): string {
+export function preamble(c: Consult, repo: string, canRead = true): string {
   if (c.mode === 'diff') {
     return `You are an independent code reviewer from a different model family than the author. Review ${target(c)} in the repository at ${repo}. Report only real defects: correctness, security, data loss, concurrency, broken contracts, missing error handling. For each, give file:line, severity (high/medium/low), and a concrete failure scenario. Skip style nits. Do not modify any files. If you find nothing significant, say so.`
   }
-  return `You are an adversarial reviewer from a different model family than the author. Critique the plan below. Find flaws, wrong assumptions, missing risks, unverified claims, and cheaper or simpler alternatives. You may read files in ${repo} to check claims, but do not modify anything. Output a numbered list; each item gives severity (high/medium/low), the problem, evidence, and the change you recommend. If the plan is sound, say so and name its weakest point.`
+  return `You are an adversarial reviewer from a different model family than the author. Critique the plan below. Find flaws, wrong assumptions, missing risks, unverified claims, and cheaper or simpler alternatives. ${canRead ? `You may read files in ${repo} to check claims, but do not modify anything.` : 'Do not modify anything.'} Output a numbered list; each item gives severity (high/medium/low), the problem, evidence, and the change you recommend. If the plan is sound, say so and name its weakest point.`
 }
 
 const withNotes = (p: string, notes: string) => (notes === '' ? p : `${p}\n\n--- Notes from the requester ---\n${notes}`)
@@ -186,7 +187,7 @@ export function agyInputText(c: Consult, diff: string): string {
 }
 
 export function agyCall(c: Consult, repo: string, ws: string): { argv: string[]; cwd: string } {
-  const prompt = `${preamble(c, repo)}\n\nBefore anything else, read ${ws}/${AGY_INPUT} in full (use as many view_file calls as it takes). It holds the requester's notes and any diff under review. Shell commands are disabled. The repository itself is not in your workspace, so judge from that file alone.`
+  const prompt = `${preamble(c, repo, false)}\n\nBefore anything else, read ${ws}/${AGY_INPUT} in full (use as many view_file calls as it takes). It holds the requester's notes and any diff under review. Shell commands are disabled. The repository itself is not in your workspace, so judge from that file alone.`
   return { argv: guarded(c, ['agy', '--model', c.model, '--effort', c.effort, '-p', prompt]), cwd: ws }
 }
 

@@ -99,8 +99,8 @@ export const register: Register = on => {
       const verdict: any = await $.tool.check({ tool: TOOL_NAME, input: args })
       if (verdict.decision === 'ask') {
         const what = `${checked.ok.cli} ${checked.ok.mode} review of ${checked.ok.repo ?? 'the session repo'}`
-        const answer = await $.ui.ask(`Send code to an outside model (${what})?`, ['Allow', 'Deny']).catch(() => 'unavailable')
-        if (answer === 'unavailable') return fail('consult: needs approval and nobody can be asked here; allow mcp__review__consult to run it unattended')
+        const answer = await $.ui.ask(`Send code to an outside model (${what})?`, ['Allow', 'Deny']).catch((err: unknown) => new Error(err instanceof Error ? err.message : String(err)))
+        if (answer instanceof Error) return fail(`consult: needs approval and nobody can be asked here (${answer.message}); allow mcp__review__consult to run it unattended`)
         if (answer !== 'Allow') return fail('consult: not approved')
       } else if (verdict.decision !== 'allow') {
         return fail(`consult: not permitted${verdict.reason ? `: ${verdict.reason}` : ''}`)

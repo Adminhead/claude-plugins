@@ -48,7 +48,7 @@ MCP_SERVERS = {
     "plugin_research_exa": True,
     "coremods": True,
     # consult reads the repo and sends text to external models; it writes nothing local beyond its own temp dir.
-    "review": True,
+    "review": True,  # read-only only while agents grant the exact tool mcp__review__consult
     "plugin_web_playwright": False,
     "plugin_github_github": False,
     "claude-in-chrome": False,

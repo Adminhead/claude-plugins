@@ -78,7 +78,7 @@ mcp__review__consult { cli: "codex", mode: "diff", model: "gpt-6-astra", effort:
   base: "main", notes: "Pass: security only. Files: auth/session.py, auth/tokens.py." }
 ```
 
-Both reviewers run read-only. codex uses its read-only sandbox. agy runs in an empty scratch workspace, without the reviewed repo (a repo's own `.agents/hooks.json` would run as code), and its hook allows only file-reading tools. The tool kills the reviewer when `timeoutSec` passes.
+Both reviewers run read-only. codex runs inside the repo, so a checked-out PR's `.codex/config.toml` can start MCP servers in a repo you trust by path: review untrusted PRs with agy, or check `.codex/` first. codex uses its read-only sandbox. agy runs in an empty scratch workspace, without the reviewed repo (a repo's own `.agents/hooks.json` would run as code), and its hook allows only file-reading tools. The tool kills the reviewer when `timeoutSec` passes.
 
 A failed call returns a tool error and never an empty reply:
 

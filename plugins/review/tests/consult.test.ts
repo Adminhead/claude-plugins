@@ -61,6 +61,8 @@ describe('validate', () => {
   })
 
   test('repo must be a non-empty string', () => {
+    expect(err({ repo: '/a\nb' })).toMatch(/newline/)
+    expect(err({ repo: '/a\rb' })).toMatch(/newline/)
     expect(err({ repo: '' })).toMatch(/repo must be/)
     expect(err({ repo: 3 })).toMatch(/repo must be/)
   })
@@ -104,6 +106,12 @@ describe('argv building', () => {
     expect(call.argv.slice(0, 5)).toEqual(['timeout', '-k', '5', '60', 'agy'])
     expect(call.argv).toEqual(expect.arrayContaining(['--model', 'gemini-3.1-pro-high', '--effort', 'high', '-p']))
     expect(call.argv.at(-1)).toContain('/tmp/ws/review-input.md')
+  })
+
+  test('agy plan prompts do not offer repo files it cannot see; codex plan prompts do', () => {
+    const plan = { mode: 'plan', notes: 'p' }
+    expect(agyCall(ok({ cli: 'agy', model: 'gemini-3.1-pro-high', ...plan }), REPO, '/tmp/ws').argv.at(-1)).not.toContain('may read files')
+    expect(codexCall(ok(plan), REPO).stdin).toContain(`You may read files in ${REPO}`)
   })
 
   test('agy hook config points at the gate and matches every tool', () => {
@@ -158,9 +166,12 @@ describe('output', () => {
 
 describe('consult tool', () => {
   const calls: any[] = []
-  async function start($: any, on: any, run: (argv: string[], e: any) => { exitCode: number; stdout?: string; stderr?: string }, decision = 'allow') {
+  async function start($: any, on: any, run: (argv: string[], e: any) => { exitCode: number; stdout?: string; stderr?: string }, decision: string | Error = 'allow') {
     calls.length = 0
-    on('tool.check', async () => ({ decision }))
+    on('tool.check', async () => {
+      if (decision instanceof Error) throw decision
+      return { decision }
+    })
     on('session.cwd', async () => ({ value: REPO }))
     on('session.start', async () => ({ cwd: REPO }))
     on('process.run', async (_$: any, e: any) => {
@@ -196,8 +207,22 @@ describe('consult tool', () => {
   test('an ask with nobody to ask is refused', async ($, on) => {
     await start($, on, happy, 'ask')
     const out: any = await $.tool.call(base)
-    expect(out.deny).toMatch(/needs approval|permission check failed/)
+    expect(out.deny).toMatch(/^consult: needs approval and nobody can be asked here/)
     expect(calls).toHaveLength(0)
+  })
+
+  test('a thrown permission check is refused with its reason', async ($, on) => {
+    await start($, on, happy, new Error('engine down'))
+    const out: any = await $.tool.call(base)
+    expect(out.deny).toMatch(/^consult: permission check failed: /)
+    expect(calls).toHaveLength(0)
+  })
+
+  test('an ask the person answers Allow runs the review', async ($, on) => {
+    on('tool.call', async (_$: any, e: any, next: any) => (e.tool === 'AskUserQuestion' ? { result: { answers: { 'Send code to an outside model (codex diff review of the session repo)?': 'Allow' } } } : next(e)))
+    await start($, on, happy, 'ask')
+    const out: any = await $.tool.call(base)
+    expect(out.result).toMatch(/^second-opinion: codex/)
   })
 
   test('invalid input is refused and nothing runs', async ($, on) => {
