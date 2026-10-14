@@ -338,7 +338,7 @@
       "name": "crew",
       "source": "./plugins/crew",
       "description": "The orchestrated-session crew: 14 subagents (coders, reviewers, debuggers, architect, devops, dba, scribe, browser tester) plus the orchestration main-thread agent, with a read-only Bash gate for the read-only agents, orchestration nudge hooks, and the orchestration system-prompt file. Agents are spawned as crew:<name>.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     }
   ],

@@ -3,7 +3,7 @@ name: security-auditor
 description: Read-only security review of a diff or code area. Use proactively after changes to auth, input handling, secrets, crypto, dependencies, CI workflows, or anything crossing a trust boundary, alongside review (which covers correctness). Not for general correctness (review), fixes (coder, devops, dba), or Claude Code agent and settings files. Returns severity-ranked findings with attack paths, plus clean checks and gaps.
 model: opus
 effort: high
-tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app, mcp__plugin_research_exa
+tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app, mcp__plugin_research_exa, mcp__review__consult
 skills:
   - review:second-opinion
 color: orange

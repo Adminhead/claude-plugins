@@ -115,7 +115,6 @@ cmd allow 'rg foo src'
 cmd allow 'echo x > /tmp/f'
 cmd allow 'cmd 2>/dev/null'
 cmd allow 'make test 2>&1'
-cmd allow '$HOME/.claude/skills/second-opinion/scripts/consult.sh --tool codex'
 cmd allow 'npm test'
 cmd allow 'npm run build'
 cmd allow "rg 'a|b' src"

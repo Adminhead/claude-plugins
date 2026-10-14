@@ -47,6 +47,8 @@ MCP_SERVERS = {
     "plugin_code-search_grep-app": True,
     "plugin_research_exa": True,
     "coremods": True,
+    # consult reads the repo and sends text to external models; it writes nothing local beyond its own temp dir.
+    "review": True,
     "plugin_web_playwright": False,
     "plugin_github_github": False,
     "claude-in-chrome": False,

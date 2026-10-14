@@ -3,7 +3,7 @@ name: review
 description: Independent, thorough read-only review of implementations and plans. Use proactively after large or risky changes (auth, data, concurrency, migrations, public APIs, IaC, CI workflows), and on high-stakes plans before execution. Can bring in codex/agy (review:second-opinion) when a different model family would add signal. Not for small task-scoped diffs (quick-review) or attack-path analysis (security-auditor). Returns verified findings ranked by severity.
 model: opus
 effort: high
-tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app
+tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app, mcp__review__consult
 skills:
   - review:second-opinion
 color: orange
