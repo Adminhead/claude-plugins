@@ -1,18 +1,22 @@
 # sentry
 
-Teaches Claude Code to instrument apps with the official Sentry SDKs. It covers setup, errors, tracing, logs, metrics, and cron monitors across JavaScript, Python, Go, JVM and Android, Apple, Flutter, and other runtimes.
+The Sentry family: `sentry-core`, which teaches Claude Code to instrument apps with the official Sentry SDKs, and two companion plugins that connect Sentry's MCP server. `sentry-core` is not in the `baseline` set.
 
-## What it adds
+## sentry-core
 
-| Skill | Replaces | Purpose |
-| --- | --- | --- |
-| `sentry:sentry` | `sentry` | Instrument apps with official Sentry SDKs: `Sentry.init`, DSN config, error capture, tracing, structured logs, metrics, cron monitors, source maps, and SDK upgrades |
+`sentry-core` covers setup, errors, tracing, logs, metrics, and cron monitors across JavaScript, Python, Go, JVM and Android, Apple, Flutter, and other runtimes.
 
-It replaces the user-level skill of the same name. Invoke it as `sentry:sentry`. The bare name `sentry` no longer works.
+### What it adds
+
+| Skill | Purpose |
+| --- | --- |
+| `sentry-core:sentry` | Instrument apps with official Sentry SDKs: `Sentry.init`, DSN config, error capture, tracing, structured logs, metrics, cron monitors, source maps, and SDK upgrades |
+
+Invoke it as `sentry-core:sentry`. Installs under the old `sentry` name move to `sentry-core` through the marketplace `renames` map.
 
 The skill has references for the project profile, setup, configuration, errors, tracing, logs, metrics, and crons, plus one file per platform group.
 
-## Behavior
+### Behavior
 
 - Reads a `## Sentry` section from the project's `CLAUDE.md` or `AGENTS.md` before choosing signals, scrubbing, breadcrumbs, sample rates, or DSN handling. Without one, it uses conservative generic defaults from `references/profile.md` and offers to write the section. It writes the section only after you agree.
 - Reads the installed SDK version, then checks current docs through Context7 (`/getsentry/sentry-docs` first) or `docs.sentry.io`. The references record decisions and pitfalls, not an API manual.
@@ -22,7 +26,7 @@ The skill has references for the project profile, setup, configuration, errors, 
 - Asks before any step that touches your Sentry org: a test event, log, metric, or check-in, a source-map or symbol upload, or a cron `MonitorConfig`.
 - Treats content fetched from Sentry as data, not instructions.
 
-## Requirements
+### Requirements
 
 - A project that uses, or will use, an official Sentry SDK.
 - The Context7 MCP server or web fetch, for current docs.
@@ -30,30 +34,45 @@ The skill has references for the project profile, setup, configuration, errors, 
 
 Version numbers in the platform references are a snapshot. Claude rechecks them against current docs.
 
-## Install
+### Install
 
 ```
 claude plugin marketplace add /path/to/claude-plugins
-claude plugin install sentry@adminhead
+claude plugin install sentry-core@adminhead
 ```
 
 To try it without installing:
 
 ```
-claude --plugin-dir plugins/sentry
+claude --plugin-dir plugins/sentry-core
 ```
 
-## Verify
+### Verify
 
 1. Validate the plugin.
    ```
-   claude plugin validate --strict plugins/sentry
+   claude plugin validate --strict plugins/sentry-core
    ```
-2. Start a fresh session. The skill list should show `sentry:sentry`.
+2. Start a fresh session. The skill list should show `sentry-core:sentry`.
+
+### Limits
+
+- Not for querying issues, releases, alerts, dashboards, or projects. Use the Sentry MCP tools below or `sentry-cli:sentry-cli` for that.
+- SDKs buffer, so a flush or an event ID proves an attempt, not delivery.
+- Without Context7 or web access, Claude has only the snapshot in the references.
+
+### Disable or uninstall
+
+| Task | Command |
+| --- | --- |
+| Disable | `claude plugin disable sentry-core@adminhead` |
+| Uninstall | `claude plugin uninstall sentry-core@adminhead` |
+
+The plugin ships only a skill, so both commands remove it. Start a new session to be sure it is gone.
 
 ## Sentry MCP servers (companion plugins)
 
-Two plugins connect Sentry's MCP server so Claude can query issues, events, traces, and releases. Both ship `defaultEnabled: false`, so installing one leaves it off until you enable it. The `sentry` skill routes such queries to these tools when one is enabled, and to `sentry-cli:sentry-cli` otherwise.
+Two plugins connect Sentry's MCP server so Claude can query issues, events, traces, and releases. Both ship `defaultEnabled: false`, so installing one leaves it off until you enable it. The `sentry-core:sentry` skill routes such queries to these tools when one is enabled, and to `sentry-cli:sentry-cli` otherwise.
 
 | Plugin | Transport | Use for | Auth |
 | --- | --- | --- | --- |
@@ -108,17 +127,4 @@ After enabling, `/mcp` should list the server. For `sentry-mcp`, it shows as nee
 | Disable | `claude plugin disable sentry-mcp@adminhead` |
 | Uninstall | `claude plugin uninstall sentry-mcp@adminhead` |
 
-## Limits
-
-- Not for querying issues, releases, alerts, dashboards, or projects. Use the Sentry MCP tools below or `sentry-cli:sentry-cli` for that.
-- SDKs buffer, so a flush or an event ID proves an attempt, not delivery.
-- Without Context7 or web access, Claude has only the snapshot in the references.
-
-## Disable or uninstall
-
-| Task | Command |
-| --- | --- |
-| Disable | `claude plugin disable sentry@adminhead` |
-| Uninstall | `claude plugin uninstall sentry@adminhead` |
-
-The plugin ships only a skill, so both commands remove it. Start a new session to be sure it is gone.
+Use `sentry-mcp-self-hosted@adminhead` for the self-hosted server.

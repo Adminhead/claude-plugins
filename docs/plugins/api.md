@@ -17,7 +17,7 @@ Adds eight skills for designing and reviewing public APIs: REST contracts, idemp
 
 Sources: some ideas were adapted from third-party skill collections. They are credited in the Acknowledgements section of the repository README.
 
-Each skill names its neighbors in its description and hands off to them. For example, `api:rest-design` routes deprecation questions to `api:versioning`, and `api:webhooks` routes consumer-side deduplication to `api:idempotency-retry`. Cross-references to skills in other plugins (`efficient-go:golang`, `efficient-auth:auth`, and similar) say "if installed" and are optional.
+Each skill names its neighbors in its description and hands off to them. For example, `api:rest-design` routes deprecation questions to `api:versioning`, and `api:webhooks` routes consumer-side deduplication to `api:idempotency-retry`. Cross-references to skills in other plugins (`coding-go:golang`, `auth:auth`, and similar) say "if installed" and are optional.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ The skills write designs, reviews, and policy documents. The rules that matter:
 
 ## Limits
 
-- Design guidance, not code generation. Server code belongs to the language skills, for example `efficient-go:golang` or `efficient-auth:auth`, if installed.
+- Design guidance, not code generation. Server code belongs to the language skills, for example `coding-go:golang` or `auth:auth`, if installed.
 - Standards move. `api:oauth-provider` says OAuth 2.1 is still an Internet-Draft. On 2026-10-13, draft-ietf-oauth-v2-1-16 was the active working-group draft, last updated 2026-09-02. `api:idempotency-retry` says the `Idempotency-Key` header draft is expired. On the same date, draft-ietf-httpapi-idempotency-key-header-07 was expired. Recheck both before citing them.
 - Notice windows, retry schedules, and similar numbers in the skills are common practice, not standards. Write your own commitment.
 - Each skill's scope is narrow by design. `api:webhooks` does not cover receiving webhooks in your own app, and `api:keys` does not cover consuming another vendor's keys.

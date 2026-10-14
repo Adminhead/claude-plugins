@@ -69,7 +69,7 @@ claude --plugin-dir plugins/authoring
 
 The first three skills moved from `~/.claude/skills/` with the same names. The five added in 0.2.0 and `agent-config-audit` are new to this plugin.
 
-The old name of `agent-config-audit` is listed in the [efficient family page](efficient.md).
+The old name of `agent-config-audit` is listed in the [old-to-new table](coding.md#old-to-new-names).
 
 - Old bare names no longer resolve. Use `authoring:adr-writing` and so on.
 - Prompts such as "Write an ADR for this decision" still load `authoring:adr-writing` on their own.

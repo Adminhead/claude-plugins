@@ -61,7 +61,7 @@ claude --plugin-dir plugins/observability
 - Instrumentation, PromQL, and dashboards guidance is checked against the OpenTelemetry, Prometheus, Grafana, and Google SRE docs. Grafana has several dashboard JSON schemas, so a dashboard must come from a version-matched export.
 - `observability:promql` covers Prometheus-compatible backends. Thanos, Mimir, and VictoriaMetrics may add tenancy headers or path prefixes, so check the backend's docs.
 - Live queries need network access to your backend and a credential you supply. Without them Claude can still write queries and config, and it cannot run them.
-- Out of scope: Sentry SDK setup (`sentry:sentry`, if installed), chart design in apps (`dataviz`), architecture decision records (`authoring:adr-writing`), and live incident response.
+- Out of scope: Sentry SDK setup (`sentry-core:sentry`, if installed), chart design in apps (`dataviz`), architecture decision records (`authoring:adr-writing`), and live incident response.
 
 ## Disable or uninstall
 

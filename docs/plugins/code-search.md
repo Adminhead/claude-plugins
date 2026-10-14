@@ -127,7 +127,7 @@ Do not keep both installed. Claude Code reports two blocks named `codeSearch` an
 - Claude loads each skill on demand. The `ripgrep` description matches tasks such as composing an `rg` command, replacing `grep` or `find`, listing files, searching ignored files, or fixing a search with too much or no output. The `codegraph` description matches how-it-works, who-calls, and what-would-break questions. The `context7` description matches library API and migration questions. The `grep-app` description matches requests for real-world usage examples or an exact error string.
 - The three servers start with the plugin. Claude Code defers MCP tool definitions, so most tools add little to each session. `codegraph` sets `alwaysLoad`, so its tools load in full.
 - In a git repo with no index, the SessionStart hook runs `codegraph init` in the background. It writes `.codegraph/` and one line to the repo's `.git/info/exclude`, and `~/.claude/CLAUDE.md` is untouched. Where file watching is unavailable, CodeGraph can also install git hooks (see Auto-init notes). Indexing keeps running after the session ends.
-- `efficient-core:research` routes public code examples to `code-search:grep-app`, if installed.
+- `research:research` routes public code examples to `code-search:grep-app`, if installed.
 
 ## Configuration
 

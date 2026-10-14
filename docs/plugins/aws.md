@@ -146,7 +146,7 @@ Only `us-east-1` is declared. Other regions have their own endpoint (`aws-mcp.<r
 - The `aws:resource-query` secret table is a sample. Claude treats any unlisted call the same way.
 - The `appsync list-api-keys` entry in that table is marked likely and not confirmed from the CLI help.
 - `aws:architecture-review` marks an item with no evidence as "not verified", not a pass. Claims that depend on recent service features, prices, or limits are confirmed in current AWS docs through Context7 or Exa if available, and otherwise labeled unconfirmed.
-- Not covered: application error tracking (`sentry:sentry`), the written postmortem (`observability:postmortem`), and creating, changing, or deleting resources. The first two are cross-references to skills that may not be installed.
+- Not covered: application error tracking (`sentry-core:sentry`), the written postmortem (`observability:postmortem`), and creating, changing, or deleting resources. The first two are cross-references to skills that may not be installed.
 
 ## Disable or uninstall
 

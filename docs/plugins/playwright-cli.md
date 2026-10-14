@@ -27,7 +27,7 @@ The skill pre-approves `Bash(playwright-cli:*)`. It has four references: failure
 
 - `playwright-cli` on `PATH`. The skill names no tested version.
 - Optional `pass-cli:pass-cli` plugin, for secrets from Proton Pass.
-- Optional `efficient-testing:e2e` skill, for writing and maintaining test suites.
+- Optional `testing:e2e` skill, for writing and maintaining test suites.
 - For smoke QA, optionally:
   - `axe-core` in the project's `node_modules`. The skill injects that copy and does not load one from a CDN. Without it, the axe step is skipped and reported as not run.
   - A committed baseline image per page and width. Without one, that visual cell is INCONCLUSIVE.
@@ -58,7 +58,7 @@ claude --plugin-dir plugins/playwright-cli
 ## Limits
 
 - Not for your real logged-in Chrome. Use `claude-in-chrome`.
-- Not for writing or running Playwright Test suites. Use `efficient-testing:e2e`, if installed.
+- Not for writing or running Playwright Test suites. Use `testing:e2e`, if installed.
 - Add `.playwright-cli/` to `.gitignore`, or delete it after use.
 - Smoke QA does not measure Core Web Vitals (LCP, CLS, INP). The report says "not measured" and points to Lighthouse or real-user data.
 - A clean axe run does not mean a page is accessible. It covers only part of WCAG, and screen-reader behavior needs a person.
