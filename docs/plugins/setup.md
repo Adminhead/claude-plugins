@@ -37,10 +37,10 @@ It also skips plugins that are already effective for the target, and it reports 
 
 ## Language servers
 
-Five `efficient-<lang>` plugins depend on an LSP plugin from `claude-code-lsps`. The skill handles that in three ways:
+Five `coding-<lang>` plugins depend on an LSP plugin from `claude-code-lsps`. The skill handles that in three ways:
 
 - It flags official `gopls-lsp`, `pyright-lsp` and `typescript-lsp` plugins that would duplicate a proposed language plugin. It doesn't remove them.
-- It offers to repair an installed `efficient-<lang>` whose LSP dependency isn't installed at the same scope.
+- It offers to repair an installed `coding-<lang>` whose LSP dependency isn't installed at the same scope.
 - It installs each dependency at the same scope as the plugin. If `claude-code-lsps` isn't registered, it skips those dependencies and tells you how to add the marketplace. It never adds a third-party marketplace itself.
 
 ## Install

@@ -60,7 +60,7 @@ claude --plugin-dir plugins/tooling
 - prek-only features (`prek.toml`, `repo: builtin`, `priorities`, glob mappings) break compatibility with upstream pre-commit. The skill keeps the YAML when the config must work with both.
 - A hook installs per clone, because the shim lives in `.git/hooks`. Document the install step or script it into the repo's setup command.
 - `repo: local` and `language: system` hooks run only where the tool exists, so CI needs the same setup.
-- Not covered: choosing a formatter or linter, running formatters in CI (for `tooling:editorconfig`), and GitHub Actions authoring (`github:actions`, if installed).
+- Not covered: choosing a formatter or linter, running formatters in CI (for `tooling:editorconfig`), and GitHub Actions authoring (`github-admin:actions`, if installed).
 
 ## Disable or uninstall
 

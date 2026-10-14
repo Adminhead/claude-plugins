@@ -23,7 +23,7 @@ The orchestrator is `crew:orchestration`. It runs as the session itself and plan
 | `crew:review` | Read-only gate | Thorough review of large or risky changes and high-stakes plans |
 | `crew:quick-review` | Read-only gate | Fast, focused review of small, task-scoped changes |
 | `crew:security-auditor` | Read-only gate | Security review of a diff or code area |
-| `crew:browser-tester` | Read-only gate | Checks a running web app in a real browser against acceptance criteria, using the efficient-web Playwright server |
+| `crew:browser-tester` | Read-only gate | Checks a running web app in a real browser against acceptance criteria, using the Playwright server in `web` |
 | `crew:Explore` | None | Fast read-only navigator for locating code and mapping how a feature works |
 
 "Read-only gate" means the agent is in the `READ_ONLY` set of the Bash gates described below. The gated agents are `quick-review` and the six others listed in the `.py` gate.
@@ -96,7 +96,7 @@ Plain `claude` gets the stock prompt and doesn't run as `crew:orchestration`. On
 
 - bun and `python3` on `PATH`. Both gates run on every Bash call.
 - Claude Code 2.1.296, the version the agent and hook behavior was checked against. The local CLI reported 2.1.296 on 2026-10-13. Later versions are UNCONFIRMED.
-- The plugins the agents preload or call. Install `efficient-core` (`coder`, `architect`, `review` and others preload its skills) and `code-search` and `coremods` (agent tools name them). `scribe` preloads `avoid-ai-writing:avoid-ai-writing`, and `browser-tester` needs the efficient-web Playwright server. A missing skill or server is skipped without an error. `browser-tester` reports every criterion blocked when its server is absent.
+- The plugins the agents preload or call. `baseline` installs most of them: the agents preload `coding-core` and `review` skills, grant the Exa tools from `research`, and name `code-search` and `coremods` tools. `scribe` preloads `avoid-ai-writing:avoid-ai-writing`, and `browser-tester` needs the Playwright server in `web`, which `baseline` does not install. A missing skill or server is skipped without an error. `browser-tester` reports every criterion blocked when its server is absent.
 
 ## Install
 
