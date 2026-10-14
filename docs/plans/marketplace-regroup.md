@@ -249,7 +249,7 @@ Cutover (S6) runs as one sequence with no other Claude sessions open (`pgrep -af
 1. Inventory: `rg -l --hidden -g '**/.claude/settings*.json' '@adminhead' ~/Projects`, then `claude plugin list --json` from each directory. Record scope, project, id.
 2. Back up `~/.claude/settings.json`, each project's `.claude/settings*.json`, and a copy of `installed_plugins.json` to `~/.claude/skills.migrated/_regroup/`.
 3. `git merge --ff-only regroup`, then `claude plugin marketplace update adminhead`.
-4. Trigger renames by the method S0 proved, then immediately `claude plugin install baseline@adminhead --scope user`, before any working session.
+4. Trigger renames with `claude plugin list` (S0 H1). That rewrites `enabledPlugins` at every scope but drops the old install records, so the new names are enabled yet not installed. Immediately run `claude plugin install baseline@adminhead --scope user`, then `claude plugin install <new>@adminhead --scope <s>` for every renamed plugin in the step 1 inventory (scope and projectPath each), plus its LSP dependency, before any working session.
 5. Per §3.3: install deploy wherever infra is enabled, homelab where used, github-admin at user scope. Ask about prototype, experiment-loop, modernize.
 6. Replace the consult.sh allow rule with the path S0 captured, then `chezmoi re-add ~/.claude/settings.json`.
 7. Fresh session, `/reload-plugins`, then the S5 probes and both §6 proofs.
@@ -269,6 +269,22 @@ All work happens on branch `regroup` in a worktree under `.claude/worktrees/`. M
 | S5 | Branch verification: moved suites from new paths; `claude --plugin-dir` probes for preload H1s, an Exa call, Playwright visible with the unsafe tool denied, no-sentry-core behavior; paid eval smoke on moved cases (`--runs 1`, under $3, only with approval); `review` on the full diff | — | S2–S4 | all green; no `plugin_errors`; lost negatives recorded | as listed | orchestrator + review |
 | S6 | Cutover (§7), with user authorization | settings, installs | S5 | §1 post-cutover conditions | §6 settings proof; fresh-session probes | devops |
 | S7 | Record `claude plugin details` per member, `/context` Skills row, plan progress, next-day `/skill-doctor` | this file | S6 | measurements recorded | — | scribe |
+
+## 8.1 S0 results (2026-10-13, Claude Code 2.1.296)
+
+Sandbox log: `/tmp/regroup-s0/log.md`. The sandbox had no login, so in-session probes were blocked.
+
+| H | Verdict | Finding |
+|---|---|---|
+| H1 | PASS | `marketplace update` alone changes nothing. The next plugin-loading CLI command (`plugin list`) rewrites `enabledPlugins` at user, project and local scope, and also deletes the old records from `installed_plugins.json` without installing the new name. `plugin install <new> --scope X` then works. No `plugin-cache-miss` on a directory source |
+| H2 | PASS | a deps-only plugin passes `validate --strict` when it has `author` (strict fails on the missing-author warning otherwise). Installing it installs the deps with `auto: true` |
+| H3 | PASS (CLI) | refusal: `dep-x is still required by bundle. Disable that plugin first, or disable everything together: claude plugin disable bundle@toy && claude plugin disable dep-x@toy`. A project-scope `false` on a member puts the bundle in a `dependency-unsatisfied` error; other members stay enabled |
+| H4 | PARTIAL | `plugin update` on a directory source bumps the bundle but does not install an added dep; re-running `plugin install baseline@adminhead --scope user` does. `prune` removes dropped auto deps and keeps hand installs. `/reload-plugins` untested |
+| H5 | PASS | a renamed plugin keeps its marketplace-entry deps. `prune` ignores entry-only deps, so an auto-installed LSP is prune-eligible; `recommend-plugins` already installs LSPs explicitly, which protects them |
+| H6 | UNCONFIRMED | real rule is `Bash(/home/buck/.claude/plugins/cache/adminhead/efficient-core/0.4.2/skills/second-opinion/scripts/consult.sh *)`. Replacement: `.../adminhead/review/*/skills/second-opinion/scripts/consult.sh *` (mid-rule `*` is documented). Confirm in S6 step 7 |
+| H7 | PASS | forward and rollback on a git-backed toy marketplace end in a state identical to the start |
+
+Plan changes: §7 step 4 now reinstalls every renamed plugin; baseline `plugin.json` must carry `author`; adding a baseline member later means re-running `plugin install baseline@adminhead --scope user`.
 
 ## 9. Risks and rollback
 
