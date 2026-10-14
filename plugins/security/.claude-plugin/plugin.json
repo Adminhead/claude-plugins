@@ -1,0 +1,9 @@
+{
+  "name": "security",
+  "version": "0.2.0",
+  "description": "Security skills: threat modeling, privacy review, and a manual security audit scan.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

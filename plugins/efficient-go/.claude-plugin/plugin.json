@@ -1,9 +1,0 @@
-{
-  "name": "efficient-go",
-  "version": "0.1.1",
-  "description": "Go skills: the language, CLI tools, and performance work.",
-  "author": {
-    "name": "Buck Brady",
-    "email": "bbrady145@gmail.com"
-  }
-}

@@ -1,0 +1,9 @@
+{
+  "name": "research",
+  "version": "0.1.0",
+  "description": "Research skill for cited answers to external questions, plus the Exa web search MCP server.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

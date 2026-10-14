@@ -1,0 +1,9 @@
+{
+  "name": "coding-go",
+  "version": "0.2.0",
+  "description": "Go skills: the language, CLI tools, and performance work.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

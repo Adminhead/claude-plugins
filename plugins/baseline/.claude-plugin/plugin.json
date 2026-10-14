@@ -1,0 +1,22 @@
+{
+  "name": "baseline",
+  "version": "0.1.0",
+  "description": "The default adminhead set: installs the everyday plugins (coding, review, research, testing, GitHub, git, code search, authoring, setup, coremods, and crew) in one step. Ships no skills of its own.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  },
+  "dependencies": [
+    "coremods",
+    "crew",
+    "coding-core",
+    "review",
+    "research",
+    "testing",
+    "code-search",
+    "git",
+    "github",
+    "authoring",
+    "setup"
+  ]
+}

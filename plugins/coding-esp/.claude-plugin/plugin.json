@@ -1,0 +1,9 @@
+{
+  "name": "coding-esp",
+  "version": "0.2.0",
+  "description": "ESP32 skills: ESP-IDF firmware engineering.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

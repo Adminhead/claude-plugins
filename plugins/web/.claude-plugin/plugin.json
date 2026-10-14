@@ -1,0 +1,9 @@
+{
+  "name": "web",
+  "version": "0.3.0",
+  "description": "Web skills: front-end web development and web design, plus a headless Playwright MCP browser.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

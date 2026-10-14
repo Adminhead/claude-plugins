@@ -1,0 +1,9 @@
+{
+  "name": "testing",
+  "version": "0.2.0",
+  "description": "Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

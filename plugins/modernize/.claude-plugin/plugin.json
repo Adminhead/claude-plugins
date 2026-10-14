@@ -1,0 +1,9 @@
+{
+  "name": "modernize",
+  "version": "0.1.0",
+  "description": "Plans for modernizing a legacy system: feasibility spike, safety ladder, hazard red-team, and phased exit criteria.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

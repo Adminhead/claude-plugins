@@ -1,0 +1,9 @@
+{
+  "name": "sentry-core",
+  "version": "0.3.0",
+  "description": "Instrument apps with official Sentry SDKs.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

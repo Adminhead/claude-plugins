@@ -11,6 +11,13 @@
   ],
   "plugins": [
     {
+      "name": "baseline",
+      "source": "./plugins/baseline",
+      "description": "The default adminhead set: installs the everyday plugins (coding, review, research, testing, GitHub, git, code search, authoring, setup, coremods, and crew) in one step. Ships no skills of its own.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines.",
@@ -27,22 +34,64 @@
     {
       "name": "github",
       "source": "./plugins/github",
-      "description": "GitHub skills (issues, issue breakdown, triage, pull requests and review comments, shipping commits through merge, releases, repository setup, code security, Actions, Dependabot and its PR sweeps) plus the GitHub remote MCP server.",
-      "version": "0.6.0",
+      "description": "GitHub workflow skills: issues, issue breakdown, triage, pull requests and review comments, shipping commits through merge, and releases, plus the GitHub remote MCP server.",
+      "version": "0.7.0",
       "category": "development"
     },
     {
-      "name": "efficient-core",
-      "source": "./plugins/efficient-core",
-      "description": "Process skills for cost-conscious engineering: coding, planning, problem-solving, research, prototypes, experiment loops, modernization, second-opinion review, review-fix loops, plan execution, anti-slop cleanup, and poka-yoke error-proofing, plus the Exa web search MCP server.",
-      "version": "0.4.2",
+      "name": "github-admin",
+      "source": "./plugins/github-admin",
+      "description": "GitHub repository administration: Actions workflows, code security settings and alerts, Dependabot config and PR sweeps, and repo setup.",
+      "version": "0.1.0",
       "category": "development"
     },
     {
-      "name": "efficient-shell",
-      "source": "./plugins/efficient-shell",
+      "name": "coding-core",
+      "source": "./plugins/coding-core",
+      "description": "Coding process skills: the coding workflow, planning, problem-solving, and implementing an approved plan.",
+      "version": "0.5.0",
+      "category": "development"
+    },
+    {
+      "name": "review",
+      "source": "./plugins/review",
+      "description": "Review skills: second-opinion reviews from another model, review-fix loops, anti-slop cleanup, and poka-yoke error-proofing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "research",
+      "source": "./plugins/research",
+      "description": "Research skill for cited answers to external questions, plus the Exa web search MCP server.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "prototype",
+      "source": "./plugins/prototype",
+      "description": "Throwaway prototypes that answer one design question, as a single-file logic demo or as UI variants.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "experiment-loop",
+      "source": "./plugins/experiment-loop",
+      "description": "Autonomous optimize-and-measure loops on a dedicated git branch, with one hypothesis per commit and a results log.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "modernize",
+      "source": "./plugins/modernize",
+      "description": "Plans for modernizing a legacy system: feasibility spike, safety ladder, hazard red-team, and phased exit criteria.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coding-shell",
+      "source": "./plugins/coding-shell",
       "description": "Shell skills: Bash scripting practice.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development",
       "dependencies": [
         {
@@ -52,10 +101,10 @@
       ]
     },
     {
-      "name": "efficient-go",
-      "source": "./plugins/efficient-go",
+      "name": "coding-go",
+      "source": "./plugins/coding-go",
       "description": "Go skills: the language, CLI tools, and performance work.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development",
       "dependencies": [
         {
@@ -65,10 +114,10 @@
       ]
     },
     {
-      "name": "efficient-python",
-      "source": "./plugins/efficient-python",
+      "name": "coding-python",
+      "source": "./plugins/coding-python",
       "description": "Python skills: the language, packaging, and FastAPI services.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development",
       "dependencies": [
         {
@@ -78,10 +127,10 @@
       ]
     },
     {
-      "name": "efficient-js",
-      "source": "./plugins/efficient-js",
+      "name": "coding-js",
+      "source": "./plugins/coding-js",
       "description": "JavaScript and TypeScript skills: the languages, React, Vue, Vite, TanStack, and click-path audits of UI flows.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development",
       "dependencies": [
         {
@@ -91,10 +140,10 @@
       ]
     },
     {
-      "name": "efficient-rust",
-      "source": "./plugins/efficient-rust",
+      "name": "coding-rust",
+      "source": "./plugins/coding-rust",
       "description": "Rust skills: the language and its tooling.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development",
       "dependencies": [
         {
@@ -104,45 +153,45 @@
       ]
     },
     {
-      "name": "efficient-web",
-      "source": "./plugins/efficient-web",
+      "name": "web",
+      "source": "./plugins/web",
       "description": "Web skills: front-end web development and web design, plus a headless Playwright MCP browser.",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "category": "development"
     },
     {
-      "name": "efficient-auth",
-      "source": "./plugins/efficient-auth",
+      "name": "auth",
+      "source": "./plugins/auth",
       "description": "Authentication skills: login, sessions, and token validation for your own app, plus Better Auth.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
-      "name": "efficient-db",
-      "source": "./plugins/efficient-db",
+      "name": "db",
+      "source": "./plugins/db",
       "description": "Database skills: schema design, Postgres, MySQL, and Redis.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
-      "name": "efficient-esp",
-      "source": "./plugins/efficient-esp",
+      "name": "coding-esp",
+      "source": "./plugins/coding-esp",
       "description": "ESP32 skills: ESP-IDF firmware engineering.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
-      "name": "efficient-testing",
-      "source": "./plugins/efficient-testing",
+      "name": "testing",
+      "source": "./plugins/testing",
       "description": "Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development"
     },
     {
-      "name": "efficient-security",
-      "source": "./plugins/efficient-security",
+      "name": "security",
+      "source": "./plugins/security",
       "description": "Security skills: threat modeling, privacy review, and a manual security audit scan.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -174,10 +223,10 @@
       "category": "security"
     },
     {
-      "name": "sentry",
-      "source": "./plugins/sentry",
+      "name": "sentry-core",
+      "source": "./plugins/sentry-core",
       "description": "Instrument apps with official Sentry SDKs.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "development"
     },
     {
@@ -239,8 +288,22 @@
     {
       "name": "infra",
       "source": "./plugins/infra",
-      "description": "Infrastructure skills: Docker, Kubernetes, Helm, GitOps, rollouts, production-readiness reviews, homelab networking, Terraform, OpenTofu, Terragrunt, and Ansible, plus a guard hook for unsafe `tofu` and `aws` commands.",
-      "version": "0.5.0",
+      "description": "Infrastructure skills: Terraform (with OpenTofu and Terragrunt) and Ansible, plus a guard hook for unsafe `tofu` and `aws` commands.",
+      "version": "0.6.0",
+      "category": "development"
+    },
+    {
+      "name": "deploy",
+      "source": "./plugins/deploy",
+      "description": "Deployment skills: Docker, Kubernetes, Helm, GitOps, rollouts, and production-readiness reviews.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "homelab",
+      "source": "./plugins/homelab",
+      "description": "Home and homelab network planning: VLANs, trust zones, DNS cutover, and WireGuard tunnels, read-only first.",
+      "version": "0.1.0",
       "category": "development"
     },
     {
@@ -280,6 +343,19 @@
     }
   ],
   "renames": {
-    "ripgrep": "code-search"
+    "ripgrep": "code-search",
+    "efficient-core": "coding-core",
+    "efficient-testing": "testing",
+    "efficient-security": "security",
+    "efficient-db": "db",
+    "efficient-auth": "auth",
+    "efficient-web": "web",
+    "efficient-go": "coding-go",
+    "efficient-python": "coding-python",
+    "efficient-js": "coding-js",
+    "efficient-rust": "coding-rust",
+    "efficient-shell": "coding-shell",
+    "efficient-esp": "coding-esp",
+    "sentry": "sentry-core"
   }
 }

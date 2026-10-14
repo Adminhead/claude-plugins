@@ -1,0 +1,9 @@
+{
+  "name": "db",
+  "version": "0.2.0",
+  "description": "Database skills: schema design, Postgres, MySQL, and Redis.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

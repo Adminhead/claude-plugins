@@ -1,9 +1,0 @@
-{
-  "name": "sentry",
-  "version": "0.2.0",
-  "description": "Instrument apps with official Sentry SDKs.",
-  "author": {
-    "name": "Buck Brady",
-    "email": "bbrady145@gmail.com"
-  }
-}

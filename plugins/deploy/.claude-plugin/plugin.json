@@ -1,0 +1,9 @@
+{
+  "name": "deploy",
+  "version": "0.1.0",
+  "description": "Deployment skills: Docker, Kubernetes, Helm, GitOps, rollouts, and production-readiness reviews.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

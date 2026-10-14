@@ -1,0 +1,9 @@
+{
+  "name": "experiment-loop",
+  "version": "0.1.0",
+  "description": "Autonomous optimize-and-measure loops on a dedicated git branch, with one hypothesis per commit and a results log.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

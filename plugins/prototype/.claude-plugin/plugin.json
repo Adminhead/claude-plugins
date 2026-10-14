@@ -1,0 +1,9 @@
+{
+  "name": "prototype",
+  "version": "0.1.0",
+  "description": "Throwaway prototypes that answer one design question, as a single-file logic demo or as UI variants.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "coding-js",
+  "version": "0.2.0",
+  "description": "JavaScript and TypeScript skills: the languages, React, Vue, Vite, TanStack, and click-path audits of UI flows.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "review",
+  "version": "0.1.0",
+  "description": "Review skills: second-opinion reviews from another model, review-fix loops, anti-slop cleanup, and poka-yoke error-proofing.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

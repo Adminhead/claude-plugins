@@ -1,9 +1,0 @@
-{
-  "name": "efficient-python",
-  "version": "0.1.1",
-  "description": "Python skills: the language, packaging, and FastAPI services.",
-  "author": {
-    "name": "Buck Brady",
-    "email": "bbrady145@gmail.com"
-  }
-}

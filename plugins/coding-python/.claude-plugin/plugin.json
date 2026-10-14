@@ -1,0 +1,9 @@
+{
+  "name": "coding-python",
+  "version": "0.2.0",
+  "description": "Python skills: the language, packaging, and FastAPI services.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "coding-rust",
+  "version": "0.2.0",
+  "description": "Rust skills: the language and its tooling.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

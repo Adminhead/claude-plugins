@@ -1,0 +1,9 @@
+{
+  "name": "homelab",
+  "version": "0.1.0",
+  "description": "Home and homelab network planning: VLANs, trust zones, DNS cutover, and WireGuard tunnels, read-only first.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}

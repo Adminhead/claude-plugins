@@ -1,0 +1,9 @@
+{
+  "name": "github-admin",
+  "version": "0.1.0",
+  "description": "GitHub repository administration: Actions workflows, code security settings and alerts, Dependabot config and PR sweeps, and repo setup.",
+  "author": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  }
+}
