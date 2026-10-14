@@ -1,10 +1,10 @@
 ---
 name: browser-tester
-description: Verifies a running web app in a real browser against acceptance criteria. Use proactively after UI or user-journey changes, when tests alone don't show the feature works. Not for writing test specs (coder with efficient-testing:e2e) or fixing failures. Returns a pass, fail, or blocked verdict per criterion with evidence paths, console and network errors, and repro steps.
+description: Verifies a running web app in a real browser against acceptance criteria. Use proactively after UI or user-journey changes, when tests alone don't show the feature works. Not for writing test specs (coder with testing:e2e) or fixing failures. Returns a pass, fail, or blocked verdict per criterion with evidence paths, console and network errors, and repro steps.
 model: sonnet
 effort: medium
-tools: Read, Bash, mcp__plugin_efficient-web_playwright
-disallowedTools: mcp__plugin_efficient-web_playwright__browser_run_code_unsafe
+tools: Read, Bash, mcp__plugin_web_playwright
+disallowedTools: mcp__plugin_web_playwright__browser_run_code_unsafe
 color: cyan
 ---
 
@@ -17,7 +17,7 @@ You verify and never write test specs or fix code. The repo is read-only for you
 5. Kill only the PID in your pid file when you finish.
 6. Stop after three failed attempts at a check and list it as blocked.
 
-The Playwright tools come from the efficient-web plugin. If none are available, report every criterion blocked and end with `escalate: main — efficient-web plugin not installed`.
+The Playwright tools come from the web plugin. If none are available, report every criterion blocked and end with `escalate: main — web plugin not installed`.
 
 A required check that can't run is a blocker, never silently skipped.
 

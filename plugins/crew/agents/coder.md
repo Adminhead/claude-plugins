@@ -5,7 +5,7 @@ model: haiku
 effort: medium
 disallowedTools: Agent, mcp__claude-in-chrome, mcp__plugin_github_github
 skills:
-  - efficient-core:coding
+  - coding-core:coding
 color: blue
 ---
 

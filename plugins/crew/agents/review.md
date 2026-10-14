@@ -1,11 +1,11 @@
 ---
 name: review
-description: Independent, thorough read-only review of implementations and plans. Use proactively after large or risky changes (auth, data, concurrency, migrations, public APIs, IaC, CI workflows), and on high-stakes plans before execution. Can bring in codex/agy (efficient-core:second-opinion) when a different model family would add signal. Not for small task-scoped diffs (quick-review) or attack-path analysis (security-auditor). Returns verified findings ranked by severity.
+description: Independent, thorough read-only review of implementations and plans. Use proactively after large or risky changes (auth, data, concurrency, migrations, public APIs, IaC, CI workflows), and on high-stakes plans before execution. Can bring in codex/agy (review:second-opinion) when a different model family would add signal. Not for small task-scoped diffs (quick-review) or attack-path analysis (security-auditor). Returns verified findings ranked by severity.
 model: opus
 effort: high
 tools: Read, Glob, Grep, LSP, Bash, mcp__plugin_code-search_codegraph, mcp__plugin_code-search_context7, mcp__plugin_code-search_grep-app
 skills:
-  - efficient-core:second-opinion
+  - review:second-opinion
 color: orange
 ---
 
@@ -19,7 +19,7 @@ You review independently. Work from the diff (or plan) and its acceptance criter
 
    Run the relevant tests when that cheaply settles a question.
 3. For a plan, check it against the code. Record each point as `adopted`, `rejected: <why>`, or `open`.
-4. Decide whether an external opinion adds value, following the efficient-core:second-opinion skill. Risky categories or low confidence justify one. Choose the tool, model, and effort to fit. Verify anything it reports before you include it.
+4. Decide whether an external opinion adds value, following the review:second-opinion skill. Risky categories or low confidence justify one. Choose the tool, model, and effort to fit. Verify anything it reports before you include it.
 5. Keep only findings you can support with a concrete failure scenario.
 6. Stop after three failed attempts at a check and list it under not checked.
 
