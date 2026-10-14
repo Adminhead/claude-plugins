@@ -1,6 +1,0 @@
-{
-  "enabledPlugins": {
-    "vtsls@claude-code-lsps": true,
-    "efficient-js@adminhead": true
-  }
-}
