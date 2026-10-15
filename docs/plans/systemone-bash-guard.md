@@ -186,7 +186,8 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 
 ### C — labeled corpus (coder, two labelers, user)
 - Depends on: nothing. Parallel with S0. Must finish before any Kev run on its rows.
-- File: `coremods/scripts/tests/systemone-corpus.jsonl`, about 1500 rows `{command, cls, split, source}`, where `cls` is `dangerous|bypass|safe` and `source` is `session|synthetic`.
+- File: `coremods/scripts/tests/systemone-corpus.jsonl`, about 1500 rows `{id, command, cls, split, source}`, where `cls` is `dangerous|bypass|safe` and `source` is `session|synthetic`. The labeling rubric, with the user's settled boundaries, sits beside it as `systemone-corpus.rubric.md`.
+- **Done 2026-10-14:** 1500 rows (1100 session, 400 synthetic): 270 dangerous, 299 bypass, 931 safe; 450 holdout. The labelers agreed on 1361 rows. The user's four boundary rules settled 119 review rows and changed 37 agreed ones, and the user labeled the last 20.
 - C1, extract (coder): about 1100 deduped Bash commands from `~/.claude/projects/**/*.jsonl` on this machine.
   - Drop any command over 4000 chars, and any that `redact()`'s patterns would change. A secret-bearing command is dropped, never committed redacted.
   - Stratify by shape (redirects, heredocs, interpreters, `sed`/`head`/`tail`/`cat`, `rm`, `curl`/`wget`, `git`) so rare shapes are over-sampled, and attach `classify()`'s rule as a hint.
