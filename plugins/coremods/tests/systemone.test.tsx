@@ -5,9 +5,9 @@ import { CALIBRATED, DEFAULT_MODEL, PROMPT_VERSION, buildRequest, calFor, create
 import type { Answer, Config, Deps } from '../hooks/tool-mgr/systemone'
 
 const KEV = DEFAULT_MODEL
-const cal = calFor(KEV)
-const uncal = calFor('clef-flash')
-const cfg: Config = { url: 'http://127.0.0.1:9931/v1/systemone', model: KEV }
+const cal = calFor(KEV)!
+const URL = 'http://127.0.0.1:9931/v1/systemone'
+const cfg: Config = { url: URL, model: KEV, cal, concurrency: 4 }
 const flush = async () => {
   for (let i = 0; i < 20; i++) await Promise.resolve()
 }
@@ -92,38 +92,76 @@ const deferred = () => {
 }
 
 describe('parseConfig', () => {
-  test('unset and blank are off, with no error', () => {
-    expect(parseConfig(undefined)).toEqual({ config: null })
-    expect(parseConfig('  ')).toEqual({ config: null })
+  const url = (v?: string) => parseConfig({ url: v })
+
+  test('an unset or blank URL is off, with no error, whatever the other two hold', () => {
+    expect(url(undefined)).toEqual({ config: null })
+    expect(url('  ')).toEqual({ config: null })
+    expect(parseConfig({ model: 'clef-flash', concurrency: '99' })).toEqual({ config: null })
   })
 
-  test('the model is optional and defaults to Kev', () => {
-    expect(parseConfig('http://127.0.0.1:9931/v1/systemone').config).toEqual({ url: 'http://127.0.0.1:9931/v1/systemone', model: DEFAULT_MODEL })
-    expect(parseConfig('https://llm.example.com/v1/systemone|clef-flash').config).toEqual({ url: 'https://llm.example.com/v1/systemone', model: 'clef-flash' })
+  test('the URL alone gives the Kev-4B model, its calibration and concurrency 2', () => {
+    expect(url(URL).config).toEqual({ url: URL, model: DEFAULT_MODEL, cal: { allowBelow: 0.25, bypassAtLeast: 0.85 }, concurrency: 2 })
   })
 
   test('http is allowed only on loopback', () => {
-    for (const u of ['http://127.0.0.1:1/x', 'http://localhost/x', 'http://[::1]:9/x', 'https://example.com/x']) expect(parseConfig(u).config).not.toBeNull()
-    for (const u of ['http://example.com/x', 'http://127.0.0.2/x', 'ftp://127.0.0.1/x', 'not a url', '|clef']) {
-      const r = parseConfig(u)
+    for (const u of ['http://127.0.0.1:1/x', 'http://localhost/x', 'http://[::1]:9/x', 'https://example.com/x']) expect(url(u).config).not.toBeNull()
+    for (const u of ['http://example.com/x', 'http://127.0.0.2/x', 'ftp://127.0.0.1/x', 'not a url']) {
+      const r = url(u)
       expect(r.config).toBeNull()
-      expect(r.error).toContain('TOOL_MGR_SYSTEMONE')
+      expect(r.error).toContain('TOOL_MGR_SYSTEMONE:')
     }
   })
 
-  test('userinfo, a fragment, or an empty model is an error', () => {
-    for (const v of ['https://u:p@example.com/x', 'https://u@example.com/x', 'https://example.com/x#f', 'https://example.com/x|', 'https://example.com/x|  ']) {
-      expect(parseConfig(v).config).toBeNull()
-      expect(parseConfig(v).error).toBeDefined()
+  test('userinfo, a fragment, or the old <url>|<model> form is an error that does not echo the value', () => {
+    for (const v of ['https://u:p@example.com/x', 'https://u@example.com/x', 'https://example.com/x#f', `${URL}|ggml-org/Kev-4B-GGUF:Q8_0`, 'https://example.com/x|', '|clef']) {
+      const r = url(v)
+      expect(r.config).toBeNull()
+      expect(r.error).toContain('TOOL_MGR_SYSTEMONE:')
+      expect(r.error).not.toContain('example.com')
+      expect(r.error).not.toContain('Q8_0')
     }
+  })
+
+  test('the model picks the calibration by Kev size, whatever the prefix or quant', () => {
+    const at = (model: string) => parseConfig({ url: URL, model }).config
+    expect(at('ggml-org/Kev-4B-GGUF:Q4_K_M')).toMatchObject({ model: 'ggml-org/Kev-4B-GGUF:Q4_K_M', cal: { allowBelow: 0.25, bypassAtLeast: 0.85 } })
+    expect(at('kev-0.8b')).toMatchObject({ model: 'kev-0.8b', cal: { allowBelow: 0.2, bypassAtLeast: 0.85 } })
+    expect(at('  me/KEV-0.8B-x  ')?.model).toBe('me/KEV-0.8B-x')
+  })
+
+  test('a model that is not Kev-4B or Kev-0.8B is an error naming the variable, not the value', () => {
+    for (const m of ['clef-flash', 'ggml-org/Kev-9B-GGUF', 'kev', 'kev-4']) {
+      const r = parseConfig({ url: URL, model: m })
+      expect(r.config).toBeNull()
+      expect(r.error).toContain('TOOL_MGR_SYSTEMONE_MODEL')
+      expect(r.error).toContain('model not calibrated')
+      expect(r.error).not.toContain(m)
+    }
+  })
+
+  test('a blank model is the default', () => {
+    expect(parseConfig({ url: URL, model: ' ' }).config?.model).toBe(DEFAULT_MODEL)
+  })
+
+  test('concurrency is an integer from 1 to 8', () => {
+    for (const c of ['1', '2', '8', ' 5 ']) expect(parseConfig({ url: URL, concurrency: c }).config?.concurrency).toBe(Number(c))
+    for (const c of ['0', '9', '-1', '1.5', '2x', 'two', '1e0']) {
+      const r = parseConfig({ url: URL, concurrency: c })
+      expect(r.config).toBeNull()
+      expect(r.error).toContain('TOOL_MGR_SYSTEMONE_CONCURRENCY')
+      expect(r.error).not.toContain(`'${c}'`)
+    }
+    expect(parseConfig({ url: URL, concurrency: '' }).config?.concurrency).toBe(2)
   })
 })
 
 describe('calibration and questions', () => {
-  test('only Kev is calibrated', () => {
-    expect(Object.keys(CALIBRATED)).toEqual([KEV])
-    expect(cal).toEqual({ allowBelow: 0.5, bypassAtLeast: 0.6 })
-    expect(uncal).toEqual({ allowBelow: 0.5 })
+  test('Kev-4B and Kev-0.8B are calibrated, and anything else is not', () => {
+    expect(CALIBRATED).toEqual({ '4B': { allowBelow: 0.25, bypassAtLeast: 0.85 }, '0.8B': { allowBelow: 0.2, bypassAtLeast: 0.85 } })
+    expect(cal).toEqual(CALIBRATED['4B'])
+    expect(calFor('ggml-org/Kev-0.8B-GGUF:Q8_0')).toEqual(CALIBRATED['0.8B'])
+    expect(calFor('clef-flash')).toBeNull()
     expect(PROMPT_VERSION).toBe(1)
   })
 
@@ -138,13 +176,13 @@ describe('calibration and questions', () => {
     expect(Object.keys(buildRequest('git status', 'clef-flash', false).questions)).toEqual(['decision'])
   })
 
-  test('the judge sends the bypass question to Kev only', async () => {
-    const kev = rig()
-    await kev.judge(cfg, 'git status')
-    expect(Object.keys(JSON.parse(kev.bodies[0]).questions)).toEqual(['decision', 'bypass'])
-    const clef = rig(async () => ok(reply(0.9, 0.05, 0.05, undefined, 'clef-flash')))
-    expect(await clef.judge({ url: cfg.url, model: 'clef-flash' }, 'git status')).not.toBeNull()
-    expect(Object.keys(JSON.parse(clef.bodies[0]).questions)).toEqual(['decision'])
+  test('the judge sends the bypass question for both sizes', async () => {
+    const small = 'ggml-org/Kev-0.8B-GGUF:Q8_0'
+    for (const c of [cfg, { ...cfg, model: small, cal: calFor(small)! }]) {
+      const r = rig(async () => ok(reply(0.9, 0.05, 0.05, 0.1, c.model)))
+      expect(await r.judge(c, 'git status')).not.toBeNull()
+      expect(Object.keys(JSON.parse(r.bodies[0]).questions)).toEqual(['decision', 'bypass'])
+    }
   })
 })
 
@@ -211,34 +249,42 @@ describe('merge', () => {
     }
   })
 
-  test('bypass at 0.6 denies under every tier; 0.59 does not', () => {
+  test('Kev-4B: bypass at exactly 0.85 denies under every tier; just under does not', () => {
     for (const t of tiers) {
-      const r = merge(E, answer(0.9, 0.6), t, cal)
+      const r = merge(E, answer(0.9, 0.85), t, cal)
       expect(r.rule).toBe('systemone-bypass')
-      expect(r.verdict.deny).toContain('(bypass 0.60). Use Read to read a file, Edit or Write to change one, and Grep or Glob to search.')
+      expect(r.verdict.deny).toContain('(bypass 0.85). Use Read to read a file, Edit or Write to change one, and Grep or Glob to search.')
       expect(r.verdict.deny).toContain('Do not reword it')
-      expect(merge(E, answer(0.9, 0.59), t, cal)).toEqual({ verdict: E, rule: null })
+      expect(merge(E, answer(0.9, 0.8499), t, cal)).toEqual({ verdict: E, rule: null })
     }
   })
 
   test('bypass beats an inner ask, and a danger ask is otherwise kept', () => {
     const danger: Verdict = { ask: 'remote exec' }
-    expect(merge(danger, answer(0.9, 0.72), 'ask', cal).rule).toBe('systemone-bypass')
+    expect(merge(danger, answer(0.9, 0.9), 'ask', cal).rule).toBe('systemone-bypass')
     expect(merge(danger, answer(0.1, 0.2), 'ask', cal)).toEqual({ verdict: danger, rule: null })
   })
 
-  test('P(allow) under 0.5 asks; exactly 0.5 does not', () => {
-    const r = merge(E, answer(0.31, 0.2), 'ask', cal)
+  test('Kev-4B: P(allow) under 0.25 asks; exactly 0.25 does not', () => {
+    const r = merge(E, answer(0.24, 0.2), 'ask', cal)
     expect(r.rule).toBeNull()
-    expect(r.verdict.ask).toBe('tool-mgr: the systemone model is unsure this command is safe (allow 0.31, ask 0.30, deny 0.20).')
-    expect(merge(E, answer(0.5, 0.2), 'ask', cal)).toEqual({ verdict: E, rule: null })
-    expect(merge(E, answer(0.4999, 0.2), 'ask', cal).verdict.ask).toBeDefined()
+    expect(r.verdict.ask).toBe('tool-mgr: the systemone model is unsure this command is safe (allow 0.24, ask 0.30, deny 0.20).')
+    expect(merge(E, answer(0.25, 0.2), 'ask', cal)).toEqual({ verdict: E, rule: null })
+    expect(merge(E, answer(0.2499, 0.2), 'ask', cal).verdict.ask).toBeDefined()
+  })
+
+  test('Kev-0.8B: P(allow) under 0.20 asks, exactly 0.20 does not, and bypass denies from 0.85', () => {
+    const small = calFor('kev-0.8b')!
+    expect(merge(E, answer(0.2, 0.2), 'ask', small)).toEqual({ verdict: E, rule: null })
+    expect(merge(E, answer(0.1999, 0.2), 'ask', small).verdict.ask).toBeDefined()
+    expect(merge(E, answer(0.9, 0.85), 'ask', small).rule).toBe('systemone-bypass')
+    expect(merge(E, answer(0.9, 0.84), 'ask', small)).toEqual({ verdict: E, rule: null })
   })
 
   test('an ask drops allow and keeps the other fields, including updatedInput', () => {
     const inner: Verdict = { allow: true, updatedInput: { command: 'ls' } }
     expect(merge(inner, answer(0.1), 'ask', cal).verdict).toEqual({ updatedInput: { command: 'ls' }, ask: expect.stringContaining('unsure') })
-    expect(merge(inner, answer(0.9, 0.8), 'ask', cal).verdict).toEqual({ updatedInput: { command: 'ls' }, deny: expect.stringContaining('bypass 0.80') })
+    expect(merge(inner, answer(0.9, 0.9), 'ask', cal).verdict).toEqual({ updatedInput: { command: 'ls' }, deny: expect.stringContaining('bypass 0.90') })
   })
 
   test('under ASK_TIER deny the model ask becomes a hand-over deny', () => {
@@ -248,16 +294,10 @@ describe('merge', () => {
     expect(r.verdict.ask).toBeUndefined()
   })
 
-  test('an uncalibrated model gets the ask path only', () => {
-    expect(merge(E, answer(0.9, 0.99), 'ask', uncal)).toEqual({ verdict: E, rule: null })
-    expect(merge(E, answer(0.3, 0.99), 'ask', uncal).verdict.ask).toBeDefined()
-    expect(merge(E, answer(0.3, 0.99), 'ask', uncal).rule).toBeNull()
-  })
-
   test('a bypass deny whose top label is deny names both scores and hands over', () => {
-    const r = merge(E, { model: KEV, choice: 'deny', allow: 0.1, ask: 0.2, deny: 0.7, bypass: 0.72 }, 'ask', cal)
+    const r = merge(E, { model: KEV, choice: 'deny', allow: 0.1, ask: 0.2, deny: 0.7, bypass: 0.9 }, 'ask', cal)
     expect(r.rule).toBe('systemone-bypass')
-    expect(r.verdict.deny).toContain('bypass 0.72')
+    expect(r.verdict.deny).toContain('bypass 0.90')
     expect(r.verdict.deny).toContain('deny 0.70')
     expect(r.verdict.deny).toContain('Hand this command to the user to run.')
   })
@@ -272,14 +312,14 @@ describe('merge', () => {
       "python3 - <<'EOF'\nprint(open('a').read())\nEOF",
       'ls > f',
     ]
-    let bypass = 0.72
+    let bypass = 0.9
     const r = rig(async () => ok(reply(0.9, 0.05, 0.05, bypass)))
     for (const c of passes) {
       expect(classify(c)).toBeNull()
-      bypass = 0.72
+      bypass = 0.9
       const high = merge(E, await r.judge(cfg, c + ' '), 'ask', cal)
       expect(high.rule).toBe('systemone-bypass')
-      expect(high.verdict.deny).toContain('bypass 0.72')
+      expect(high.verdict.deny).toContain('bypass 0.90')
       bypass = 0.54
       expect(merge(E, await r.judge(cfg, c + '  '), 'ask', cal)).toEqual({ verdict: E, rule: null })
     }
@@ -287,20 +327,20 @@ describe('merge', () => {
 
   test('a bypass deny is a deny alone: the inner ask and allow are dropped', () => {
     for (const inner of [{ ask: 'x' }, { allow: true, ask: 'x' }, { allow: true }] as Verdict[]) {
-      const v = merge(inner, answer(0.9, 0.72), 'ask', cal).verdict
+      const v = merge(inner, answer(0.9, 0.9), 'ask', cal).verdict
       expect(v.ask).toBeUndefined()
       expect(v.allow).toBeUndefined()
-      expect(v.deny).toContain('bypass 0.72')
+      expect(v.deny).toContain('bypass 0.90')
     }
   })
 
-  test('under tier deny: an inner ask stays, and an uncalibrated model gets a hand-over deny', () => {
+  test('under tier deny: an inner ask stays, and a model ask becomes a hand-over deny', () => {
     const danger: Verdict = { ask: 'remote exec' }
     expect(merge(danger, answer(0.1, 0.2), 'deny', cal)).toEqual({ verdict: danger, rule: null })
-    const r = merge(E, answer(0.3, 0.99), 'deny', uncal)
+    const r = merge(E, answer(0.2, 0.3), 'deny', cal)
     expect(r.rule).toBe('systemone')
     expect(r.verdict.deny).toContain('Hand this command to the user to run.')
-    expect(merge(E, answer(0.9, 0.99), 'deny', uncal)).toEqual({ verdict: E, rule: null })
+    expect(merge(E, answer(0.9, 0.3), 'deny', cal)).toEqual({ verdict: E, rule: null })
   })
 })
 
@@ -400,6 +440,21 @@ describe('judge', () => {
     expect(a1).not.toBeNull()
     expect(a2).toBe(a1)
     expect(r.bodies.length).toBe(1)
+  })
+
+  test('the concurrency setting is the cap: 1 sends one request at a time, 8 sends eight', async () => {
+    for (const n of [1, 8]) {
+      const held = Array.from({ length: n + 1 }, () => deferred())
+      const r = rig(i => held[i - 1].promise)
+      const calls = held.map((_, i) => r.judge({ ...cfg, concurrency: n }, `echo ${i}`))
+      await flush()
+      expect(r.bodies.length).toBe(n)
+      held[0].resolve(ok(reply(0.9, 0.05, 0.05, 0.1)))
+      await flush()
+      expect(r.bodies.length).toBe(n + 1) // the extra call took the freed slot
+      for (const h of held.slice(1)) h.resolve(ok(reply(0.9, 0.05, 0.05, 0.1)))
+      await Promise.all(calls)
+    }
   })
 
   test('at most 4 requests pend, timed-out ones included; the fifth waits, then is skipped with one busy report', async () => {

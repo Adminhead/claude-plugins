@@ -11,7 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { ASK_TIER, askRule, classify, type Verdict } from '../hooks/tool-mgr/rules'
-import { DEFAULT_MODEL, buildRequest, calFor, merge, parseConfig, parseReply, type Answer, type Cal } from '../hooks/tool-mgr/systemone'
+import { DEFAULT_MODEL, buildRequest, calFor, merge, parseReply, parseUrl, type Answer, type Cal } from '../hooks/tool-mgr/systemone'
 
 const TIMEOUT_MS = 1000
 const KEV_URL = 'http://127.0.0.1:9931/v1/systemone'
@@ -30,10 +30,13 @@ export type Cls = (typeof CLASSES)[number]
 const SPLITS = ['tune', 'holdout'] as const
 const SOURCES = ['session', 'synthetic'] as const
 
+// The eval may score a model the guard refuses. Such a model gets the ask path at 0.5 and no bypass question here only.
+const calOfModel = (model: string): Cal => calFor(model) ?? { allowBelow: 0.5 }
+
 // `bypass` forces the bypass question for a model with no calibration, so its bypass scores can be swept. The thresholds
 // used for the run's own verdicts are then the Kev-4B ones.
 export type Cfg = { url: string; model: string; bypass?: boolean }
-export const calOfCfg = (cfg: Cfg): Cal => (cfg.bypass ? calFor(DEFAULT_MODEL) : calFor(cfg.model))
+export const calOfCfg = (cfg: Cfg): Cal => (cfg.bypass ? calOfModel(DEFAULT_MODEL) : calOfModel(cfg.model))
 export type Assess = { ms: number; answer: Answer | null; fail?: string; echo?: boolean }
 export type Outcome = 'bypass-deny' | 'ask' | 'pass'
 export type Row = {
@@ -96,7 +99,7 @@ export function outcomeWith(answer: Answer | null, cal: Cal, inner: Verdict): Ou
 }
 
 export function outcomeOf(answer: Answer | null, model: string, inner: Verdict): Outcome {
-  return outcomeWith(answer, calFor(model), inner)
+  return outcomeWith(answer, calOfModel(model), inner)
 }
 
 export function staticVerdict(command: string): Row['staticVerdict'] {
@@ -380,7 +383,7 @@ export type Point = { allowBelow: number; bypassAtLeast: number | null }
 export type ReplayAt = { assessed: number; denies: number; asks: number; pct: number | null }
 export type PointResult = Point & { tune: ReturnType<typeof summarize>; replay: ReplayAt }
 
-// The calibration for a point. An off bypass threshold leaves the key out, as CALIBRATED does for an uncalibrated model.
+// The calibration for a point. An off bypass threshold leaves the key out, as a model with no calibration does.
 export function calOf(p: Point): Cal {
   return p.bypassAtLeast === null ? { allowBelow: p.allowBelow } : { allowBelow: p.allowBelow, bypassAtLeast: p.bypassAtLeast }
 }
@@ -557,9 +560,9 @@ export function parseArgs(argv: string[]) {
 async function main() {
   const o = parseArgs(process.argv.slice(2))
   if (o.sweep) return runSweep(o.sweep[0], o.sweep[1])
-  const { config, error } = parseConfig(`${o.url}|${o.model}`)
-  if (!config) throw new Error(error ?? '--url is not usable')
-  const cfg: Cfg = { ...config, bypass: o.bypass }
+  const url = parseUrl(o.url)
+  if (!url) throw new Error('--url must be https, or http on loopback, with no userinfo or fragment')
+  const cfg: Cfg = { url, model: o.model, bypass: o.bypass }
   if (o.replay === undefined) return corpus(o.split, cfg, o.concurrency, o.scoresOut)
   if (!o.flagsOut) throw new Error('--replay needs --flags-out')
   return replay(o.replay, cfg, o.flagsOut, o.concurrency, o.scoresOut)

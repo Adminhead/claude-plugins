@@ -26,10 +26,11 @@ The spike's scratchpad (`report.md`, `cases.json`, `raw-kev.jsonl`) is lost. Its
 | Name | Value |
 |---|---|
 | Default URL | `http://127.0.0.1:9931/v1/systemone` |
-| Default model | `ggml-org/Kev-4B-GGUF:Q8_0` (the only calibrated model) |
+| Default model | `ggml-org/Kev-4B-GGUF:Q8_0`. Only Kev-4B and Kev-0.8B are calibrated (u6). |
 | Questions | `decision`: variant A `choice` allow/ask/deny; `bypass`: variant B's bypass `noul` |
-| Ask rule | P(allow) < 0.5 |
-| T_BYPASS | bypass ≥ 0.6 gives a deny (Kev only) |
+| Ask rule | P(allow) < `allowBelow`: Kev-4B 0.25, Kev-0.8B 0.20 (S3 sweeps; the spike's 0.5 is superseded) |
+| T_BYPASS | bypass ≥ 0.85 gives a deny, both sizes |
+| Concurrency | 2 by default, 1 to 8 (replaces the fixed cap of 4) |
 | TIMEOUT_MS | 1000 |
 | MAX_MODEL_INPUT | 4000 chars (longer means unassessed) |
 
@@ -80,17 +81,17 @@ Kev's bypass `noul` (variant B; no case moved more than 0.02 across the 3 runs):
 3. **Keep the logic pure in a new `hooks/tool-mgr/systemone.ts`.** It takes injected `fetch`, `sleep` and `now`, and `register.tsx` passes `$.http.fetch`, `$.clock.sleep` and `$.clock.now`.
 4. **Wire format, built by hand:**
    - Request: `POST <url>`, JSON `{"state":<cmd>,"questions":{"decision":{"type":"choice",…},"bypass":{"type":"noul","instructions":…}},"model":<m>}`.
-   - `bypass` is sent only for calibrated models (`CALIBRATED`, which lists Kev alone).
+   - `bypass` is sent on every request, since every accepted model is calibrated.
    - Reply: `answers.decision` = `{type:"choice",choice,confidence,probabilities:{allow,ask,deny}}`; `answers.bypass` = `{type:"noul",noul}`.
    - This mirrors `@typesafe-ai/sdk` 0.6.0 `systemOne()`.
-5. **`CALIBRATED`** is a code constant mapping model id to `{ allowBelow: 0.5, bypassAtLeast: 0.6 }`. It holds Kev only. Any other model gets the ask path with `allowBelow: 0.5`, as documented.
+5. **`CALIBRATED`** is a code constant keyed by Kev size: `4B` is `{ allowBelow: 0.25, bypassAtLeast: 0.85 }` and `0.8B` is `{ allowBelow: 0.20, bypassAtLeast: 0.85 }`. `calFor(model)` matches `Kev-4B` or `Kev-0.8B` in the name, case-insensitively. Any other model is a config error and the guard stays off; there is no ask-only fallback.
 
 ## Bounding latency without a fetch timeout
 `HttpInit` has only `{method, headers, body, auth, socketPath}`, with no timeout or signal. Whether the host imposes a timeout is UNCONFIRMED (S0-e).
 
 1. **Race against a timer**, which starts with the request: `Promise.race([req, $.clock.sleep(1000, { signal }).then(() => TIMEOUT)])`. The request aborts `signal` when it settles, so a fast reply leaves no pending sleep. A timeout is a failure, and the static verdict stands.
 2. **Ignore the late result; there is no way to cancel.** `.catch` is attached when the request is created. A late reply never writes the memo or closes the breaker. With a matching generation, it only counts toward the breaker.
-3. **Bound what can pile up.** At most 4 attempts may be pending, counting timed-out ones. When all 4 are pending, the call waits for a slot within its own 1000 ms deadline (measured from the call's start); if none frees, it skips the model and one `systemone busy` line is reported.
+3. **Bound what can pile up.** At most `TOOL_MGR_SYSTEMONE_CONCURRENCY` attempts (default 2) may be pending, counting timed-out ones. When all are pending, the call waits for a slot within its own 1000 ms deadline (measured from the call's start); if none frees, it skips the model and one `systemone busy` line is reported.
 4. **Stay inside the hook budget.** Clock waits count toward the 10 s budget. 1000 ms is well under it.
 
 | Item | Value |
@@ -111,10 +112,10 @@ Kev's bypass `noul` (variant B; no case moved more than 0.02 across the 3 runs):
 |---|---|---|
 | any | null (off, failed, unassessed, busy) | inner |
 | deny | — | inner (the model is not called) |
-| any non-deny | bypass ≥ 0.6 (calibrated model only) | **deny**, rule `systemone-bypass`, under **every** `ASK_TIER` (as the static bypass rules deny in both tiers) |
+| any non-deny | bypass ≥ `bypassAtLeast` (0.85) | **deny**, rule `systemone-bypass`, under **every** `ASK_TIER` (as the static bypass rules deny in both tiers) |
 | ask | — | inner (danger never goes ask→deny) |
-| none/allow | P(allow) < 0.5 | `ask`; keep inner's other fields and drop `allow` (as `stricter()`, `rules.ts:254-258`) |
-| none/allow | P(allow) < 0.5 under `ASK_TIER 'deny'` | deny + `HAND_OVER`, rule `systemone` |
+| none/allow | P(allow) < `allowBelow` | `ask`; keep inner's other fields and drop `allow` (as `stricter()`, `rules.ts:254-258`) |
+| none/allow | P(allow) < `allowBelow` under `ASK_TIER 'deny'` | deny + `HAND_OVER`, rule `systemone` |
 | none/allow | otherwise | inner |
 
 - **Bypass deny message (steering):** "tool-mgr: the systemone model scores this as reading or editing files through the shell (bypass 0.72). Use Read to read a file, Edit or Write to change one, and Grep or Glob to search. If no built-in tool fits, hand the command to the user. Do not reword it to get past this check."
@@ -140,17 +141,24 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 - The command is sent raw, with no redaction (user decision u5): the endpoint is always local or self-controlled. The S1 security audit showed regex redaction both leaked common secret shapes and let a keyword prefix hide shell code from the model.
 - The docs say plainly that the endpoint receives every command not denied first, secrets included, and may log them, so only a server the user controls belongs in `TOOL_MGR_SYSTEMONE`.
 
-## Config: one canonical variable
-`TOOL_MGR_SYSTEMONE` goes in the `env` block of **user** settings and is read with `$.settings.read({source:'user'})` at `session.start`:
+## Config: three variables
+All three go in the `env` block of **user** settings and are read with `$.settings.read({source:'user'})` at `session.start`:
 
     "env": { "TOOL_MGR_SYSTEMONE": "http://127.0.0.1:9931/v1/systemone" }
 
-- **Format:** the spike's `<url>|<model>` shape, with the model optional. The default model is `ggml-org/Kev-4B-GGUF:Q8_0`. Unset means off.
-- **Name:** the spike suggested `CLAUDE_SYSTEMONE`. The plan uses `TOOL_MGR_SYSTEMONE`, because a `CLAUDE_` prefix could collide with Claude Code's own variables, and the `TOOL_MGR_` prefix names the mod that reads it. Only this one name is read; there are no aliases.
+| Variable | Value |
+|---|---|
+| `TOOL_MGR_SYSTEMONE` | The URL only; a value containing `\|` is a config error. Unset means off, and then the other two are not read. |
+| `TOOL_MGR_SYSTEMONE_MODEL` | Optional, default `ggml-org/Kev-4B-GGUF:Q8_0`. The Kev size in the name (`Kev-4B` or `Kev-0.8B`, any case, any repo prefix or quant) picks the calibration. Any other name is a config error ("model not calibrated"). |
+| `TOOL_MGR_SYSTEMONE_CONCURRENCY` | Optional integer 1 to 8, default 2: the most requests in flight. Extra calls wait for a slot within the deadline. |
+
+- A reply whose `model` differs from the configured model string is a failure.
+- **Name:** the spike suggested `CLAUDE_SYSTEMONE`. The plan uses `TOOL_MGR_SYSTEMONE`, because a `CLAUDE_` prefix could collide with Claude Code's own variables, and the `TOOL_MGR_` prefix names the mod that reads it. Only these three names are read; there are no aliases.
 - **Validation (a failure reports a config error and leaves the model off):**
   - https, or http only on 127.0.0.1, [::1] or localhost
   - no userinfo or fragment
-  - a non-empty model
+  - a model whose name has a Kev size, and a concurrency from 1 to 8
+  - a config error is reported once at `session.start` with fixed text that names the variable, never the value
 - **Why user settings only:** a cloned repo's `.claude/settings.json` `env` reaches the process env, so a project could redirect every command to its own server.
 - **Not added (YAGNI):** the spike's optional `THRESHOLD` and `TIMEOUT_MS` (they stay code constants) and `TYPESAFE_API_KEY` (neither endpoint checks auth).
 
@@ -299,6 +307,7 @@ Regroup is merged into main (a45f918, bf4ffcd). The coremods README row is now L
 - **u4, adopted:** clef allowed and uncalibrated. **Narrowed:** ask-only, from the spike's clef bypass scores (`rg` 0.93); see open question 5.
 - **d1, new:** a separate `noul` over a 4-label choice, chosen from the spike data.
 - **u5, adopted:** no redaction; endpoints are local or self-controlled. Supersedes the redaction part of c3–c12.
+- **u6, adopted:** config split into URL, model and concurrency vars; Kev size picks calibration; uncalibrated refused; 4B at 0.25/0.85. Supersedes s2's `<url>|<model>` shape and u4's clef ask path.
 
 second opinion: agy gemini-3.1-pro-high/high — failed (the model is no longer offered).
 second opinion: codex gpt-6-astra/xhigh — plan critique, 13 findings, each checked against the repo and the d.ts.

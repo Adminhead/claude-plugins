@@ -999,19 +999,29 @@ describe('systemone wiring', () => {
   const wait = async (until: () => boolean) => {
     for (let i = 0; i < 500 && !until(); i++) await new Promise(r => setTimeout(r, 2))
   }
-  const reply = (allow: number, ask: number, deny: number, bypass = 0.1) =>
+  const reply = (allow: number, ask: number, deny: number, bypass = 0.1, model = KEV) =>
     JSON.stringify({
-      model: KEV,
+      model,
       answers: {
         decision: { type: 'choice', choice: 'allow', probabilities: { allow, ask, deny }, confidence: 0.5 },
         bypass: { type: 'noul', noul: bypass },
       },
     })
   const SAFE = reply(0.9, 0.05, 0.05)
-  const BYPASS = reply(0.2, 0.6, 0.2, 0.72)
+  const BYPASS = reply(0.2, 0.6, 0.2, 0.9)
   const ok = (text: string) => ({ value: { status: 200, ok: true, headers: {}, text } })
 
-  type Opts = { user?: string; project?: string; env?: string; fetch?: (e: any) => any; below?: (e: any) => any; clock?: () => any }
+  // `user` and `project` are the TOOL_MGR_SYSTEMONE URL; `userEnv` and `projectEnv` add the other variables.
+  type Opts = {
+    user?: string
+    project?: string
+    userEnv?: Record<string, string>
+    projectEnv?: Record<string, string>
+    env?: string
+    fetch?: (e: any) => any
+    below?: (e: any) => any
+    clock?: () => any
+  }
   async function boot($: any, on: any, o: Opts = {}) {
     const fetches: any[] = []
     const logs: string[] = []
@@ -1029,7 +1039,10 @@ describe('systemone wiring', () => {
     on('clock.sleep', async () => new Promise(res => sleeps.push(() => res({ value: undefined }))))
     on('agent.list', async () => ({ value: [] }))
     on('settings.read', async (_$: any, e: any) => ({
-      value: e?.source === 'user' ? { env: o.user === undefined ? {} : { TOOL_MGR_SYSTEMONE: o.user } } : { env: { TOOL_MGR_SYSTEMONE: o.project ?? o.user ?? '' } },
+      value:
+        e?.source === 'user'
+          ? { env: { ...(o.user === undefined ? {} : { TOOL_MGR_SYSTEMONE: o.user }), ...o.userEnv } }
+          : { env: { TOOL_MGR_SYSTEMONE: o.project ?? o.user ?? '', ...o.projectEnv } },
     }))
     on('env.get', async () => {
       envReads++
@@ -1073,6 +1086,50 @@ describe('systemone wiring', () => {
     expect(t.envReads()).toBe(0)
   })
 
+  test('model and concurrency set only in project settings or the process env are ignored, valid or not', async ($, on) => {
+    const projectEnv = { TOOL_MGR_SYSTEMONE_MODEL: 'kev-0.8b', TOOL_MGR_SYSTEMONE_CONCURRENCY: '99' }
+    const t = await boot($, on, { user: URL, projectEnv, env: 'clef-flash' })
+    expect(await t.pre('ls')).toEqual({ ran: true, deny: undefined })
+    expect(JSON.parse(t.fetches[0].init.body).model).toBe(KEV)
+    expect(t.logs.filter(l => l.includes('TOOL_MGR_SYSTEMONE'))).toHaveLength(0)
+    expect(t.envReads()).toBe(0)
+  })
+
+  test('the user-settings model is sent, and its reply is checked against it', async ($, on) => {
+    const small = 'ggml-org/Kev-0.8B-GGUF:Q4_K_M'
+    const t = await boot($, on, { user: URL, userEnv: { TOOL_MGR_SYSTEMONE_MODEL: small }, fetch: () => ok(reply(0.9, 0.05, 0.05, 0.1, small)) })
+    await t.pre('ls')
+    expect(JSON.parse(t.fetches[0].init.body).model).toBe(small)
+    expect(t.sysLogs()).toHaveLength(0)
+  })
+
+  for (const [name, value] of [['TOOL_MGR_SYSTEMONE_MODEL', 'clef-flash'], ['TOOL_MGR_SYSTEMONE_CONCURRENCY', '9']]) {
+    test(`${name}=${value} is reported once without its value and leaves the model off`, async ($, on) => {
+      const t = await boot($, on, { user: URL, userEnv: { [name]: value } })
+      await t.pre('ls')
+      await t.pre('ls -la')
+      expect(t.fetches).toEqual([])
+      const errs = t.logs.filter(l => l.includes(name))
+      expect(errs).toHaveLength(1)
+      expect(errs[0]).not.toContain(value)
+    })
+  }
+
+  for (const [userEnv, sent] of [[{ TOOL_MGR_SYSTEMONE_CONCURRENCY: '1' }, 1], [{}, 2]] as const) {
+    test(`concurrency ${sent === 1 ? '1' : 'default 2'} sends ${sent} request${sent === 1 ? '' : 's'} at a time`, async ($, on) => {
+      const t = await boot($, on, { user: URL, userEnv, fetch: () => new Promise(() => {}) })
+      const calls = [t.pre('a1'), t.pre('b1'), t.pre('c1')]
+      await wait(() => t.fetches.length >= sent)
+      await new Promise(r => setTimeout(r, 30))
+      expect(t.fetches).toHaveLength(sent)
+      for (let i = 0; i < 20; i++) {
+        for (const wake of t.sleeps.splice(0)) wake()
+        await new Promise(r => setTimeout(r, 5))
+      }
+      await Promise.all(calls)
+    })
+  }
+
   test('a user-settings value turns it on, and the request carries the command', async ($, on) => {
     const t = await boot($, on, { user: URL })
     expect(await t.pre('ls')).toEqual({ ran: true, deny: undefined })
@@ -1114,7 +1171,7 @@ describe('systemone wiring', () => {
     const t = await boot($, on, { user: URL, fetch: () => ok(BYPASS), below: () => ({ updatedInput: { command: 'sed -i s/a/b/ f' } }) })
     const out = await t.pre('ls')
     expect(JSON.parse(t.fetches[0].init.body).state).toBe('sed -i s/a/b/ f')
-    expect(out.deny).toMatch(/^tool-mgr: .*bypass 0\.72/)
+    expect(out.deny).toMatch(/^tool-mgr: .*bypass 0\.90/)
     expect(t.appends[0]).toMatchObject({ blocked: 'systemone-bypass', command: 'sed -i s/a/b/ f' })
   })
 
@@ -1187,11 +1244,11 @@ describe('systemone wiring', () => {
     broken = true
     await t.pre('ls')
     broken = false
-    expect((await t.pre('head -n 5 README.md')).deny).toMatch(/^tool-mgr: .*bypass 0\.72/)
+    expect((await t.pre('head -n 5 README.md')).deny).toMatch(/^tool-mgr: .*bypass 0\.90/)
   })
 
   test('an unsure model asks rather than denies, and an ask is not logged as a deny', async ($, on) => {
-    const t = await boot($, on, { user: URL, fetch: () => ok(reply(0.3, 0.4, 0.3)) })
+    const t = await boot($, on, { user: URL, fetch: () => ok(reply(0.2, 0.5, 0.3)) })
     expect(await t.pre('make deploy')).toEqual({ ran: true, deny: undefined })
     expect(t.fetches).toHaveLength(1)
     expect(t.appends).toEqual([])

@@ -11,40 +11,58 @@ const TIMEOUT_MS = 1000
 const MIN_BUDGET_MS = 100
 const MAX_MODEL_INPUT = 4000
 const MAX_REPLY = 64 * 1024
-const MAX_PENDING = 4
 const BREAKER_FAILURES = 3
 const BREAKER_MS = 60_000
 const MEMO_SIZE = 256
 
 export type Cal = { allowBelow: number; bypassAtLeast?: number }
 
-// Only Kev is calibrated. Another model gets the ask path with `allowBelow` 0.5 and no bypass question.
-export const CALIBRATED: Record<string, Cal> = { [DEFAULT_MODEL]: { allowBelow: 0.5, bypassAtLeast: 0.6 } }
-export const calFor = (model: string): Cal => CALIBRATED[model] ?? { allowBelow: 0.5 }
+// The Kev size in the model name picks the calibration. Both sizes get the bypass question.
+export const CALIBRATED = {
+  '4B': { allowBelow: 0.25, bypassAtLeast: 0.85 },
+  '0.8B': { allowBelow: 0.2, bypassAtLeast: 0.85 },
+} satisfies Record<string, Cal>
+export const calFor = (model: string): Cal | null => {
+  const size = /kev-(4b|0\.8b)/i.exec(model)?.[1]
+  return size ? CALIBRATED[size.toUpperCase() as keyof typeof CALIBRATED] : null
+}
 
 // --- config ---
 
-export type Config = { url: string; model: string }
+export type Config = { url: string; model: string; cal: Cal; concurrency: number }
 
 const LOOPBACK = new Set(['127.0.0.1', '[::1]', 'localhost'])
+const DEFAULT_CONCURRENCY = 2
 
-// `<url>|<model>` from the user-settings env. Unset or blank means off; a bad value is an error and also off.
-export function parseConfig(raw: string | undefined): { config: Config | null; error?: string } {
-  if (raw === undefined || raw.trim() === '') return { config: null }
-  const bar = raw.indexOf('|')
-  const url = (bar < 0 ? raw : raw.slice(0, bar)).trim()
-  const model = bar < 0 ? DEFAULT_MODEL : raw.slice(bar + 1).trim()
-  const bad = (why: string) => ({ config: null, error: `TOOL_MGR_SYSTEMONE: ${why}` })
-  if (model === '') return bad('the model after "|" is empty')
+// https, or http on loopback, with no userinfo or fragment. Returns the normalized URL, or null.
+export function parseUrl(raw: string): string | null {
   let u: URL
   try {
-    u = new URL(url)
+    u = new URL(raw)
   } catch {
-    return bad('the URL does not parse')
+    return null
   }
-  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && LOOPBACK.has(u.hostname))) return bad('the URL must be https, or http on 127.0.0.1, [::1] or localhost')
-  if (u.username !== '' || u.password !== '' || url.includes('#')) return bad('the URL must have no userinfo or fragment')
-  return { config: { url: u.href, model } }
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && LOOPBACK.has(u.hostname))) return null
+  if (u.username !== '' || u.password !== '' || raw.includes('#')) return null
+  return u.href
+}
+
+// The three user-settings env values. Blank means unset. With no URL the guard is off and the other two are not read.
+// A bad value is an error and also off. The error text names the variable, never the value.
+export function parseConfig(env: { url?: string; model?: string; concurrency?: string }): { config: Config | null; error?: string } {
+  const blank = (v: string | undefined) => v === undefined || v.trim() === ''
+  if (blank(env.url)) return { config: null }
+  const bad = (error: string) => ({ config: null, error })
+  const raw = env.url!.trim()
+  if (raw.includes('|')) return bad('TOOL_MGR_SYSTEMONE: the value is the URL only; set the model in TOOL_MGR_SYSTEMONE_MODEL')
+  const url = parseUrl(raw)
+  if (url === null) return bad('TOOL_MGR_SYSTEMONE: the value must be an https URL, or an http URL on 127.0.0.1, [::1] or localhost, with no userinfo or fragment')
+  const model = blank(env.model) ? DEFAULT_MODEL : env.model!.trim()
+  const cal = calFor(model)
+  if (cal === null) return bad('TOOL_MGR_SYSTEMONE_MODEL: model not calibrated; the name must contain Kev-4B or Kev-0.8B')
+  const c = blank(env.concurrency) ? String(DEFAULT_CONCURRENCY) : env.concurrency!.trim()
+  if (!/^[1-8]$/.test(c)) return bad('TOOL_MGR_SYSTEMONE_CONCURRENCY: the value must be an integer from 1 to 8')
+  return { config: { url, model, cal, concurrency: Number(c) } }
 }
 
 // --- questions ---
@@ -203,13 +221,13 @@ export function createJudge() {
   }
 
   // The request has `budget` ms of the call's deadline left.
-  async function attempt(deps: Deps, cfg: Config, body: string, withBypass: boolean, gen: number, budget: number): Promise<Answer | null> {
+  async function attempt(deps: Deps, cfg: Config, body: string, gen: number, budget: number): Promise<Answer | null> {
     pending++
     const req: Promise<Outcome> = (async () => {
       try {
         const r = await deps.fetch(cfg.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body })
         if (r.status < 200 || r.status > 299) return { fail: `http ${r.status}` }
-        const answer = parseReply(r.text, withBypass)
+        const answer = parseReply(r.text, true)
         if (answer === null) return { fail: 'malformed reply' }
         return answer.model === cfg.model ? { answer } : { fail: 'the reply came from a different model than configured' }
       } catch {
@@ -250,11 +268,10 @@ export function createJudge() {
       if (gen !== generation) return null
       const open = failures >= BREAKER_FAILURES
       if (open && (probing || t < openedAt + BREAKER_MS)) return null
-      if (pending < MAX_PENDING) {
+      if (pending < cfg.concurrency) {
         if (deadline - t < MIN_BUDGET_MS) return busy(deps)
         if (open) probing = true
-        const withBypass = calFor(cfg.model).bypassAtLeast !== undefined
-        return attempt(deps, cfg, JSON.stringify(buildRequest(command, cfg.model, withBypass)), withBypass, gen, deadline - t)
+        return attempt(deps, cfg, JSON.stringify(buildRequest(command, cfg.model, true)), gen, deadline - t)
       }
       const ctl = new AbortController()
       let free!: () => void

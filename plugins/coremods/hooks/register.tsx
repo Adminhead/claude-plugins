@@ -4,7 +4,7 @@ import { parseNumstat, parseStatus, placeOf, renderLine as gitLine, type Snapsho
 import { buildGit, TOOLS, TOOL_PREFIX, truncate } from './git-tools/git'
 import { cap, CHECK_SCRIPT, HELP, parseCommand, RUN_SCRIPT } from './tool-mgr/metrics'
 import { APPEND_SCRIPT, ASK_TIER, buildRecord, classify, logPath, withAsk, type Rule, type Verdict } from './tool-mgr/rules'
-import { calFor, createJudge, merge, parseConfig, type Config, type Deps } from './tool-mgr/systemone'
+import { createJudge, merge, parseConfig, type Config, type Deps } from './tool-mgr/systemone'
 import { renderBand } from './usage-band/band'
 
 // The engine refuses a plugin that registers an event twice, and it follows `$` only through
@@ -250,8 +250,9 @@ function noteAgent(e: any) {
 async function readSystemone($: any) {
   sysConfig = null
   try {
-    const raw = (await $.settings.read({ source: 'user' }))?.env?.TOOL_MGR_SYSTEMONE
-    const { config, error } = parseConfig(raw === undefined || raw === null ? undefined : String(raw))
+    const env = (await $.settings.read({ source: 'user' }))?.env
+    const get = (k: string) => (env?.[k] === undefined || env[k] === null ? undefined : String(env[k]))
+    const { config, error } = parseConfig({ url: get('TOOL_MGR_SYSTEMONE'), model: get('TOOL_MGR_SYSTEMONE_MODEL'), concurrency: get('TOOL_MGR_SYSTEMONE_CONCURRENCY') })
     if (error) report($, 'tool-mgr', error, 'tool-mgr:systemone-config')
     sysConfig = config
   } catch (err) {
@@ -280,7 +281,7 @@ async function withSystemone($: any, e: any, inner: Verdict): Promise<Verdict> {
     const rewritten = inner.updatedInput as { command?: unknown } | undefined
     const command = typeof rewritten?.command === 'string' ? rewritten.command : e.command
     const answer = await judge.judge(cfg, command, deps)
-    const { verdict, rule } = merge(inner, answer, ASK_TIER, calFor(cfg.model))
+    const { verdict, rule } = merge(inner, answer, ASK_TIER, cfg.cal)
     if (rule) await logDeny($, { ...e, command, agentId: callAgents.get(e.tool_use_id) }, rule)
     return verdict
   } catch (err) {

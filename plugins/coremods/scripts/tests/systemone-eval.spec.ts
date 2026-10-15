@@ -112,9 +112,9 @@ describe('outcomeOf', () => {
     bypass,
   })
 
-  test('a bypass score at 0.6 denies for Kev, and a null answer passes', () => {
-    expect(outcomeOf(answer(0.9, 0.6), DEFAULT_MODEL, {})).toBe('bypass-deny')
-    expect(outcomeOf(answer(0.9, 0.59), DEFAULT_MODEL, {})).toBe('pass')
+  test('a bypass score at 0.85 denies for Kev-4B, and a null answer passes', () => {
+    expect(outcomeOf(answer(0.9, 0.85), DEFAULT_MODEL, {})).toBe('bypass-deny')
+    expect(outcomeOf(answer(0.9, 0.84), DEFAULT_MODEL, {})).toBe('pass')
     expect(outcomeOf(null, DEFAULT_MODEL, {})).toBe('pass')
   })
 
@@ -127,7 +127,7 @@ describe('outcomeOf', () => {
 describe('assess with a stubbed fetch', () => {
   test('Kev is sent the bypass question and its deny is read back', async () => {
     const seen: { body?: string } = {}
-    const text = reply(DEFAULT_MODEL, { choice: 'allow', allow: 0.9, ask: 0.05, deny: 0.05 }, 0.7)
+    const text = reply(DEFAULT_MODEL, { choice: 'allow', allow: 0.9, ask: 0.05, deny: 0.05 }, 0.9)
     const a = await assess('cat src/x.ts', KEV, stub(200, text, seen))
     expect(JSON.parse(seen.body ?? '{}').questions.bypass).toBeDefined()
     expect(a.echo).toBe(true)
@@ -269,7 +269,7 @@ describe('sweep math (offline)', () => {
 })
 
 describe('forced bypass for an uncalibrated model', () => {
-  const SMALL = { url: 'http://127.0.0.1:9931/v1/systemone', model: 'ggml-org/Kev-0.8B-GGUF:Q8_0' }
+  const SMALL = { url: 'http://127.0.0.1:9931/v1/systemone', model: 'clef-flash' }
 
   test('without the flag an uncalibrated model gets no bypass question; with it, the Kev-4B thresholds apply', async () => {
     const seen: { body?: string } = {}
@@ -280,7 +280,7 @@ describe('forced bypass for an uncalibrated model', () => {
     const forced = await assess('ls', { ...SMALL, bypass: true }, stub(200, text, seen))
     expect(JSON.parse(seen.body ?? '{}').questions.bypass).toBeDefined()
     expect(forced.answer?.bypass).toBe(0.7)
-    expect(calOfCfg({ ...SMALL, bypass: true })).toEqual({ allowBelow: 0.5, bypassAtLeast: 0.6 })
+    expect(calOfCfg({ ...SMALL, bypass: true })).toEqual({ allowBelow: 0.25, bypassAtLeast: 0.85 })
     expect(calOfCfg(SMALL)).toEqual({ allowBelow: 0.5 })
   })
 })
