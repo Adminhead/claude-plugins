@@ -2,7 +2,7 @@
 
 The orchestrated-session crew. It ships the 15 agents that `claude-tmux` sessions run, the read-only Bash gates and orchestration hooks that guard them, and the system prompt file the launcher appends. It replaces the three `~/.claude` symlinks (`agents`, `hooks`, `prompts`) that used to point into this repo. The cutover that removes those links is slice 8 of [marketplace-native-config.md](../plans/marketplace-native-config.md).
 
-Install it at user scope; `claude-tmux` refuses to start without it there, and the plugin is not meant for individual projects. The plugin ships no skills. Its agents preload skills from other plugins (see [Requirements](#requirements)).
+Install it at user scope; `claude-tmux` and `claude-crew` refuse to start without it there, and the plugin is not meant for individual projects. The plugin ships no skills. Its agents preload skills from other plugins (see [Requirements](#requirements)).
 
 ## Agents
 
@@ -70,17 +70,27 @@ Each Bash call starts both gate processes. In a measurement run on 2026-10-12, t
 
 ## Launcher
 
-`claude-tmux` starts orchestrated sessions. `scripts/install.sh` links it at `~/.local/bin/claude-tmux`, pointing to `scripts/claude-tmux.sh`. To link it by hand, run `ln -s <clone>/scripts/claude-tmux.sh ~/.local/bin/claude-tmux`.
+`claude-tmux` starts orchestrated sessions in tmux. `claude-crew` starts the same session in the current terminal, without tmux. `scripts/install.sh` links both into `~/.local/bin`, pointing to `scripts/claude-tmux.sh` and `scripts/claude-crew.sh`. To link one by hand, run `ln -s <clone>/scripts/claude-crew.sh ~/.local/bin/claude-crew`. Both source `scripts/crew-launch.sh`, which holds the preflight and the environment below.
 
-For a new session, the launcher:
+For a new session, either launcher:
 
 - Runs `claude plugin list --json` from the directory it starts in. It stops with the fix if `crew@adminhead` isn't enabled at user scope, or is disabled at project or local scope for that directory. Attaching to an existing session skips this check.
 - Starts `claude` with `--agent crew:orchestration`.
 - Appends `prompts/system_override.md` with `--append-system-prompt-file`. It reads the plugin's folder from the same JSON: `readFromFolder` (the repo, for the directory marketplace) when set, else `installPath`.
 - Sets `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, which turns off auto memory because claude-mem covers it.
 - Sets `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1`, which removes the built-in Explore and Plan agents for that session.
+- Sets `CLAUDE_CODE_SHELL` to bash, so the Bash tool never sources `~/.zshrc` or other zsh config.
+- Sets `CLAUDE_ENV_FILE` to `scripts/agent.bashrc`, which Claude Code prepends to every Bash command.
 
-Plain `claude` gets the stock prompt and doesn't run as `crew:orchestration`. Only the launcher sets those.
+Plain `claude` gets the stock prompt and doesn't run as `crew:orchestration`. Only the launchers set those.
+
+### Agent shell
+
+`scripts/agent.bashrc` gives agents a predictable, non-interactive shell. It removes aliases, routes every pager to `cat`, turns off git credential prompts and color, and sets the editor to `true`.
+
+- It layers on top of the bash snapshot, not in place of it. Claude Code still runs `bash -l`, so `~/.bash_profile` and `~/.bashrc` run first. Functions and `shopt` settings from them survive.
+- It holds only `export` and `unalias` lines. Shell options such as `set -e` or `pipefail` would change every command the agents run.
+- Claude Code reads it once per session, so an edit takes effect at the next launch.
 
 ## Dev loop
 

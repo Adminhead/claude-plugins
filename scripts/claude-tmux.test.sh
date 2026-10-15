@@ -26,7 +26,7 @@ if [ "$1" = plugin ]; then
   exit 0
 fi
 printf '%s|%s\n' "$PWD" "$*" > "$STUB_DIR/args.$2"
-printf '%s %s\n' "$CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS" "$CLAUDE_CODE_DISABLE_AUTO_MEMORY" > "$STUB_DIR/env.$2"
+printf '%s %s %s %s\n' "$CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS" "$CLAUDE_CODE_DISABLE_AUTO_MEMORY" "$CLAUDE_CODE_SHELL" "$CLAUDE_ENV_FILE" > "$STUB_DIR/env.$2"
 exec sleep 30
 EOF
 chmod +x "$tmp/bin/claude"
@@ -81,7 +81,7 @@ recorded after "$tmp|-n after $launch --resume abc"
 # Enabled at user scope: the launch gets the crew agent, prompt and env
 run -s crew-on "$tmp"
 recorded crew-on "$tmp|-n crew-on $launch"
-[[ $(cat "$tmp/env.crew-on") == "1 1" ]] || fail "crew-on env: '$(cat "$tmp/env.crew-on")'"
+[[ $(cat "$tmp/env.crew-on") == "1 1 $(command -v bash) $(dirname "$script")/agent.bashrc" ]] || fail "crew-on env: '$(cat "$tmp/env.crew-on")'"
 grep -qx 'plugin list --json' "$tmp/plugin-calls" || fail "preflight did not list plugins"
 
 # A directory-backed install takes the prompt from readFromFolder, not the cache

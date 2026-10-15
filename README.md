@@ -83,7 +83,7 @@ It needs `claude`, `git`, `jq`, `python3`, `bun`, `node` and `npm` on `PATH`. It
 
 The script does the following.
 
-- Links `~/.local/bin/claude-tmux` to `scripts/claude-tmux.sh`. An existing file or link at that path moves into a `claude-tmux.bak-*` directory first.
+- Links `~/.local/bin/claude-tmux` and `~/.local/bin/claude-crew` to `scripts/claude-tmux.sh` and `scripts/claude-crew.sh`. An existing file or link at either path moves into a `<name>.bak-*` directory first.
 - Adds the `adminhead` marketplace from this clone, or updates it when it is already registered.
 - Adds the `claude-code-lsps` marketplace, which the language plugins need for their LSP servers.
 - Installs the `baseline` plugin at user scope, which pulls in the default set: `coremods`, `crew`, `coding-core`, `review`, `research`, `testing`, `code-search`, `git`, `github`, `authoring` and `setup`.
@@ -103,6 +103,10 @@ claude-tmux -l
 ```
 
 Each git repo gets one session, named `claude-<repo name>`. Running the command again attaches to it. Inside tmux, it switches sessions. `-l` picks a session with `fzf`. A new session needs `crew` enabled at user scope. The launcher needs `tmux` and `jq`, and `-l` also needs `fzf`.
+
+`claude-crew [DIR] [CLAUDE_ARGS...]` starts the same session in the current terminal, without tmux. It needs `jq`.
+
+Both launchers run the agents' Bash tool under bash with `scripts/agent.bashrc`, so zsh config never reaches the agents. See [Agent shell](docs/plugins/crew.md#agent-shell).
 
 ### Pick plugins for a project
 
@@ -129,7 +133,7 @@ plugins/
     hooks/hooks.json      hook config: classic hooks, or a "modules" list
     hooks/register.ts     mods hooks module, when the plugin has one
     .mcp.json
-scripts/                  repo checks and the claude-tmux launcher
+scripts/                  repo checks, the claude-tmux and claude-crew launchers, and agent.bashrc
 ```
 
 `plugin.json` can name another hook file in its `hooks` field. `authoring` does this with `hooks/docs-sync.json`.

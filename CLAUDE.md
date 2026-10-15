@@ -7,7 +7,7 @@
 - `plugins/<name>/` holds one plugin each, with `.claude-plugin/plugin.json`. The catalog is `.claude-plugin/marketplace.json`.
 - `docs/plugins/<name>.md` is the per-plugin page. Several plugins can share a page (`coding-*` share `docs/plugins/coding.md`, `sentry-*` share `docs/plugins/sentry.md`, and `github-admin` shares `docs/plugins/github.md`). `docs/plans/` holds plans and `docs/research/` holds research notes.
 - `plugins/crew/` holds the orchestrated-session crew: the 15 agents, the read-only Bash gates, the orchestration hooks and the system prompt file. Its agents are `crew:<name>`. `plugins/crew/docs/writing-agents.md` holds the rules for writing and changing agents, and its edit loop is `claude --plugin-dir plugins/crew`.
-- `scripts/` holds the checks and the `claude-tmux` launcher.
+- `scripts/` holds the checks, the `claude-tmux` and `claude-crew` launchers (sharing `crew-launch.sh`), and `agent.bashrc`, the agents' Bash env.
 
 ## Checks
 

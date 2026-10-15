@@ -30,6 +30,7 @@ export PATH=$tmp/bin:$PATH
 
 mapfile -t required < <(echo baseline; jq -r '.dependencies[]' "$repo/plugins/baseline/.claude-plugin/plugin.json")
 launcher=$HOME/.local/bin/claude-tmux
+crew_launcher=$HOME/.local/bin/claude-crew
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 list_with() { # list_with SKIP: plugin list json with every required id at user scope except SKIP
@@ -55,6 +56,7 @@ plugin install avoid-ai-writing@conorbronsdon-skills --scope user"
 reset
 out=$("$script" 2>&1) || fail "1: fresh run failed:"$'\n'"$out"
 [[ $(readlink "$launcher") == "$repo/scripts/claude-tmux.sh" ]] || fail "1: launcher link"
+[[ $(readlink "$crew_launcher") == "$repo/scripts/claude-crew.sh" ]] || fail "1: crew launcher link"
 want="plugin marketplace add $repo"$'\n'"$expected_installs$third_party"
 [[ $(mutating) == "$want" ]] || fail "1: calls were:"$'\n'"$(mutating)"
 
@@ -108,6 +110,7 @@ out=$("$script" --dry-run 2>&1) || fail "6: dry run failed"
 [[ -z $(mutating) ]] || fail "6: mutating calls: $(mutating)"
 [[ ! -e $HOME/.local ]] || fail "6: created launcher dir"
 for line in "+ ln -s $repo/scripts/claude-tmux.sh $launcher" \
+  "+ ln -s $repo/scripts/claude-crew.sh $crew_launcher" \
   "+ claude plugin marketplace add $repo" \
   "+ claude plugin install baseline@adminhead --scope user" \
   "+ claude plugin marketplace add boostvolt/claude-code-lsps" \

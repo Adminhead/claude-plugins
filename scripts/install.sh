@@ -7,8 +7,9 @@ usage() {
   cat <<'EOF'
 Usage: scripts/install.sh [--dry-run]
 
-Links ~/.local/bin/claude-tmux to this clone's launcher, registers the adminhead
-marketplace and the third-party ones, and installs baseline (the everyday plugin set) at user scope.
+Links ~/.local/bin/claude-tmux and ~/.local/bin/claude-crew to this clone's launchers,
+registers the adminhead marketplace and the third-party ones, and installs baseline
+(the everyday plugin set) at user scope.
 --dry-run prints every command that would change something.
 EOF
 }
@@ -53,27 +54,30 @@ if [[ -n $other ]]; then
 fi
 has_adminhead=$(jq -r '[.[] | select(.name == "adminhead")] | length' <<<"$markets")
 
-# Launcher link, backing up whatever sits at the target.
-src=$repo/scripts/claude-tmux.sh
-target=$HOME/.local/bin/claude-tmux
-if [[ -e $target && $(realpath "$target") == "$src" ]]; then
-  echo "ok $target"
-else
-  run mkdir -p "$(dirname "$target")"
-  if [[ -e $target || -L $target ]]; then
-    if ((dry)); then
-      echo "+ back up $target to $target.bak-*/"
-    else
-      bak=$(mktemp -d "$target.bak-$(date +%Y%m%d-%H%M%S).XXXX")
-      mv "$target" "$bak/"
-      echo "backed up existing $target to $bak/"
+# Launcher links, backing up whatever sits at each target.
+for launcher in claude-tmux claude-crew; do
+  src=$repo/scripts/$launcher.sh
+  target=$HOME/.local/bin/$launcher
+  bak=
+  if [[ -e $target && $(realpath "$target") == "$src" ]]; then
+    echo "ok $target"
+  else
+    run mkdir -p "$(dirname "$target")"
+    if [[ -e $target || -L $target ]]; then
+      if ((dry)); then
+        echo "+ back up $target to $target.bak-*/"
+      else
+        bak=$(mktemp -d "$target.bak-$(date +%Y%m%d-%H%M%S).XXXX")
+        mv "$target" "$bak/"
+        echo "backed up existing $target to $bak/"
+      fi
+    fi
+    if ! run ln -s "$src" "$target"; then
+      if [[ -n $bak ]]; then mv "$bak/$launcher" "$target"; fi
+      die "could not link $target"
     fi
   fi
-  if ! run ln -s "$src" "$target"; then
-    if [[ -n ${bak:-} ]]; then mv "$bak/claude-tmux" "$target"; fi
-    die "could not link $target"
-  fi
-fi
+done
 
 for d in agents hooks prompts; do
   if [[ -e $HOME/.claude/$d || -L $HOME/.claude/$d ]]; then

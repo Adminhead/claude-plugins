@@ -14,7 +14,8 @@ switches sessions instead of nesting. The pane closes when Claude exits.
 
 Claude runs as crew:orchestration from the crew plugin, with the plugin's
 prompts/system_override.md appended to its system prompt, the built-in Explore
-and Plan agents off, and auto memory off (claude-mem covers it). Plain `claude`
+and Plan agents off, and auto memory off (claude-mem covers it). Its Bash tool
+runs bash with scripts/agent.bashrc, not your login shell. Plain `claude`
 keeps the defaults. A new session first checks that crew is enabled for DIR.
 Attaching to an existing session skips that check.
 
@@ -30,25 +31,12 @@ EOF
 
 die() { echo "claude-tmux: $*" >&2; exit 1; }
 
+# shellcheck source-path=SCRIPTDIR source=crew-launch.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/crew-launch.sh"
+
 go_to() { # attach, or switch when already inside tmux
   if [[ -n ${TMUX:-} ]]; then exec tmux switch-client -t "=$1"; fi
   exec tmux attach-session -t "=$1"
-}
-
-# Sets $prompt to the crew system prompt. Reads the plugin list from $dir so
-# project and local overrides for $dir apply.
-preflight() {
-  command -v jq >/dev/null || die "jq not found (install: sudo pacman -S jq)"
-  local plugins user_crew off_scope
-  plugins=$(cd "$dir" && claude plugin list --json) || die "claude plugin list failed"
-  user_crew=$(jq -c '[.[] | select(.id == "crew@adminhead" and .scope == "user")][0] // empty' <<<"$plugins")
-  [[ -n $user_crew ]] || die "crew@adminhead is not installed at user scope; run: claude plugin install crew@adminhead --scope user"
-  [[ $(jq -r .enabled <<<"$user_crew") == true ]] || die "crew@adminhead is disabled at user scope; run: claude plugin enable crew@adminhead --scope user"
-  off_scope=$(jq -r --arg dir "$dir" '[.[] | select(.id == "crew@adminhead" and (.scope == "project" or .scope == "local") and .projectPath == $dir and .enabled == false) | .scope][0] // empty' <<<"$plugins")
-  [[ -z $off_scope ]] || die "crew@adminhead is disabled at $off_scope scope for $dir; run: claude plugin enable crew@adminhead --scope $off_scope"
-  # A directory marketplace runs the plugin from readFromFolder, not the cache copy.
-  prompt=$(jq -r '.readFromFolder // .installPath' <<<"$user_crew")/prompts/system_override.md
-  [[ -f $prompt ]] || die "missing $prompt"
 }
 
 command -v tmux >/dev/null || die "tmux not found (install: sudo pacman -S tmux)"
@@ -89,8 +77,9 @@ if tmux has-session -t "=$name" 2>/dev/null; then
   (($# == 0)) || echo "claude-tmux: $name already exists; ignoring: $*" >&2
 else
   preflight
-  tmux new-session -d -s "$name" -c "$dir" \
-    -e CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 -e CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1 \
+  env_args=()
+  for kv in "${agent_env[@]}"; do env_args+=(-e "$kv"); done
+  tmux new-session -d -s "$name" -c "$dir" "${env_args[@]}" \
     claude -n "$name" --agent crew:orchestration --append-system-prompt-file "$prompt" "$@"
 fi
 go_to "$name"
