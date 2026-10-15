@@ -5,7 +5,7 @@ import type { AskRule, DangerRule } from './danger'
 import { nestedScript, parse, reparse } from '../shell/walk'
 import type { ShellCommand, ShellParse, ShellRedirect } from '../shell/walk'
 
-export type Rule = DangerRule | AskRule | 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long'
+export type Rule = DangerRule | AskRule | 'sed-read' | 'heredoc-write' | 'echo-write' | 'parse-error' | 'too-long' | 'systemone' | 'systemone-bypass'
 export type Hit = { rule: Rule; message: string }
 
 const MESSAGES = {
@@ -218,7 +218,7 @@ const TOO_COMPLEX = 'tool-mgr: this command nests too much script to check. Writ
 // The ask-tier rules answer `ask` (the person confirms) or, if `ask` does not prompt in a session, `deny`, which hands the
 // command to the person. Changing ASK_TIER changes both rules, and classify() then denies them with the other danger rules.
 export const ASK_TIER: 'ask' | 'deny' = 'ask'
-const HAND_OVER = ' Hand this command to the user to run.'
+export const HAND_OVER = ' Hand this command to the user to run.'
 
 export function classify(command: string, askTier: 'ask' | 'deny' = ASK_TIER): Hit | null {
   if (command.length > MAX_PARSE) return { rule: 'too-long', message: MESSAGES['too-long'] }
