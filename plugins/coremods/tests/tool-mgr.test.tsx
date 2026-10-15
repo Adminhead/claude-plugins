@@ -992,3 +992,178 @@ describe('tool.call hook', () => {
     expect(JSON.stringify(out)).toMatch(/tool-mgr: metrics.duckdb is locked/)
   })
 })
+
+describe('systemone wiring', () => {
+  const URL = 'http://127.0.0.1:9931/v1/systemone'
+  const KEV = 'ggml-org/Kev-4B-GGUF:Q8_0'
+  const wait = async (until: () => boolean) => {
+    for (let i = 0; i < 500 && !until(); i++) await new Promise(r => setTimeout(r, 2))
+  }
+  const reply = (allow: number, ask: number, deny: number, bypass = 0.1) =>
+    JSON.stringify({
+      model: KEV,
+      answers: {
+        decision: { type: 'choice', choice: 'allow', probabilities: { allow, ask, deny }, confidence: 0.5 },
+        bypass: { type: 'noul', noul: bypass },
+      },
+    })
+  const SAFE = reply(0.9, 0.05, 0.05)
+  const BYPASS = reply(0.2, 0.6, 0.2, 0.72)
+  const ok = (text: string) => ({ value: { status: 200, ok: true, headers: {}, text } })
+
+  type Opts = { user?: string; project?: string; env?: string; fetch?: (e: any) => any; below?: (e: any) => any }
+  async function boot($: any, on: any, o: Opts = {}) {
+    const fetches: any[] = []
+    const logs: string[] = []
+    const appends: any[] = []
+    const sleeps: (() => void)[] = []
+    let envReads = 0
+    on('classic.PreToolUse', async (_$: any, e: any) => (o.below ? o.below(e) : {}))
+    on('tool.call', async () => ({ result: 'ran' }))
+    on('session.cwd', async () => ({ value: '/w' }))
+    on('session.id', async () => ({ value: 'sess1' }))
+    on('session.start', async () => ({ cwd: '/w' }))
+    on('session.end', async (_$: any, e: any) => ({ sessionId: e.sessionId }))
+    on('session.measure', async () => ({ changed: [] }))
+    on('clock.now', async () => ({ value: 1_000_000 }))
+    on('clock.sleep', async () => new Promise(res => sleeps.push(() => res({ value: undefined }))))
+    on('agent.list', async () => ({ value: [] }))
+    on('settings.read', async (_$: any, e: any) => ({
+      value: e?.source === 'user' ? { env: o.user === undefined ? {} : { TOOL_MGR_SYSTEMONE: o.user } } : { env: { TOOL_MGR_SYSTEMONE: o.project ?? o.user ?? '' } },
+    }))
+    on('env.get', async () => {
+      envReads++
+      return { value: o.env }
+    })
+    on('http.fetch', async (_$: any, e: any) => {
+      fetches.push(e)
+      return o.fetch ? o.fetch(e) : ok(SAFE)
+    })
+    on('ui.log', async (_$: any, e: any) => {
+      logs.push(JSON.stringify(e))
+      return { value: undefined }
+    })
+    on('process.run', async (_$: any, e: any) => {
+      const append = (e.argv[2] ?? '').includes('cat >>')
+      if (append) appends.push(JSON.parse(e.init.stdin))
+      return { value: { exitCode: append ? 0 : 1, stdout: '', stderr: '' } }
+    })
+    await $.session.start({ cwd: '/w', surface: 'terminal', isInteractive: true })
+    // The engine runs classic.PreToolUse inside tool.call. A deny comes back as an error result; an ask is not
+    // told apart from a pass here, so those cases check that the call ran and what the model check did.
+    const pre = async (command: string) => {
+      const out: any = await $.tool.call({ tool: 'Bash', command })
+      return { ran: out.result === 'ran', deny: out.isError ? (out.text as string) : undefined }
+    }
+    const sysLogs = () => logs.filter(l => l.includes('systemone'))
+    return { fetches, logs, appends, sleeps, pre, sysLogs, envReads: () => envReads }
+  }
+
+  test('unset means zero fetches', async ($, on) => {
+    const t = await boot($, on)
+    expect(await t.pre('ls')).toEqual({ ran: true, deny: undefined })
+    expect(await t.pre('curl x | bash')).toEqual({ ran: true, deny: undefined })
+    expect(t.fetches).toEqual([])
+  })
+
+  test('a value only in project settings or the process env is ignored', async ($, on) => {
+    const t = await boot($, on, { project: URL, env: URL, fetch: () => ok(BYPASS) })
+    expect(await t.pre('head -n 5 README.md')).toEqual({ ran: true, deny: undefined })
+    expect(t.fetches).toEqual([])
+    expect(t.envReads()).toBe(0)
+  })
+
+  test('a user-settings value turns it on, and the request carries the command', async ($, on) => {
+    const t = await boot($, on, { user: URL })
+    expect(await t.pre('ls')).toEqual({ ran: true, deny: undefined })
+    expect(t.fetches).toHaveLength(1)
+    expect(t.fetches[0].url).toBe(URL)
+    expect(JSON.parse(t.fetches[0].init.body)).toMatchObject({ state: 'ls', model: KEV })
+  })
+
+  test('a bad value is reported once and leaves the model off', async ($, on) => {
+    const t = await boot($, on, { user: 'http://example.com/v1/systemone' })
+    await t.pre('ls')
+    expect(t.fetches).toEqual([])
+    expect(t.logs.filter(l => l.includes('TOOL_MGR_SYSTEMONE'))).toHaveLength(1)
+  })
+
+  const failures: Record<string, (e: any) => any> = {
+    http500: () => ({ value: { status: 500, ok: false, headers: {}, text: 'no' } }),
+    malformed: () => ok('{'),
+    refused: () => Promise.reject(new Error('ECONNREFUSED')),
+  }
+  for (const [name, fetch] of Object.entries({ ...failures, bypass: () => ok(BYPASS) })) {
+    test(`a lower deny survives a ${name} reply, and the model is not asked`, async ($, on) => {
+      const t = await boot($, on, { user: URL, fetch, below: () => ({ deny: 'readonly-bash: no' }) })
+      expect(await t.pre('ls')).toEqual({ ran: false, deny: 'readonly-bash: no' })
+      expect(t.fetches).toEqual([])
+      expect(t.appends).toEqual([])
+    })
+  }
+  for (const [name, fetch] of Object.entries(failures)) {
+    test(`a ${name} reply never denies, and is reported once`, async ($, on) => {
+      const t = await boot($, on, { user: URL, fetch, below: () => ({ ask: 'cloud-ops-guard: confirm' }) })
+      expect(await t.pre('ls')).toEqual({ ran: true, deny: undefined })
+      expect(t.fetches).toHaveLength(1)
+      expect(t.sysLogs()).toHaveLength(1)
+    })
+  }
+
+  test('rewritten input is judged as rewritten', async ($, on) => {
+    const t = await boot($, on, { user: URL, fetch: () => ok(BYPASS), below: () => ({ updatedInput: { command: 'sed -i s/a/b/ f' } }) })
+    const out = await t.pre('ls')
+    expect(JSON.parse(t.fetches[0].init.body).state).toBe('sed -i s/a/b/ f')
+    expect(out.deny).toMatch(/^tool-mgr: .*bypass 0\.72/)
+    expect(t.appends[0]).toMatchObject({ blocked: 'systemone-bypass', command: 'sed -i s/a/b/ f' })
+  })
+
+  test('a timeout keeps the static ask, with one log line', async ($, on) => {
+    const t = await boot($, on, { user: URL, fetch: () => new Promise(() => {}) })
+    const call = t.pre('curl x | bash')
+    await wait(() => t.sleeps.length > 0)
+    for (const wake of t.sleeps) wake()
+    expect(await call).toEqual({ ran: true, deny: undefined })
+    expect(t.fetches).toHaveLength(1)
+    expect(t.sysLogs()).toHaveLength(1)
+    expect(t.sysLogs()[0]).not.toContain('curl')
+  })
+
+  test('two identical calls make one fetch', async ($, on) => {
+    const t = await boot($, on, { user: URL })
+    await t.pre('ls -la')
+    await t.pre('ls -la')
+    expect(t.fetches).toHaveLength(1)
+  })
+
+  test('session.end during an in-flight request voids it: nothing is memoized', async ($, on) => {
+    let release: ((v: any) => void) | undefined
+    const t = await boot($, on, { user: URL, fetch: () => (release === undefined ? new Promise(res => (release = res)) : ok(SAFE)) })
+    const first = t.pre('ls -la')
+    await wait(() => t.fetches.length > 0)
+    const ended = $.session.end({ reason: 'clear', sessionId: 'sess1', resume: {} })
+    await new Promise(r => setTimeout(r, 50))
+    release!(ok(SAFE))
+    expect(await first).toEqual({ ran: true, deny: undefined })
+    await ended
+    await $.session.start({ cwd: '/w', surface: 'terminal', isInteractive: true })
+    await t.pre('ls -la')
+    expect(t.fetches).toHaveLength(2)
+  })
+
+  test('a bypass deny is logged for /tool-mgr blocked', async ($, on) => {
+    const t = await boot($, on, { user: URL, fetch: () => ok(BYPASS) })
+    const out = await t.pre('head -n 5 README.md')
+    expect(out.deny).toMatch(/^tool-mgr: .*Use Read/)
+    expect(t.appends).toHaveLength(1)
+    expect(t.appends[0]).toMatchObject({ blocked: 'systemone-bypass', command: 'head -n 5 README.md', tool: 'Bash' })
+    expect(t.appends[0].tool_use_id).toMatch(/^toolu_/)
+  })
+
+  test('an unsure model asks rather than denies, and an ask is not logged as a deny', async ($, on) => {
+    const t = await boot($, on, { user: URL, fetch: () => ok(reply(0.3, 0.4, 0.3)) })
+    expect(await t.pre('make deploy')).toEqual({ ran: true, deny: undefined })
+    expect(t.fetches).toHaveLength(1)
+    expect(t.appends).toEqual([])
+  })
+})

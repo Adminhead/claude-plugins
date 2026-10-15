@@ -3,7 +3,8 @@ import { applyTask, buildView, PANE_COLUMNS, PANE_ID, paneRows, renderLine as ag
 import { parseNumstat, parseStatus, placeOf, renderLine as gitLine, type Snapshot } from './git-line/line'
 import { buildGit, TOOLS, TOOL_PREFIX, truncate } from './git-tools/git'
 import { cap, CHECK_SCRIPT, HELP, parseCommand, RUN_SCRIPT } from './tool-mgr/metrics'
-import { APPEND_SCRIPT, buildRecord, classify, logPath, withAsk, type Rule } from './tool-mgr/rules'
+import { APPEND_SCRIPT, ASK_TIER, buildRecord, classify, logPath, withAsk, type Rule, type Verdict } from './tool-mgr/rules'
+import { calFor, createJudge, merge, parseConfig, type Config, type Deps } from './tool-mgr/systemone'
 import { renderBand } from './usage-band/band'
 
 // The engine refuses a plugin that registers an event twice, and it follows `$` only through
@@ -231,6 +232,59 @@ async function runToolMgr($: any, args: unknown): Promise<string> {
   }
 }
 
+// systemone: the optional model check on Bash commands the rules let through. The config comes from the user settings
+// only, because a project's settings `env` reaches the process env and could point every command at its own server.
+let sysConfig: Config | null = null
+// The judge keeps its state across calls but runs inside whichever hook is current. The engine refuses to let `$` be stored,
+// so each call installs deps whose closures spell `$.noun.event(...)`, and the judge reaches them through `sysDeps`.
+let sysDeps: Deps
+const SYS_KEY = 'tool-mgr:systemone'
+const judge = createJudge({
+  fetch: (url, init) => sysDeps.fetch(url, init),
+  sleep: (ms, opts) => sysDeps.sleep(ms, opts),
+  now: () => sysDeps.now(),
+  report: message => sysDeps.report(message),
+})
+
+async function readSystemone($: any) {
+  sysConfig = null
+  try {
+    const raw = (await $.settings.read({ source: 'user' }))?.env?.TOOL_MGR_SYSTEMONE
+    const { config, error } = parseConfig(raw === undefined || raw === null ? undefined : String(raw))
+    if (error) report($, 'tool-mgr', error, 'tool-mgr:systemone-config')
+    sysConfig = config
+  } catch (err) {
+    report($, 'tool-mgr', err, 'tool-mgr:systemone-config')
+  }
+}
+
+// Adds the model's ask or bypass deny to `inner`, which is not a deny. A throw leaves `inner` as it was.
+async function withSystemone($: any, e: any, inner: Verdict): Promise<Verdict> {
+  const cfg = sysConfig
+  if (!cfg) return inner
+  try {
+    sysDeps = {
+      fetch: async (url, init) => {
+        const r = await $.http.fetch(url, init)
+        return { status: r.status, text: r.text }
+      },
+      sleep: (ms, opts) => $.clock.sleep(ms, opts),
+      now: () => $.clock.now(),
+      report: message => report($, 'tool-mgr', message, SYS_KEY),
+    }
+    const rewritten = inner.updatedInput as { command?: unknown } | undefined
+    const command = typeof rewritten?.command === 'string' ? rewritten.command : e.command
+    const answer = await judge.judge(cfg, command)
+    if (answer) lastError[SYS_KEY] = null
+    const { verdict, rule } = merge(inner, answer, ASK_TIER, calFor(cfg.model))
+    if (rule) await logDeny($, { ...e, command }, rule)
+    return verdict
+  } catch (err) {
+    report($, 'tool-mgr', err, 'tool-mgr:systemone-error')
+    return inner
+  }
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     try {
@@ -243,7 +297,7 @@ export const register: Register = on => {
     } catch (err) {
       report($, 'tool-mgr', err, 'tool-mgr:command')
     }
-    await Promise.all([refreshGit($), refreshUsage($), checkMetrics($, false)])
+    await Promise.all([refreshGit($), refreshUsage($), checkMetrics($, false), readSystemone($)])
     if (!polling) {
       polling = true
       $.clock.every(POLL_MS, () => refreshAgents($))
@@ -252,6 +306,7 @@ export const register: Register = on => {
   })
   // /clear ends the session and no session.start follows, so the agent state and task counts start over here.
   on('session.end', async ($, e, next) => {
+    judge.reset()
     seen = {}
     tasks = {}
     view = null
@@ -301,11 +356,12 @@ export const register: Register = on => {
     return out
   })
   // Asks before Bash that pipes a download into a shell or rewrites git history. The hooks below (readonly-bash, cloud-ops-guard) run first, and their deny stands.
-  on('classic.PreToolUse', async ($, e: any, next) =>
-    e.tool === 'Bash' && typeof e.command === 'string'
-      ? withAsk(e.command, () => next(e), err => report($, 'tool-mgr', err, 'tool-mgr:ask'))
-      : next(e),
-  )
+  // Then, when TOOL_MGR_SYSTEMONE is on, the model may add an ask or a bypass deny to a verdict that is not a deny.
+  on('classic.PreToolUse', async ($, e: any, next) => {
+    if (e.tool !== 'Bash' || typeof e.command !== 'string') return next(e)
+    const out = await withAsk(e.command, () => next(e), err => report($, 'tool-mgr', err, 'tool-mgr:ask'))
+    return out.deny === undefined ? withSystemone($, e, out) : out
+  })
   on('command.run', { command: 'tool-mgr' }, async ($, e: any) => ({ text: await runToolMgr($, e.args) }))
   on('agent.spawn', async ($, e, next) => {
     const out = await next(e)
