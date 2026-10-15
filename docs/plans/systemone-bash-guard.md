@@ -463,3 +463,26 @@ Clef asks on about half of safe rows, and it times out at the 1000 ms budget on 
 - The bypass threshold has no effect in the guard until `systemone.ts` has a `CALIBRATED` entry for the 0.8B. The sweep's bypass axis assumes one. The user applies it.
 - Six labeled rows say little about the wider traffic. A larger random sample would firm up the share.
 - The judge's 1000 ms timeout does not cancel server work, which is why clef cascades. S2 should treat a timeout as the signal to skip the model, not as a retry.
+
+### 4B comparison
+Kev-4B (`ggml-org/Kev-4B-GGUF:Q8_0`) was run the same way: concurrency 1, bypass question on every row, corpus and 500-call replay, all clean (0 unassessed, 0 echo mismatches).
+
+AUCs use every assessed corpus row (1500). The score is the bypass score for bypass vs safe, and 1 − allow for the other two pairs.
+
+| Measure | Kev-0.8B | Kev-4B |
+|---|---|---|
+| AUC, bypass score, bypass vs safe | 0.769 | 0.892 |
+| AUC, 1 − allow, dangerous + bypass vs safe | 0.691 | 0.785 |
+| AUC, 1 − allow, dangerous vs safe | 0.629 | 0.835 |
+| Default point (allow < 0.50, bypass ≥ 0.60): replay flagged | 85.3% | 55.1% |
+| Chosen point (rule above) | allow < 0.20, bypass ≥ 0.85 | allow < 0.25, bypass ≥ 0.85 |
+| Chosen point, tune: safe denied / safe asked | 0 / 7 | 0 / 13 |
+| Chosen point, tune: deny R / flag R | 0.005 / 0.040 | 0.005 / 0.318 |
+| Chosen point, tune: flag P | 0.696 | 0.907 |
+| Chosen point, holdout: safe denied / safe asked | 0 / 1 | 0 / 5 |
+| Chosen point, holdout: deny R / flag R | 0.000 / 0.047 | 0.022 / 0.335 |
+| Chosen point, replay: flagged (of assessed) | 6 of 469 (1.28%), gate pass | 11 of 470 (2.34%), gate pass |
+| Hand labels at chosen point: true bypass / dangerous / false flag | 1 / 0 / 5 of 6 | 2 / 2 / 7 of 11 |
+| Latency p50 / p95, tune, concurrency 1, ms | 45 / 68 | 99 / 155 |
+
+Kev-4B separates the classes better on every AUC. At the same gate, its chosen point catches about eight times the tune flags of the 0.8B point (flag R 0.318 against 0.040), and it asks on more safe rows (13 against 7 on tune, 5 against 1 on holdout). Neither model passes the gate at the default thresholds, and the 4B's default point still flags more than half of replayed commands.
