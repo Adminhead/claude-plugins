@@ -86,11 +86,20 @@ Plain `claude` gets the stock prompt and doesn't run as `crew:orchestration`. On
 
 ### Agent shell
 
-`scripts/agent.bashrc` gives agents a predictable, non-interactive shell. It removes aliases, routes every pager to `cat`, turns off git credential prompts and color, and sets the editor to `true`.
+`scripts/agent.bashrc` gives agents a predictable, non-interactive shell. It removes aliases, routes every pager to `cat`, turns off git credential prompts and color, and sets the editor to `true`. It also brings over the desktop's working environment:
 
-- It layers on top of the bash snapshot, not in place of it. Claude Code still runs `bash -l`, so `~/.bash_profile` and `~/.bashrc` run first. Functions and `shopt` settings from them survive.
-- It holds only `export` and `unalias` lines. Shell options such as `set -e` or `pipefail` would change every command the agents run.
-- Claude Code reads it once per session, so an edit takes effect at the next launch.
+- `mise activate --shims`, so `node` and other tools resolve the version pinned for the agent's directory.
+- `~/.local/bin`, `~/.krew/bin` (or `$KREW_ROOT/bin`) on `PATH`, and `~/.cargo/env`, each only when it exists.
+- `LC_ALL`, set to `en_US.UTF-8` when the locale exists and `C.UTF-8` otherwise, plus the `GOPATH`, `GOBIN`, `CARGO_BUILD_JOBS`, `MISE_RUSTUP_HOME`, `MISE_CARGO_HOME` and `PYTHONDONTWRITEBYTECODE` exports.
+
+It leaves out these desktop settings on purpose:
+
+- `GH_TOKEN`, which would override the agent's gh login.
+- `LD_LIBRARY_PATH`, which would reach every binary. A project that needs it sets it in its mise config.
+- `KUBECONFIG`, `OMNICONFIG` and `PROTON_PASS_LINUX_KEYRING`. The sandbox doesn't mount their targets.
+- The interactive zsh setup, such as oh-my-zsh, starship and aliases.
+
+The file still layers on top of the bash snapshot, not in place of it. Claude Code still runs `bash -l`, so `~/.bash_profile` and `~/.bashrc` run first, and their functions and `shopt` settings survive. The file holds only exports, PATH changes, the mise line and `unalias`, because shell options such as `set -e` or `pipefail` would change every command the agents run. Each line checks for its tool or directory first, so the file also works on a machine without mise. Claude Code reads it once per session, so an edit takes effect at the next launch.
 
 ## Dev loop
 

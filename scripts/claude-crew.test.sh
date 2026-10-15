@@ -98,13 +98,38 @@ plugins "$user_crew"
 if "$script" /nonexistent 2>/dev/null; then fail "bad dir accepted"; fi
 "$script" -h | grep -q '^Usage: claude-crew' || fail "help"
 
-# agent.bashrc, layered after a login snapshot: it clears aliases and sets the pager
+# agent.bashrc, layered after a login snapshot: it clears aliases, sets the pager and the
+# desktop env, and puts mise shims and the user's bin dirs on PATH
+mkdir -p "$tmp/mise-stub" "$tmp/stub-shims"
+cat > "$tmp/mise-stub/mise" <<'EOF'
+#!/bin/sh
+[ "$*" = "activate bash --shims" ] || exit 2
+printf 'export PATH="%s:$PATH"\n' "$STUB_SHIMS"
+EOF
+chmod +x "$tmp/mise-stub/mise"
+home=$tmp/home-full
+mkdir -p "$home/.local/bin" "$home/.krew/bin"
 (
+  export HOME=$home STUB_SHIMS=$tmp/stub-shims
+  PATH=$tmp/mise-stub:$PATH
   alias ll='ls -l'
   # shellcheck source-path=SCRIPTDIR source=agent.bashrc
   . "$scripts/agent.bashrc"
   [[ -z $(alias) ]] || fail "alias survived agent.bashrc: $(alias)"
   [[ $PAGER == cat ]] || fail "PAGER is '$PAGER', want cat"
+  [[ $PATH == "$tmp/stub-shims:"* ]] || fail "mise shims not first on PATH: $PATH"
+  [[ :$PATH: == *":$home/.local/bin:"* && :$PATH: == *":$home/.krew/bin:"* ]] || fail "bin dirs missing from PATH: $PATH"
+  [[ $GOPATH == "$home/.go" && $GOBIN == "$home/.go/bin" ]] || fail "GOPATH '$GOPATH' GOBIN '$GOBIN'"
+  [[ $PYTHONDONTWRITEBYTECODE == 1 ]] || fail "PYTHONDONTWRITEBYTECODE is '$PYTHONDONTWRITEBYTECODE'"
+  [[ $LC_ALL == en_US.UTF-8 || $LC_ALL == C.UTF-8 ]] || fail "LC_ALL is '$LC_ALL'"
 )
+
+# With no HOME contents and no mise, agent.bashrc sources under bash -u and adds nothing to PATH
+empty=$tmp/home-empty
+mkdir -p "$empty"
+# shellcheck disable=SC2016 # $PATH must expand in the child bash, not here
+got=$(env -i HOME="$empty" PATH=/usr/bin:/bin bash -u -c '. "$1" && printf "%s" "$PATH"' _ "$scripts/agent.bashrc") \
+  || fail "agent.bashrc failed under bash -u with nothing present"
+[[ $got == /usr/bin:/bin ]] || fail "PATH changed with nothing present: '$got'"
 
 echo "all claude-crew checks passed"

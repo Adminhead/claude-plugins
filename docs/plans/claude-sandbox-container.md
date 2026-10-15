@@ -5,6 +5,8 @@ Engine: Claude Code 2.1.300 (host, native, `latest` channel), Docker 29.9.0. Fac
 ## Status
 
 - Draft, 2026-10-15. S1 not started.
+- S0 timing, 2026-10-15, host mise 2026.10.7: `source scripts/agent.bashrc` takes about 4 ms with the mise line and 1.3 ms without (10 runs each), under the 20 ms bar.
+- S0 pinned-version check, 2026-10-15: `mise.toml` pins node 20.19.0 in a scratch dir. `node --version` there through `agent.bashrc` prints v20.19.0. Outside it, and with plain `bash -c`, it prints the global v24.21.0.
 - Settled 2026-10-15: Q1 (a) keep github and fix `install.sh`, outside this plan. Q2 (a) forward the agent. Q3 (a) sandbox-only gh login. Q5 (b) skip permissions by default. Q4 waits on S2 f.
 
 ## Goal
