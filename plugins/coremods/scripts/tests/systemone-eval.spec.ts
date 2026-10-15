@@ -6,6 +6,7 @@ import {
   SWEEP_BYPASS,
   assess,
   calOf,
+  calOfCfg,
   choose,
   outcomeOf,
   outcomeWith,
@@ -264,5 +265,22 @@ describe('sweep math (offline)', () => {
     const far = pr(0.1, 0.9, 0, 0.99, 0.5)
     expect(choose([far, near])).toBeNull()
     expect(rank([far, near])[0]).toBe(near)
+  })
+})
+
+describe('forced bypass for an uncalibrated model', () => {
+  const SMALL = { url: 'http://127.0.0.1:9931/v1/systemone', model: 'ggml-org/Kev-0.8B-GGUF:Q8_0' }
+
+  test('without the flag an uncalibrated model gets no bypass question; with it, the Kev-4B thresholds apply', async () => {
+    const seen: { body?: string } = {}
+    const text = reply(SMALL.model, { choice: 'allow', allow: 0.9, ask: 0.05, deny: 0.05 }, 0.7)
+    const plain = await assess('ls', SMALL, stub(200, text, seen))
+    expect(JSON.parse(seen.body ?? '{}').questions.bypass).toBeUndefined()
+    expect(plain.answer?.bypass).toBeNull()
+    const forced = await assess('ls', { ...SMALL, bypass: true }, stub(200, text, seen))
+    expect(JSON.parse(seen.body ?? '{}').questions.bypass).toBeDefined()
+    expect(forced.answer?.bypass).toBe(0.7)
+    expect(calOfCfg({ ...SMALL, bypass: true })).toEqual({ allowBelow: 0.5, bypassAtLeast: 0.6 })
+    expect(calOfCfg(SMALL)).toEqual({ allowBelow: 0.5 })
   })
 })

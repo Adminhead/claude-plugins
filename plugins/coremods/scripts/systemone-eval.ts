@@ -30,7 +30,10 @@ export type Cls = (typeof CLASSES)[number]
 const SPLITS = ['tune', 'holdout'] as const
 const SOURCES = ['session', 'synthetic'] as const
 
-export type Cfg = { url: string; model: string }
+// `bypass` forces the bypass question for a model with no calibration, so its bypass scores can be swept. The thresholds
+// used for the run's own verdicts are then the Kev-4B ones.
+export type Cfg = { url: string; model: string; bypass?: boolean }
+export const calOfCfg = (cfg: Cfg): Cal => (cfg.bypass ? calFor(DEFAULT_MODEL) : calFor(cfg.model))
 export type Assess = { ms: number; answer: Answer | null; fail?: string; echo?: boolean }
 export type Outcome = 'bypass-deny' | 'ask' | 'pass'
 export type Row = {
@@ -63,7 +66,7 @@ type Fetch = (url: string, init: RequestInit) => Promise<Response>
 
 // One model call, sent the way the plugin sends it. A reply from another model is still used; `echo` records the mismatch.
 export async function assess(command: string, cfg: Cfg, fetchFn: Fetch = fetch): Promise<Assess> {
-  const withBypass = calFor(cfg.model).bypassAtLeast !== undefined
+  const withBypass = calOfCfg(cfg).bypassAtLeast !== undefined
   const init = {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -278,7 +281,7 @@ async function corpus(split: string | undefined, cfg: Cfg, concurrency: number, 
           source: r.source,
           cls: r.cls,
           staticVerdict: staticVerdict(r.command),
-          outcome: outcomeOf(a.answer, cfg.model, {}),
+          outcome: outcomeWith(a.answer, calOfCfg(cfg), {}),
           ms: a.ms,
           fail: a.fail,
           echo: a.echo,
@@ -341,7 +344,7 @@ async function replay(n: number, cfg: Cfg, flagsOut: string, concurrency: number
     return {
       c,
       a,
-      outcome: outcomeOf(a.answer, cfg.model, ask ? { ask: ask.message } : {}),
+      outcome: outcomeWith(a.answer, calOfCfg(cfg), ask ? { ask: ask.message } : {}),
       static: ask ? ('ask' as const) : ('pass' as const),
     }
   })
@@ -513,9 +516,14 @@ export function parseArgs(argv: string[]) {
     flagsOut: undefined as string | undefined,
     scoresOut: undefined as string | undefined,
     sweep: undefined as [string, string] | undefined,
+    bypass: false,
   }
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i]
+    if (flag === '--bypass') {
+      o.bypass = true
+      continue
+    }
     if (flag === '--sweep') {
       if (argv[i + 1] === undefined || argv[i + 2] === undefined) throw new Error('--sweep needs two files: corpus scores, then replay scores')
       o.sweep = [argv[i + 1], argv[i + 2]]
@@ -551,9 +559,10 @@ async function main() {
   if (o.sweep) return runSweep(o.sweep[0], o.sweep[1])
   const { config, error } = parseConfig(`${o.url}|${o.model}`)
   if (!config) throw new Error(error ?? '--url is not usable')
-  if (o.replay === undefined) return corpus(o.split, config, o.concurrency, o.scoresOut)
+  const cfg: Cfg = { ...config, bypass: o.bypass }
+  if (o.replay === undefined) return corpus(o.split, cfg, o.concurrency, o.scoresOut)
   if (!o.flagsOut) throw new Error('--replay needs --flags-out')
-  return replay(o.replay, config, o.flagsOut, o.concurrency, o.scoresOut)
+  return replay(o.replay, cfg, o.flagsOut, o.concurrency, o.scoresOut)
 }
 
 if (import.meta.main) await main()
