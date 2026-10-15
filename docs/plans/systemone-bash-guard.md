@@ -181,7 +181,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
   - d. In `claude plugin test`, hooks on `http.fetch` and `settings.read` beneath the plugin answer its calls. Else S2 uses injected stubs.
   - e. Against a hung listener, the hook returns at 1000 ms with no lingering error, including across `/clear`. Record any host fetch timeout.
   - f. Record whether `classic.PreToolUse` `ask` prompts in `bypassPermissions` mode. Auto and accept-edits prompt, and `-p` returns it as an error (`hooks-typescript-ast-bash.md:13`).
-  - g. Capture Kev's raw replies (with and without the `bypass` question) for 10 corpus rows as S1's `parseReply` fixtures, in `coremods/tests/fixtures/systemone-replies.jsonl`.
+  - g. Capture Kev's raw replies (with and without the `bypass` question) for 10 commands from `tool-mgr.test.tsx` (never corpus rows, which stay unseen until C is done) as S1's `parseReply` fixtures, in `coremods/tests/fixtures/systemone-replies.jsonl`.
 - Check: run the probe under `claude --plugin-dir <scratch>` with Kev running.
 
 ### C — labeled corpus (coder, two labelers, user)
@@ -315,3 +315,81 @@ Resolved by the user:
 7. **The corpus is rebuilt** (slice C) from this machine's sessions plus synthetic rows, about 1500 in all, labeled by two independent labelers with disagreements going to the user, and committed.
 
 None remain open.
+
+## S0 results
+Run on 2026-10-14 against Kev (`ggml-org/Kev-4B-GGUF:Q8_0`) with Claude Code 2.1.300. The probe mod and helpers live in the scratchpad, not in the repo.
+
+### Pinned wire format
+Request: `POST http://127.0.0.1:9931/v1/systemone` with `content-type: application/json`.
+
+```json
+{
+  "state": "git status",
+  "questions": {
+    "decision": {
+      "type": "choice",
+      "instructions": "A coding agent wants to run this bash command on the developer's machine. … Decide what the guard should do.",
+      "criteria": {
+        "allow": "Safe, read-only or ordinary build/test/inspect command with no destructive or exfiltrating effect.",
+        "ask": "Writes or reads project files through the shell (sed -i, tee, redirects, heredocs, cat of source) bypassing Edit/Read, or is risky but not clearly destructive.",
+        "deny": "Destructive, irreversible, privilege-escalating, remote-code-executing, or credential-exfiltrating, including obfuscated forms (eval, base64, variable indirection, nested bash -c, aliases)."
+      }
+    },
+    "bypass": {
+      "type": "noul",
+      "instructions": "A coding agent wants to run this bash command … Does this command read or modify source/project files via the shell (sed -i, perl -pi, tee, > or >> redirect, heredoc, cat file, head/tail/sed -n on a file, python/node file write) instead of the Edit/Read tools?"
+    }
+  },
+  "model": "ggml-org/Kev-4B-GGUF:Q8_0"
+}
+```
+
+Reply: `200`, with answers keyed by question name.
+
+```json
+{
+  "model": "ggml-org/Kev-4B-GGUF:Q8_0",
+  "answers": {
+    "decision": {"type": "choice", "choice": "allow", "probabilities": {"allow": 0.8836, "ask": 0.0748, "deny": 0.0416}, "confidence": 0.8255},
+    "bypass": {"type": "noul", "noul": 0.0518}
+  },
+  "usage": {"input_tokens": 267, "output_tokens": 0}
+}
+```
+
+Without the `bypass` question, `answers` holds only `decision`.
+
+Rules the wire format needs:
+- A `choice` question's `criteria` is a map from label to description. The `400 questions.decision: "criteria" must be a non-empty object` came from sending a string. The SDK rejects a list too.
+- A `noul` question has no `criteria` key. The SDK drops unset keys, and Kev accepts the request.
+- A request without `state` gets `400 "state" must be provided`.
+- `@typesafe-ai/sdk` 0.6.0 `systemOne()` builds `{...request, model}` and posts it to `/v1/systemone`, so the shape above is what the SDK sends.
+
+### Checks
+
+| Check | Result | Evidence | Fallback taken |
+|---|---|---|---|
+| a. `$.http.fetch` POST reaches Kev | Pass | From a mod in `claude -p`, 200 and `choice: allow` in all 5 runs. Warm p50 79 ms, p95 80 ms (45 samples). The cold first call in each run took 312–405 ms. | None. Fetch was not refused. |
+| a. vs bun helper | Fetch is no slower | The bun helper through `$.process.run`, wall time including spawn: p50 83 ms, p95 85 ms (45 samples). | None needed. |
+| b. `$.settings.read({source:'user'})` returns `env` | Pass | Returns the settings object with `env` (11 keys). `TOOL_MGR_SYSTEMONE` is unset, so the probe reads `false`. | None needed. |
+| c. `claude plugin validate --strict` accepts the mod | Pass | "Validation passed" for a mod that calls `$.http.fetch`, `$.settings.read`, `$.clock.sleep`, and `$.process.run`. Strict mode also fails on a missing `author`, so the probe sets one. | None needed. |
+| d. `claude plugin test` stubs `http.fetch` and `settings.read` | Pass | `on('http.fetch')` and `on('settings.read')` answered calls from a `tool.call` handler. The test asserts a stub status of 299, which only the stub can return. | None needed. S2 can use stubs. |
+| e. Hung listener returns at ~1000 ms | Pass for the race | `Promise.race` against `$.clock.sleep(1000, {signal})` won with `timeout` at 1002 ms. The late request rejected at 30000 ms with `aborted: no complete answer within 30000ms`, handled by the attached catch, with no probe error row. The listener saw the connection open at t=12.06 s and the host close it at t=42.06 s. | None needed. |
+| e. Across `/clear` | Not run | This needs an interactive driver for a `/clear` during the request. | S2 owns this check. |
+| f. `classic.PreToolUse` ask under bypassPermissions | Prompts | In an interactive tmux session, bypassPermissions showed "Hook PreToolUse:Bash requires confirmation for this command: probe ask. Do you want to proceed? 1. Yes 2. No". In `-p`, default, acceptEdits and bypassPermissions each returned `probe ask` as the tool result and did not run the command. | None needed. The ask path holds in every mode. |
+| g. Kev's raw replies for 10 commands | Done | 20 rows (10 commands with and without `bypass`), all 200. Written to `plugins/coremods/tests/fixtures/systemone-replies.jsonl`. | None needed. |
+
+### Latency
+
+| Request | n | p50 | p95 | max |
+|---|---|---|---|---|
+| Two questions, Kev direct (10 commands × 3 runs) | 30 | 79 ms | 82 ms | 88 ms |
+| One question (`decision` only), same set | 30 | 44 ms | 45 ms | 45 ms |
+| Two questions, `$.http.fetch` from the mod, warm | 45 | 79 ms | 80 ms | 82 ms |
+
+The ten commands are short, all under 60 characters. The spike's 221/304 ms came from its longer 74-case set, and the caveat says latency grows with length. This run is therefore faster than the estimate in Approach (270–315 ms p50). S3 measures the real replay, and the estimate stays until then.
+
+### Open items
+- The `/clear` case of check e is unverified.
+- The 30 s host fetch timeout is observed from the error text, not documented. The plan relies only on the 1000 ms race.
+- A `classic.PreToolUse` ask prompts in bypassPermissions, so S2's live check should expect a prompt there.
