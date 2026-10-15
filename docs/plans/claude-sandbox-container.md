@@ -4,7 +4,8 @@ Engine: Claude Code 2.1.300 (host, native, `latest` channel), Docker 29.9.0. Fac
 
 ## Status
 
-- Draft, 2026-10-15. S1 done (uncommitted): `bash sandbox/check.sh` green, image `claude-sandbox:check` 2.2G (2,273,944,527 bytes; above the 1–1.5 GB guess, with Claude Code alone 268 MB).
+- S0 done (ff7b46b). S1 done (04ba9e6), after review fixes: the key check now rejects a key file holding any extra primary key, and nothing under HOME is root-owned (check.sh asserts it). Next: S2 spike, which needs the operator.
+- S1: `bash sandbox/check.sh` green, image `claude-sandbox:check` 2.2G (2,273,944,527 bytes; above the 1–1.5 GB guess, with Claude Code alone 268 MB).
 - S1 pins, all re-verified 2026-10-15: `debian:trixie-slim@sha256:a29215f6…f11f` and `jdxcode/mise:2026.10.10@sha256:413d4a27…bad` unchanged. hadolint `v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d`. Resolved tools: node 24.22.0, bun 1.4.3, uv 0.13.1, gh 2.102.0, shellcheck 0.11.0, codegraph 1.6.1, Claude Code 2.1.300. The apt URL, `latest latest main` list line and key fingerprint match code.claude.com/docs/en/setup.
 - S1 divergences:
   - The image adds `/etc/profile.d/sandbox-path.sh`, against Decisions 2 and 10. Debian's `/etc/profile` drops the ENV PATH in every login shell, so the S1 `bash -lc` smoke and `--shell` then `gh auth login` (Decision 6) both lacked the mise tools. `agent.bashrc` still owns per-cwd shims and the desktop exports.
