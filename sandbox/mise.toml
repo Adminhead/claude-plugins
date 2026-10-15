@@ -1,0 +1,10 @@
+# System tools for the sandbox image, installed with `mise install --system`.
+# Becomes /etc/mise/config.toml.
+[tools]
+node = "24"
+bun = "1.4"
+uv = "0.13"
+gh = "2"
+# mise 2026.10.10's aqua backend can't evaluate shellcheck's version filter, so it makes no shim.
+"github:koalaman/shellcheck" = "0.11"
+"npm:@colbymchenry/codegraph" = "1.6.1"

@@ -4,7 +4,12 @@ Engine: Claude Code 2.1.300 (host, native, `latest` channel), Docker 29.9.0. Fac
 
 ## Status
 
-- Draft, 2026-10-15. S1 not started.
+- Draft, 2026-10-15. S1 done (uncommitted): `bash sandbox/check.sh` green, image `claude-sandbox:check` 2.2G (2,273,944,527 bytes; above the 1–1.5 GB guess, with Claude Code alone 268 MB).
+- S1 pins, all re-verified 2026-10-15: `debian:trixie-slim@sha256:a29215f6…f11f` and `jdxcode/mise:2026.10.10@sha256:413d4a27…bad` unchanged. hadolint `v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d`. Resolved tools: node 24.22.0, bun 1.4.3, uv 0.13.1, gh 2.102.0, shellcheck 0.11.0, codegraph 1.6.1, Claude Code 2.1.300. The apt URL, `latest latest main` list line and key fingerprint match code.claude.com/docs/en/setup.
+- S1 divergences:
+  - The image adds `/etc/profile.d/sandbox-path.sh`, against Decisions 2 and 10. Debian's `/etc/profile` drops the ENV PATH in every login shell, so the S1 `bash -lc` smoke and `--shell` then `gh auth login` (Decision 6) both lacked the mise tools. `agent.bashrc` still owns per-cwd shims and the desktop exports.
+  - shellcheck comes from `"github:koalaman/shellcheck"`, not the default aqua backend. mise 2026.10.10 can't evaluate aqua's shellcheck version filter ("stack limit reached"), so it installed the tool but made no shim. Revisit at the next mise bump.
+  - The smoke checks each tool on its own. `command -v a b c` returns only the last name's status in bash and dash, which hid the missing shellcheck.
 - S0 timing, 2026-10-15, host mise 2026.10.7: `source scripts/agent.bashrc` takes about 4 ms with the mise line and 1.3 ms without (10 runs each), under the 20 ms bar.
 - S0 pinned-version check, 2026-10-15: `mise.toml` pins node 20.19.0 in a scratch dir. `node --version` there through `agent.bashrc` prints v20.19.0. Outside it, and with plain `bash -c`, it prints the global v24.21.0.
 - Settled 2026-10-15: Q1 (a) keep github and fix `install.sh`, outside this plan. Q2 (a) forward the agent. Q3 (a) sandbox-only gh login. Q5 (b) skip permissions by default. Q4 waits on S2 f.
@@ -72,7 +77,7 @@ Done when:
   - zsh: agents use bash via `CLAUDE_CODE_SHELL`.
 - **PATH**:
   - Dockerfile `ENV PATH=$HOME/.local/bin:$HOME/.local/share/mise/shims:/usr/local/share/mise/shims:<debian default>`. Claude, hooks and stdio MCP servers inherit it.
-  - The Bash tool's login snapshot loses it, because Debian's `/etc/profile` resets PATH. `scripts/agent.bashrc` runs after the snapshot and rebuilds it (Decision 10), so the image needs no `/etc/profile.d` file.
+  - Login shells lose it, because Debian's `/etc/profile` resets PATH. `/etc/profile.d/sandbox-path.sh` restores the ENV PATH dirs for every login shell, including `--shell` and the Bash tool's snapshot. `agent.bashrc` can't replace it: plain `bash -l` never sources that file, and it never adds the system shim dir `/usr/local/share/mise/shims`.
 
 ### 3. Claude Code
 
@@ -97,7 +102,7 @@ Done when:
 
 - One named volume, `claude-sandbox-home`, is `$HOME`. It is shared across projects, so a given tool version installs once, and the compiled claude-mem launcher, gh login and history persist.
 - `sandbox-entry` runs `mise install` in DIR. That is a no-op when nothing is missing, and the system installs count as installed. Project tools go to `~/.local/share/mise` and persist across runs, projects and image rebuilds.
-- Trust parity: the host's `~/.local/state/mise/trusted-configs` is mounted read-only. An untrusted config makes `mise install` fail, and the entry dies with "run `mise trust` on the host". The sandbox never grants trust.
+- Trust parity: the host's `~/.local/state/mise/trusted-configs` is mounted read-only. mise loads a tools-only config without trust (checked on host mise 2026.10.7), so trust gates only configs with `[env]`, tasks or templates. Such an untrusted config makes `mise install` fail, and the entry dies with "run `mise trust` on the host". The sandbox never grants trust, and it matches host behavior.
 - Rejected:
 
 | Option | Why it lost |
@@ -239,7 +244,7 @@ Desktop inventory (`~/.zshenv`, `~/.zshrc`, names only, 2026-10-15):
 | --- | --- | --- |
 | `eval "$(mise activate zsh)"` | `eval "$(mise activate bash --shims)"` when mise exists. The shims resolve versions per cwd, which the zsh hook did and the bash shell lost on the host too | agent.bashrc |
 | PATH: `~/.local/bin`, `~/.krew/bin`, cargo env (`.zshenv`) | Prepend each dir that exists. Source `~/.cargo/env` when present | agent.bashrc |
-| PATH reset by Debian's `/etc/profile` | The prepends above rebuild it, so the container needs no profile.d | agent.bashrc |
+| PATH reset by Debian's `/etc/profile` | `/etc/profile.d/sandbox-path.sh` restores the image PATH (Decision 2). agent.bashrc then layers the per-cwd shims on top | image + agent.bashrc |
 | `LC_ALL=en_US.UTF-8` | Export it when `locale -a` lists it, else `C.UTF-8`. The image generates it | agent.bashrc + image |
 | `GOPATH=$HOME/.go`, `GOBIN`, `CARGO_BUILD_JOBS=$(nproc)`, `MISE_RUSTUP_HOME`, `MISE_CARGO_HOME`, `PYTHONDONTWRITEBYTECODE=1` | Export as on the desktop. They aren't secret, and they're harmless where the tool is absent | agent.bashrc |
 | `EDITOR=nvim` | Stays `true`. Agents can't drive an editor | agent.bashrc (unchanged) |
@@ -293,7 +298,7 @@ Files: `sandbox/{Dockerfile,mise.toml,entrypoint.sh,check.sh}`.
 - `entrypoint.sh`: `mise install` in cwd, dying with the trust hint on failure, then `exec "$@"`. `CMD ["bash","-l"]`.
 - In-image smoke, run with `--network none` and no host state:
   - `claude --version` equals the pin
-  - `sh -c 'command -v bun node npm uv gh shellcheck codegraph rg fd jq git python3 tmux delta'` passes, testing non-login PATH
+  - under `sh -c`, `command -v` finds each of `bun node npm uv gh shellcheck codegraph rg fd jq git python3 tmux delta`, testing non-login PATH. Check one tool per call: `command -v a b c` reports only the last name's status
   - the same check under `bash -lc` passes, testing login PATH
   - `python3 -I -c 'import json, sqlite3'` passes
   - `locale -a` lists `en_US.utf8`
@@ -411,7 +416,7 @@ agy gemini-3.8-flash-high/high, adversarial plan critique. Each point was checke
 | 1 | claude-mem pid-ns mismatch: `kill(pid,0)` fails on the host pid, leading to a second worker or a rewritten `worker.pid` | adopted in part: the code does use both `process.kill(pid,0)` and `/api/health`. Mount only `~/.claude-mem/settings.json` ro, require a healthy host worker with a die message that names the fix, verify in S2 b. Rejected `--pid host` (container could signal host processes) and dropping host networking (user requirement) |
 | 2 | Docker creates root-owned mountpoint parents in the home volume. Copy-up happens only on first init | adopted: the image pre-creates user-owned dirs and the reset command is documented. Rejected: the claim that `.gitconfig` becomes a directory (runc creates a file mountpoint for a file source; S6 exercises it). Rejected: splitting home into per-path volumes (Decision 4) |
 | 3 | `CLAUDE_CONFIG_DIR` splits `.claude.json` from the host, and the stale file is used | adopted in part: a one-time operator seed from `~/.claude.json`, divergence documented. Rejected: the claim that it breaks the goal, because permission rules, settings, plugins and credentials live in shared `~/.claude` |
-| 4 | `/etc/profile.d` doesn't reach hooks or MCP, so the fail-closed gate blocks all Bash | adopted: Dockerfile `ENV PATH` is primary and `agent.bashrc` rebuilds PATH for login snapshots (Decision 10 replaced the planned `profile.d` file). S1 tests both |
+| 4 | `/etc/profile.d` doesn't reach hooks or MCP, so the fail-closed gate blocks all Bash | adopted: Dockerfile `ENV PATH` is primary and `/etc/profile.d/sandbox-path.sh` covers login shells. S1 tests both |
 | 5 | Building on every launch fails offline, on a stale apt index or on a version lag. The version string needs parsing | adopted: a version-plus-hash tag that builds only when missing, `apt-get update` inside the Claude `RUN`, a strict regex, die when the version is unpublished. Rejected: falling back to the latest apt version (silent engine skew) |
 | 6 | A read-write `~/.claude` lets the container plant code the host runs | adopted: read-only overlays move from optional into S3, gated on S2 i. Rejected: a read-only `.git/hooks` (writable `.git/config` bypasses it via `core.hooksPath`/`core.fsmonitor`); documented as a gap. Added gaps: `plugins/data/*`, `installed_plugins.json` and `known_marketplaces.json` stay writable |
 | 7 | Host networking exposes X11 abstract sockets | open: S2 f measures it and Q4 decides. pasta is noted as the stronger alternative |
