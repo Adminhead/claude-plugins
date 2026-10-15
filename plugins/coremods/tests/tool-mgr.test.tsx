@@ -1011,7 +1011,7 @@ describe('systemone wiring', () => {
   const BYPASS = reply(0.2, 0.6, 0.2, 0.72)
   const ok = (text: string) => ({ value: { status: 200, ok: true, headers: {}, text } })
 
-  type Opts = { user?: string; project?: string; env?: string; fetch?: (e: any) => any; below?: (e: any) => any }
+  type Opts = { user?: string; project?: string; env?: string; fetch?: (e: any) => any; below?: (e: any) => any; clock?: () => any }
   async function boot($: any, on: any, o: Opts = {}) {
     const fetches: any[] = []
     const logs: string[] = []
@@ -1025,7 +1025,7 @@ describe('systemone wiring', () => {
     on('session.start', async () => ({ cwd: '/w' }))
     on('session.end', async (_$: any, e: any) => ({ sessionId: e.sessionId }))
     on('session.measure', async () => ({ changed: [] }))
-    on('clock.now', async () => ({ value: 1_000_000 }))
+    on('clock.now', async () => (o.clock ? o.clock() : { value: 1_000_000 }))
     on('clock.sleep', async () => new Promise(res => sleeps.push(() => res({ value: undefined }))))
     on('agent.list', async () => ({ value: [] }))
     on('settings.read', async (_$: any, e: any) => ({
@@ -1051,8 +1051,8 @@ describe('systemone wiring', () => {
     await $.session.start({ cwd: '/w', surface: 'terminal', isInteractive: true })
     // The engine runs classic.PreToolUse inside tool.call. A deny comes back as an error result; an ask is not
     // told apart from a pass here, so those cases check that the call ran and what the model check did.
-    const pre = async (command: string) => {
-      const out: any = await $.tool.call({ tool: 'Bash', command })
+    const pre = async (command: string, agentId?: string) => {
+      const out: any = await $.tool.call({ tool: 'Bash', command, ...(agentId ? { agentId } : {}) })
       return { ran: out.result === 'ran', deny: out.isError ? (out.text as string) : undefined }
     }
     const sysLogs = () => logs.filter(l => l.includes('systemone'))
@@ -1158,6 +1158,36 @@ describe('systemone wiring', () => {
     expect(t.appends).toHaveLength(1)
     expect(t.appends[0]).toMatchObject({ blocked: 'systemone-bypass', command: 'head -n 5 README.md', tool: 'Bash' })
     expect(t.appends[0].tool_use_id).toMatch(/^toolu_/)
+  })
+
+  test('a subagent bypass deny is logged under the agent', async ($, on) => {
+    const t = await boot($, on, { user: URL, fetch: () => ok(BYPASS) })
+    expect((await t.pre('head -n 5 README.md', 'ag1')).deny).toMatch(/^tool-mgr:/)
+    expect(t.appends[0]).toMatchObject({ blocked: 'systemone-bypass', agent: 'ag1' })
+    await t.pre('tail -n 5 README.md')
+    expect(t.appends[1].agent ?? 'main').toBe('main')
+  })
+
+  test('a memo hit between two failed probes does not log again', async ($, on) => {
+    const t = await boot($, on, { user: URL, fetch: e => (JSON.parse(e.init.body).state === 'ls' ? ok(SAFE) : { value: { status: 500, ok: false, headers: {}, text: 'no' } }) })
+    await t.pre('ls')
+    await t.pre('x1')
+    expect(t.sysLogs()).toHaveLength(1)
+    await t.pre('ls') // memo hit
+    await t.pre('x2')
+    expect(t.sysLogs()).toHaveLength(1)
+    expect(t.fetches).toHaveLength(3)
+  })
+
+  // The engine skips a failing clock.now hook rather than letting the throw reach the mod, so the reject-and-delete path
+  // itself is covered in systemone.test.tsx ("a rejected clock leaves nothing stuck").
+  test('a failing clock keeps the verdict and does not wedge later calls', async ($, on) => {
+    let broken = false
+    const t = await boot($, on, { user: URL, fetch: () => ok(BYPASS), clock: () => (broken ? Promise.reject(new Error('clock gone')) : { value: 1_000_000 }) })
+    broken = true
+    await t.pre('ls')
+    broken = false
+    expect((await t.pre('head -n 5 README.md')).deny).toMatch(/^tool-mgr: .*bypass 0\.72/)
   })
 
   test('an unsure model asks rather than denies, and an ask is not logged as a deny', async ($, on) => {

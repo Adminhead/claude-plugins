@@ -90,7 +90,7 @@ Kev's bypass `noul` (variant B; no case moved more than 0.02 across the 3 runs):
 
 1. **Race against a timer**, which starts with the request: `Promise.race([req, $.clock.sleep(1000, { signal }).then(() => TIMEOUT)])`. The request aborts `signal` when it settles, so a fast reply leaves no pending sleep. A timeout is a failure, and the static verdict stands.
 2. **Ignore the late result; there is no way to cancel.** `.catch` is attached when the request is created. A late reply never writes the memo or closes the breaker. With a matching generation, it only counts toward the breaker.
-3. **Bound what can pile up.** At most 4 attempts may be pending, counting timed-out ones. When all 4 are pending, the call skips the model and one `systemone busy` line is reported.
+3. **Bound what can pile up.** At most 4 attempts may be pending, counting timed-out ones. When all 4 are pending, the call waits for a slot within its own 1000 ms deadline (measured from the call's start); if none frees, it skips the model and one `systemone busy` line is reported.
 4. **Stay inside the hook budget.** Clock waits count toward the 10 s budget. 1000 ms is well under it.
 
 | Item | Value |
@@ -213,7 +213,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 ### S2 — wiring (coder-high)
 - Depends on: S1.
 - Files:
-  - `coremods/hooks/register.tsx`: config at `session.start`; judge and merge after `withAsk` in `classic.PreToolUse`; generation bump in `session.end`; `logDeny` for `systemone-bypass` and deny-tier `systemone` (the envelope has `agentId` and `tool_use_id`)
+  - `coremods/hooks/register.tsx`: config at `session.start`; judge and merge after `withAsk` in `classic.PreToolUse`; generation bump in `session.end`; `logDeny` for `systemone-bypass` and deny-tier `systemone` (the classic envelope has `tool_use_id` but no `agentId`; the `tool.call` hook records `tool_use_id → agentId` beforehand)
   - runtime cases in `tests/tool-mgr.test.tsx` if S0-d passed
 - Acceptance:
   - unset means zero fetches

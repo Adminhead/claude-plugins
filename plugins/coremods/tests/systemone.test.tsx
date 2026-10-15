@@ -66,8 +66,10 @@ function rig(handler: (n: number) => Promise<{ status: number; text: string }> =
     now: async () => t,
     report: m => reports.push(m),
   }
+  const j = createJudge()
   return {
-    ...createJudge(deps),
+    judge: (c: Config, command: string) => j.judge(c, command, deps),
+    reset: j.reset,
     bodies,
     reports,
     timers,
@@ -396,7 +398,7 @@ describe('judge', () => {
     expect(r.bodies.length).toBe(1)
   })
 
-  test('at most 4 requests pend, timed-out ones included; the fifth is skipped with one busy report', async () => {
+  test('at most 4 requests pend, timed-out ones included; the fifth waits, then is skipped with one busy report', async () => {
     const r = rig(hang)
     const timedOut = [1, 2].map(i => r.judge(cfg, `echo ${i}`))
     await flush()
@@ -405,11 +407,68 @@ describe('judge', () => {
     const waiting = [3, 4].map(i => r.judge(cfg, `echo ${i}`))
     await flush()
     expect(r.bodies.length).toBe(4)
-    expect(await r.judge(cfg, 'echo 5')).toBeNull()
+    const fifth = r.judge(cfg, 'echo 5')
+    await flush()
+    expect(r.bodies.length).toBe(4)
+    expect(r.reports.filter(m => m.includes('busy')).length).toBe(0)
+    await r.fire() // the deadline passes with no slot free
+    expect(await fifth).toBeNull()
     expect(r.bodies.length).toBe(4)
     expect(r.reports.filter(m => m.includes('busy')).length).toBe(1)
-    await r.fire()
     await Promise.all(waiting)
+  })
+
+  test('a fifth call gets a slot when one frees up within its deadline', async () => {
+    const held = [1, 2, 3, 4].map(() => deferred())
+    const r = rig(n => (n <= 4 ? held[n - 1].promise : Promise.resolve(ok(reply(0.9, 0.05, 0.05, 0.1)))))
+    const first = [1, 2, 3, 4].map(i => r.judge(cfg, `echo ${i}`))
+    await flush()
+    const fifth = r.judge(cfg, 'echo 5')
+    await flush()
+    expect(r.bodies.length).toBe(4)
+    held[0].resolve(ok(reply(0.9, 0.05, 0.05, 0.1)))
+    await flush()
+    expect(r.bodies.length).toBe(5)
+    expect(await fifth).not.toBeNull()
+    expect(r.reports.filter(m => m.includes('busy')).length).toBe(0)
+    for (const h of held.slice(1)) h.resolve(ok('x'))
+    await Promise.all(first)
+  })
+
+  test('a late settle from before a reset does not free a slot in the new generation', async () => {
+    const held = [1, 2, 3, 4].map(() => deferred())
+    const r = rig(n => (n <= 4 ? held[n - 1].promise : hang()))
+    const old = [1, 2, 3, 4].map(i => r.judge(cfg, `echo ${i}`))
+    await flush()
+    r.reset()
+    const fresh = [5, 6, 7, 8].map(i => r.judge(cfg, `echo ${i}`))
+    await flush()
+    expect(r.bodies.length).toBe(8) // reset zeroed the count, so all four new requests went out
+    for (const h of held) h.resolve(ok('x'))
+    await flush()
+    const ninth = r.judge(cfg, 'echo 9')
+    await flush()
+    expect(r.bodies.length).toBe(8) // the old settles did not decrement the new count
+    await r.fire()
+    expect(await ninth).toBeNull()
+    await Promise.all([...old, ...fresh])
+  })
+
+  test('a rejected clock leaves nothing stuck: the next call judges normally', async () => {
+    let broken = true
+    const j = createJudge()
+    const deps: Deps = {
+      fetch: async () => ok(reply(0.9, 0.05, 0.05, 0.1)),
+      sleep: () => new Promise(() => {}),
+      now: async () => {
+        if (broken) throw new Error('clock gone')
+        return 0
+      },
+      report: () => {},
+    }
+    await expect(j.judge(cfg, 'ls', deps)).rejects.toThrow('clock gone')
+    broken = false
+    expect(await j.judge(cfg, 'ls', deps)).not.toBeNull()
   })
 
   test('a call the cap refuses does not take the probe slot', async () => {
@@ -420,7 +479,10 @@ describe('judge', () => {
     await r.fire() // four timeouts open the breaker; all four requests still pend
     await Promise.all(first)
     r.advance(60_000)
-    expect(await r.judge(cfg, 'echo 5')).toBeNull()
+    const five = r.judge(cfg, 'echo 5')
+    await flush()
+    await r.fire() // no slot frees before its deadline
+    expect(await five).toBeNull()
     expect(r.bodies.length).toBe(4)
     for (const h of held) h.resolve(ok('x'))
     await flush()

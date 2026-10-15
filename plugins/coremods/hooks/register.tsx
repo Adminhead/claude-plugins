@@ -235,16 +235,17 @@ async function runToolMgr($: any, args: unknown): Promise<string> {
 // systemone: the optional model check on Bash commands the rules let through. The config comes from the user settings
 // only, because a project's settings `env` reaches the process env and could point every command at its own server.
 let sysConfig: Config | null = null
-// The judge keeps its state across calls but runs inside whichever hook is current. The engine refuses to let `$` be stored,
-// so each call installs deps whose closures spell `$.noun.event(...)`, and the judge reaches them through `sysDeps`.
-let sysDeps: Deps
 const SYS_KEY = 'tool-mgr:systemone'
-const judge = createJudge({
-  fetch: (url, init) => sysDeps.fetch(url, init),
-  sleep: (ms, opts) => sysDeps.sleep(ms, opts),
-  now: () => sysDeps.now(),
-  report: message => sysDeps.report(message),
-})
+const judge = createJudge()
+
+// classic.PreToolUse carries no agentId, but the tool.call hook above it sees both ids first. Bounded, oldest out.
+const CALL_AGENTS_MAX = 256
+const callAgents = new Map<string, string>()
+function noteAgent(e: any) {
+  if (typeof e.agentId !== 'string' || typeof e.tool_use_id !== 'string') return
+  if (callAgents.size >= CALL_AGENTS_MAX) callAgents.delete(callAgents.keys().next().value as string)
+  callAgents.set(e.tool_use_id, e.agentId)
+}
 
 async function readSystemone($: any) {
   sysConfig = null
@@ -263,7 +264,8 @@ async function withSystemone($: any, e: any, inner: Verdict): Promise<Verdict> {
   const cfg = sysConfig
   if (!cfg) return inner
   try {
-    sysDeps = {
+    // The engine refuses to let `$` be stored, so the deps are closures that spell `$.noun.event(...)`.
+    const deps: Deps = {
       fetch: async (url, init) => {
         const r = await $.http.fetch(url, init)
         return { status: r.status, text: r.text }
@@ -271,13 +273,15 @@ async function withSystemone($: any, e: any, inner: Verdict): Promise<Verdict> {
       sleep: (ms, opts) => $.clock.sleep(ms, opts),
       now: () => $.clock.now(),
       report: message => report($, 'tool-mgr', message, SYS_KEY),
+      fresh: () => {
+        lastError[SYS_KEY] = null // a good reply re-arms the log; a memo hit does not
+      },
     }
     const rewritten = inner.updatedInput as { command?: unknown } | undefined
     const command = typeof rewritten?.command === 'string' ? rewritten.command : e.command
-    const answer = await judge.judge(cfg, command)
-    if (answer) lastError[SYS_KEY] = null
+    const answer = await judge.judge(cfg, command, deps)
     const { verdict, rule } = merge(inner, answer, ASK_TIER, calFor(cfg.model))
-    if (rule) await logDeny($, { ...e, command }, rule)
+    if (rule) await logDeny($, { ...e, command, agentId: callAgents.get(e.tool_use_id) }, rule)
     return verdict
   } catch (err) {
     report($, 'tool-mgr', err, 'tool-mgr:systemone-error')
@@ -332,6 +336,7 @@ export const register: Register = on => {
     if (typeof e.tool === 'string' && e.tool.startsWith(TOOL_PREFIX)) return { result: await runGitTool($, e) }
     const isBash = e.tool === 'Bash' && typeof e.command === 'string'
     let hit = null
+    if (isBash) noteAgent(e)
     // classify denies what it cannot parse or what is too long; it throws only on our own bug, which lets the call through.
     if (isBash) {
       try {

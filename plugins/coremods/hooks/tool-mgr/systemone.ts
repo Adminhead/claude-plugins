@@ -138,21 +138,28 @@ export type Deps = {
   sleep: (ms: number, opts: { signal: AbortSignal }) => Promise<unknown>
   now: () => Promise<number>
   report: (message: string) => void // one log line; never carries the command
+  fresh?: () => void // a request just came back good (not a memo hit)
 }
 
 type Outcome = { answer: Answer } | { fail: string }
 
-// The model check with its state: memo, in-flight sharing, breaker, and the cap on pending requests. `judge` resolves to
-// null when there is no answer (failed, too long, busy, breaker open) and the static verdict stands. `reset` is for
-// session.end: it clears the state and voids replies still in flight.
-export function createJudge(deps: Deps) {
+// The model check with its state: memo, in-flight sharing, breaker, and the cap on pending requests. Each call brings
+// its own `deps`, so its request and timers run on that call's host. `judge` resolves to null when there is no answer
+// (failed, too long, busy, breaker open) and the static verdict stands. `reset` is for session.end: it clears the state
+// and voids replies still in flight.
+export function createJudge() {
   const memo = new Map<string, Answer>()
   const shared = new Map<string, Promise<Answer | null>>()
+  const waiters = new Set<() => void>()
   let generation = 0
   let pending = 0
   let failures = 0
   let openedAt = 0
   let probing = false
+
+  const wake = () => {
+    for (const w of [...waiters]) w()
+  }
 
   const reset = () => {
     generation++
@@ -160,15 +167,18 @@ export function createJudge(deps: Deps) {
     shared.clear()
     failures = 0
     probing = false
+    pending = 0
+    wake() // calls waiting for a slot see the new generation and give up
   }
 
   // Synchronous, so concurrent outcomes cannot interleave. `t` is the time of the outcome.
-  function record(gen: number, fail: string | null, t: number) {
+  function record(deps: Deps, gen: number, fail: string | null, t: number) {
     if (gen !== generation) return
     if (fail === null) {
       if (failures >= BREAKER_FAILURES) deps.report('systemone: back after a good reply')
       failures = 0
       probing = false
+      deps.fresh?.()
       return
     }
     deps.report(`systemone: ${fail}`)
@@ -183,7 +193,8 @@ export function createJudge(deps: Deps) {
     }
   }
 
-  async function attempt(cfg: Config, body: string, withBypass: boolean, gen: number): Promise<Answer | null> {
+  // The request has `budget` ms of the call's deadline left.
+  async function attempt(deps: Deps, cfg: Config, body: string, withBypass: boolean, gen: number, budget: number): Promise<Answer | null> {
     pending++
     const req: Promise<Outcome> = (async () => {
       try {
@@ -196,37 +207,61 @@ export function createJudge(deps: Deps) {
         return { fail: 'connection error' }
       }
     })()
-    // A late reply is ignored: it only frees its slot. A timeout already counted as a failure.
-    req.then(() => pending--)
+    // A late reply is ignored: it only frees its slot, and only in the generation that took it. A timeout already counted as a failure.
+    req.then(() => {
+      if (gen !== generation) return
+      pending--
+      wake()
+    })
     const signal = new AbortController()
-    const timer = deps.sleep(TIMEOUT_MS, { signal: signal.signal }).then(
+    const timer = deps.sleep(budget, { signal: signal.signal }).then(
       () => 'timeout' as const,
       () => 'timeout' as const,
     )
     const first = await Promise.race([req, timer])
     signal.abort()
     const out: Outcome = first === 'timeout' ? { fail: `no reply within ${TIMEOUT_MS} ms` } : first
-    record(gen, 'fail' in out ? out.fail : null, await deps.now())
+    record(deps, gen, 'fail' in out ? out.fail : null, await deps.now())
     return 'answer' in out ? out.answer : null
   }
 
-  // After the one `await`, the breaker and cap checks and the claim of the probe slot run without yielding, so
-  // concurrent calls past the window send a single probe, and a call the cap refuses never takes the slot.
-  async function start(cfg: Config, command: string): Promise<Answer | null> {
-    const t = await deps.now()
-    const open = failures >= BREAKER_FAILURES
-    if (open && (probing || t < openedAt + BREAKER_MS)) return null
-    if (pending >= MAX_PENDING) {
-      deps.report('systemone busy: too many requests pending, not assessed')
-      return null
+  // The deadline is TIMEOUT_MS from the start of the call. A call at the cap waits for a slot within it, then gives up
+  // with one busy line. After each `await` the breaker and cap checks and the claim of the slot (and the probe slot) run
+  // without yielding, so concurrent calls past the window send a single probe, and a call the cap refuses never takes it.
+  async function start(deps: Deps, cfg: Config, command: string): Promise<Answer | null> {
+    const gen = generation
+    let t = await deps.now()
+    const deadline = t + TIMEOUT_MS
+    for (;;) {
+      if (gen !== generation) return null
+      const open = failures >= BREAKER_FAILURES
+      if (open && (probing || t < openedAt + BREAKER_MS)) return null
+      if (pending < MAX_PENDING) {
+        if (open) probing = true
+        const withBypass = calFor(cfg.model).bypassAtLeast !== undefined
+        return attempt(deps, cfg, JSON.stringify(buildRequest(command, cfg.model, withBypass)), withBypass, gen, deadline - t)
+      }
+      const ctl = new AbortController()
+      let free!: () => void
+      const slot = new Promise<'slot'>(res => waiters.add((free = () => res('slot'))))
+      const timer = deps.sleep(Math.max(deadline - t, 0), { signal: ctl.signal }).then(
+        () => 'timeout' as const,
+        () => 'timeout' as const,
+      )
+      const won = await Promise.race([slot, timer])
+      ctl.abort()
+      waiters.delete(free)
+      if (won === 'timeout') {
+        deps.report('systemone busy: too many requests pending, not assessed')
+        return null
+      }
+      t = await deps.now()
     }
-    if (open) probing = true
-    const withBypass = calFor(cfg.model).bypassAtLeast !== undefined
-    return attempt(cfg, JSON.stringify(buildRequest(command, cfg.model, withBypass)), withBypass, generation)
   }
 
-  // The in-flight entry is set before the first await, so a concurrent identical call joins it.
-  function judge(cfg: Config, command: string): Promise<Answer | null> {
+  // The in-flight entry is set before the first await, so a concurrent identical call joins it. The joiner waits on the
+  // originator's request, so it runs on the originator's deps.
+  function judge(cfg: Config, command: string, deps: Deps): Promise<Answer | null> {
     if (command.length > MAX_MODEL_INPUT) {
       deps.report(`systemone: command over ${MAX_MODEL_INPUT} chars, not assessed`)
       return Promise.resolve(null)
@@ -237,16 +272,22 @@ export function createJudge(deps: Deps) {
     const running = shared.get(key)
     if (running) return running
     const gen = generation
-    const run = start(cfg, command).then(answer => {
-      if (gen === generation) {
-        shared.delete(key)
-        if (answer) {
-          if (memo.size >= MEMO_SIZE) memo.delete(memo.keys().next().value as string)
-          memo.set(key, answer)
+    const run = start(deps, cfg, command).then(
+      answer => {
+        if (gen === generation) {
+          shared.delete(key)
+          if (answer) {
+            if (memo.size >= MEMO_SIZE) memo.delete(memo.keys().next().value as string)
+            memo.set(key, answer)
+          }
         }
-      }
-      return answer
-    })
+        return answer
+      },
+      err => {
+        if (gen === generation) shared.delete(key) // a rejection must not stay in the map
+        throw err
+      },
+    )
     shared.set(key, run)
     return run
   }
