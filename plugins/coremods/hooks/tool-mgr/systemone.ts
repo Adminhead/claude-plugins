@@ -8,6 +8,7 @@ export const DEFAULT_MODEL = 'ggml-org/Kev-4B-GGUF:Q8_0'
 export const PROMPT_VERSION = 1
 
 const TIMEOUT_MS = 1000
+const MIN_BUDGET_MS = 100
 const MAX_MODEL_INPUT = 4000
 const MAX_REPLY = 64 * 1024
 const MAX_PENDING = 4
@@ -172,7 +173,8 @@ export function createJudge() {
   }
 
   // Synchronous, so concurrent outcomes cannot interleave. `t` is the time of the outcome.
-  function record(deps: Deps, gen: number, fail: string | null, t: number) {
+  // A failure with `counts` false (a timeout on a shortened budget) is reported but is not evidence about the server.
+  function record(deps: Deps, gen: number, fail: string | null, t: number, counts = true) {
     if (gen !== generation) return
     if (fail === null) {
       if (failures >= BREAKER_FAILURES) deps.report('systemone: back after a good reply')
@@ -182,6 +184,13 @@ export function createJudge() {
       return
     }
     deps.report(`systemone: ${fail}`)
+    if (!counts) {
+      if (probing) {
+        openedAt = t
+        probing = false
+      }
+      return
+    }
     const wasOpen = failures >= BREAKER_FAILURES
     failures++
     if (!wasOpen && failures >= BREAKER_FAILURES) {
@@ -220,12 +229,17 @@ export function createJudge() {
     )
     const first = await Promise.race([req, timer])
     signal.abort()
-    const out: Outcome = first === 'timeout' ? { fail: `no reply within ${TIMEOUT_MS} ms` } : first
-    record(deps, gen, 'fail' in out ? out.fail : null, await deps.now())
+    const out: Outcome = first === 'timeout' ? { fail: `no reply within ${budget} ms` } : first
+    record(deps, gen, 'fail' in out ? out.fail : null, await deps.now(), first !== 'timeout' || budget >= TIMEOUT_MS)
     return 'answer' in out ? out.answer : null
   }
 
-  // The deadline is TIMEOUT_MS from the start of the call. A call at the cap waits for a slot within it, then gives up
+  function busy(deps: Deps): null {
+    deps.report('systemone busy: too many requests pending, not assessed')
+    return null
+  }
+
+  // The deadline is TIMEOUT_MS from the start of the call. A slot that frees with under MIN_BUDGET_MS left is not worth a request. A call at the cap waits for a slot within it, then gives up
   // with one busy line. After each `await` the breaker and cap checks and the claim of the slot (and the probe slot) run
   // without yielding, so concurrent calls past the window send a single probe, and a call the cap refuses never takes it.
   async function start(deps: Deps, cfg: Config, command: string): Promise<Answer | null> {
@@ -237,6 +251,7 @@ export function createJudge() {
       const open = failures >= BREAKER_FAILURES
       if (open && (probing || t < openedAt + BREAKER_MS)) return null
       if (pending < MAX_PENDING) {
+        if (deadline - t < MIN_BUDGET_MS) return busy(deps)
         if (open) probing = true
         const withBypass = calFor(cfg.model).bypassAtLeast !== undefined
         return attempt(deps, cfg, JSON.stringify(buildRequest(command, cfg.model, withBypass)), withBypass, gen, deadline - t)
@@ -251,10 +266,7 @@ export function createJudge() {
       const won = await Promise.race([slot, timer])
       ctl.abort()
       waiters.delete(free)
-      if (won === 'timeout') {
-        deps.report('systemone busy: too many requests pending, not assessed')
-        return null
-      }
+      if (won === 'timeout') return busy(deps)
       t = await deps.now()
     }
   }

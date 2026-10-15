@@ -49,17 +49,20 @@ function rig(handler: (n: number) => Promise<{ status: number; text: string }> =
   const bodies: string[] = []
   const reports: string[] = []
   const timers = new Set<() => void>()
+  const sleeps = new Map<() => void, number>() // each pending timer's requested ms
   const deps: Deps = {
     fetch: async (_url, init) => {
       bodies.push(init.body)
       return handler(bodies.length)
     },
-    sleep: (_ms, { signal }) =>
+    sleep: (ms, { signal }) =>
       new Promise((resolve, reject) => {
         const fire = () => resolve(undefined)
         timers.add(fire)
+        sleeps.set(fire, ms)
         signal.addEventListener('abort', () => {
           timers.delete(fire)
+          sleeps.delete(fire)
           reject(new Error('aborted'))
         })
       }),
@@ -74,8 +77,9 @@ function rig(handler: (n: number) => Promise<{ status: number; text: string }> =
     reports,
     timers,
     advance: (ms: number) => (t += ms),
-    fire: async () => {
-      for (const f of [...timers]) f()
+    // Elapses the pending timers that asked for at most `maxMs`.
+    fire: async (maxMs = Infinity) => {
+      for (const f of [...timers]) if ((sleeps.get(f) ?? 0) <= maxMs) f()
       await flush()
     },
   }
@@ -433,6 +437,49 @@ describe('judge', () => {
     expect(r.reports.filter(m => m.includes('busy')).length).toBe(0)
     for (const h of held.slice(1)) h.resolve(ok('x'))
     await Promise.all(first)
+  })
+
+  test('a slot that frees with under 100 ms left sends nothing and reports busy', async () => {
+    const held = [1, 2, 3, 4].map(() => deferred())
+    const r = rig(n => held[n - 1].promise)
+    const first = [1, 2, 3, 4].map(i => r.judge(cfg, `echo ${i}`))
+    await flush()
+    const fifth = r.judge(cfg, 'echo 5')
+    await flush()
+    r.advance(950)
+    held[0].resolve(ok(reply(0.9, 0.05, 0.05, 0.1)))
+    await flush()
+    expect(await fifth).toBeNull()
+    expect(r.bodies.length).toBe(4)
+    expect(r.reports.filter(m => m.includes('busy')).length).toBe(1)
+    for (const h of held.slice(1)) h.resolve(ok('x'))
+    await Promise.all(first)
+  })
+
+  test('a timeout on a shortened budget is logged with it and does not count toward the breaker', async () => {
+    const held = [1, 2, 3, 4].map(() => deferred())
+    const r = rig(n => (n <= 4 ? held[n - 1].promise : hang()))
+    const first = [1, 2, 3, 4].map(i => r.judge(cfg, `echo ${i}`))
+    await flush()
+    for (let i = 0; i < 3; i++) {
+      const next = r.judge(cfg, `echo late ${i}`)
+      await flush()
+      r.advance(600)
+      held[i].resolve(ok(reply(0.9, 0.05, 0.05, 0.1))) // frees a slot with 400 ms left
+      await flush()
+      expect(r.bodies.length).toBe(5 + i)
+      await r.fire(500) // only the 400 ms timer
+      expect(await next).toBeNull()
+    }
+    expect(r.reports.filter(m => m.includes('no reply within 400 ms')).length).toBe(3)
+    expect(r.reports.some(m => m.includes('failures in a row'))).toBe(false)
+    held[3].resolve(ok('x'))
+    await Promise.all(first)
+    const again = r.judge(cfg, 'echo again') // the breaker is still closed, so this sends
+    await flush()
+    expect(r.bodies.length).toBe(8)
+    await r.fire()
+    expect(await again).toBeNull()
   })
 
   test('a late settle from before a reset does not free a slot in the new generation', async () => {
