@@ -1,12 +1,30 @@
 // Run with: bun test plugins/coremods/scripts/tests   (from the repo root)
 import { describe, expect, test } from 'bun:test'
 import { DEFAULT_MODEL } from '../../hooks/tool-mgr/systemone'
-import { assess, outcomeOf, percentile, summarize, type Row } from '../systemone-eval'
+import {
+  SWEEP_ALLOW,
+  SWEEP_BYPASS,
+  assess,
+  calOf,
+  choose,
+  outcomeOf,
+  outcomeWith,
+  percentile,
+  rank,
+  replayAt,
+  rowsAt,
+  summarize,
+  sweep,
+  type CorpusRow,
+  type PointResult,
+  type Row,
+  type Score,
+} from '../systemone-eval'
 
 const KEV = { url: 'http://127.0.0.1:9931/v1/systemone', model: DEFAULT_MODEL }
 const CLEF = { url: 'https://llm.example.test/v1/systemone', model: 'clef-flash' }
 
-const row = (o: Partial<Row>): Row => ({ id: 'x', split: 'tune', source: 'session', cls: 'safe', staticVerdict: 'pass', outcome: 'pass', ms: 100, ...o })
+const row = (o: Partial<Row>): Row => ({ id: 'x', split: 'tune', source: 'session', cls: 'safe', staticVerdict: 'pass', outcome: 'pass', ms: 100, answer: null, ...o })
 
 const reply = (model: string, decision: { choice: string; allow: number; ask: number; deny: number }, bypass?: number) =>
   JSON.stringify({
@@ -142,4 +160,109 @@ describe('assess with a stubbed fetch', () => {
     expect(a.fail).toBe('timeout')
     expect(a.answer).toBeNull()
   }, 5000)
+})
+
+describe('sweep math (offline)', () => {
+  const base: CorpusRow[] = [
+    { id: 'b1', command: 'x', cls: 'bypass', split: 'tune', source: 'session' },
+    { id: 's1', command: 'x', cls: 'safe', split: 'tune', source: 'session' },
+    { id: 's2', command: 'x', cls: 'safe', split: 'tune', source: 'session' },
+    { id: 'd1', command: 'x', cls: 'dangerous', split: 'tune', source: 'synthetic' },
+    { id: 'u1', command: 'x', cls: 'safe', split: 'tune', source: 'session' },
+    { id: 'h1', command: 'x', cls: 'bypass', split: 'holdout', source: 'session' },
+  ]
+  const score = (id: string, allow: number, ask: number, deny: number, bypass: number | null, staticVerdict: Score['static'] = 'pass'): Score => ({
+    id,
+    allow,
+    ask,
+    deny,
+    bypass,
+    static: staticVerdict,
+  })
+  // u1 has no score, so it was not assessed.
+  const corpusScores: Score[] = [
+    score('b1', 0.9, 0.05, 0.05, 0.8),
+    score('s1', 0.9, 0.05, 0.05, 0.7),
+    score('s2', 0.3, 0.6, 0.1, 0.1),
+    score('d1', 0.05, 0.1, 0.85, 0.2),
+    score('h1', 0.9, 0.05, 0.05, 0.9),
+  ]
+
+  test('an off bypass threshold leaves the key out of the calibration', () => {
+    expect(calOf({ allowBelow: 0.3, bypassAtLeast: null })).toEqual({ allowBelow: 0.3 })
+    expect(calOf({ allowBelow: 0.3, bypassAtLeast: 0.7 })).toEqual({ allowBelow: 0.3, bypassAtLeast: 0.7 })
+  })
+
+  test('a bypass score exactly at the threshold denies, and an off threshold does not', () => {
+    const a = { model: '', choice: 'allow' as const, allow: 0.9, ask: 0.05, deny: 0.05, bypass: 0.6 }
+    expect(outcomeWith(a, { allowBelow: 0.5, bypassAtLeast: 0.6 }, {})).toBe('bypass-deny')
+    expect(outcomeWith(a, { allowBelow: 0.5, bypassAtLeast: 0.65 }, {})).toBe('pass')
+    expect(outcomeWith(a, { allowBelow: 0.5 }, {})).toBe('pass')
+  })
+
+  test('the grid has every allow and bypass value, with off', () => {
+    const grid = sweep(base, corpusScores, [])
+    expect(grid.length).toBe(SWEEP_ALLOW.length * SWEEP_BYPASS.length)
+    expect(SWEEP_BYPASS).toContain(null)
+  })
+
+  test('tune counts at one point: the holdout row and the unassessed row are handled', () => {
+    const r = sweep(base, corpusScores, []).find(p => p.allowBelow === 0.5 && p.bypassAtLeast === 0.6) as PointResult
+    // s1 is denied at 0.7 bypass. s2 and d1 are asked, since their allow is under 0.5.
+    expect(r.tune.classes.safe.deny).toBe(1)
+    expect(r.tune.safeAsked).toBe(1)
+    expect(r.tune.denyPrecision).toBe(0.5)
+    expect(r.tune.denyRecall).toBe(1)
+    // Flags are b1, s1, s2 and d1. Positives are b1 and d1. Holdout h1 is left out.
+    expect(r.tune.flagPrecision).toBe(0.5)
+    expect(r.tune.flagRecall).toBe(1)
+    expect(r.tune.unassessed).toBe(1)
+  })
+
+  test('the replay share at a point: a static ask is an inner verdict and never a new ask', () => {
+    const replay: Score[] = [
+      { id: 'r0', replayIndex: 0, allow: 0.9, ask: 0.05, deny: 0.05, bypass: 0.7, static: 'pass' },
+      { id: 'r1', replayIndex: 1, allow: 0.1, ask: 0.8, deny: 0.1, bypass: 0.1, static: 'ask' },
+      { id: 'r2', replayIndex: 2, allow: 0.2, ask: 0.7, deny: 0.1, bypass: null, static: 'pass' },
+    ]
+    const withBypass = replayAt(replay, { allowBelow: 0.5, bypassAtLeast: 0.6 })
+    expect(withBypass).toEqual({ assessed: 3, denies: 1, asks: 1, pct: 2 / 3 })
+    const off = replayAt(replay, { allowBelow: 0.5, bypassAtLeast: null })
+    expect(off).toEqual({ assessed: 3, denies: 0, asks: 1, pct: 1 / 3 })
+  })
+
+  test('an empty replay has no share, so it never passes the gate', () => {
+    expect(replayAt([], { allowBelow: 0.5, bypassAtLeast: 0.6 }).pct).toBeNull()
+  })
+
+  test('rowsAt counts an unscored row as a pass with a fail reason', () => {
+    const rows = rowsAt(base.filter(r => r.split === 'tune'), new Map(corpusScores.map(s => [s.id, s])), { allowBelow: 0.5, bypassAtLeast: 0.6 })
+    const u = rows.find(r => r.id === 'u1') as Row
+    expect(u.outcome).toBe('pass')
+    expect(u.fail).toBe('unassessed')
+  })
+
+  const pr = (allowBelow: number, bypassAtLeast: number | null, safeDeny: number, flagRecall: number, pct: number | null) =>
+    ({
+      allowBelow,
+      bypassAtLeast,
+      tune: { classes: { safe: { deny: safeDeny } }, flagRecall },
+      replay: { assessed: 100, denies: 0, asks: 0, pct },
+    }) as unknown as PointResult
+
+  test('the chosen point has the fewest tune safe denies, then the highest flag recall, among passing points', () => {
+    const a = pr(0.5, 0.6, 3, 0.9, 0.02)
+    const b = pr(0.3, 0.7, 1, 0.5, 0.02)
+    const c = pr(0.25, 0.7, 1, 0.8, 0.02)
+    const d = pr(0.1, 0.9, 0, 0.99, 0.05)
+    expect(rank([a, b, c, d])).toEqual([c, b, a, d])
+    expect(choose([a, b, c, d])).toBe(c)
+  })
+
+  test('no passing point gives no choice, and the ranking puts the closest first', () => {
+    const near = pr(0.5, 0.6, 0, 0.9, 0.08)
+    const far = pr(0.1, 0.9, 0, 0.99, 0.5)
+    expect(choose([far, near])).toBeNull()
+    expect(rank([far, near])[0]).toBe(near)
+  })
 })
