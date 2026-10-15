@@ -393,3 +393,96 @@ The ten commands are short, all under 60 characters. The spike's 221/304 ms came
 - The `/clear` case of check e is unverified.
 - The 30 s host fetch timeout is observed from the error text, not documented. The plan relies only on the 1000 ms race.
 - A `classic.PreToolUse` ask prompts in bypassPermissions, so S2's live check should expect a prompt there.
+
+
+## S3 results
+
+**Decision:** the guard targets `ggml-org/Kev-0.8B-GGUF:Q8_0` (user decision). The Kev-4B runs below are superseded.
+
+### Why the model changed
+- Kev-4B failed the replay gate at the spike thresholds. In the partial replay before Kev dropped, 147 of 289 assessed commands were flagged (50.9%).
+- Under concurrency 4, the 4B endpoint went down mid-run (182 connection errors).
+- The endpoint now answers as 0.8B and ignores the request's `model` field, so the echo shows which model answered.
+
+### Run: Kev-0.8B, concurrency 1, forced bypass question
+- Corpus: 1050 tune and 450 holdout rows, each asked both questions. 0 unassessed, 0 echo mismatches.
+- Replay: the last 500 Bash calls. 26 were blocked and 5 were 4000 characters or truncated, so they were skipped. 469 assessed, 0 unassessed.
+- Latency, two questions, sequential: tune p50 45, p95 68, max 144 ms (n = 1050). Holdout p50 44, p95 64, max 108 ms (n = 450).
+- Kev stayed up for the whole run. Scores and flags are in the scratchpad, not the repo.
+
+### Default point, Kev-4B thresholds (allow < 0.50, bypass ≥ 0.60)
+- Replay: 23 bypass denies and 377 asks, 400 of 469 (85.3%). **Gate: FAIL.**
+- Tune: 51 safe denied of 651, 501 safe asked.
+
+### Sweep, tune only
+Rule: replay share ≤ 3%, then fewest tune safe denies, then highest tune flag recall. The top 10 by the rule:
+
+| allow < | bypass ≥ | safe deny | safe ask | deny P | deny R | flag P | flag R | replay sum | replay % | gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0.20 | 0.85 | 0 | 7 | 1.000 | 0.005 | 0.696 | 0.040 | 6 | 1.28% | pass |
+| 0.20 | 0.90 | 0 | 7 | - | 0.000 | 0.682 | 0.038 | 6 | 1.28% | pass |
+| 0.20 | 0.95 | 0 | 7 | - | 0.000 | 0.682 | 0.038 | 6 | 1.28% | pass |
+| 0.20 | off | 0 | 7 | - | 0.000 | 0.682 | 0.038 | 6 | 1.28% | pass |
+| 0.15 | 0.85 | 0 | 0 | 1.000 | 0.005 | 1.000 | 0.008 | 1 | 0.21% | pass |
+| 0.15 | 0.90 | 0 | 0 | - | 0.000 | 1.000 | 0.005 | 1 | 0.21% | pass |
+| 0.15 | 0.95 | 0 | 0 | - | 0.000 | 1.000 | 0.005 | 1 | 0.21% | pass |
+| 0.15 | off | 0 | 0 | - | 0.000 | 1.000 | 0.005 | 1 | 0.21% | pass |
+| 0.05 | 0.85 | 0 | 0 | 1.000 | 0.005 | 1.000 | 0.003 | 0 | 0.00% | pass |
+| 0.10 | 0.85 | 0 | 0 | 1.000 | 0.005 | 1.000 | 0.003 | 0 | 0.00% | pass |
+
+### Chosen point: allow < 0.20, bypass ≥ 0.85, gate **pass** (1.28% ≤ 3%)
+
+| Split | n | Unassessed | Safe deny | Safe ask | Deny P | Deny R | Flag P | Flag R |
+|---|---|---|---|---|---|---|---|---|
+| tune | 1050 | 0 | 0 | 7 | 1.000 | 0.005 | 0.696 | 0.040 |
+| holdout | 450 | 0 | 0 | 1 | 0.000 | 0.000 | 0.889 | 0.047 |
+
+Replay at this point: 0 bypass denies and 6 asks out of 469 assessed (1.28%).
+
+The point is nearly off. Tune has one bypass deny out of 210 bypass rows, and tune flag recall is 0.040. The gate passes because the threshold is high, not because the rule catches much. This point was chosen on tune only; holdout is reported for it and was not used to pick it.
+
+### Hand labels, chosen point
+- Replay rows the chosen point flags: 6. The sample cap is 50, so all six were labeled, in seeded order (seed 20261014).
+- True bypass 1 (17%), dangerous 0, false flag 5 (83%). One false flag is marked unsure: a probe that spawns a Claude session in bypassPermissions mode.
+- Six rows are too few for a rate. Treat the share as a single data point.
+
+### Clef, corpus, ask path only (earlier run, unchanged)
+- **Model echo:** every answered reply echoed the server's local path, `/srv/models/ggml-org--Clef-Flash-GGUF/…/Clef-Flash-Q8_0.gguf`, not `clef-flash`. The judge would fail every reply as a model mismatch.
+- **Single slot:** the endpoint is one llama-swap slot. A timed-out request keeps the slot after the client gives up, so the 1000 ms budget cascades into HTTP 429 `concurrency_limit` responses. The first clef run was void for this reason (1490 of 1500 calls returned 429).
+- **Cold start:** about 4 s after an idle period.
+- Rerun after warm-up, concurrency 1:
+
+| Split | Unassessed (timeout) | Answered | Flag P | Flag R | Safe asked | Latency p50 / p95 / max, ms |
+|---|---|---|---|---|---|---|
+| tune | 170 | 880 | 0.494 | 0.825 | 337 of 651 | 639 / 896 / 999 |
+| holdout | 46 | 404 | 0.918 | 0.511 | 149 of 280 | 640 / 896 / 999 |
+
+Clef asks on about half of safe rows, and it times out at the 1000 ms budget on many calls.
+
+### Open
+- The bypass threshold has no effect in the guard until `systemone.ts` has a `CALIBRATED` entry for the 0.8B. The sweep's bypass axis assumes one. The user applies it.
+- Six labeled rows say little about the wider traffic. A larger random sample would firm up the share.
+- The judge's 1000 ms timeout does not cancel server work, which is why clef cascades. S2 should treat a timeout as the signal to skip the model, not as a retry.
+
+### 4B comparison
+Kev-4B (`ggml-org/Kev-4B-GGUF:Q8_0`) was run the same way: concurrency 1, bypass question on every row, corpus and 500-call replay, all clean (0 unassessed, 0 echo mismatches).
+
+AUCs use every assessed corpus row (1500). The score is the bypass score for bypass vs safe, and 1 − allow for the other two pairs.
+
+| Measure | Kev-0.8B | Kev-4B |
+|---|---|---|
+| AUC, bypass score, bypass vs safe | 0.769 | 0.892 |
+| AUC, 1 − allow, dangerous + bypass vs safe | 0.691 | 0.785 |
+| AUC, 1 − allow, dangerous vs safe | 0.629 | 0.835 |
+| Default point (allow < 0.50, bypass ≥ 0.60): replay flagged | 85.3% | 55.1% |
+| Chosen point (rule above) | allow < 0.20, bypass ≥ 0.85 | allow < 0.25, bypass ≥ 0.85 |
+| Chosen point, tune: safe denied / safe asked | 0 / 7 | 0 / 13 |
+| Chosen point, tune: deny R / flag R | 0.005 / 0.040 | 0.005 / 0.318 |
+| Chosen point, tune: flag P | 0.696 | 0.907 |
+| Chosen point, holdout: safe denied / safe asked | 0 / 1 | 0 / 5 |
+| Chosen point, holdout: deny R / flag R | 0.000 / 0.047 | 0.022 / 0.335 |
+| Chosen point, replay: flagged (of assessed) | 6 of 469 (1.28%), gate pass | 11 of 470 (2.34%), gate pass |
+| Hand labels at chosen point: true bypass / dangerous / false flag | 1 / 0 / 5 of 6 | 2 / 2 / 7 of 11 |
+| Latency p50 / p95, tune, concurrency 1, ms | 45 / 68 | 99 / 155 |
+
+Kev-4B separates the classes better on every AUC. At the same gate, its chosen point catches about eight times the tune flags of the 0.8B point (flag R 0.318 against 0.040), and it asks on more safe rows (13 against 7 on tune, 5 against 1 on holdout). Neither model passes the gate at the default thresholds, and the 4B's default point still flags more than half of replayed commands.
