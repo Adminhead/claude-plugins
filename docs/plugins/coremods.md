@@ -139,7 +139,7 @@ The helper in `hooks/git-tools/git.ts` builds and validates the argv. The tools 
 
 ## tool-mgr
 
-Blocks three Bash habits that have a better built-in tool, denies a handful of dangerous commands (recursive deletes of system paths, disk wipes, `sudo`), asks before piped installers and git history rewrites, and denies a Bash command it cannot parse. It reads each command with a shell parser, the vendored unbash library. `hooks/shell/walk.ts` flattens the parse tree into a list of commands, so the rules see through lists, pipelines, groups, loops, `$(...)` and `bash -c` bodies. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history.
+Blocks three Bash habits that have a better built-in tool, denies a handful of dangerous commands (recursive deletes of system paths, disk wipes, `sudo`), asks before piped installers and git history rewrites, and denies a Bash command it cannot parse. It reads each command with a shell parser, the vendored unbash library. `hooks/shell/walk.ts` flattens the parse tree into a list of commands, so the rules see through lists, pipelines, groups, loops, `$(...)` and `bash -c` bodies. The deny rules and the `/tool-mgr` command are a mod; per-call logging and the DuckDB metrics run in classic hooks of the same plugin, so they can use a real DuckDB library. Together they log every tool call so the rules can be tuned from history. An optional local model check can add asks and denies on top of the rules; see [systemone](#systemone-optional-model-check).
 
 ### Rules
 
@@ -152,6 +152,8 @@ A blocked call never runs. Claude sees a deny message that starts with `tool-mgr
 | `echo-write` | A `printf` or `echo` command (also `builtin`/`command` forms) with a `>`, `>>`, `>\|`, `N>`, `&>` or `>&file` or `<>` redirect to anything but the devices above, or piped straight into `tee <file>`. When the redirect sits on a group, loop or subshell, or the pipe has several upstream commands, every command under it must be `printf` or `echo`. `echo hi >> notes.md`, `cd x && printf x >out` and `{ echo a; echo b; } > f` are blocked. `{ npm test; echo "exit=$?"; } 2>&1 \| tee test.log`, `for f in *; do echo $f; wc -l $f; done > report`, `echo hi >&2`, `printf x 2>/dev/null`, `echo "a > b"` and `printf x \| tee /dev/null` pass | Write for a new file, Edit to change one |
 | `parse-error` | A command the parser rejects. The deny quotes the parser's first message and says to rewrite the command in plain bash or put it in a script file. Zsh-only syntax such as `for f k in ...`, `*(N)` and `$=var` lands here, as do unbalanced quotes and substitutions, in the command or in a `bash -c`, `eval` or shell-heredoc body | Rewrite in plain bash, or write a script file and run it |
 | `too-long` | A command over 64 KB (65,536 characters), denied without parsing | Write a script file and run it |
+
+These rules are static. `sed -i`, `perl -pi`, plain `cat`, `head` and `tail`, and a Python heredoc that only reads a file (`open(...).read()`) pass them. When `TOOL_MGR_SYSTEMONE` is set, the model also judges those commands and may ask or deny them.
 
 Heredoc bodies are read as data, not shell, so `git commit -F - <<EOF`, `cat <<EOF` with no redirect, and `python3 - <<'EOF'` that only prints all pass. Each heredoc is judged by its own body and by the command that reads it: the command it is attached to, or the one piped from it (on the same line or a later one). A redirect or `tee` on an unrelated command in the same line (`ls > f; git commit -F - <<EOF`) does not count. That command may be path-qualified (`.venv/bin/python`) or behind `env`, `timeout`, `nice`, `nohup`, `exec`, `time`, `command`, `builtin`, `stdbuf`, `setsid`, `xargs` or `uv run` (or `sudo` and `doas`, which the danger rules deny first), and it counts only when it reads its script from stdin (`-`, `/dev/stdin` or no script argument). So `node tool.js <<EOF` (data on stdin), `git commit -F - <<EOF` after `bun test &&`, and a commit message that mentions `write_text` or `overwriteFile` all pass.
 
@@ -169,7 +171,7 @@ Known gaps and false positives:
 
 ### Danger rules
 
-Six rules for commands that destroy a system or run unreviewed code. They stop a mistaken `rm -rf ~` or an unreviewed piped installer. They are not a sandbox: the threat model is model accidents, not a determined adversary.
+Six rules for commands that destroy a system or run unreviewed code. They stop a mistaken `rm -rf ~` or an unreviewed piped installer. They are not a sandbox: the threat model is model accidents, not a determined adversary. The Passes column lists what the static rules allow. When systemone is on, the model may still ask or deny those commands.
 
 | Rule | Tier | Blocks | Passes |
 | --- | --- | --- | --- |
@@ -210,6 +212,107 @@ Six rules for commands that destroy a system or run unreviewed code. They stop a
 | Exception in our code | Allow and log once (the ask hook keeps the verdict from below) | Block, exit 2 | `ask` |
 
 A parse error is a property of the input, and Claude can fix it by rewriting. An exception is our bug, and Claude can't fix it, so failing closed would stop all Bash in every session. A failure in the log or the metrics never blocks a call.
+
+### systemone (optional model check)
+
+systemone is a local classifier that reviews each Bash command the static rules did not deny. It is off unless `TOOL_MGR_SYSTEMONE` is set. When it is on, it can add an ask, or a deny for a bypass. It never relaxes a verdict. A bypass deny can turn a static ask into a deny.
+
+#### Setup
+
+Set the variables in the `env` block of user settings (`~/.claude/settings.json`):
+
+```json
+{
+  "env": {
+    "TOOL_MGR_SYSTEMONE": "http://127.0.0.1:9931/v1/systemone",
+    "TOOL_MGR_SYSTEMONE_MODEL": "ggml-org/Kev-4B-GGUF:Q8_0",
+    "TOOL_MGR_SYSTEMONE_CONCURRENCY": "2"
+  }
+}
+```
+
+Project settings (`.claude/settings.json`) and the process environment are not read. A cloned repo's `env` reaches the process environment, so a project could otherwise send every command to its own server. The config is read when a session starts, so restart the session after you edit it.
+
+| Variable | Value |
+| --- | --- |
+| `TOOL_MGR_SYSTEMONE` | The URL. Unset turns the check off, and the other two are not read. Use https, or http only for `127.0.0.1`, `[::1]` or `localhost`. No userinfo or `#` fragment. A value containing `\|` is an error. |
+| `TOOL_MGR_SYSTEMONE_MODEL` | Default `ggml-org/Kev-4B-GGUF:Q8_0`. The name must contain `Kev-4B` or `Kev-0.8B`, in any case, with any repo prefix or quant. That size picks the thresholds. Any other name is an error. |
+| `TOOL_MGR_SYSTEMONE_CONCURRENCY` | An integer from 1 to 8, default 2. The most requests in flight at once. |
+
+A bad value turns the check off and logs one line at session start. The line names the variable, never its value.
+
+#### How it decides
+
+For each Bash command the static rules did not deny, the check sends one request with two questions. The first asks for a `decision` (allow, ask or deny). The second asks for a `bypass` score: how likely the command reads or writes project files through the shell instead of Edit or Read. The answers are checked in this order:
+
+1. A bypass score of 0.85 or more denies the command. The deny is logged as `systemone-bypass`.
+2. If the static rules did not already ask, and P(allow) is below the threshold, the check asks. The ask is not logged.
+3. Otherwise the static verdict stands.
+
+| Model | Ask when P(allow) is below | Bypass deny at |
+| --- | --- | --- |
+| Kev-4B (default) | 0.25 | 0.85 |
+| Kev-0.8B | 0.20 | 0.85 |
+
+The check mostly asks. A bypass deny at 0.85 rarely fires.
+
+The thresholds were picked on the tune split (1050 rows of a 1500-row labeled corpus). The holdout split (450 rows) and a replay of 500 real Bash calls are the checks:
+
+| Measure | Kev-4B | Kev-0.8B |
+| --- | --- | --- |
+| Holdout flag recall: share of dangerous and bypass commands given an ask or a deny | 0.335 | 0.047 |
+| Holdout safe commands asked / denied | 5 / 0 | 1 / 0 |
+| Holdout bypass deny recall | 0.022 | 0.000 |
+| Replay of 500 Bash calls: share flagged, asks and denies | 2.34% (11 of 470) | 1.28% (6 of 469) |
+| Latency p50 / p95, two questions, one request at a time (tune) | 99 / 155 ms | 45 / 68 ms |
+
+Both models pass the replay gate of 3%. Most dangerous and bypass commands go unflagged, so the static rules remain the main guard. Of the 11 replay flags for the 4B, a hand check found 2 true bypasses, 2 dangerous commands and 7 false flags. That is 11 samples, so the split says little about the wider traffic.
+
+#### Messages and recovery
+
+A bypass deny reads:
+
+> tool-mgr: the systemone model scores this as reading or editing files through the shell (bypass 0.92). Use Read to read a file, Edit or Write to change one, and Grep or Glob to search. If no built-in tool fits, hand the command to the user. Do not reword it to get past this check.
+
+If the model also scores the command as dangerous, the message gives all three scores and says to hand the command to the user.
+
+An ask reads:
+
+> tool-mgr: the systemone model is unsure this command is safe (allow 0.02, ask 0.05, deny 0.93).
+
+In `claude -p`, an ask comes back as an error, and the command does not run.
+
+The answer is cached until the session ends or `/clear` runs, so a retry of the same command gets the same deny. For a false bypass deny, use the built-in tool the message names, or hand the command to the user to run. `/tool-mgr blocked` lists recent blocked commands, and bypass denies appear there with their rule name. Asks are not logged, so they do not appear there.
+
+#### Data sent
+
+Each request is a `POST` to `TOOL_MGR_SYSTEMONE` with the raw command, the two question texts and the model name. The description, working directory and environment are not sent. The command goes with no redaction, so a token or password in it reaches the server, and the server may log it. Point the variable only at a server you control. Commands over 4000 characters are not sent.
+
+#### Failure states
+
+A failure leaves the static verdict in place and adds at most 1000 ms to the call. Each cause writes one log line. A repeat of the same cause writes nothing until the cause changes or a good reply arrives.
+
+| Case | Log line |
+| --- | --- |
+| No reply within the 1000 ms budget | `systemone: no reply within <n> ms` |
+| Connection error | `systemone: connection error` |
+| Non-2xx status | `systemone: http <status>` |
+| Malformed reply, or a reply over 64 KB | `systemone: malformed reply` |
+| The reply names a different model than configured | `systemone: the reply came from a different model than configured` |
+| The `TOOL_MGR_SYSTEMONE_CONCURRENCY` slots are full, and none frees in time | `systemone busy: too many requests pending, not assessed` |
+| Command over 4000 characters | `systemone: command over 4000 chars, not assessed` |
+
+A timed-out request keeps running on the server, so the client caps its own requests at `TOOL_MGR_SYSTEMONE_CONCURRENCY` and skips a call that cannot get a slot in time. After 3 failures in a row, the check skips the model for 60 seconds. Then one request probes it. A good reply closes the breaker and logs `systemone: back after a good reply`.
+
+The reply's model must match the configured name. Kev ignores the request's `model` field, so a server that runs a different Kev size than the one configured fails every reply.
+
+#### Clef
+
+`clef-flash` does not work with this check as wired. In the S3 run its server echoed a local file path as the model name, so every reply failed the model check. Its name has no Kev size, so the config refuses it. The server also has one request slot and a cold start of about 4 seconds after an idle period.
+
+#### Eval
+
+`plugins/coremods/scripts/systemone-eval.ts` scores the labeled corpus in `plugins/coremods/scripts/tests/systemone-corpus.jsonl`, with its labeling rubric beside it. `--replay N` replays the last Bash calls from the tool-mgr logs and needs a loopback URL. `--sweep` tries thresholds offline over saved scores. Usage is in the file's header comment.
 
 ### Log
 
