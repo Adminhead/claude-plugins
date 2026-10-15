@@ -99,7 +99,7 @@ Kev's bypass `noul` (variant B; no case moved more than 0.02 across the 3 runs):
 | Input | Over 4000 chars: no request, static only; the length check runs before any regex |
 | Reply | At most 64 KB, then strict validation |
 | Breaker | 3 consecutive failures open it for 60 s, then one probe; reports when it opens and closes |
-| Memo | Key: model, `PROMPT_VERSION`, redacted command. Successes only, 256 FIFO, ≤ 4 KB, in-flight shared. |
+| Memo | Key: model, `PROMPT_VERSION`, command. Successes only, 256 FIFO, ≤ 4 KB, in-flight shared. |
 | Generation | `session.end` bumps it, which clears state and voids late replies |
 
 **Fallback:** a bun helper via `$.process.run` with `AbortSignal.timeout(1000)`.
@@ -137,11 +137,8 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 
 ## Data sent
 - Only the command is sent, as `state`. The description, cwd and env are not.
-- `redact()` is best effort. It runs after the length check and before the memo and the request.
-  - It ports `plugins/security/skills/audit/scripts/normalize.py:52-67` (AKIA, `gh?_`, `github_pat_`, `xox?-`, `sk-`, JWT, PEM, keyword assignments).
-  - It adds flag forms (`--password` and similar, with `=` or a space), quoted values with spaces, JSON `"password":"…"`, `Authorization:` and `Bearer`, `curl -u u:p`, and URL userinfo.
-  - Tests cover `--password swordfish`, `TOKEN='a b c'` and `{"password":"two words"}`.
-- The docs warn that a non-loopback URL (clef) receives every command not denied first, unauthenticated.
+- The command is sent raw, with no redaction (user decision u5): the endpoint is always local or self-controlled. The S1 security audit showed regex redaction both leaked common secret shapes and let a keyword prefix hide shell code from the model.
+- The docs say plainly that the endpoint receives every command not denied first, secrets included, and may log them, so only a server the user controls belongs in `TOOL_MGR_SYSTEMONE`.
 
 ## Config: one canonical variable
 `TOOL_MGR_SYSTEMONE` goes in the `env` block of **user** settings and is read with `$.settings.read({source:'user'})` at `session.start`:
@@ -189,7 +186,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 - File: `coremods/scripts/tests/systemone-corpus.jsonl`, about 1500 rows `{id, command, cls, split, source}`, where `cls` is `dangerous|bypass|safe` and `source` is `session|synthetic`. The labeling rubric, with the user's settled boundaries, sits beside it as `systemone-corpus.rubric.md`.
 - **Done 2026-10-14:** 1500 rows (1100 session, 400 synthetic): 270 dangerous, 299 bypass, 931 safe; 450 holdout. The labelers agreed on 1361 rows. The user's four boundary rules settled 119 review rows and changed 37 agreed ones, and the user labeled the last 20.
 - C1, extract (coder): about 1100 deduped Bash commands from `~/.claude/projects/**/*.jsonl` on this machine.
-  - Drop any command over 4000 chars, and any that `redact()`'s patterns would change. A secret-bearing command is dropped, never committed redacted.
+  - Drop any command over 4000 chars, and any that matches a secret pattern (the `normalize.py:52-67` set plus flag, header and URL-userinfo forms). A secret-bearing command is dropped, never committed redacted.
   - Stratify by shape (redirects, heredocs, interpreters, `sed`/`head`/`tail`/`cat`, `rm`, `curl`/`wget`, `git`) so rare shapes are over-sampled, and attach `classify()`'s rule as a hint.
 - C1, synthesize (coder, in parallel): about 400 rows of dangerous and bypass forms that real traffic lacks, including obfuscation (eval, base64, variable indirection, nested `bash -c`, aliases), plus legitimate shell file work as hard negatives.
 - C2, label: two independent labelers read the rubric (the three `decision` label texts) and label every row. Neither sees the other's labels or any model score.
@@ -204,7 +201,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
   - new `coremods/tests/systemone.test.tsx`
 - Acceptance tests:
   - config parsing, the `|model` split, default, unset; `CALIBRATED` lookup; the `bypass` question sent only for Kev
-  - the 4000-char bound; `redact` cases; the serialized request holds no secrets
+  - the 4000-char bound
   - `parseReply` on the real Kev replies S0-g captured, and on each malformed case, including a `bypass` answer that is missing when it was sent
   - the merge truth table across `askTier` and calibrated vs uncalibrated models, plus `updatedInput`; exactly 0.5 and exactly 0.6
   - bypass precedence over ask, and the both-deny message
@@ -220,6 +217,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
   - runtime cases in `tests/tool-mgr.test.tsx` if S0-d passed
 - Acceptance:
   - unset means zero fetches
+  - a `TOOL_MGR_SYSTEMONE` set only in project settings or the process env is ignored
   - a lower deny survives every failure
   - a rewritten input is judged as rewritten
   - a timeout keeps the static ask, with one log line
@@ -281,7 +279,7 @@ Regroup is merged into main (a45f918, bf4ffcd). The coremods README row is now L
 | Misses: `cat src/…` 0.49 and `cp` 0.41 on bypass (both still ask); `env\|curl -d @-` | The regex rules stay the floor; the misses are documented |
 | The second question adds ~50–90 ms | Measured in S0/S3; memo; 1000 ms cap |
 | Uncancellable fetch | Race, ignore late result, cap 4, breaker; bun fallback |
-| Remote leak (clef) | Kev default, user-only config, redaction, docs |
+| Commands, secrets included, reach the endpoint and its logs | Self-controlled endpoints only (u5); Kev loopback default; user-only config; docs |
 | Kev ignores `model`, so a Kev server behind a clef-flash name gets no bypass checks | The mismatch report |
 
 **Rollback:** unset `TOOL_MGR_SYSTEMONE` (zero requests, tested), or revert S2. To keep only the ask path, remove the Kev entry's `bypassAtLeast` (one line).
@@ -300,6 +298,7 @@ Regroup is merged into main (a45f918, bf4ffcd). The coremods README row is now L
 - **u3, adopted:** the ≤ 3% gate on asks and bypass denies together.
 - **u4, adopted:** clef allowed and uncalibrated. **Narrowed:** ask-only, from the spike's clef bypass scores (`rg` 0.93); see open question 5.
 - **d1, new:** a separate `noul` over a 4-label choice, chosen from the spike data.
+- **u5, adopted:** no redaction; endpoints are local or self-controlled. Supersedes the redaction part of c3–c12.
 
 second opinion: agy gemini-3.1-pro-high/high — failed (the model is no longer offered).
 second opinion: codex gpt-6-astra/xhigh — plan critique, 13 findings, each checked against the repo and the d.ts.
