@@ -20,7 +20,9 @@ The model never removes or relaxes a verdict from a static rule or a lower hook.
   - the real-traffic replay rate, which must be ≤ 3% (asks and bypass denies together)
   - p50/p95 latency for the two-question request
 
-## Settled values (from the spike, scratchpad systemone-spike/report.md)
+## Settled values (from the spike)
+The spike's scratchpad (`report.md`, `cases.json`, `raw-kev.jsonl`) is lost. Its numbers below are history; slice C replaces its cases.
+
 | Name | Value |
 |---|---|
 | Default URL | `http://127.0.0.1:9931/v1/systemone` |
@@ -86,7 +88,7 @@ Kev's bypass `noul` (variant B; no case moved more than 0.02 across the 3 runs):
 ## Bounding latency without a fetch timeout
 `HttpInit` has only `{method, headers, body, auth, socketPath}`, with no timeout or signal. Whether the host imposes a timeout is UNCONFIRMED (S0-e).
 
-1. **Race against a timer**, which starts with the request: `Promise.race([req, $.clock.sleep(1000).then(() => TIMEOUT)])`. A timeout is a failure, and the static verdict stands.
+1. **Race against a timer**, which starts with the request: `Promise.race([req, $.clock.sleep(1000, { signal }).then(() => TIMEOUT)])`. The request aborts `signal` when it settles, so a fast reply leaves no pending sleep. A timeout is a failure, and the static verdict stands.
 2. **Ignore the late result; there is no way to cancel.** `.catch` is attached when the request is created. A late reply never writes the memo or closes the breaker. With a matching generation, it only counts toward the breaker.
 3. **Bound what can pile up.** At most 4 attempts may be pending, counting timed-out ones. When all 4 are pending, the call skips the model and one `systemone busy` line is reported.
 4. **Stay inside the hook budget.** Clock waits count toward the 10 s budget. 1000 ms is well under it.
@@ -136,7 +138,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 ## Data sent
 - Only the command is sent, as `state`. The description, cwd and env are not.
 - `redact()` is best effort. It runs after the length check and before the memo and the request.
-  - It ports `efficient-security/.../normalize.py:52-67` (AKIA, `gh?_`, `github_pat_`, `xox?-`, `sk-`, JWT, PEM, keyword assignments).
+  - It ports `plugins/security/skills/audit/scripts/normalize.py:52-67` (AKIA, `gh?_`, `github_pat_`, `xox?-`, `sk-`, JWT, PEM, keyword assignments).
   - It adds flag forms (`--password` and similar, with `=` or a space), quoted values with spaces, JSON `"password":"…"`, `Authorization:` and `Bearer`, `curl -u u:p`, and URL userinfo.
   - Tests cover `--password swordfish`, `TOKEN='a b c'` and `{"password":"two words"}`.
 - The docs warn that a non-loopback URL (clef) receives every command not denied first, unauthenticated.
@@ -178,11 +180,23 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
   - c. `claude plugin validate --strict` accepts `$.http.fetch` and `$.settings.read`.
   - d. In `claude plugin test`, hooks on `http.fetch` and `settings.read` beneath the plugin answer its calls. Else S2 uses injected stubs.
   - e. Against a hung listener, the hook returns at 1000 ms with no lingering error, including across `/clear`. Record any host fetch timeout.
-  - f. Record whether `classic.PreToolUse` `ask` prompts in default, `bypassPermissions` and `-p` modes.
+  - f. Record whether `classic.PreToolUse` `ask` prompts in `bypassPermissions` mode. Auto and accept-edits prompt, and `-p` returns it as an error (`hooks-typescript-ast-bash.md:13`).
+  - g. Capture Kev's raw replies (with and without the `bypass` question) for 10 corpus rows as S1's `parseReply` fixtures, in `coremods/tests/fixtures/systemone-replies.jsonl`.
 - Check: run the probe under `claude --plugin-dir <scratch>` with Kev running.
 
+### C — labeled corpus (coder, two labelers, user)
+- Depends on: nothing. Parallel with S0. Must finish before any Kev run on its rows.
+- File: `coremods/scripts/tests/systemone-corpus.jsonl`, about 1500 rows `{command, cls, split, source}`, where `cls` is `dangerous|bypass|safe` and `source` is `session|synthetic`.
+- C1, extract (coder): about 1100 deduped Bash commands from `~/.claude/projects/**/*.jsonl` on this machine.
+  - Drop any command over 4000 chars, and any that `redact()`'s patterns would change. A secret-bearing command is dropped, never committed redacted.
+  - Stratify by shape (redirects, heredocs, interpreters, `sed`/`head`/`tail`/`cat`, `rm`, `curl`/`wget`, `git`) so rare shapes are over-sampled, and attach `classify()`'s rule as a hint.
+- C1, synthesize (coder, in parallel): about 400 rows of dangerous and bypass forms that real traffic lacks, including obfuscation (eval, base64, variable indirection, nested `bash -c`, aliases), plus legitimate shell file work as hard negatives.
+- C2, label: two independent labelers read the rubric (the three `decision` label texts) and label every row. Neither sees the other's labels or any model score.
+- C3, review: rows where the labelers disagree go to the user in a review file. The user's label wins.
+- C4: a fixed seed splits 70/30 `tune`/`holdout`, stratified by class and source. Commit.
+
 ### S1 — pure module (coder-high)
-- Depends on: S0 a–d.
+- Depends on: S0 a–d and g.
 - Files:
   - new `coremods/hooks/tool-mgr/systemone.ts`
   - `rules.ts` (add `'systemone' | 'systemone-bypass'` to `Rule` at L8; `blocked` is VARCHAR in `metrics.mjs:14-16`)
@@ -190,7 +204,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 - Acceptance tests:
   - config parsing, the `|model` split, default, unset; `CALIBRATED` lookup; the `bypass` question sent only for Kev
   - the 4000-char bound; `redact` cases; the serialized request holds no secrets
-  - `parseReply` on real Kev variant A and B replies from the spike's `raw-kev.jsonl`, and on each malformed case, including a `bypass` answer that is missing when it was sent
+  - `parseReply` on the real Kev replies S0-g captured, and on each malformed case, including a `bypass` answer that is missing when it was sent
   - the merge truth table across `askTier` and calibrated vs uncalibrated models, plus `updatedInput`; exactly 0.5 and exactly 0.6
   - bypass precedence over ask, and the both-deny message
   - **"static passes, model denies":** the `tool-mgr.test.tsx` L14 `sed -i` forms and the L52-62 pass list (`cat <<EOF`, `python3 - <<'EOF' print(open('a').read())`, `ls > f`) get `classify()` null; with a stub bypass of 0.72 they get a `systemone-bypass` deny, and at 0.54 they are unchanged
@@ -222,12 +236,8 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
     - with Kev stopped: static only and one log line
 
 ### S3 — eval, held-out split, replay (coder)
-- Depends on: S1. Parallel with S2.
-- Files:
-  - new `coremods/scripts/systemone-eval.ts` (never runs in CI)
-  - new `coremods/scripts/tests/systemone-corpus.jsonl` with fields `{command, cls, split}`:
-    - the spike's 74 `cases.json` commands as the seed. A fixed shuffle puts about 25% (19, stratified by class) into `holdout` and the rest into `tune`.
-    - about 40 new `holdout` cases written before any run: the `coremods.md:192-197` out-of-scope list, the `tool-mgr.test.tsx` pass columns, legitimate shell file work (`git diff > /tmp/p`, `rg`, `wc`, `jq . f`), injection, oversized input
+- Depends on: S1 and C. Parallel with S2.
+- Files: new `coremods/scripts/systemone-eval.ts` (never runs in CI), reading C's corpus.
 - The harness imports `systemone.ts` and `classify`/`askRule`, and uses bun `fetch` with `AbortSignal.timeout(1000)`.
 - Per split, it reports:
   - bypass-deny, ask and pass counts per class
@@ -243,7 +253,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 - Checks: the harness against Kev with `--replay 500`, and once against clef for the docs.
 
 ### S4 — docs and release (scribe)
-- Depends on: S2, S3, and the regroup cutover.
+- Depends on: S2 and S3.
 - Files:
   - `docs/plugins/coremods.md`:
     - the variable and its semantics
@@ -258,7 +268,7 @@ This is the wide scope the user chose. Any wording change bumps `PROMPT_VERSION`
 **Static tests:** no existing assertion in `plugins/coremods/tests/tool-mgr.test.tsx` changes. L13-17 (`sed -i` forms pass) and L51-65 (non-writing heredocs, `ls > f`, `python -c 'open("a","w")'` pass) test `classify()`, and the static layer is unchanged. The model acts one layer later, in `classic.PreToolUse`. S1 adds the "static passes, model denies" table, so the two layers are documented side by side.
 
 ## Regroup overlap
-`git diff main regroup` shows no changes under `plugins/coremods/**`, in `docs/plugins/coremods.md`, or in `cloud-ops-guard.ts`. It does change `README.md` (the coremods row, about L87-88) and `marketplace.json` (restructured; coremods stays 0.5.1). S4 lands after the cutover or rebases onto it.
+Regroup is merged into main (a45f918, bf4ffcd). The coremods README row is now L74, and coremods is still 0.5.1.
 
 ## Risks and rollback
 | Risk | Mitigation |
@@ -302,5 +312,6 @@ Resolved by the user:
 4. **clef-flash** stays allowed and documented as uncalibrated.
 5. **clef is ask-only.** It gets no bypass deny, because its bypass `noul` scored `rg -n TODO src` 0.93 and `wc -l` 0.91.
 6. **The 3% gate holds even when the flags are correct.** If agents trip it with real bypasses such as `cat` of source files, change their habits before enabling, rather than loosening the gate.
+7. **The corpus is rebuilt** (slice C) from this machine's sessions plus synthetic rows, about 1500 in all, labeled by two independent labelers with disagreements going to the user, and committed.
 
 None remain open.
