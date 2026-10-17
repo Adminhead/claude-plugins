@@ -5,6 +5,9 @@
       "source": { "source": "github", "repo": "Adminhead/claude-plugins" }
     }
   },
+  "env": {
+    "CLAUDE_CODE_GLOB_NO_IGNORE": "false"
+  },
   "enabledPlugins": {
     "<plugin>@adminhead": true
   },
