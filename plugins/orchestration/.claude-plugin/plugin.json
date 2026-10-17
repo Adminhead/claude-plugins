@@ -1,7 +1,7 @@
 {
   "name": "orchestration",
   "version": "0.1.0",
-  "description": "Main-session orchestrator agent that plans, routes work to the installed agents and verifies their results. Start it with `claude --agent orchestration:orchestration` or the `agent` setting.",
+  "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships a launcher that appends the core Claude Code system prompt, which --agent would otherwise replace.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

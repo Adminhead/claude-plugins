@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# claude-orchestrate: start Claude Code as the orchestration agent with the plugin's
+# core system prompt appended. With --agent, an agent's prompt replaces Claude Code's
+# default system prompt, so prompts/system_override.md restores the base guidance.
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: claude-orchestrate [DIR] [CLAUDE_ARGS...]
+       claude-orchestrate -h
+
+Runs Claude Code in DIR (default: $PWD) as orchestration:orchestration, with this
+plugin's prompts/system_override.md appended to the system prompt. Install the
+orchestration plugin (or orchestration-meta) first.
+
+Arguments after DIR, or starting with "-", go to claude:
+  claude-orchestrate ~/code/api --resume
+USAGE
+}
+
+die() { echo "claude-orchestrate: $*" >&2; exit 1; }
+
+root=$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")
+prompt=$root/prompts/system_override.md
+
+while (($#)); do
+  case $1 in
+    -h|--help) usage; exit 0 ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+done
+
+dir=$PWD
+if (($#)) && [[ $1 != -* ]]; then
+  [[ -d $1 ]] || die "no such directory: $1"
+  dir=$1
+  shift
+fi
+
+command -v claude >/dev/null || die "claude not found"
+[[ -f $prompt ]] || die "missing $prompt"
+cd "$dir" && exec claude --agent orchestration:orchestration --append-system-prompt-file "$prompt" "$@"
