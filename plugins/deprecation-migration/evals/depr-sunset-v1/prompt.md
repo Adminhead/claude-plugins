@@ -1,6 +1,6 @@
 ---
 name: depr-sunset-v1
-description: Upstream positive trigger: API sunset planning should load deprecation-migration.
+description: "Upstream positive trigger: API sunset planning should load deprecation-migration."
 tags: [trigger]
 runs: 1
 max_turns: 6

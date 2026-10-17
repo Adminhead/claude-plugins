@@ -1,6 +1,6 @@
 ---
 name: doubt-fresh-context
-description: Upstream positive trigger: adversarial fresh-context review should load doubt-review.
+description: "Upstream positive trigger: adversarial fresh-context review should load doubt-review."
 tags: [trigger]
 runs: 1
 max_turns: 6

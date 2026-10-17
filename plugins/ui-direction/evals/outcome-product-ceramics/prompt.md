@@ -1,6 +1,6 @@
 ---
 name: outcome-product-ceramics
-description: Outcome: product-ceramics brief from taste-skill's evals, graded on the produced page.
+description: "Outcome: product-ceramics brief from taste-skill's evals, graded on the produced page."
 tags: [outcome]
 max_turns: 40
 model: claude-sonnet-5-5

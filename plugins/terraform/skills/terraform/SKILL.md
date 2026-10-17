@@ -1,6 +1,6 @@
 ---
 name: terraform
-description: Writes, reviews and runs Terraform, OpenTofu and Terragrunt changes safely, plan-only by default. Use when editing .tf or terragrunt.hcl files, reviewing a plan, running plan or apply (also via mise, make or task wrappers), refactoring with moved/import blocks, testing modules, scanning for misconfigurations, or diagnosing a pasted tofu or terragrunt error.
+description: Writes, reviews and runs Terraform, OpenTofu and Terragrunt changes safely, plan-only by default. Use when editing .tf or terragrunt.hcl files, reviewing a plan or pasted plan output (adds, changes, destroy/replace), running plan or apply (also via mise, make or task wrappers), refactoring with moved/import blocks, testing modules, scanning for misconfigurations, or diagnosing a pasted tofu or terragrunt error.
 ---
 
 # Terraform, OpenTofu, and Terragrunt

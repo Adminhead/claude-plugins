@@ -79,7 +79,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | Plugin | Type | Description | In |
 | --- | --- | --- | --- |
 | [`accessibility-review`](plugins/accessibility-review) | skill | Audits a design, mockup or page against WCAG 2.2 AA at design level: contrast, focus visibility, target size, keyboard and dragging alternatives, labels, errors and authentication. Use for "audit accessibility", "check a11y", "is this accessible?" or a WCAG check before handoff. | `design-core` |
-| [`agent-router`](plugins/agent-router) | hook | Mod that lists the installed agent types, each with when to use it, in the Agent tool's description when the main thread runs the orchestration agent, so new agents get routes without editing it. | `orchestration-meta` |
+| [`agent-router`](plugins/agent-router/README.md) | hook | Mod that lists the installed agent types, each with when to use it, in the Agent tool's description when the main thread runs the orchestration agent, so new agents get routes without editing it. | `orchestration-meta` |
 | [`ansible`](plugins/ansible) | skill | Ansible skill: playbooks, roles and inventories with idempotency proof, check-mode limits, validate hooks, vault or sops secrets, and ansible-lint style. | `iac-meta` |
 | [`architect`](plugins/architect) | agent | A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. | `orchestration-meta` |
 | [`bash`](plugins/bash) | skill | Bash skill: defensive scripts with strict mode and its holes, quoting, trap cleanup, argument parsing, ShellCheck configuration and Bats tests. | `iac-meta` |

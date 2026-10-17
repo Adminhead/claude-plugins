@@ -1,6 +1,6 @@
 ---
 name: doubt-prod-auth
-description: Upstream positive trigger: in-flight high-stakes decision should load doubt-review.
+description: "Upstream positive trigger: in-flight high-stakes decision should load doubt-review."
 tags: [trigger]
 runs: 1
 max_turns: 6

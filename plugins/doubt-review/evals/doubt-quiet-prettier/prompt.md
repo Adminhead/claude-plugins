@@ -1,6 +1,6 @@
 ---
 name: doubt-quiet-prettier
-description: Upstream negative trigger: a formatting command must not load doubt-review.
+description: "Upstream negative trigger: a formatting command must not load doubt-review."
 tags: [trigger]
 runs: 1
 max_turns: 6

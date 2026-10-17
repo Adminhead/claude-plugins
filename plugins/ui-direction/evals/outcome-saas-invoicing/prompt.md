@@ -1,6 +1,6 @@
 ---
 name: outcome-saas-invoicing
-description: Outcome: saas-invoicing brief from taste-skill's evals, graded on the produced page.
+description: "Outcome: saas-invoicing brief from taste-skill's evals, graded on the produced page."
 tags: [outcome]
 max_turns: 40
 model: claude-sonnet-5-5

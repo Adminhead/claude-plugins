@@ -1,6 +1,6 @@
 ---
 name: depr-rename-column
-description: Upstream positive trigger: zero-downtime column rename should load deprecation-migration.
+description: "Upstream positive trigger: zero-downtime column rename should load deprecation-migration."
 tags: [trigger]
 runs: 1
 max_turns: 6

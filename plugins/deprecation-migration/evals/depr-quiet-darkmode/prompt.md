@@ -1,6 +1,6 @@
 ---
 name: depr-quiet-darkmode
-description: Upstream negative trigger: a UI feature request must not load deprecation-migration.
+description: "Upstream negative trigger: a UI feature request must not load deprecation-migration."
 tags: [trigger]
 runs: 1
 max_turns: 6
