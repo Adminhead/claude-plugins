@@ -1,0 +1,10 @@
+{
+  "name": "iac-meta",
+  "version": "0.1.0",
+  "description": "Plugin set for infrastructure-as-code projects, installed at project scope. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": []
+}

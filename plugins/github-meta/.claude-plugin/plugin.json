@@ -1,0 +1,10 @@
+{
+  "name": "github-meta",
+  "version": "0.1.0",
+  "description": "Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": []
+}

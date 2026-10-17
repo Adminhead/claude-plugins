@@ -1,6 +1,6 @@
 ---
 name: ship-plugin
-description: Releases one plugin from this marketplace after a change. It validates the plugin, checks that its version, docs page, and README row agree, runs the plugin's own tests, commits to local main, and updates the installed copy. Use when a plugin change in this repo is done and should go live locally, or when the user says "ship <plugin>". Not for pushing (`github:ship`, only when the user asks) or for other repos.
+description: Releases one plugin from this marketplace after a change. It validates the plugin, runs the structure and catalog check, runs the plugin's own tests, commits to local main, and updates the installed copy. Use when a plugin change in this repo is done and should go live locally, or when the user says "ship <plugin>". Not for pushing (`github:ship`, only when the user asks) or for other repos.
 argument-hint: "<plugin-name>"
 ---
 
@@ -16,8 +16,8 @@ Run `claude plugin validate --strict plugins/<name>`, then `claude plugin valida
 
 - The `version` in `plugins/<name>/.claude-plugin/plugin.json` matches the plugin's entry in `.claude-plugin/marketplace.json`.
 - The version is higher than the published one (`git show origin/main:plugins/<name>/.claude-plugin/plugin.json`), or the plugin is new there. An unchanged version means installed copies won't update.
-- `README.md` has a row for the plugin that links to its docs page. That page is `docs/plugins/<name>.md` or a family page shared with related plugins (such as `coding.md` or `github.md`).
-- The linked page exists and names every skill under `plugins/<name>/skills/`.
+- `python3 scripts/plugins.py check` passes. It checks the one-component and meta-plugin rules, the `plugin.json` and marketplace entry match, and the README catalog is current. Run `python3 scripts/plugins.py catalog` to regenerate a stale catalog.
+- When the change added the plugin to a meta plugin, that meta plugin's version is bumped too, so installs pick up the new dependency.
 
 Fix drift in these records yourself. Ask before changing anything else.
 

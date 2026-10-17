@@ -1,34 +1,11 @@
 # CLAUDE.md
 
-`adminhead` is a Claude Code plugin marketplace. `README.md` has the plugin table and install command.
+`adminhead` is a Claude Code plugin marketplace. `README.md` has the install commands and a generated plugin catalog.
 
-## Layout
+## Plugins
 
-- `plugins/<name>/` holds one plugin each, with `.claude-plugin/plugin.json`. The catalog is `.claude-plugin/marketplace.json`.
-- `docs/plugins/<name>.md` is the per-plugin page. Several plugins can share a page (`coding-*` share `docs/plugins/coding.md`, `sentry-*` share `docs/plugins/sentry.md`, and `github-admin` shares `docs/plugins/github.md`). `docs/plans/` holds plans and `docs/research/` holds research notes.
-- `plugins/crew/` holds the orchestrated-session crew: the 15 agents, the read-only Bash gates, the orchestration hooks and the system prompt file. Its agents are `crew:<name>`. `plugins/crew/docs/writing-agents.md` holds the rules for writing and changing agents, and its edit loop is `claude --plugin-dir plugins/crew`.
-- `scripts/` holds the checks, the `claude-tmux` and `claude-crew` launchers (sharing `crew-launch.sh`), and `agent.bashrc`, the agents' Bash env.
-
-## Checks
-
-Run from the repo root.
-
-- `python3 scripts/agent-tools.py` checks the crew agents in `plugins/crew/agents` (frontmatter, and the read-only rules for each agent in `READ_ONLY`) and the gate entries in `plugins/crew/hooks/hooks.json`. Run it after editing an agent or a gate.
-- `scripts/prompt-drift.sh [VERSION|PATH]` checks that a Claude Code upgrade hasn't broken the system-prompt override (`plugins/crew/prompts/system_override.md`). Run it after upgrading Claude Code.
-- `bash plugins/crew/scripts/tests/check.sh` runs every crew check: the agent checker and its tests, both read-only gate suites, the guard suite and the bash replay. It is the one entry point for the crew plugin.
-- `bash scripts/prompt-drift.test.sh` tests the drift script.
-- `bash scripts/install.test.sh` tests `scripts/install.sh` against a temp `HOME` and a stub `claude`.
-- `claude plugin validate --strict plugins/<name>` validates one plugin. `claude plugin validate --strict .` validates the marketplace.
-
-## Releasing a plugin
-
-Use the `ship-plugin` skill (`.claude/skills/ship-plugin/SKILL.md`). Before it runs, these records must agree for the plugin:
-
-- `version` in `plugins/<name>/.claude-plugin/plugin.json` equals the entry in `.claude-plugin/marketplace.json` and is higher than on `origin/main`. An unchanged version means installed copies don't update.
-- The docs page the README row links to (`docs/plugins/<name>.md` or a family page) exists and names every skill under `plugins/<name>/skills/`.
-- `README.md` has a row for the plugin that links to its docs page.
-
-Commit to local `main`. Push only when asked.
+- `baseline` (user scope) and `*-meta` (project scope) are meta plugins: only a `plugin.json` whose `dependencies` list focused plugins or `*-core` bundles. A `*-core` bundle (such as `programming-core`) has the same shape, lists only focused plugins, and is shared by several metas. Every other plugin ships exactly one component.
+- Scaffold with `scripts/plugins.py new`, and run `python3 scripts/plugins.py check` after any plugin change. Never hand-edit the README catalog; run `scripts/plugins.py catalog`.
 
 ## Commits
 

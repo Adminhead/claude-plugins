@@ -3,12 +3,103 @@
   "name": "adminhead",
   "description": "Adminhead's Claude Code plugins: skills, agents, commands, hooks, and MCP servers.",
   "owner": {
-    "name": "Buck Brady",
-    "email": "bbrady145@gmail.com"
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
   },
   "allowCrossMarketplaceDependenciesOn": [
     "claude-code-lsps"
   ],
   "plugins": [
+    {
+      "name": "baseline",
+      "source": "./plugins/baseline",
+      "description": "The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "programming-core",
+      "source": "./plugins/programming-core",
+      "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "design-core",
+      "source": "./plugins/design-core",
+      "description": "Core bundle of UI and UX design plugins that the web and design metas install. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "python-meta",
+      "source": "./plugins/python-meta",
+      "description": "Plugin set for Python projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "golang-meta",
+      "source": "./plugins/golang-meta",
+      "description": "Plugin set for Go projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "rust-meta",
+      "source": "./plugins/rust-meta",
+      "description": "Plugin set for Rust projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "node-typescript-meta",
+      "source": "./plugins/node-typescript-meta",
+      "description": "Plugin set for Node.js and TypeScript projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "web-meta",
+      "source": "./plugins/web-meta",
+      "description": "Plugin set for web front-end projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "design-meta",
+      "source": "./plugins/design-meta",
+      "description": "Plugin set for design work (new UI direction, rendered critique, UX rules and copy, accessibility, design systems and handoff) in any repo, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "iac-meta",
+      "source": "./plugins/iac-meta",
+      "description": "Plugin set for infrastructure-as-code projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "kubernetes-meta",
+      "source": "./plugins/kubernetes-meta",
+      "description": "Plugin set for Kubernetes projects (manifests, Helm, GitOps), installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "github-meta",
+      "source": "./plugins/github-meta",
+      "description": "Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "orchestration-meta",
+      "source": "./plugins/orchestration-meta",
+      "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    }
   ]
 }

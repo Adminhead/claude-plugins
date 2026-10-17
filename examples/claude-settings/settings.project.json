@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "adminhead": {
+      "source": { "source": "github", "repo": "Adminhead/claude-plugins" }
+    }
+  },
+  "enabledPlugins": {
+    "<plugin>@adminhead": true
+  },
+  "worktree": {
+    "symlinkDirectories": ["node_modules", ".venv"]
+  }
+}

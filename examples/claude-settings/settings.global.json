@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "fable",
+  "advisorModel": "fable",
+  "effortLevel": "medium",
+  "autoCompactWindow": 450000,
+  "skillListingBudgetFraction": 0.03,
+  "bashOutputMaxChars": 10000,
+  "subagentPromptCacheTtl": "5m",
+  "teammateMode": "tmux",
+  "remoteControlAtStartup": true,
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
+  "theme": "auto",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_AUTO_BACKGROUND_TASKS": "1",
+    "CLAUDE_CODE_WORKER_CHECKIN_SCHEDULE": "120",
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
+    "CLAUDE_CODE_SEND_FEEDBACK": "0",
+    "MCP_DISCOVERY_CACHE": "1",
+    "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
+    "USE_BUILTIN_RIPGREP": "0"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "permissions": {
+    "defaultMode": "auto",
+    "allow": [
+      "mcp__codebase-memory-mcp__search_graph",
+      "mcp__codebase-memory-mcp__search_code",
+      "mcp__codebase-memory-mcp__trace_path",
+      "mcp__codebase-memory-mcp__query_graph",
+      "mcp__codebase-memory-mcp__get_code_snippet",
+      "mcp__codebase-memory-mcp__get_file_outline",
+      "mcp__codebase-memory-mcp__get_architecture",
+      "mcp__codebase-memory-mcp__get_graph_schema",
+      "mcp__codebase-memory-mcp__list_projects",
+      "mcp__codebase-memory-mcp__index_status",
+      "mcp__codebase-memory-mcp__index_repository",
+      "mcp__codebase-memory-mcp__detect_changes",
+      "mcp__codebase-memory-mcp__check_index_coverage"
+    ]
+  },
+  "worktree": {
+    "baseRef": "head",
+    "symlinkDirectories": ["node_modules", ".venv"]
+  },
+  "extraKnownMarketplaces": {
+    "adminhead": {
+      "source": { "source": "github", "repo": "Adminhead/claude-plugins" }
+    },
+    "claude-code-lsps": {
+      "source": { "source": "github", "repo": "boostvolt/claude-code-lsps" }
+    },
+    "conorbronsdon-skills": {
+      "source": { "source": "github", "repo": "conorbronsdon/avoid-ai-writing" }
+    }
+  },
+  "enabledPlugins": {
+    "cc-plugin-telemetry@builtin": false,
+    "cc-plugin-agents-md@builtin": true,
+    "cc-plugin-diff@builtin": true,
+    "design@synced": false,
+    "avoid-ai-writing@conorbronsdon-skills": true
+  },
+  "pluginConfigs": {
+    "cc-plugin-agents-md@builtin": {
+      "options": { "instructionFiles": "claude-md-and-agents-md" }
+    }
+  }
+}
