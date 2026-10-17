@@ -1,0 +1,9 @@
+{
+  "name": "dotnet-upgrade-guide",
+  "version": "0.1.0",
+  "description": "Upgrades .NET projects - TFM hops from .NET 8 to 11 with breaking changes by area, legacy csproj to SDK-style, packages.config to PackageReference, AOT and trim warnings, Thread.Abort removal, test framework moves. Use for \"upgrade to .NET 10\", SDK-style conversion, IL2026/IL3050 warnings, or moving to xUnit v3, MSTest v4 or MTP.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

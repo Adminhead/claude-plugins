@@ -1,0 +1,9 @@
+{
+  "name": "level-design",
+  "version": "0.1.0",
+  "description": "Engine-agnostic level design: player metrics, blockout to playable, critical path and gating, pacing and tension curves, encounters, readability, and seeded procedural generation (noise, rooms and corridors, BSP, cellular caves, WFC).",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

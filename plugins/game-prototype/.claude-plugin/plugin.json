@@ -1,0 +1,9 @@
+{
+  "name": "game-prototype",
+  "version": "0.1.0",
+  "description": "Timeboxed game prototyping: a greybox mechanic spike or vertical slice that answers one question with keep or kill criteria, and game-jam planning (scope to the clock, hour schedule, cut list, submit early). Use when prototyping a mechanic, greyboxing, or planning a jam or 48-hour build.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

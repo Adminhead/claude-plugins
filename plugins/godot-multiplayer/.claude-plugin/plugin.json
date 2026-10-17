@@ -1,0 +1,9 @@
+{
+  "name": "godot-multiplayer",
+  "version": "0.1.0",
+  "description": "Builds and secures networked Godot 4 games: server-authoritative @rpc validation, ENet and WebSocket peers, MultiplayerSpawner and MultiplayerSynchronizer, lobbies, dedicated servers, interpolation and prediction. Use for @rpc, \"multiplayer\", \"netcode\" or a headless server in a Godot project.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "dotnet-template-authoring",
+  "version": "0.1.0",
+  "description": "Authors, validates and packages custom `dotnet new` templates, covering template.json from an existing project, symbols and conditional content, post-actions, constraints and template packs. Use for \"turn this project into a template\", a template missing from `dotnet new list` after install, or reviewing a template.json before publishing.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

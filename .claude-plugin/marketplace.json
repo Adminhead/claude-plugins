@@ -7,7 +7,8 @@
     "email": "support@adminhead.com"
   },
   "allowCrossMarketplaceDependenciesOn": [
-    "claude-code-lsps"
+    "claude-code-lsps",
+    "claude-plugins-official"
   ],
   "plugins": [
     {
@@ -22,14 +23,21 @@
       "source": "./plugins/programming-core",
       "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
       "version": "0.1.0",
-      "category": "meta"
+      "category": "bundle"
     },
     {
       "name": "design-core",
       "source": "./plugins/design-core",
       "description": "Core bundle of UI and UX design plugins that the web and design metas install. Ships no components of its own.",
       "version": "0.1.0",
-      "category": "meta"
+      "category": "bundle"
+    },
+    {
+      "name": "gamedev-core",
+      "source": "./plugins/gamedev-core",
+      "description": "Core bundle of engine-agnostic game-development plugins that the game-engine metas install. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "bundle"
     },
     {
       "name": "python-meta",
@@ -60,6 +68,13 @@
       "category": "meta"
     },
     {
+      "name": "dotnet-meta",
+      "source": "./plugins/dotnet-meta",
+      "description": "Plugin set for C# and .NET projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
       "name": "web-meta",
       "source": "./plugins/web-meta",
       "description": "Plugin set for web front-end projects, installed at project scope. Ships no components of its own.",
@@ -70,6 +85,13 @@
       "name": "design-meta",
       "source": "./plugins/design-meta",
       "description": "Plugin set for design work (new UI direction, rendered critique, UX rules and copy, accessibility, design systems and handoff) in any repo, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "godot-meta",
+      "source": "./plugins/godot-meta",
+      "description": "Plugin set for Godot 4 game projects, installed at project scope. Ships no components of its own.",
       "version": "0.1.0",
       "category": "meta"
     },
@@ -1113,6 +1135,286 @@
       "name": "docs-sync",
       "source": "./plugins/docs-sync",
       "description": "Hook that, once per change set at Stop, nudges Claude with docs that mention a file this session edited or a name its edits removed. Skips plans, research, ADRs and changelogs; fails open. Needs git and bun.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "aspire",
+      "source": "./plugins/aspire",
+      "description": "Aspire skill: AppHost resource model and wiring, service defaults, the aspire CLI (start, wait, describe, logs), DistributedApplicationTestingBuilder tests, and aspire publish/deploy to Compose, Kubernetes and Azure.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "aspnet-core",
+      "source": "./plugins/aspnet-core",
+      "description": "Builds and reviews ASP.NET Core HTTP apps: minimal APIs and controllers, DTOs, validation, ProblemDetails, OpenAPI, middleware order, auth wiring, .http files, CRUD endpoints written without scaffolders. Use for Program.cs endpoint or middleware work, \"add an endpoint\", OpenAPI setup, or global error handling in a .NET web project.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "blazor",
+      "source": "./plugins/blazor",
+      "description": "Blazor skill: component rules, render modes, forms and validation, auth per render mode, shared state, data loading, prerendering, JS interop, and Blazor Server to Web App conversion.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "csharp",
+      "source": "./plugins/csharp",
+      "description": "Writes, reviews, refactors and debugs C# and .NET code (types, nullable references, async and cancellation, exceptions, DI, options and logging in the generic host, file-based apps). Use for work in *.cs or *.csx files, \"review this C# class\", CS86xx nullable warnings, a deadlock or sync-over-async bug, or a rename across a solution.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dotnet-ai-apps",
+      "source": "./plugins/dotnet-ai-apps",
+      "description": "Chooses and wires AI and ML in .NET apps with Microsoft.Extensions.AI (IChatClient, embeddings), Microsoft Agent Framework, vector search and RAG, ML.NET, ONNX Runtime and OllamaSharp. Use for adding an LLM call or chatbot to a .NET service, a tool-calling agent in C#, RAG over documents, or choosing between an LLM and ML.NET for a prediction.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dotnet-diagnostics",
+      "source": "./plugins/dotnet-diagnostics",
+      "description": "Collects runtime evidence from running or crashed .NET processes: dotnet-counters, dotnet-trace, dotnet-dump, dotnet-monitor, PerfView, perfcollect, crash dumps in containers and Kubernetes, mobile crash symbolication. Use for high CPU, memory growth, hangs or crashes in production, capturing a dump, or choosing a tool for Linux in k8s.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dotnet-native-interop",
+      "source": "./plugins/dotnet-native-interop",
+      "description": "Writes, reviews and debugs .NET native interop with P/Invoke and LibraryImport, covering signatures from C headers, string and struct marshalling, memory ownership, SafeHandle, callbacks and library loading. Use for wrapping a C library, a DllNotFoundException or AccessViolationException at a native call, or moving DllImport to LibraryImport for AOT.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dotnet-performance",
+      "source": "./plugins/dotnet-performance",
+      "description": "Measurement-first .NET performance work: hot-path anti-pattern scans (async, allocations, strings, LINQ, regex, JSON, I/O), BenchmarkDotNet setup and result reading, and SIMD with TensorPrimitives or Vector128. Use when C# code is slow or allocates too much, to review a hot path, write or compare benchmarks, or vectorize a loop.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dotnet-template-authoring",
+      "source": "./plugins/dotnet-template-authoring",
+      "description": "Authors, validates and packages custom `dotnet new` templates, covering template.json from an existing project, symbols and conditional content, post-actions, constraints and template packs. Use for \"turn this project into a template\", a template missing from `dotnet new list` after install, or reviewing a template.json before publishing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dotnet-testing",
+      "source": "./plugins/dotnet-testing",
+      "description": "Writes, runs and fixes .NET tests in xUnit, NUnit, MSTest and TUnit: dotnet test syntax for VSTest vs Microsoft.Testing.Platform, filters, TRX and dumps, test-project wiring, TimeProvider and file-system seams, coverage. Use for running tests in a .NET repo, a filter that matches nothing, \"VSTest or MTP?\", or testing DateTime.Now code.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dotnet-upgrade-guide",
+      "source": "./plugins/dotnet-upgrade-guide",
+      "description": "Upgrades .NET projects - TFM hops from .NET 8 to 11 with breaking changes by area, legacy csproj to SDK-style, packages.config to PackageReference, AOT and trim warnings, Thread.Abort removal, test framework moves. Use for \"upgrade to .NET 10\", SDK-style conversion, IL2026/IL3050 warnings, or moving to xUnit v3, MSTest v4 or MTP.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ef-core",
+      "source": "./plugins/ef-core",
+      "description": "Writes, reviews and tunes EF Core data access: query shape, tracking, Include vs split queries, N+1, bulk ExecuteUpdate/Delete, DbContext lifetime, migrations, raw SQL parameters, and Dapper code beside it. Use for DbContext or LINQ-to-entities code, a slow EF query, dotnet ef migrations, or reviewing a repository or import job.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "game-ai",
+      "source": "./plugins/game-ai",
+      "description": "Engine-agnostic game AI skill: NPC and enemy decisions with FSMs, behavior trees and utility AI, steering and flocking, A*, flow fields and navmeshes in concept, perception and difficulty knobs.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-architecture",
+      "source": "./plugins/game-architecture",
+      "description": "Engine-agnostic game code structure: game loop and fixed timestep, state machines (flat, hierarchical, parallel), composition, event bus, object pools, data-driven content, inventory and ability systems, scene flow and save systems.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-assets",
+      "source": "./plugins/game-assets",
+      "description": "Art direction and asset pipeline for game art, mainly 2D: a style bible, palette and scale rules, sprite, animation, tileset, UI and icon specs, an asset manifest with naming and licenses, image-generation briefs, and import checks. Use for a game's art style, sprites, tilesets, an asset list or sourcing art.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-audio",
+      "source": "./plugins/game-audio",
+      "description": "Engine-neutral game audio practice: bus and mixer layout, gain in dB, ducking, adaptive music with layers and quantised transitions, SFX variation and voice limits, beat sync, and platform loudness targets.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-design",
+      "source": "./plugins/game-design",
+      "description": "Game design documents and decisions: pitch, pillars, core loop, mechanic specs, progression, economy and balancing (curves, sinks and faucets, loot tables, simulation), difficulty and scope cuts. Engine-neutral templates and checklists.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-feel",
+      "source": "./plugins/game-feel",
+      "description": "Engine-agnostic game feel: input buffering, coyote time, variable jump, deadzones, rebinding, camera follow, look-ahead and shake, hit-stop, tweens, squash and stretch, knockback and render jitter.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-genres",
+      "source": "./plugins/game-genres",
+      "description": "Engine-agnostic genre playbooks: core systems, data model, feel targets, balancing norms and pitfalls for platformers, roguelikes, card games, puzzles, RPGs, FPS, tower defense, survival-crafting and visual novels, plus branching dialogue (Ink, Yarn Spinner, custom runners).",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-performance",
+      "source": "./plugins/game-performance",
+      "description": "Engine-agnostic game performance, measured first: frame budgets, profiling a release build on target hardware, CPU versus GPU triage, draw calls and batching, overdraw, allocation and GC hitches, pooling, asset budgets and regression checks.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-playtest",
+      "source": "./plugins/game-playtest",
+      "description": "Game playtests: research questions, test type, recruiting and consent, session scripts and observer sheets, think-aloud, surveys, lightweight telemetry, ranked change lists, and keep-or-kill criteria for a build.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-prototype",
+      "source": "./plugins/game-prototype",
+      "description": "Timeboxed game prototyping: a greybox mechanic spike or vertical slice that answers one question with keep or kill criteria, and game-jam planning (scope to the clock, hour schedule, cut list, submit early). Use when prototyping a mechanic, greyboxing, or planning a jam or 48-hour build.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-publish",
+      "source": "./plugins/game-publish",
+      "description": "Ships a game build to a store and plans the release: itch.io uploads with butler channels and versions, Steam with SteamPipe depots, app_build.vdf, steamcmd and branches, and Steam release timing (app fee wait, Coming Soon, reviews, Next Fest, discounts). Use for butler push, steamcmd or a Steam launch date.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "game-ui",
+      "source": "./plugins/game-ui",
+      "description": "Engine-neutral game UI and UX: HUDs, menus and overlays, a screen stack, resolution and aspect scaling, safe areas, gamepad focus navigation, event-driven HUDs, settings screens, and a game accessibility checklist.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot",
+      "source": "./plugins/godot",
+      "description": "Godot 4 entry point: GDScript, nodes and scenes, signals, custom Resources, autoloads, project.godot and safe .tscn/.tres edits (uid:// and .uid files), with references for 2D, 3D, UI, input, audio, animation, saves, performance and debugging, and routing to the other godot plugins and the editor MCP.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-addons",
+      "source": "./plugins/godot-addons",
+      "description": "Godot addon APIs for Beehave and LimboAI behavior trees, Phantom Camera and Dialogue Manager v4. Use when a project has addons/beehave, addons/limboai, addons/phantom_camera or addons/dialogue_manager, or when choosing, installing or writing code and .dialogue files for one of them.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-csharp",
+      "source": "./plugins/godot-csharp",
+      "description": "Writes and fixes C# in Godot 4 .NET projects: partial node classes, the PascalCase lifecycle, [Export], [Signal] events, GDScript interop, the .csproj and the build. Use for .cs or .csproj files beside project.godot, \"port this GDScript to C#\", GD0201 errors, or ObjectDisposedException after a signal.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-editor-tools",
+      "source": "./plugins/godot-editor-tools",
+      "description": "Godot 4 editor plugins and addons. Use when writing or fixing an EditorPlugin, plugin.cfg, @tool script, inspector plugin, EditorDock, 3D gizmo, tool menu, undoable scene edits or an addon that runs a server inside the editor, or when a project has addons/*/plugin.cfg.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-export",
+      "source": "./plugins/godot-export",
+      "description": "Godot 4 export skill: export templates and presets, headless CLI exports, Web threads and COOP/COEP, Windows and macOS signing, dedicated-server builds, PCK patches and the Shader Baker, with references for CLI and presets, Android and iOS, and CI export jobs.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-gdextension",
+      "source": "./plugins/godot-gdextension",
+      "description": "Native Godot 4 extensions with GDExtension, in C++ (godot-cpp) or Rust (godot-rust gdext). Use when a project has a .gdextension file, SConstruct or a godot-cpp submodule, or when binding a native class, building per-platform libraries, wrapping a C/C++ library, or debugging a native crash.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-mcp-setup",
+      "source": "./plugins/godot-mcp-setup",
+      "description": "Manual /godot-mcp-setup: installs the voidrot/godot-mcp editor addon into a Godot 4.7+ project, enables it, reads its port and writes the project .mcp.json godot-editor entry after you approve the diff.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-multiplayer",
+      "source": "./plugins/godot-multiplayer",
+      "description": "Builds and secures networked Godot 4 games: server-authoritative @rpc validation, ENet and WebSocket peers, MultiplayerSpawner and MultiplayerSynchronizer, lobbies, dedicated servers, interpolation and prediction. Use for @rpc, \"multiplayer\", \"netcode\" or a headless server in a Godot project.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-physics",
+      "source": "./plugins/godot-physics",
+      "description": "Godot 4 physics skill: CharacterBody controllers and move_and_slide, rigid, static, animatable and area bodies, collision layers and masks, raycasts and space queries, physics interpolation and Jolt, with references for controller recipes, queries, ragdolls and soft bodies.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-shaders",
+      "source": "./plugins/godot-shaders",
+      "description": "Godot 4 shaders and VFX skill: .gdshader canvas_item, spatial and particles shaders, uniforms and hints, screen and depth reading, visual shaders and materials, GPU particles, with references for shader fundamentals, effect recipes, particles, stencil, CompositorEffect and the Shader Baker.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-testing",
+      "source": "./plugins/godot-testing",
+      "description": "Godot 4 testing skill: picks GUT, gdUnit4 or a bare SceneTree runner from the project, writes tests, runs them headless with real exit codes, and sets up CI, with GUT and gdUnit4 references.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "godot-xr",
+      "source": "./plugins/godot-xr",
+      "description": "Godot 4 XR with OpenXR for VR, AR and passthrough on Meta Quest, Pico and PC VR. Use for XROrigin3D and XRController3D setup, the action map, locomotion, grabbing, in-world UI, hand tracking, passthrough, spatial anchors, or a Quest export, and when project.godot has xr/openxr/enabled=true.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "level-design",
+      "source": "./plugins/level-design",
+      "description": "Engine-agnostic level design: player metrics, blockout to playable, critical path and gating, pacing and tension curves, encounters, readability, and seeded procedural generation (noise, rooms and corridors, BSP, cellular caves, WFC).",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "msbuild",
+      "source": "./plugins/msbuild",
+      "description": "Diagnoses MSBuild failures and slow builds and reviews .NET build XML. Use for a failing dotnet build, restore, pack or publish, .csproj/.props/.targets conditions and custom targets, binlog capture and replay, \"it rebuilds when nothing changed\", slow evaluation or builds, bin/obj clashes, or Directory.Build.* layering.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "nuget",
+      "source": "./plugins/nuget",
+      "description": "Manages NuGet dependencies and packages in .NET repos. Use for Directory.Packages.props and Central Package Management, bumping or aligning package versions, NU1xxx restore warnings, nuget.config sources and source mapping, vulnerable-package audits, lock files, dotnet pack metadata, or publishing to nuget.org with trusted publishing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "roslyn-analyzers",
+      "source": "./plugins/roslyn-analyzers",
+      "description": "Roslyn analyzer skill: DiagnosticAnalyzer, CodeFixProvider and IIncrementalGenerator design and tests, Microsoft.CodeAnalysis host-compatibility pinning, and analyzer NuGet packaging.",
       "version": "0.1.0",
       "category": "development"
     }

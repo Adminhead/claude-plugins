@@ -1,0 +1,9 @@
+{
+  "name": "godot-gdextension",
+  "version": "0.1.0",
+  "description": "Native Godot 4 extensions with GDExtension, in C++ (godot-cpp) or Rust (godot-rust gdext). Use when a project has a .gdextension file, SConstruct or a godot-cpp submodule, or when binding a native class, building per-platform libraries, wrapping a C/C++ library, or debugging a native crash.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

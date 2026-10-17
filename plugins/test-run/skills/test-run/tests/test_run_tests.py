@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import detect
 import pytest
 import run_tests
 from detect import DetectError, Project, parse_target, select_project
@@ -182,6 +183,109 @@ def test_cargo_compile_error_is_a_crash_starting_at_the_error() -> None:
     assert len(report.crash_lines) <= 40
 
 
+def test_dotnet_vstest_parser_reads_failures_and_user_frames() -> None:
+    run = RunOutput(fixture("dotnet_vstest_failures.out"), "", 1, None)
+    report = parse("dotnet", run, WORK)
+    assert (report.passed, report.failed, report.skipped) == (1, 2, 1)
+    assert ids(report) == [
+        "Calc.Tests.CalcTests.Add_Sums",
+        "Calc.Tests.CalcTests.Throws",
+    ]
+    add, throws = report.failures
+    assert add.location == "Calc.Tests/CalcTests.cs:9"
+    assert add.message == [
+        "Assert.Equal() Failure: Values differ",
+        "Expected: 3",
+        "Actual:   -1",
+    ]
+    assert throws.location == "Calc.Tests/CalcTests.cs:4"
+    assert throws.trace == [
+        "at Calc.Tests.Calc.Get(Int32[] xs, Int32 i)  Calc.Tests/CalcTests.cs:4",
+        "at Calc.Tests.CalcTests.Throws()  Calc.Tests/CalcTests.cs:15",
+    ]
+
+
+def test_dotnet_mtp_parser_reads_the_summary_block_and_failures() -> None:
+    run = RunOutput(fixture("dotnet_mtp_failures.out"), "", 2, None)
+    report = parse("dotnet", run, WORK)
+    assert (report.passed, report.failed, report.skipped) == (1, 2, 1)
+    assert ids(report) == [
+        "Calc.Tests.CalcTests.Throws",
+        "Calc.Tests.CalcTests.Add_Sums",
+    ]
+    throws, add = report.failures
+    assert add.location == "Calc.Tests/CalcTests.cs:9"
+    assert add.message[1:] == ["Expected: 3", "Actual:   -1"]
+    assert not any("System.Reflection" in line for line in throws.trace)
+    assert not any(line.startswith("from ") for line in throws.message)
+
+
+def test_dotnet_build_failure_is_a_crash_with_deduplicated_errors() -> None:
+    report = parse("dotnet", RunOutput(fixture("dotnet_build.out"), "", 1, None), WORK)
+    assert report.crash == "build failed"
+    assert report.crash_lines[0].startswith(
+        "Calc.Tests/CalcTests.cs(7,6): error CS0246"
+    )
+    assert len(report.crash_lines) == len(set(report.crash_lines)) == 8
+
+
+def test_gut_parser_reads_junit_and_attaches_engine_backtraces() -> None:
+    run = RunOutput("", fixture("gut_failures.err"), 1, fixture("gut_failures.xml"))
+    report = parse("gut", run, WORK)
+    assert (report.passed, report.failed, report.skipped) == (1, 2, 1)
+    assert ids(report) == [
+        "test/unit/test_calc.gd::test_add",
+        "test/unit/test_calc.gd::test_error",
+    ]
+    add, error = report.failures
+    assert add.location == "test/unit/test_calc.gd:4"
+    assert add.message == ["[-1] expected to equal [3]:  add sums"]
+    assert error.location == "src/calc.gd:8"
+    assert error.trace == [
+        "get_at  src/calc.gd:8",
+        "test_error  test/unit/test_calc.gd:14",
+    ]
+
+
+def test_gut_script_parse_error_is_a_crash() -> None:
+    run = RunOutput("", fixture("gut_parse_error.err"), 1, fixture("gut_failures.xml"))
+    report = parse("gut", run, WORK)
+    assert report.crash is not None
+    assert report.crash.startswith("script parse error")
+    assert report.crash_lines[0].startswith("SCRIPT ERROR: Parse Error")
+    missing = parse("gut", RunOutput("", "ERROR: boom", 1, None), WORK)
+    assert missing.crash == "GUT exited 1 without a JUnit report"
+
+
+def test_gdunit4_parser_reads_console_failures_and_summary() -> None:
+    run = RunOutput(fixture("gdunit4_failures.out"), "", 100, None)
+    report = parse("gdunit4", run, WORK)
+    assert (report.passed, report.failed, report.skipped, report.errors) == (
+        1,
+        1,
+        1,
+        1,
+    )
+    assert ids(report) == [
+        "test/calc_test.gd::test_add",
+        "test/calc_test.gd::test_error",
+    ]
+    add, error = report.failures
+    assert add.location == "test/calc_test.gd:4"
+    assert add.message == ["Expecting:", "3", "but was", "-1"]
+    assert error.location == "src/calc.gd:8"
+    assert error.trace[-1] == "test_error  test/calc_test.gd:11"
+
+
+def test_gdunit4_known_exit_codes_are_crashes() -> None:
+    run = RunOutput(
+        "Headless mode is not supported!\nAbnormal exit with 103", "", 103, None
+    )
+    report = parse("gdunit4", run, WORK)
+    assert report.crash == "gdUnit4 refused headless mode (pass --ignoreHeadlessMode)"
+    assert report.crash_lines == ["Abnormal exit with 103"]
+
+
 def test_unknown_runner_is_unstructured() -> None:
     assert not parse("make", RunOutput("ok", "", 0, None), WORK).structured
 
@@ -298,6 +402,244 @@ def test_skips_vendored_directories(tmp_path: Path) -> None:
     )
     write(tmp_path / "go.mod", "module x\n")
     assert select_project(tmp_path, [], None).kind == "go"
+
+
+# --- .NET and Godot detection ---
+
+TEST_CSPROJ = (
+    '<Project Sdk="Microsoft.NET.Sdk"><ItemGroup>'
+    '<PackageReference Include="{pkg}" /></ItemGroup>{props}</Project>'
+)
+
+
+def dotnet_repo(
+    root: Path, pkg: str = "xunit", props: str = "", global_json: str | None = None
+) -> Path:
+    write(
+        root / "tests/App.Tests/App.Tests.csproj",
+        TEST_CSPROJ.format(pkg=pkg, props=props),
+    )
+    write(root / "src/App/App.csproj", '<Project Sdk="Microsoft.NET.Sdk" />')
+    write(
+        root / "App.slnx",
+        '<Solution><Project Path="src/App/App.csproj" />'
+        '<Project Path="tests/App.Tests/App.Tests.csproj" /></Solution>',
+    )
+    if global_json is not None:
+        write(root / "global.json", global_json)
+    return root
+
+
+def test_dotnet_solution_with_a_test_project_runs_vstest(tmp_path: Path) -> None:
+    project = select_project(dotnet_repo(tmp_path), [], None)
+    assert (project.kind, project.mode, project.entry) == (
+        "dotnet",
+        "vstest",
+        "App.slnx",
+    )
+    plan = build_plan(project, [], None, True, Path("/r"), custom=False)
+    assert plan.argv == ("dotnet", "test", "App.slnx")
+
+
+def test_dotnet_ignores_solutions_and_projects_without_tests(tmp_path: Path) -> None:
+    write(tmp_path / "src/App/App.csproj", '<Project Sdk="Microsoft.NET.Sdk" />')
+    write(
+        tmp_path / "App.sln", 'Project("{X}") = "App", "src\\App\\App.csproj", "{Y}"\n'
+    )
+    with pytest.raises(DetectError, match="no test runner found"):
+        select_project(tmp_path, [], None)
+
+
+def test_dotnet_global_json_runner_selects_native_mtp(tmp_path: Path) -> None:
+    runner = '{"test": {"runner": "Microsoft.Testing.Platform"}}'
+    repo = dotnet_repo(tmp_path, pkg="xunit.v3.mtp-v2", global_json=runner)
+    project = select_project(repo, [], None)
+    assert (project.mode, project.framework) == ("mtp", "xunit3")
+    full = build_plan(project, [], None, True, Path("/r"), custom=False)
+    assert full.argv == ("dotnet", "test", "--solution", "App.slnx")
+    target = parse_target("App.Tests.CalcTests.Adds", repo, repo)
+    plan = build_plan(project, [target], None, False, Path("/r"), custom=False)
+    assert plan.argv[-2:] == ("--filter-method", "*App.Tests.CalcTests.Adds*")
+
+
+def test_dotnet_bridge_puts_mtp_filters_after_the_separator(tmp_path: Path) -> None:
+    props = (
+        "<PropertyGroup><EnableMSTestRunner>true</EnableMSTestRunner>"
+        "<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>"
+        "</PropertyGroup>"
+    )
+    repo = dotnet_repo(tmp_path, pkg="MSTest", props=props)
+    project = select_project(repo, [], None)
+    assert (project.mode, project.framework) == ("bridge", "")
+    target = parse_target("Ns.Cls.Method(1, x)", repo, repo)
+    plan = build_plan(project, [target], None, False, Path("/r"), custom=False)
+    assert plan.argv == (
+        "dotnet",
+        "test",
+        "App.slnx",
+        "--",
+        "--filter",
+        "FullyQualifiedName~Ns.Cls.Method",
+    )
+
+
+def test_dotnet_runner_property_without_bridge_stays_vstest(tmp_path: Path) -> None:
+    props = "<PropertyGroup><EnableNUnitRunner>true</EnableNUnitRunner></PropertyGroup>"
+    repo = dotnet_repo(tmp_path, pkg="NUnit", props=props)
+    assert select_project(repo, [], None).mode == "vstest"
+
+
+def test_dotnet_tunit_uses_a_tree_node_filter(tmp_path: Path) -> None:
+    repo = dotnet_repo(tmp_path, pkg="TUnit")
+    project = select_project(repo, [], None)
+    assert (project.mode, project.framework) == ("bridge", "tunit")
+    target = parse_target("Ns.CalcTests.Adds", repo, repo)
+    plan = build_plan(project, [target], None, False, Path("/r"), custom=False)
+    assert plan.argv[-3:] == ("--", "--treenode-filter", "/*/*/CalcTests/Adds")
+
+
+def test_dotnet_file_target_runs_its_test_project(tmp_path: Path) -> None:
+    repo = dotnet_repo(tmp_path)
+    write(repo / "tests/App.Tests/CalcTests.cs")
+    target = parse_target("tests/App.Tests/CalcTests.cs", repo, repo)
+    project = select_project(repo, [target], None)
+    assert project.root == repo / "tests/App.Tests"
+    plan = build_plan(project, [target], None, False, Path("/r"), custom=False)
+    assert plan.argv == ("dotnet", "test", "App.Tests.csproj")
+    assert plan.display(repo) == "cd tests/App.Tests && dotnet test App.Tests.csproj"
+
+
+def test_dotnet_vstest_filter_escapes_special_characters(tmp_path: Path) -> None:
+    project = select_project(dotnet_repo(tmp_path), [], None)
+    target = parse_target("Adds!=", tmp_path, tmp_path)
+    plan = build_plan(project, [target], None, False, Path("/r"), custom=False)
+    assert plan.argv[-1] == "FullyQualifiedName~Adds\\!\\="
+
+
+def godot_repo(root: Path, addon: str | None, imported: bool = True) -> Path:
+    write(root / "project.godot", "config_version=5\n")
+    write(root / "test/unit/test_a.gd", "extends GutTest\n")
+    if addon:
+        write(root / f"addons/{addon}/plugin.cfg")
+    if imported:
+        (root / ".godot").mkdir()
+    return root
+
+
+@pytest.fixture
+def godot_bin(monkeypatch: pytest.MonkeyPatch) -> str:
+    monkeypatch.setenv("GODOT_BIN", "/opt/godot")
+    return "/opt/godot"
+
+
+def test_godot_gut_runs_headless_with_a_junit_report(
+    tmp_path: Path, godot_bin: str
+) -> None:
+    repo = godot_repo(tmp_path, "gut")
+    project = select_project(repo, [], None)
+    assert project.kind == "gut"
+    plan = build_plan(project, [], None, True, Path("/r.xml"), custom=False)
+    assert plan.argv == (
+        godot_bin,
+        "--headless",
+        "-s",
+        "--path",
+        ".",
+        "addons/gut/gut_cmdln.gd",
+        "-gexit",
+        "-gjunit_xml_file=/r.xml",
+        "-gdir=res://test",
+        "-ginclude_subdirs",
+    )
+    assert plan.setup == ()
+    target = parse_target("test/unit/test_a.gd::test_add", repo, repo)
+    plan = build_plan(project, [target], None, False, Path("/r.xml"), custom=False)
+    assert plan.argv[-2:] == (
+        "-gtest=res://test/unit/test_a.gd",
+        "-gunit_test_name=test_add",
+    )
+
+
+def test_godot_gutconfig_keeps_its_own_directories(
+    tmp_path: Path, godot_bin: str
+) -> None:
+    repo = godot_repo(tmp_path, "gut")
+    write(repo / ".gutconfig.json", "{}")
+    plan = build_plan(
+        select_project(repo, [], None), [], None, True, Path("/r"), custom=False
+    )
+    assert plan.argv[-1] == "-gjunit_xml_file=/r"
+
+
+def test_godot_gdunit4_selects_suites_by_path(tmp_path: Path, godot_bin: str) -> None:
+    repo = godot_repo(tmp_path, "gdUnit4")
+    project = select_project(repo, [], None)
+    assert project.kind == "gdunit4"
+    plan = build_plan(project, [], None, True, Path("/r"), custom=False)
+    assert plan.argv[0] == godot_bin
+    assert "--ignoreHeadlessMode" in plan.argv
+    assert plan.argv[-3:] == ("-c", "-a", "res://test")
+    target = parse_target("test/unit/test_a.gd::test_x", repo, repo)
+    plan = build_plan(project, [target], None, False, Path("/r"), custom=False)
+    assert plan.argv[-2:] == ("-a", "res://test/unit/test_a.gd")
+    with pytest.raises(DetectError, match="by suite path"):
+        build_plan(
+            project,
+            [parse_target("test_x", repo, repo)],
+            None,
+            False,
+            Path("/r"),
+            custom=False,
+        )
+
+
+def test_godot_bare_runner_and_fresh_checkout_import(
+    tmp_path: Path, godot_bin: str
+) -> None:
+    repo = godot_repo(tmp_path, None, imported=False)
+    write(repo / "test/test_runner.gd", "extends SceneTree\n")
+    project = select_project(repo, [], None)
+    assert project.kind == "godot"
+    plan = build_plan(project, [], None, True, Path("/r"), custom=False)
+    assert plan.argv[-2:] == ("--script", "res://test/test_runner.gd")
+    assert plan.setup == (godot_bin, "--headless", "--path", ".", "--import")
+    assert plan.scope.endswith("imports the project first (no .godot/)")
+    assert not parse("godot", RunOutput("", "", 1, None), repo).structured
+
+
+def test_godot_binary_falls_back_to_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GODOT_BIN", raising=False)
+    monkeypatch.setattr(
+        detect.shutil,
+        "which",
+        lambda name: "/usr/bin/x" if name == "godot-mono" else None,
+    )
+    assert detect.godot_binary() == "godot-mono"
+    monkeypatch.setattr(detect.shutil, "which", lambda name: None)
+    assert detect.godot_binary() == "godot"
+
+
+def test_godot_runner_wins_over_its_csharp_solution(
+    tmp_path: Path, godot_bin: str
+) -> None:
+    repo = godot_repo(tmp_path, "gut")
+    write(repo / "Game.Tests.csproj", TEST_CSPROJ.format(pkg="gdUnit4.api", props=""))
+    assert select_project(repo, [], None).kind == "gut"
+    write(repo / "src/Thing.cs")
+    target = parse_target("src/Thing.cs", repo, repo)
+    assert select_project(repo, [target], None).kind == "dotnet"
+
+
+def test_cmd_infers_dotnet_and_godot_parsers(tmp_path: Path) -> None:
+    assert select_project(tmp_path, [], "dotnet test --no-build").kind == "dotnet"
+    gut = "godot --headless -s --path . addons/gut/gut_cmdln.gd"
+    assert select_project(tmp_path, [], gut).kind == "gut"
+    assert (
+        select_project(tmp_path, [], "./addons/gdUnit4/runtest.sh -a res://test").kind
+        == "gdunit4"
+    )
 
 
 # --- selection and affected mapping ---
@@ -578,3 +920,26 @@ def test_end_to_end_go_failure(tmp_path: Path) -> None:
         "calc/calc_test.go:7",
         "Add(1, 2) = -1",
     ]
+
+
+def godot_binary_on_path() -> str | None:
+    return os.environ.get("GODOT_BIN") or next(
+        (b for b in ("godot", "godot4", "godot-mono") if shutil.which(b)), None
+    )
+
+
+@pytest.mark.skipif(godot_binary_on_path() is None, reason="Godot is not installed")
+def test_end_to_end_godot_bare_runner_exit_code(tmp_path: Path) -> None:
+    write(
+        tmp_path / "project.godot",
+        'config_version=5\n\n[application]\nconfig/name="T"\n',
+    )
+    write(
+        tmp_path / "test/test_runner.gd",
+        "extends SceneTree\n\nfunc _initialize() -> void:\n"
+        '\tprint("Results: 0 passed, 1 failed")\n\tquit(1)\n',
+    )
+    result = cli(tmp_path, "--all", "--repo-root", str(tmp_path))
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "imports the project first" in result.stdout.splitlines()[1]
+    assert "Results: 0 passed, 1 failed" in result.stdout

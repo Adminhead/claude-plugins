@@ -1,0 +1,9 @@
+{
+  "name": "game-architecture",
+  "version": "0.1.0",
+  "description": "Engine-agnostic game code structure: game loop and fixed timestep, state machines (flat, hierarchical, parallel), composition, event bus, object pools, data-driven content, inventory and ability systems, scene flow and save systems.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

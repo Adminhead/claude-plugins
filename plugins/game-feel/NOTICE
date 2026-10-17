@@ -1,0 +1,33 @@
+game-feel plugin (AdminHead)
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills
+Copyright 2026 Abhishek Barali and the awesome-gamedev-agent-skills contributors
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/disciplines/game-feel/SKILL.md, skills/disciplines/game-feel/references/feedback-recipes.md, skills/disciplines/camera-systems/SKILL.md, skills/disciplines/camera-systems/references/follow-and-framing.md, skills/disciplines/input-systems/SKILL.md, skills/disciplines/input-systems/references/buffering-and-accessibility.md, skills/disciplines/physics-tuning/SKILL.md
+
+GodotPrompter
+Copyright (c) 2026 GodotPrompter Contributors
+Licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/camera-system/SKILL.md
+
+Modifications: the four upstream skills (game-feel, camera-systems,
+input-systems and the feel half of physics-tuning) were merged into one skill
+with three references (input.md, camera.md, juice.md) and rewritten in the
+house style. Engine API (Godot and Unity code, node and property names, engine
+versions) was removed and replaced with engine-neutral pseudocode and pointers
+to the engine skills. From GodotPrompter camera-system, the trauma-shake model
+and the eased look-ahead technique were taken; its frame-rate-dependent
+lerp(k * delta) smoothing was replaced with 1 - exp(-rate * dt), and the
+camera-roll pitfall (a 2D camera that ignores rotation by default) is called
+out. Added: jump design from height and time to apex, corner correction,
+inner and outer stick deadzones, the mouse-delta-times-dt pitfall, rebinding
+safety rules, hit-stop variants and a review checklist.
+
+Game engine names (including Godot and Unity) are trademarks of their
+respective owners and are used for identification only.

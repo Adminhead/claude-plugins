@@ -1,0 +1,17 @@
+Copyright AdminHead
+
+This plugin contains material adapted from dotnet/skills
+(https://github.com/dotnet/skills), Copyright (c) .NET Foundation and
+Contributors, licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-nuget/skills/convert-to-cpm/SKILL.md, plugins/dotnet-nuget/skills/convert-to-cpm/references, plugins/dotnet-advanced/skills/nuget-trusted-publishing/SKILL.md, plugins/dotnet-advanced/skills/nuget-trusted-publishing/references
+
+Modifications: the convert-to-cpm modes generalized into a NuGet package-work
+skill with a new description; its conversion workflow and six references
+condensed into references/cpm.md; nuget-trusted-publishing and its two
+references condensed into references/trusted-publishing.md, with the workflow
+template updated (current action major versions, SHA-pinning note, version
+check via dotnet msbuild -getProperty, ContinuousIntegrationBuild) and
+ask_user steps replaced with plain instructions; PowerShell commands dropped;
+references/sources-and-audit.md newly written from the NuGet documentation.

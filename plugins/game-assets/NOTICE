@@ -1,0 +1,22 @@
+Copyright AdminHead
+
+This plugin contains material adapted from awesome-gamedev-agent-skills
+(https://github.com/gamedev-skills/awesome-gamedev-agent-skills), Copyright 2026
+Abhishek Barali and the awesome-gamedev-agent-skills contributors, licensed
+under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/disciplines/create-game-assets/SKILL.md, skills/disciplines/create-game-assets/references/art-direction.md, skills/disciplines/create-game-assets/references/raster-pipeline.md, skills/disciplines/create-game-assets/references/three-d-pipeline.md, skills/disciplines/create-game-assets/references/provenance.md, skills/disciplines/create-game-assets/assets/art-direction-brief.md, skills/disciplines/create-game-assets/assets/asset-manifest.json
+
+Modifications: renamed to game-assets and rewritten in the house style with a
+2D focus; the Pillow scripts (asset_report.py, build_preview_sheet.py,
+requirements.txt) and the agents/openai.yaml metadata dropped, with manual and
+optional ImageMagick checks in their place; provenance folded into SKILL.md;
+the raster and 3D references merged into pipelines.md and the 3D part
+condensed; palette, scale and naming rules added to art-direction.md; the
+Godot import checkpoints rechecked against the Godot 4.7 docs (filter and
+repeat live on CanvasItem or the project default, Lossless is the default
+compress mode, Detect 3D switches to VRAM Compressed with mipmaps, commit
+.import and .uid sidecars); version-pinned Unity and Godot doc links removed;
+upstream skill cross-references replaced with adminhead plugin names. The
+assets/ templates are copied unchanged.

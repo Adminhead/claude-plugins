@@ -1,0 +1,9 @@
+{
+  "name": "dotnet-diagnostics",
+  "version": "0.1.0",
+  "description": "Collects runtime evidence from running or crashed .NET processes: dotnet-counters, dotnet-trace, dotnet-dump, dotnet-monitor, PerfView, perfcollect, crash dumps in containers and Kubernetes, mobile crash symbolication. Use for high CPU, memory growth, hangs or crashes in production, capturing a dump, or choosing a tool for Linux in k8s.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

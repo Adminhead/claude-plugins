@@ -1,0 +1,32 @@
+level-design plugin (AdminHead)
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills
+Copyright 2026 Abhishek Barali and the awesome-gamedev-agent-skills contributors
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/disciplines/level-design/SKILL.md, skills/disciplines/level-design/references/pacing-and-flow.md, skills/disciplines/procedural-gen/SKILL.md, skills/disciplines/procedural-gen/references/dungeon-generation.md, skills/disciplines/procedural-gen/references/noise.md
+
+GodotPrompter
+Copyright (c) 2026 GodotPrompter Contributors
+Licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/procedural-generation/SKILL.md, skills/procedural-generation/references/cellular-automata.md, skills/procedural-generation/references/wave-function-collapse.md
+
+Modifications: level-design and the generation half of procedural-gen were
+merged into one skill with two references (pacing-encounters.md, procgen.md)
+and rewritten in the house style. Engine API and Python and GDScript code were
+replaced with engine-neutral pseudocode and pointers to the engine skills. The
+weighted loot-table material was left out (it belongs to game-design). From
+GodotPrompter, the cellular-automata cave parameters and the wave function
+collapse algorithm were taken; the WFC loop was corrected to detect
+contradictions during propagation (the upstream sample skipped cells with
+zero options and could report success with holes). Added: sub-seeds,
+stable string hashing and other determinism rules, MST corridors with loops,
+encounter and arena design, and a validation pass for generated levels.
+
+Game engine names (including Godot) are trademarks of their respective owners
+and are used for identification only.

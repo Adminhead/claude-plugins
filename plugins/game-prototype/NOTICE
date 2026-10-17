@@ -1,0 +1,15 @@
+Copyright AdminHead
+
+This plugin contains material adapted from awesome-gamedev-agent-skills
+(https://github.com/gamedev-skills/awesome-gamedev-agent-skills), Copyright 2026
+Abhishek Barali and the awesome-gamedev-agent-skills contributors, licensed
+under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/workflows/prototype-fast/SKILL.md, skills/workflows/game-jam/SKILL.md
+
+Modifications: the two skills merged into one SKILL.md with a spike mode and a
+jam mode, rewritten in the house style and condensed; upstream engine and
+skill cross-references replaced with adminhead plugin names; the itch.io jam
+submission note folded into the jam workflow; the vertical-slice and greybox
+triggers kept; upload mechanics moved to the separate game-publish plugin.

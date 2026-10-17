@@ -1,0 +1,9 @@
+{
+  "name": "godot-testing",
+  "version": "0.1.0",
+  "description": "Godot 4 testing skill: picks GUT, gdUnit4 or a bare SceneTree runner from the project, writes tests, runs them headless with real exit codes, and sets up CI, with GUT and gdUnit4 references.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

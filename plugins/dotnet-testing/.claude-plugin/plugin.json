@@ -1,0 +1,9 @@
+{
+  "name": "dotnet-testing",
+  "version": "0.1.0",
+  "description": "Writes, runs and fixes .NET tests in xUnit, NUnit, MSTest and TUnit: dotnet test syntax for VSTest vs Microsoft.Testing.Platform, filters, TRX and dumps, test-project wiring, TimeProvider and file-system seams, coverage. Use for running tests in a .NET repo, a filter that matches nothing, \"VSTest or MTP?\", or testing DateTime.Now code.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

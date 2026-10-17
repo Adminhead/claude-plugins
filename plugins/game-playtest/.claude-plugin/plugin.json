@@ -1,0 +1,9 @@
+{
+  "name": "game-playtest",
+  "version": "0.1.0",
+  "description": "Game playtests: research questions, test type, recruiting and consent, session scripts and observer sheets, think-aloud, surveys, lightweight telemetry, ranked change lists, and keep-or-kill criteria for a build.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

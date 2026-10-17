@@ -1,0 +1,9 @@
+{
+  "name": "godot-physics",
+  "version": "0.1.0",
+  "description": "Godot 4 physics skill: CharacterBody controllers and move_and_slide, rigid, static, animatable and area bodies, collision layers and masks, raycasts and space queries, physics interpolation and Jolt, with references for controller recipes, queries, ragdolls and soft bodies.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,19 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the following MIT-licensed sources
+(see LICENSE). The files were modified.
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-data/skills/optimizing-ef-core-queries, plugins/dotnet-upgrade/skills/migrate-dotnet9-to-dotnet10/references/efcore-dotnet9to10.md
+
+Upstream: https://github.com/wshobson/agents @ 044b4b21f083948e69ec878a7b07c8d0951a6ffa
+Paths: plugins/dotnet-contribution/skills/dotnet-backend-patterns/references/dapper-patterns.md
+
+Modifications: the EF Core query skill was trimmed into SKILL.md with its fix
+catalogue moved to references/query-fixes.md; EF Core 10 notes merged from the
+upgrade reference and the EF Core 10 release notes; a migrations and DbContext
+lifetime reference written from Microsoft Learn; the Dapper reference was
+rewritten: the stale performance table and the scoped IDbConnection
+registration were dropped, connection factories return DbConnection so async
+open, transactions and QueryUnbufferedAsync compile, and SQL-injection-prone
+string-built table names were removed.

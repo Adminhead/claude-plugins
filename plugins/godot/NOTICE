@@ -1,0 +1,54 @@
+godot
+Copyright AdminHead
+
+This plugin contains material adapted from four sources.
+
+awesome-gamedev-agent-skills, Copyright 2026 Abhishek Barali and the
+awesome-gamedev-agent-skills contributors, licensed under the Apache License,
+Version 2.0 (see LICENSE). Its NOTICE states that all of its skills are
+original works authored from primary documentation. Godot is a trademark of
+its owners and is used for identification only.
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/godot/godot-gdscript/SKILL.md, skills/godot/godot-gdscript/references/annotations-and-typing.md, skills/godot/godot-nodes-scenes/SKILL.md, skills/godot/godot-nodes-scenes/references/tree-and-instancing.md, skills/godot/godot-signals-groups/SKILL.md, skills/godot/godot-signals-groups/references/signal-patterns.md, skills/godot/godot-resources/SKILL.md, skills/godot/godot-resources/references/resource-patterns.md, skills/godot/godot-animation/SKILL.md, skills/godot/godot-animation/references/animation-tree-and-tween.md, skills/godot/godot-audio/SKILL.md, skills/godot/godot-audio/references/buses-and-effects.md, skills/godot/godot-ui-control/SKILL.md, skills/godot/godot-ui-control/references/layout-and-theming.md, skills/godot/godot-tilemap/SKILL.md, skills/godot/godot-tilemap/references/tileset-and-terrains.md, skills/godot/godot-3d-essentials/SKILL.md, skills/godot/godot-3d-essentials/references/scene-and-environment.md, skills/disciplines/save-systems/SKILL.md
+
+GodotPrompter, Copyright (c) 2026 GodotPrompter Contributors, licensed under
+the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/gdscript-patterns/SKILL.md, skills/gdscript-advanced/SKILL.md, skills/gdscript-advanced/references/profiler-recipes.md, skills/gdscript-advanced/references/tool-script-recipes.md, skills/resource-pattern/SKILL.md, skills/scene-organization/SKILL.md, skills/godot-brainstorming/references/node-selection.md, skills/godot-code-review/SKILL.md, skills/godot-project-setup/SKILL.md, skills/state-machine/SKILL.md, skills/state-machine/references/hierarchical-and-parallel.md, skills/event-bus/SKILL.md, skills/event-bus/references/anti-patterns.md, skills/component-system/SKILL.md, skills/dependency-injection/SKILL.md, skills/save-load/SKILL.md, skills/save-load/references/configfile.md, skills/save-load/references/save-architecture.md, skills/save-load/references/version-migration.md, skills/godot-optimization/SKILL.md, skills/multithreading/SKILL.md, skills/multithreading/references/pitfalls.md, skills/addon-development/SKILL.md, skills/godot-debugging/SKILL.md, skills/godot-debugging/references/signal-tracing.md, skills/godot-debugging/references/scene-tree-debugging.md, skills/tween-animation/SKILL.md, skills/tween-animation/references/lifecycle.md, skills/animation-system/SKILL.md, skills/audio-system/SKILL.md, skills/godot-ui/SKILL.md, skills/responsive-ui/SKILL.md, skills/hud-system/SKILL.md, skills/input-handling/SKILL.md, skills/input-handling/references/action-rebinding.md, skills/localization/SKILL.md, skills/localization/references/csv-plural-context.md, skills/localization/references/rtl-support.md, skills/2d-essentials/SKILL.md, skills/2d-essentials/references/tilemap.md, skills/2d-essentials/references/parallax.md, skills/2d-essentials/references/lights-and-shadows.md, skills/3d-essentials/SKILL.md, skills/3d-essentials/references/renderer-comparison.md, skills/3d-essentials/references/environment-and-post.md, skills/3d-essentials/references/global-illumination.md, skills/3d-essentials/references/lod-and-culling.md, skills/3d-essentials/references/godot-4.7-additions.md, skills/3d-essentials/references/common-pitfalls.md, skills/camera-system/SKILL.md, skills/camera-system/references/camera3d-patterns.md, skills/camera-system/references/camera-zones.md, skills/camera-system/references/split-screen.md, skills/camera-system/references/transitions.md, skills/ai-navigation/SKILL.md, skills/assets-pipeline/SKILL.md, skills/assets-pipeline/references/runtime-resource-loading.md
+
+godot-agent-skills, Copyright (c) 2026 Qblab, licensed under the MIT License
+(see LICENSE-MIT).
+
+Upstream: https://github.com/Qb-Lab/godot-agent-skills @ 7f9439375bcf05f488097795d989a0a224fe6348
+Paths: skills/godot-scene-surgery/SKILL.md, skills/godot4-api-guard/SKILL.md, skills/godot-verify/SKILL.md
+
+wshobson/agents, Copyright (c) 2024 Seth Hobson, licensed under the MIT
+License (see LICENSE-MIT).
+
+Upstream: https://github.com/wshobson/agents @ 044b4b21f083948e69ec878a7b07c8d0951a6ffa
+Paths: plugins/game-development/skills/godot-gdscript-patterns/references/details.md, plugins/game-development/skills/godot-gdscript-patterns/references/advanced-patterns.md
+
+Modifications: the files were modified. SKILL.md was written fresh in the
+house style as the single Godot entry point, with a routing table to the other
+godot-* and game-* plugins and a hand-off to the godot-mcp editor addon's own
+skill. The upstream skills were merged and condensed into 21 references,
+GDScript only (C# moved to godot-csharp). Facts were rechecked against the
+Godot 4.7 documentation (class reference, TSCN format page, import docs and
+the 4.3 to 4.7 migration guides). version-notes.md and tscn-tres-format.md are
+new; the latter updates Qb-Lab's rules for 4.6 (load_steps no longer written,
+per-node unique_id, uid attributes on ext_resource lines, .uid sidecar files
+since 4.4). Fixes on port: print_debug prints in every build; CanvasGroup does
+not batch and OS.gc() does not exist; texture filter and repeat are CanvasItem
+or material settings, not import flags, the compress default is Lossless and
+the occluder suffixes are -occ/-occonly; a Camera2D roll needs
+ignore_rotation = false and follow smoothing uses 1 - exp(-k*delta);
+is_action_just_pressed is tick-aware in _physics_process; NavigationAgent2D
+path_desired_distance defaults to 20; collision shapes stay direct children of
+their body; there is no make_unique() method; EditorPlugin docks use
+add_dock(EditorDock); @tool scripts ship in exports and C# #if TOOLS wraps only
+editor-only classes; a nested state machine no longer starts itself; saves use
+an atomic temp-file rename with a backup, and user-writable .tres files are
+never loaded; registries use ResourceLoader.list_directory instead of
+DirAccess scans; push_error replaces assert in code headless runs reach.

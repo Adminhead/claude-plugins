@@ -1,0 +1,21 @@
+dotnet-template-authoring
+Copyright AdminHead
+
+This plugin contains material adapted from dotnet/skills
+(https://github.com/dotnet/skills), Copyright (c) .NET Foundation and
+Contributors, licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-template-engine/skills/template-authoring/SKILL.md, plugins/dotnet-template-engine/skills/template-validation/SKILL.md
+
+Modifications: the two skills merged into one skill named
+dotnet-template-authoring; the validation rule set moved to
+references/validation-rules.md; template.json structures (symbols, generators,
+conditional content, post-actions, constraints, dotnetcli.host.json) collected
+in references/template-json.md; packaging, CPM, snapshot testing and
+localization in references/packaging.md; description rewritten in the
+adminhead house voice; emoji verdict markers replaced with plain text;
+corrected the choice-parameter example to the array form the template schema
+requires; added the add-to-solution and run-script post-action IDs, the
+"integer" datatype alias, NoDefaultExcludes for dot-files, and a test matrix
+across parameter combinations.

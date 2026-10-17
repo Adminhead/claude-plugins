@@ -1,0 +1,9 @@
+{
+  "name": "godot-export",
+  "version": "0.1.0",
+  "description": "Godot 4 export skill: export templates and presets, headless CLI exports, Web threads and COOP/COEP, Windows and macOS signing, dedicated-server builds, PCK patches and the Shader Baker, with references for CLI and presets, Android and iOS, and CI export jobs.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

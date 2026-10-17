@@ -5,17 +5,20 @@
   plugins.py register [--meta META=PLUGIN,PLUGIN ...]
   plugins.py check
   plugins.py sync-shared
+  plugins.py upstream [PLUGIN ...] [--fetch]
   plugins.py catalog [--check]
 
 A meta plugin is `baseline` or a name ending in `-meta`. A core bundle is a
-name ending in `-core` that several metas share. Both ship only a plugin.json
-whose `dependencies` list the plugins they install. Every other plugin is a
-leaf and ships exactly one component.
+plugin whose marketplace entry has category "bundle" (named `*-core` by
+convention) that several metas share. Both ship only a plugin.json whose
+`dependencies` list the plugins they install. Every other plugin is a leaf and
+ships exactly one component; a leaf may end in `-core` (`ef-core`).
 """
 
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,8 +39,12 @@ def is_meta(name):
     return name == "baseline" or name.endswith("-meta")
 
 
+# Core bundles by name, from the marketplace entries with category "bundle"; set by load_plugins.
+BUNDLES = set()
+
+
 def is_bundle(name):
-    return name.endswith("-core")
+    return name in BUNDLES
 
 
 def is_group(name):
@@ -95,6 +102,8 @@ def components(plugin_dir, manifest):
 def load_plugins(root):
     market = load_json(root / MARKETPLACE)
     entries = {e["name"]: e for e in market.get("plugins", [])}
+    BUNDLES.clear()
+    BUNDLES.update(n for n, e in entries.items() if e.get("category") == "bundle")
     manifests = {}
     plugins_dir = root / "plugins"
     if plugins_dir.is_dir():
@@ -159,6 +168,7 @@ def check(root):
 
     if catalog_section(root, entries, manifests) not in (root / README).read_text():
         errors.append("README.md: plugin catalog is stale; run scripts/plugins.py catalog")
+    errors += eval_frontmatter_errors(root)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
@@ -172,6 +182,25 @@ def dep_labels(manifest):
         dep_name, dep_market = parse_dep(dep)
         labels.append(f"`{dep_name}`" if not dep_market else f"`{dep_name}@{dep_market}`")
     return labels
+
+
+EVAL_FM_KEY = re.compile(r"^(name|description): (.*)$")
+
+
+def eval_frontmatter_errors(root):
+    """Unquoted `: ` in an eval's name or description breaks its YAML, and the case silently fails to load."""
+    errors = []
+    for f in sorted((root / "plugins").glob("*/evals/**/*.md")):
+        if "results" in f.parts:
+            continue
+        text = f.read_text(errors="replace")
+        if not text.startswith("---\n") or "\n---" not in text[4:]:
+            continue
+        for line in text[4:text.index("\n---", 4)].splitlines():
+            m = EVAL_FM_KEY.match(line)
+            if m and ": " in m.group(2) and not m.group(2).startswith(('"', "'")):
+                errors.append(f"{f.relative_to(root)}: quote the {m.group(1)} value, it contains ': '")
+    return errors
 
 
 def shared_copies(root):
@@ -190,6 +219,72 @@ def sync_shared(root):
             changed += 1
             print(f"updated {copy.relative_to(root)}")
     print(f"{changed} shared file(s) updated")
+
+
+UPSTREAM_RE = re.compile(r"^Upstream:\s*(\S+)\s*@\s*([0-9a-f]{7,40})\s*$", re.M)
+PATHS_RE = re.compile(r"^Paths:\s*(.+)$", re.M)
+
+
+def norm_url(url):
+    """Compare git remotes loosely: https and ssh forms, with or without .git."""
+    url = url.strip().removesuffix(".git").removesuffix("/")
+    url = re.sub(r"^git@([^:]+):", r"https://\1/", url)
+    return re.sub(r"^(https?|ssh)://(git@)?", "", url).lower()
+
+
+def git(repo, *args):
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+
+
+def upstream_records(root, names):
+    """Yield (plugin, url, sha, paths) from NOTICE files that carry an Upstream line."""
+    for notice in sorted((root / "plugins").glob("*/NOTICE")):
+        plugin = notice.parent.name
+        if names and plugin not in names:
+            continue
+        text = notice.read_text(errors="replace")
+        paths_m = PATHS_RE.search(text)
+        paths = [p.strip() for p in paths_m.group(1).split(",") if p.strip()] if paths_m else []
+        for url, sha in UPSTREAM_RE.findall(text):
+            yield plugin, url, sha, paths
+
+
+def checkouts(root):
+    """Map normalized origin URL to each checkout under 3rd-party/."""
+    found = {}
+    third = root / "3rd-party"
+    if third.is_dir():
+        for repo in sorted(p for p in third.iterdir() if (p / ".git").exists()):
+            r = git(repo, "remote", "get-url", "origin")
+            if r.returncode == 0:
+                found[norm_url(r.stdout)] = repo
+    return found
+
+
+def upstream(root, names, fetch):
+    repos = checkouts(root)
+    fetched = set()
+    seen = 0
+    for plugin, url, sha, paths in upstream_records(root, set(names)):
+        seen += 1
+        repo = repos.get(norm_url(url))
+        if repo is None:
+            print(f"{plugin}: {url} has no checkout under 3rd-party/ (clone it there)")
+            continue
+        if fetch and repo not in fetched:
+            git(repo, "fetch", "--quiet", "origin")
+            fetched.add(repo)
+        ref = "origin/HEAD" if git(repo, "rev-parse", "--verify", "-q", "origin/HEAD").returncode == 0 else "HEAD"
+        log = git(repo, "log", "--oneline", "--no-decorate", f"{sha}..{ref}", "--", *paths)
+        if log.returncode != 0:
+            print(f"{plugin}: cannot compare {sha[:12]}..{ref} in {repo.name}: {log.stderr.strip()}")
+        elif log.stdout.strip():
+            print(f"{plugin}: {len(log.stdout.splitlines())} upstream commit(s) since {sha[:12]} in {repo.name}")
+            print("  " + log.stdout.strip().replace("\n", "\n  "))
+        else:
+            print(f"{plugin}: up to date with {repo.name} at {sha[:12]}")
+    if not seen:
+        print("no NOTICE with an Upstream line" + (f" for {', '.join(names)}" if names else ""))
 
 
 def catalog_section(root, entries, manifests):
@@ -261,8 +356,8 @@ def scaffold_files(name, kind, description):
 def new(root, name, kind, description, metas):
     if not NAME_RE.match(name):
         raise SystemExit(f"{name}: use lowercase kebab-case")
-    if is_group(name):
-        raise SystemExit(f"{name}: `baseline`, `*-meta` and `*-core` names are reserved for meta plugins and core bundles")
+    if is_meta(name):
+        raise SystemExit(f"{name}: `baseline` and `*-meta` names are reserved for meta plugins")
     plugin_dir = root / "plugins" / name
     if plugin_dir.exists():
         raise SystemExit(f"plugins/{name} already exists")
@@ -295,6 +390,15 @@ def new(root, name, kind, description, metas):
     print(f"Created plugins/{name} ({kind}). Fill in the TODOs, then run scripts/plugins.py check.")
 
 
+def category_for(root, name, manifest):
+    """Category for a new marketplace entry: meta, bundle (deps only, no component) or development."""
+    if is_meta(name):
+        return "meta"
+    if "dependencies" in manifest and not components(root / "plugins" / name, manifest):
+        return "bundle"
+    return "development"
+
+
 def register(root, assignments):
     """Add marketplace entries for plugin dirs that lack one, then apply meta assignments."""
     market, entries, manifests = load_plugins(root)
@@ -304,7 +408,7 @@ def register(root, assignments):
             continue
         market.setdefault("plugins", []).append({
             "name": name, "source": f"./plugins/{name}", "description": manifest.get("description", ""),
-            "version": manifest.get("version", "0.1.0"), "category": "meta" if is_group(name) else "development"})
+            "version": manifest.get("version", "0.1.0"), "category": category_for(root, name, manifest)})
         added.append(name)
     write_json(root / MARKETPLACE, market)
     for spec in assignments:
@@ -337,6 +441,9 @@ def main(argv=None, root=ROOT):
                        help="also add these plugins to a meta plugin or core bundle (repeatable)")
     sub.add_parser("check", help="check structure rules and catalog freshness")
     sub.add_parser("sync-shared", help="copy scripts/shared files over their plugin copies")
+    p_up = sub.add_parser("upstream", help="list upstream commits since each port's recorded NOTICE commit")
+    p_up.add_argument("plugins", nargs="*", help="limit to these plugins")
+    p_up.add_argument("--fetch", action="store_true", help="git fetch each 3rd-party checkout first")
     p_cat = sub.add_parser("catalog", help="regenerate the README plugin catalog")
     p_cat.add_argument("--check", action="store_true", help="exit 1 if the catalog is stale")
     args = parser.parse_args(argv)
@@ -345,6 +452,8 @@ def main(argv=None, root=ROOT):
         new(root, args.name, args.kind, args.description, args.meta)
     elif args.cmd == "register":
         register(root, args.meta)
+    elif args.cmd == "upstream":
+        upstream(root, args.plugins, args.fetch)
     elif args.cmd == "sync-shared":
         sync_shared(root)
     elif args.cmd == "check":

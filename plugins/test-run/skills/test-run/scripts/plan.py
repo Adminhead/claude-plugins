@@ -9,7 +9,18 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from detect import JS_EXTS, DetectError, Project, Target, rel
+from detect import (
+    GODOT_KINDS,
+    JS_EXTS,
+    SOLUTION_EXTS,
+    DetectError,
+    Project,
+    Target,
+    dotnet_entries,
+    godot_test_dir,
+    rel,
+    up_to_repo,
+)
 
 
 @dataclass(frozen=True)
@@ -17,6 +28,7 @@ class Plan:
     project: Project
     argv: tuple[str, ...]
     scope: str
+    setup: tuple[str, ...] = ()  # run first, e.g. the Godot import on a fresh checkout
 
     def display(self, repo: Path) -> str:
         cmd = shlex.join(self.argv)
@@ -118,7 +130,106 @@ def report_args(kind: str, report: Path) -> list[str]:
         "go": ["-json"],
         "jest": ["--ci", "--json", f"--outputFile={report}", "--testLocationInResults"],
         "vitest": ["--reporter=json", f"--outputFile={report}"],
+        "gut": [f"-gjunit_xml_file={report}"],
     }.get(kind, [])
+
+
+# --- .NET selection ---
+
+VSTEST_SPECIAL = re.compile(r"([\\(),&|=!~])")
+
+
+def dotnet_entry(path: Path, project: Project) -> str:
+    """The solution or test project that covers a target path."""
+    root = project.root
+    if path.is_file() and path.suffix in {*SOLUTION_EXTS, ".csproj"}:
+        return rel(path, root)
+    start = path if path.is_dir() else path.parent
+    for directory in up_to_repo(start, root):
+        if directory == root:
+            return project.entry
+        entries = dotnet_entries(directory)
+        if len(entries) > 1:
+            names = ", ".join(rel(e, root) for e in entries)
+            raise DetectError(
+                f"several .NET entries in {rel(directory, root)}: {names}"
+            )
+        if entries:
+            return rel(entries[0], root)
+    return project.entry
+
+
+def dotnet_filter(project: Project, names: list[str]) -> list[str]:
+    """Name filters in the syntax the project's platform and framework accept."""
+    names = [re.split(r"[(<]", n, maxsplit=1)[0].strip() for n in names]
+    if project.mode == "vstest" or project.framework == "":
+        escaped = [VSTEST_SPECIAL.sub(r"\\\1", n) for n in names]
+        args = ["--filter", "|".join(f"FullyQualifiedName~{n}" for n in escaped)]
+    elif project.framework == "xunit3":
+        args = [a for n in names for a in ("--filter-method", f"*{n}*")]
+    else:  # TUnit tree-node filter: /assembly/namespace/class/test
+        if len(names) > 1:
+            raise DetectError(
+                "TUnit takes one --treenode-filter; rerun one test at a time"
+            )
+        parts = names[0].split(".")
+        node = "/".join(parts[-2:]) if len(parts) > 1 else f"*/{parts[0]}"
+        args = ["--treenode-filter", f"/*/*/{node}"]
+    return ["--", *args] if project.mode == "bridge" else args
+
+
+def dotnet_args(project: Project, targets: list[Target]) -> list[str]:
+    paths = [t.path for t in targets if t.path and t.path != project.root]
+    entries = list(dict.fromkeys(dotnet_entry(p, project) for p in paths))
+    if len(entries) > 1:
+        raise DetectError(
+            "dotnet test takes one solution or project; run each target separately"
+        )
+    entry = entries[0] if entries else project.entry
+    args = []
+    if entry and project.mode == "mtp":
+        args += ["--solution" if entry.endswith(SOLUTION_EXTS) else "--project", entry]
+    elif entry:
+        args.append(entry)
+    names = [t.name for t in targets if t.name]
+    return args + (dotnet_filter(project, names) if names else [])
+
+
+# --- Godot selection ---
+
+
+def godot_default(project: Project) -> list[str]:
+    test_dir = godot_test_dir(project.root)
+    if project.kind == "gdunit4":
+        return ["-a", test_dir or "res://"]
+    if project.kind == "gut" and not (project.root / ".gutconfig.json").is_file():
+        return [f"-gdir={test_dir}", "-ginclude_subdirs"] if test_dir else []
+    return []
+
+
+def godot_args(project: Project, targets: list[Target]) -> list[str]:
+    root = project.root
+    paths = [t.path for t in targets if t.path and t.path != root]
+    if project.kind == "gdunit4":
+        if any(not t.path for t in targets):
+            raise DetectError(
+                "gdUnit4 selects tests by suite path; pass a test file or directory"
+            )
+        suites = dict.fromkeys(f"res://{rel(p, root)}" for p in paths)
+        return [a for s in suites for a in ("-a", s)] or godot_default(project)
+    dirs = [f"res://{rel(p, root)}" for p in paths if p.is_dir()]
+    files = [f"res://{rel(p, root)}" for p in paths if p.is_file()]
+    args = []
+    if dirs:
+        args += [f"-gdir={','.join(dirs)}", "-ginclude_subdirs"]
+    if files:
+        args.append(f"-gtest={','.join(files)}")
+    if not args:
+        args = godot_default(project)
+    names = {t.name for t in targets if t.name}
+    if len(names) == 1:
+        args.append(f"-gunit_test_name={names.pop()}")
+    return args
 
 
 def name_regex(kind: str, names: list[str]) -> str:
@@ -150,6 +261,10 @@ def target_args(project: Project, targets: list[Target]) -> list[str]:
         files = list(dict.fromkeys(rel(t.path, root) for t in paths))
         regex = "|".join(filter(None, [name_regex(kind, names), "|".join(patterns)]))
         return files + (["-t", regex] if regex else [])
+    if kind == "dotnet":
+        return dotnet_args(project, targets)
+    if kind in {"gut", "gdunit4"}:
+        return godot_args(project, targets)
     if kind == "cargo":
         binaries, filters = [], []
         for t in targets:
@@ -205,6 +320,14 @@ def build_plan(
             scope = f"affected: {len(files)} files {label} -> {len(mapped)} selections"
 
     reporting = report_args(kind, report)
+    setup: tuple[str, ...] = ()
+    if kind in GODOT_KINDS and not (project.root / ".godot").is_dir():
+        setup = (base[0], "--headless", "--path", ".", "--import")
+        scope += "; imports the project first (no .godot/)"
+    if kind == "dotnet" and mode != "targets":
+        selection = dotnet_args(project, [])
+    elif kind in {"gut", "gdunit4"} and mode != "targets":
+        selection = godot_default(project)
     if kind == "vitest":
         if mode == "affected":
             argv = [*base, "related", *selection, "--run", "--passWithNoTests"]
@@ -225,4 +348,4 @@ def build_plan(
         argv = [*base, "--no-fail-fast", *selection]
     else:
         argv = [*base, *reporting, *selection]
-    return Plan(project, tuple(argv), scope)
+    return Plan(project, tuple(argv), scope, setup)

@@ -1,0 +1,27 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the following MIT-licensed sources
+(see LICENSE). The files were modified.
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-test/skills/run-tests, plugins/dotnet-test/skills/platform-detection, plugins/dotnet-test/skills/filter-syntax, plugins/dotnet-test/skills/mtp-hot-reload, plugins/dotnet-test/skills/testability-obstacle, plugins/dotnet-test/skills/detect-static-dependencies, plugins/dotnet-test/skills/generate-testability-wrappers, plugins/dotnet-test/skills/migrate-static-to-wrapper, plugins/dotnet-test/skills/writing-mstest-tests, plugins/dotnet-test/skills/scaffold-dotnet-test-project, plugins/dotnet-test/skills/coverage-analysis, plugins/dotnet-test/skills/crap-score
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+Paths: skills/csharp-tunit
+
+Upstream: https://github.com/affaan-m/ECC @ 76aaa77df6adc5b889e689007bf99b9a4f74af34
+Paths: skills/csharp-testing
+
+Modifications: twelve upstream skills merged into one skill (SKILL.md plus six
+references); descriptions rewritten without "ALWAYS USE"/"MUST USE" routing
+language; repository-overlay steps, cross-skill routing and Copilot-specific
+instructions removed; PowerShell scripts (Compute-CrapScores.ps1,
+CoverageData.ps1, Extract-MethodCoverage.ps1) and PowerShell discovery blocks
+dropped and restated as bash or Python commands; MSTest guidance cut and
+extended with MSTest 4 changes; xUnit v3, NUnit 4 and TUnit reference written
+from current upstream documentation, borrowing TUnit attribute names from
+csharp-tunit (corrected to MethodDataSource and default parallelism) and the
+WebApplicationFactory/Testcontainers pattern from csharp-testing (rewritten to
+use a real database instead of the EF Core InMemory provider); facts about the
+.NET 10 SDK dotnet test modes, MTP v2 and xUnit v3 packages rechecked against
+Microsoft Learn and xunit.net.

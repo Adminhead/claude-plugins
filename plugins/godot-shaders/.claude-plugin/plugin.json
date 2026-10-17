@@ -1,0 +1,9 @@
+{
+  "name": "godot-shaders",
+  "version": "0.1.0",
+  "description": "Godot 4 shaders and VFX skill: .gdshader canvas_item, spatial and particles shaders, uniforms and hints, screen and depth reading, visual shaders and materials, GPU particles, with references for shader fundamentals, effect recipes, particles, stencil, CompositorEffect and the Shader Baker.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -370,6 +370,257 @@ def parse_cargo(run: RunOutput, root: Path) -> Report:
     return report
 
 
+# --- dotnet test (VSTest or Microsoft.Testing.Platform console output) ---
+
+VSTEST_SUMMARY = re.compile(
+    r"^(?:Passed|Failed)!\s+-\s+Failed:\s+(\d+), Passed:\s+(\d+), Skipped:\s+(\d+)"
+)
+VSTEST_STATUS = re.compile(r"^  (Passed|Failed|Skipped) (.+?) \[[^\]]*\]$")
+VSTEST_SECTION = re.compile(r"^  ([A-Z][\w ]+):$")
+MTP_STATUS = re.compile(
+    r"^(failed|passed|skipped|error|timed out|canceled) (.+) \(.*\)$"
+)
+MTP_COUNT = re.compile(r"^\s+(total|failed|succeeded|skipped): (\d+)$")
+NET_FRAME = re.compile(r"^at (.+?)(?: in (.+?):(?:line )?(\d+))?$")
+NET_FRAMEWORK = (
+    "System.",
+    "Microsoft.",
+    "Xunit.",
+    "NUnit.",
+    "TUnit.",
+    "MSTest.",
+    "Castle.",
+    "Moq.",
+    "NSubstitute.",
+)
+MSBUILD_ERROR = re.compile(
+    r": error [A-Z]+\d*:|^\s*error [A-Z]*\d*:|didn't execute properly"
+)
+
+
+def net_detail(
+    message: list[str], frames: list[str]
+) -> tuple[str, list[str], list[str]]:
+    trace, location = [], ""
+    for frame in frames:
+        match = NET_FRAME.match(frame.strip())
+        if not match or match[1].startswith(NET_FRAMEWORK):
+            continue
+        if match[2]:
+            place = f"{match[2]}:{match[3]}"
+            location = location or place
+            trace.append(f"at {match[1]}  {place}")
+        else:
+            trace.append(f"at {match[1]}")
+    return location, [m.strip() for m in message if m.strip()], trace
+
+
+def vstest_failures(lines: list[str]) -> list[Failure]:
+    failures, current, section = [], None, ""
+    for line in lines:
+        if status := VSTEST_STATUS.match(line):
+            current = None
+            if status[1] == "Failed":
+                current = {"name": status[2], "Error Message": [], "Stack Trace": []}
+                failures.append(current)
+        elif VSTEST_SUMMARY.match(line) or line.startswith(
+            ("Results File:", "Total tests:")
+        ):
+            current = None
+        elif current is not None and (header := VSTEST_SECTION.match(line)):
+            section = header[1]
+        elif current is not None and section in current:
+            current[section].append(line)
+    result = []
+    for f in failures:
+        location, message, trace = net_detail(f["Error Message"], f["Stack Trace"])
+        result.append(Failure(None, f["name"], location, message, trace))
+    return result
+
+
+def mtp_failures(lines: list[str]) -> list[Failure]:
+    result, current = [], None
+    for line in lines:
+        if status := MTP_STATUS.match(line):
+            current = [] if status[1] in {"failed", "error", "timed out"} else None
+            if current is not None:
+                result.append((status[2], current))
+        elif current is not None and line.startswith(" "):
+            current.append(line)
+        else:
+            current = None
+    failures = []
+    for name, body in result:
+        body = [b for b in body if not b.strip().startswith("from ")]
+        frames = [b for b in body if b.strip().startswith("at ")]
+        message = [b for b in body if not b.strip().startswith("at ")]
+        location, message, trace = net_detail(message, frames)
+        failures.append(Failure(None, name, location, message, trace))
+    return failures
+
+
+def parse_dotnet(run: RunOutput, root: Path) -> Report:
+    output = relativize(strip_ansi(run.stdout + run.stderr), root)
+    lines = output.splitlines()
+    vstest = [m for line in lines if (m := VSTEST_SUMMARY.match(line))]
+    totals = [line for line in lines if re.match(r"^\s+total: \d+$", line)]
+    if vstest:
+        return Report(
+            passed=sum(int(m[2]) for m in vstest),
+            failed=sum(int(m[1]) for m in vstest),
+            skipped=sum(int(m[3]) for m in vstest),
+            failures=vstest_failures(lines),
+        )
+    if totals:
+        start = len(lines) - lines[::-1].index(totals[-1]) - 1
+        counts = {}
+        for line in lines[start:]:
+            if not (match := MTP_COUNT.match(line)):
+                break
+            counts[match[1]] = int(match[2])
+        return Report(
+            passed=counts.get("succeeded", 0),
+            failed=counts.get("failed", 0),
+            skipped=counts.get("skipped", 0),
+            failures=mtp_failures(lines),
+        )
+    errors = [line for line in dict.fromkeys(lines) if MSBUILD_ERROR.search(line)]
+    if errors:
+        return Report(crash="build failed", crash_lines=errors[:CRASH_LINES])
+    return crash(f"dotnet test exited {run.code} without a test summary", output)
+
+
+# --- Godot: GUT (JUnit XML) and gdUnit4 (console) ---
+
+GODOT_ERROR = re.compile(r"^(?:SCRIPT )?ERROR: (.*)$")
+GODOT_FRAME = re.compile(r"^\s+\[\d+\] (\S+) \(res://(.+?):(\d+)\)$")
+GODOT_PARSE_ERROR = re.compile(
+    r"^SCRIPT ERROR: Parse Error|^ERROR: Failed to load script"
+)
+GUT_LINE = re.compile(r"^\s*at line (-?\d+)\s*$")
+
+
+def godot_errors(text: str) -> list[tuple[str, list[tuple[str, str, str]]]]:
+    """Each engine error headline with its GDScript backtrace frames (func, path, line)."""
+    blocks: list[tuple[str, list[tuple[str, str, str]]]] = []
+    for line in strip_ansi(text).splitlines():
+        if match := GODOT_ERROR.match(line):
+            blocks.append((match[1], []))
+        elif blocks and (frame := GODOT_FRAME.match(line)):
+            blocks[-1][1].append((frame[1], frame[2], frame[3]))
+    return blocks
+
+
+def user_frames(frames: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    return [f for f in frames if not f[1].startswith("addons/")]
+
+
+def parse_gut(run: RunOutput, root: Path) -> Report:
+    del root
+    output = run.stdout + run.stderr
+    lines = strip_ansi(output).splitlines()
+    if any(GODOT_PARSE_ERROR.match(line) for line in lines):
+        return crash(
+            "script parse error (GUT skips scripts that fail to load)",
+            output,
+            GODOT_PARSE_ERROR,
+        )
+    if run.report is None:
+        return crash(
+            f"GUT exited {run.code} without a JUnit report", output, GODOT_ERROR
+        )
+    report = Report()
+    for case in ET.fromstring(run.report).iter("testcase"):
+        outcome = next(
+            (c for c in case if c.tag in {"failure", "error", "skipped"}), None
+        )
+        if outcome is None:
+            report.passed += 1
+            continue
+        if outcome.tag == "skipped":
+            report.skipped += 1
+            continue
+        if outcome.tag == "failure":
+            report.failed += 1
+        else:
+            report.errors += 1
+        path, name = case.get("classname", ""), case.get("name", "")
+        location, message = "", []
+        for line in (outcome.text or "").splitlines():
+            if match := GUT_LINE.match(line):
+                location = location or (
+                    f"{path}:{match[1]}" if int(match[1]) > 0 else ""
+                )
+            elif line.strip():
+                message.append(line.strip())
+        trace = []
+        for headline, frames in godot_errors(run.stderr):
+            if any(f[0] == name and f[1] == path for f in frames):
+                kept = user_frames(frames)
+                trace = [f"{f[0]}  {f[1]}:{f[2]}" for f in kept]
+                message = message or [headline]
+                location = location or (f"{kept[0][1]}:{kept[0][2]}" if kept else "")
+                break
+        report.failures.append(Failure(path or None, name, location, message, trace))
+    return report
+
+
+GDUNIT_EXIT = {
+    103: "gdUnit4 refused headless mode (pass --ignoreHeadlessMode)",
+    104: "this gdUnit4 version does not support the Godot version",
+    105: "script errors detected during test discovery",
+}
+GDUNIT_STATUS = re.compile(
+    r"^\s*res://(\S+) > (\S+) (STARTED|PASSED|FAILED|ERROR\w*)\b"
+)
+GDUNIT_SUMMARY = re.compile(
+    r"Overall Summary: (\d+) test cases \| (\d+) errors \| (\d+) failures"
+    r".*?\| (\d+) skipped"
+)
+GDUNIT_AT = re.compile(r"\bat '([^']+)' in res://(\S+?):(\d+)")
+
+
+def parse_gdunit4(run: RunOutput, root: Path) -> Report:
+    del root
+    output = strip_ansi(run.stdout + run.stderr)
+    lines = output.splitlines()
+    summary = next((m for line in lines if (m := GDUNIT_SUMMARY.search(line))), None)
+    if run.code in GDUNIT_EXIT or summary is None:
+        headline = GDUNIT_EXIT.get(
+            run.code, f"gdUnit4 exited {run.code} without a summary"
+        )
+        return crash(headline, output, re.compile(r"Script errors|Abnormal exit|ERROR"))
+    cases, errors, failures, skipped = (int(g) for g in summary.groups())
+    report = Report(
+        passed=max(cases - errors - failures - skipped, 0),
+        failed=failures,
+        skipped=skipped,
+        errors=errors,
+    )
+    current: list[str] | None = None
+    blocks: list[tuple[str, str, list[str]]] = []
+    for line in lines:
+        if status := GDUNIT_STATUS.match(line):
+            current = None
+            if status[3] not in {"STARTED", "PASSED"}:
+                current = []
+                blocks.append((status[1], status[2], current))
+        elif line.startswith(("Statistics:", "Overall Summary:", "Run Test Suite:")):
+            current = None
+        elif current is not None and line.strip() and line.strip() != "Report:":
+            current.append(line)
+    for path, name, body in blocks:
+        message, trace = [], []
+        for line in body:
+            head = line.split("\tat ", 1)[0].strip()
+            if head and not GDUNIT_AT.match(head):
+                message.append(head)
+            trace += [f"{m[1]}  {m[2]}:{m[3]}" for m in GDUNIT_AT.finditer(line)]
+        location = trace[0].split("  ", 1)[1] if trace else ""
+        report.failures.append(Failure(path, name, location, message, trace))
+    return report
+
+
 def parse_generic(run: RunOutput, root: Path) -> Report:
     del run, root
     return Report(structured=False)
@@ -381,6 +632,9 @@ PARSERS = {
     "jest": parse_jest,
     "vitest": parse_jest,
     "cargo": parse_cargo,
+    "dotnet": parse_dotnet,
+    "gut": parse_gut,
+    "gdunit4": parse_gdunit4,
 }
 
 

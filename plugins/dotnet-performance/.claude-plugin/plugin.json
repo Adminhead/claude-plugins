@@ -1,0 +1,9 @@
+{
+  "name": "dotnet-performance",
+  "version": "0.1.0",
+  "description": "Measurement-first .NET performance work: hot-path anti-pattern scans (async, allocations, strings, LINQ, regex, JSON, I/O), BenchmarkDotNet setup and result reading, and SIMD with TensorPrimitives or Vector128. Use when C# code is slow or allocates too much, to review a hot path, write or compare benchmarks, or vectorize a loop.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

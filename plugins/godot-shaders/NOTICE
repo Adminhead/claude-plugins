@@ -1,0 +1,36 @@
+godot-shaders plugin (AdminHead)
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills (https://github.com/gamedev-skills/awesome-gamedev-agent-skills),
+Copyright 2026 Abhishek Barali and the awesome-gamedev-agent-skills
+contributors, licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/godot/godot-shaders/SKILL.md, skills/godot/godot-shaders/references/shading-language.md, skills/disciplines/shader-programming/SKILL.md, skills/disciplines/shader-programming/references/effects.md
+
+GodotPrompter (https://github.com/jame581/GodotPrompter), Copyright (c) 2026
+GodotPrompter Contributors, licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/shader-basics/SKILL.md, skills/shader-basics/references, skills/particles-vfx/SKILL.md, skills/particles-vfx/references
+
+Modifications: the files were modified. The upstream godot-shaders skill was
+rewritten in the house style as SKILL.md; its shading-language reference and
+the engine-neutral shader-programming skill were merged into
+references/fundamentals.md, with the HLSL material cut to a porting table;
+GodotPrompter's shader recipes, post-processing, stencil, compositor and
+Shader Baker notes became references/recipes.md and references/advanced.md;
+its particles-vfx skill became references/particles.md. Only GDScript and
+shader examples were kept (C# dropped). Facts were rechecked against the Godot
+4.7 docs, the 4.7 migration guide, PRs and the 4.7-stable engine source.
+Fixed on port: TIME described as ever-growing (it wraps every 3600 s by
+default), the particle "color overrides color_ramp" row (they multiply; the
+real trap is a 3D draw material without vertex_color_use_as_albedo), the
+"attractor interaction is off" row (it defaults on), fixed_fps defaulting to
+30 rather than 0, amount_ratio as a performance lever (it saves nothing),
+freeing one-shot particles on a timer (use the finished signal), the claim
+that the Shader Baker runs under --headless (it doesn't), and a CompositorEffect
+note crediting SDFGI and VoxelGI to the compositor (dropped). Cross-references
+were renamed to adminhead plugins (godot, godot-physics, godot-export,
+game-performance).

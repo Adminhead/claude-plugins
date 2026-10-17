@@ -1,0 +1,9 @@
+{
+  "name": "dotnet-ai-apps",
+  "version": "0.1.0",
+  "description": "Chooses and wires AI and ML in .NET apps with Microsoft.Extensions.AI (IChatClient, embeddings), Microsoft Agent Framework, vector search and RAG, ML.NET, ONNX Runtime and OllamaSharp. Use for adding an LLM call or chatbot to a .NET service, a tool-calling agent in C#, RAG over documents, or choosing between an LLM and ML.NET for a prediction.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

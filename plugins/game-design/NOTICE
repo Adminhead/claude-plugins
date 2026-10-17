@@ -1,0 +1,19 @@
+game-design
+Copyright AdminHead
+
+Most of this plugin is original writing. The balancing and loot-table parts
+contain material adapted from awesome-gamedev-agent-skills, Copyright 2026
+Abhishek Barali and the awesome-gamedev-agent-skills contributors, licensed
+under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/disciplines/procedural-gen/SKILL.md, skills/disciplines/procedural-gen/references/dungeon-generation.md, skills/genres/roguelike/references/generation-fov-loot.md, skills/genres/rpg/SKILL.md, skills/genres/rpg/references/stats-combat-quests.md, skills/genres/tower-defense/SKILL.md, skills/genres/tower-defense/references/balancing.md
+
+Modifications: only the weighted drop table, shuffle-bag and pity patterns,
+depth scaling, stat and modifier layers, damage formula families, XP curves,
+and tower-defence wave scaling and economy rules were taken, rewritten in
+house style as engine-neutral pseudocode, and merged into
+references/balancing.md and references/economy.md. Everything else
+(workflow, templates, curve-family table, simulation template, review
+questions, sources-and-sinks procedure) is new. Published design books and
+talks are cited by title in each file; no text from them was copied.

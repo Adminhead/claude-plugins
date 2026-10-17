@@ -1,0 +1,24 @@
+dotnet-ai-apps
+Copyright AdminHead
+
+This plugin contains material adapted from dotnet/skills
+(https://github.com/dotnet/skills), Copyright (c) .NET Foundation and
+Contributors, licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-ai/skills/technology-selection/SKILL.md, plugins/dotnet-ai/skills/technology-selection/references/agentic.md, plugins/dotnet-ai/skills/technology-selection/references/classic-ml.md, plugins/dotnet-ai/skills/technology-selection/references/copilot.md, plugins/dotnet-ai/skills/technology-selection/references/llm.md, plugins/dotnet-ai/skills/technology-selection/references/ollama.md, plugins/dotnet-ai/skills/technology-selection/references/onnx.md, plugins/dotnet-ai/skills/technology-selection/references/rag.md
+
+Modifications: renamed to dotnet-ai-apps; SKILL.md and references rewritten
+and package versions rechecked against NuGet.org and the dotnet/extensions,
+microsoft/agent-framework and github/copilot-sdk sources in October 2026.
+Corrected upstream errors: there is no RetryingChatClient in
+Microsoft.Extensions.AI (provider SDK retry or a resilience pipeline instead);
+there is no MaximumIterations run option in Agent Framework (use
+FunctionInvokingChatClient.MaximumIterationsPerRequest); the ingestion package
+is Microsoft.Extensions.DataIngestion, not Microsoft.Extensions.AI.DataIngestion;
+Agent Framework 1.x uses AgentSession/CreateSessionAsync/AgentResponse;
+GitHub.Copilot.SDK is 1.0.x, not pre-1.0; Microsoft.Extensions.AI is 10.x and
+ML.NET 5.x. ollama.md and onnx.md merged into local-inference.md; agentic.md
+renamed agents.md; added structured output, approval-required tools, session
+persistence, MEVD record and search examples, RAG prompt-injection and
+permission guardrails, and fake-client testing.

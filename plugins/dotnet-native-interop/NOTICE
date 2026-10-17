@@ -1,0 +1,21 @@
+dotnet-native-interop
+Copyright AdminHead
+
+This plugin contains material adapted from dotnet/skills
+(https://github.com/dotnet/skills), Copyright (c) .NET Foundation and
+Contributors, licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-advanced/skills/dotnet-pinvoke/SKILL.md, plugins/dotnet-advanced/skills/dotnet-pinvoke/references/type-mapping.md, plugins/dotnet-advanced/skills/dotnet-pinvoke/references/diagnostics.md
+
+Modifications: renamed to dotnet-native-interop; SKILL.md rewritten and cut
+from 449 to about 110 lines, with the ownership, SafeHandle, pinning, error
+and callback examples moved to references/memory-and-callbacks.md and library
+loading and generators moved to references/loading-and-tooling.md; the
+description rewritten in the adminhead house voice; version floors corrected
+(UnmanagedCallersOnly and function pointers are .NET 5+, nuint is the same
+type as UIntPtr on .NET 7+); added Native AOT analyzer settings
+(IsAotCompatible), DefaultDllImportSearchPaths, resolver limits, inline arrays,
+ClangSharp, export-table and ldd/LD_DEBUG diagnostics, lldb with SOS; dropped
+the DOTNET_EnableDiagnostics step; code navigation points at codebase-memory
+and the C# language server.

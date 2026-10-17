@@ -119,7 +119,7 @@ def add_bundle(root, name="programming-core", deps=()):
                        {"name": name, "version": "0.1.0", "description": "Core.", "dependencies": list(deps)})
     path = root / ".claude-plugin/marketplace.json"
     market = json.loads(path.read_text())
-    market["plugins"].append({"name": name, "source": f"./plugins/{name}", "description": "Core.", "version": "0.1.0"})
+    market["plugins"].append({"name": name, "source": f"./plugins/{name}", "description": "Core.", "version": "0.1.0", "category": "bundle"})
     plugins.write_json(path, market)
 
 
@@ -158,9 +158,21 @@ def test_bundle_rules(root):
     assert any(e.startswith("a-core: a core bundle ships only plugin.json") for e in errors)
 
 
-def test_new_rejects_core_names(root):
+def test_core_suffix_alone_is_not_a_bundle(root):
+    run(root, "new", "ef-core", "--kind", "skill", "--description", "EF Core.")
+    assert plugins.check(root) == []
+    add_bundle(root)
     with pytest.raises(SystemExit):
-        run(root, "new", "web-core", "--kind", "skill", "--description", "x")
+        run(root, "new", "programming-core", "--kind", "skill", "--description", "x")
+
+
+def test_register_marks_deps_only_dirs_as_bundles(root):
+    plugins.write_json(root / "plugins/game-core/.claude-plugin/plugin.json",
+                       {"name": "game-core", "version": "0.1.0", "description": "Games.", "dependencies": []})
+    run(root, "register", "--meta", "python-meta=game-core")
+    market = json.loads((root / ".claude-plugin/marketplace.json").read_text())
+    assert {e["name"]: e.get("category") for e in market["plugins"]}["game-core"] == "bundle"
+    assert plugins.check(root) == []
 
 
 def test_register_lists_new_dirs_and_assigns_metas(root):
@@ -187,6 +199,43 @@ def test_shared_copies_must_match(root):
     assert any("differs from scripts/shared/shell/walk.ts" in e for e in plugins.check(root))
     run(root, "sync-shared")
     assert copy.read_text() == canonical.read_text()
+    assert plugins.check(root) == []
+
+
+def test_upstream_lists_commits_since_notice(root, capsys):
+    import subprocess
+    up = root / "3rd-party/up"
+    up.mkdir(parents=True)
+    g = lambda *a: subprocess.run(["git", "-C", str(up), *a], check=True, capture_output=True, text=True).stdout.strip()
+    g("init", "-q")
+    g("config", "user.email", "t@example.com")
+    g("config", "user.name", "t")
+    g("remote", "add", "origin", "git@github.com:owner/up.git")
+    (up / "skill.md").write_text("v1\n")
+    g("add", ".")
+    g("commit", "-qm", "first")
+    base = g("rev-parse", "HEAD")
+    (up / "skill.md").write_text("v2\n")
+    (up / "other.md").write_text("x\n")
+    g("add", ".")
+    g("commit", "-qm", "change skill")
+    run(root, "new", "port", "--kind", "skill", "--description", "Ported.")
+    (root / "plugins/port/NOTICE").write_text(f"Upstream: https://github.com/owner/up @ {base}\nPaths: skill.md\n")
+    run(root, "upstream", "port")
+    out = capsys.readouterr().out
+    assert "port: 1 upstream commit(s) since" in out and "change skill" in out
+    (root / "plugins/port/NOTICE").write_text(f"Upstream: https://github.com/owner/up @ {g('rev-parse', 'HEAD')}\nPaths: skill.md\n")
+    run(root, "upstream")
+    assert "port: up to date" in capsys.readouterr().out
+
+
+def test_unquoted_colon_in_eval_frontmatter_fails(root):
+    run(root, "new", "uv-lock", "--kind", "skill", "--description", "Locks deps.")
+    case = root / "plugins/uv-lock/evals/c1/prompt.md"
+    case.parent.mkdir(parents=True)
+    case.write_text("---\nname: c1\ndescription: Outcome: locks\n---\nDo it.\n")
+    assert any("quote the description value" in e for e in plugins.check(root))
+    case.write_text('---\nname: c1\ndescription: "Outcome: locks"\n---\nDo it.\n')
     assert plugins.check(root) == []
 
 

@@ -1,0 +1,33 @@
+Copyright AdminHead
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills
+(https://github.com/gamedev-skills/awesome-gamedev-agent-skills), Copyright 2026
+Abhishek Barali and the awesome-gamedev-agent-skills contributors, licensed
+under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/workflows/itch-publish/SKILL.md, skills/workflows/itch-publish/references/butler-ci.md, skills/workflows/steam-publish/SKILL.md, skills/workflows/steam-publish/references/steampipe-build-scripts.md
+
+GodotPrompter (https://github.com/jame581/GodotPrompter), Copyright (c) 2026
+GodotPrompter Contributors, licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/export-pipeline/references/steam-release-planning.md, skills/export-pipeline/references/distribution-itch-steam.md
+
+Modifications: the itch.io and Steam skills merged into one SKILL.md with a
+credentials-first section, rewritten in the house style and condensed; the
+references reorganised into itch-butler.md, steampipe.md and
+steam-release-planning.md; butler commands, flags, broth URL (now
+broth.itch.zone, replacing broth.itch.ovh) and CI auth rechecked against the
+butler manual; steamcmd usage, VDF keys, SetLive, the CI login-token workflow
+and build-account permissions rechecked against the Steamworks "Uploading to
+Steam" page, with the password removed from every steamcmd command line; the
+CI examples changed to read secrets through env vars and delete the restored
+token; release-planning numbers rechecked against the Steamworks docs on
+2026-10-17 (tax verification corrected to "up to 30 days"; the unverified
+3-day safety delay after changing build account contact details dropped);
+store asset sizes kept but marked as not rechecked; GodotPrompter's itch
+channel table and third-party butler GitHub Action dropped; upstream skill
+cross-references replaced with adminhead plugin names.

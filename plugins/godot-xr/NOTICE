@@ -1,0 +1,10 @@
+godot-xr (adminhead marketplace)
+Copyright AdminHead
+
+This plugin contains material adapted from GodotPrompter, Copyright (c) 2026
+GodotPrompter Contributors, licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/xr-development/SKILL.md, skills/xr-development/references/controllers-and-input.md, skills/xr-development/references/godot-4-5-features.md, skills/xr-development/references/grabbing-objects.md, skills/xr-development/references/hand-tracking.md, skills/xr-development/references/passthrough.md, skills/xr-development/references/xr-ui.md
+
+Modifications: Rewritten in GDScript only and rechecked against the Godot 4.7 XR docs, class reference and ProjectSettings, and the OpenXR Vendors plugin 5.1.0. Fixed upstream errors: OpenXR is a core project setting, not a plugin; V-Sync is ignored under OpenXR (the advice to disable it was replaced with matching the physics tick rate to the headset); controller action names follow the engine's default action map (primary is a Vector2 thumbstick); the joint-based grab, which cannot work on a non-physics XRController3D, was replaced with a freeze-and-reparent grab; hand trackers use /user/hand_tracker/left|right; the fixed API-29 minimum and the Windows D3D12-default claim were dropped; foveation notes were reconciled with the 4.5+ Vulkan support. Added session events, refresh-rate handling, snap turn, the pointer-to-SubViewport input mapping, frame synthesis, Quest export steps and a version table.

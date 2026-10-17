@@ -1,0 +1,12 @@
+SCRIPT ERROR: Out of bounds get index '2' (on base: 'Array')
+          at: get_at (res://src/calc.gd:8)
+          GDScript backtrace (most recent call first):
+              [0] get_at (res://src/calc.gd:8)
+              [1] test_error (res://test/unit/test_calc.gd:14)
+              [2] _run_test (res://addons/gut/gut.gd:622)
+              [3] _test_the_scripts (res://addons/gut/gut.gd:835)
+              [4] test_scripts (res://addons/gut/gut.gd:1047)
+              [5] run_tests (res://addons/gut/gui/GutRunner.gd:198)
+              [6] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+              [7] main (res://addons/gut/cli/gut_cli.gd:297)
+              [8] _init (res://addons/gut/gut_cmdln.gd:39)

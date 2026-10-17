@@ -1,0 +1,9 @@
+{
+  "name": "godot-xr",
+  "version": "0.1.0",
+  "description": "Godot 4 XR with OpenXR for VR, AR and passthrough on Meta Quest, Pico and PC VR. Use for XROrigin3D and XRController3D setup, the action map, locomotion, grabbing, in-world UI, hand tracking, passthrough, spatial anchors, or a Quest export, and when project.godot has xr/openxr/enabled=true.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

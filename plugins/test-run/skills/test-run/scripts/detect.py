@@ -3,19 +3,39 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
+import shutil
 import tomllib
 from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 
 SCAN_DEPTH = 2
-SKIP_DIRS = {"node_modules", "vendor", "target", "dist", "build", "venv", "__pycache__"}
-JS_EXTS = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"}
-KINDS_BY_EXT = {".py": {"pytest"}, ".go": {"go"}, ".rs": {"cargo"}} | {
-    ext: {"jest", "vitest", "npm"} for ext in JS_EXTS
+SKIP_DIRS = {
+    "node_modules",
+    "vendor",
+    "target",
+    "dist",
+    "build",
+    "venv",
+    "__pycache__",
+    "bin",
+    "obj",
 }
+JS_EXTS = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"}
+GODOT_KINDS = {"gut", "gdunit4", "godot"}
+KINDS_BY_EXT = {
+    ".py": {"pytest"},
+    ".go": {"go"},
+    ".rs": {"cargo"},
+    ".gd": GODOT_KINDS,
+    ".cs": {"dotnet"},
+    ".csproj": {"dotnet"},
+    ".sln": {"dotnet"},
+    ".slnx": {"dotnet"},
+} | {ext: {"jest", "vitest", "npm"} for ext in JS_EXTS}
 MAKEFILES = ("Makefile", "makefile", "GNUmakefile")
 
 
@@ -25,9 +45,12 @@ class DetectError(Exception):
 
 @dataclass(frozen=True)
 class Project:
-    kind: str  # pytest | go | jest | vitest | npm | cargo | make | custom
+    kind: str  # pytest | go | jest | vitest | npm | cargo | dotnet | gut | gdunit4 | godot | make | custom
     root: Path
     base: tuple[str, ...]
+    mode: str = ""  # dotnet: vstest | bridge | mtp
+    framework: str = ""  # dotnet: xunit3 | tunit | "" (filter-expression frameworks)
+    entry: str = ""  # dotnet: the solution or project file passed to dotnet test
 
 
 @dataclass(frozen=True)
@@ -148,6 +171,139 @@ def pytest_base(directory: Path, repo: Path) -> tuple[str, ...]:
     return ("python3", "-m", "pytest")
 
 
+# --- .NET ---
+
+SOLUTION_EXTS = (".slnx", ".sln")
+TEST_PROJECT = re.compile(
+    r"Microsoft\.NET\.Test\.Sdk|MSTest|\bxunit|\bNUnit|\bTUnit|gdUnit4\.api"
+    r"|<IsTestProject>\s*true",
+    re.IGNORECASE,
+)
+SLN_PROJECT = re.compile(r'"([^"]+\.(?:cs|fs|vb)proj)"')
+MTP_RUNNER = re.compile(
+    r"<(?:EnableMSTestRunner|EnableNUnitRunner|UseMicrosoftTestingPlatformRunner)>"
+    r"\s*true",
+    re.IGNORECASE,
+)
+MTP_BRIDGE = re.compile(r"<TestingPlatformDotnetTestSupport>\s*true", re.IGNORECASE)
+
+
+def read(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def is_test_project(csproj: Path) -> bool:
+    return bool(TEST_PROJECT.search(read(csproj))) or csproj.stem.endswith(
+        ("Tests", "Test", "Specs")
+    )
+
+
+def solution_projects(solution: Path) -> list[Path]:
+    names = SLN_PROJECT.findall(read(solution))
+    return [solution.parent / n.replace("\\", "/") for n in names]
+
+
+def dotnet_entries(directory: Path) -> list[Path]:
+    """Solutions with a test project, else test projects, in one directory."""
+    solutions = [
+        f
+        for ext in SOLUTION_EXTS
+        for f in sorted(directory.glob(f"*{ext}"))
+        if any(is_test_project(p) for p in solution_projects(f) if p.is_file())
+    ]
+    if solutions:
+        return solutions
+    return [p for p in sorted(directory.glob("*.csproj")) if is_test_project(p)]
+
+
+def dotnet_project(directory: Path, repo: Path, entries: list[Path]) -> Project:
+    """Pick VSTest, the VSTest-to-MTP bridge, or native MTP from the repo's settings."""
+    native = False
+    for current in up_to_repo(directory, repo):
+        global_json = current / "global.json"
+        if global_json.is_file():
+            try:
+                config = json.loads(read(global_json))
+            except json.JSONDecodeError as exc:
+                raise DetectError(f"cannot parse {global_json}: {exc}") from exc
+            runner = (config.get("test") or {}).get("runner", "")
+            native = runner == "Microsoft.Testing.Platform"
+            break
+    projects = [
+        p
+        for e in entries
+        for p in (solution_projects(e) if e.suffix in SOLUTION_EXTS else [e])
+        if p.is_file() and is_test_project(p)
+    ]
+    imports = [
+        d / name
+        for p in projects
+        for d in up_to_repo(p.parent, repo)
+        for name in ("Directory.Build.props", "Directory.Build.targets")
+    ]
+    text = "\n".join(read(f) for f in dict.fromkeys([*projects, *imports]))
+    tunit = re.search(r'Include="TUnit', text, re.IGNORECASE) is not None
+    mstest_sdk = 'Sdk="MSTest.Sdk' in text and not re.search(
+        r"<UseVSTest>\s*true", text, re.IGNORECASE
+    )
+    runner = bool(MTP_RUNNER.search(text)) or mstest_sdk or tunit
+    if native:
+        mode = "mtp"
+    elif runner and (tunit or MTP_BRIDGE.search(text)):
+        mode = "bridge"
+    else:
+        mode = "vstest"
+    if re.search(r'Include="xunit\.v3', text, re.IGNORECASE):
+        framework = "xunit3"
+    else:
+        framework = "tunit" if tunit else ""
+    entry = rel(entries[0], directory) if len(entries) == 1 else ""
+    return Project("dotnet", directory, ("dotnet", "test"), mode, framework, entry)
+
+
+# --- Godot ---
+
+GODOT_TIMEOUT = 540  # seconds; a failed assert() or a missing quit() hangs Godot
+
+
+def godot_binary() -> str:
+    """GODOT_BIN, else godot, godot4 or godot-mono on PATH."""
+    if given := os.environ.get("GODOT_BIN"):
+        return given
+    for name in ("godot", "godot4", "godot-mono"):
+        if shutil.which(name):
+            return name
+    return "godot"
+
+
+def godot_test_dir(directory: Path) -> str | None:
+    for name in ("test", "tests"):
+        if (directory / name).is_dir():
+            return f"res://{name}"
+    return None
+
+
+def godot_project(directory: Path) -> Project | None:
+    binary = godot_binary()
+    if (directory / "addons/gut").is_dir():
+        base = (binary, "--headless", "-s", "--path", ".", "addons/gut/gut_cmdln.gd")
+        return Project("gut", directory, (*base, "-gexit"))
+    if (directory / "addons/gdUnit4").is_dir():
+        tool = "res://addons/gdUnit4/bin/GdUnitCmdTool.gd"
+        debug = ("-d", "--remote-debug", "tcp://127.0.0.1:0")
+        base = (binary, "--headless", "--path", ".", "-s", *debug, tool)
+        return Project("gdunit4", directory, (*base, "--ignoreHeadlessMode", "-c"))
+    for name in ("test", "tests"):
+        if (directory / name / "test_runner.gd").is_file():
+            script = f"res://{name}/test_runner.gd"
+            base = (binary, "--headless", "--path", ".", "--script", script)
+            return Project("godot", directory, base)
+    return None
+
+
 def detect_dir(directory: Path, repo: Path) -> list[Project]:
     """Projects in one directory, in detection order."""
     found = []
@@ -159,6 +315,10 @@ def detect_dir(directory: Path, repo: Path) -> list[Project]:
         found.append(Project("go", directory, ("go", "test")))
     if (directory / "Cargo.toml").is_file():
         found.append(Project("cargo", directory, ("cargo", "test")))
+    if (directory / "project.godot").is_file() and (godot := godot_project(directory)):
+        found.append(godot)
+    if entries := dotnet_entries(directory):
+        found.append(dotnet_project(directory, repo, entries))
     if directory == repo and any(
         re.search(
             r"^test\s*:", (directory / name).read_text(encoding="utf-8"), re.MULTILINE
@@ -197,6 +357,12 @@ def infer_kind(argv: list[str]) -> str:
         return "go"
     if ("cargo", "test") in pairs:
         return "cargo"
+    if ("dotnet", "test") in pairs:
+        return "dotnet"
+    if any(n.endswith("gut_cmdln.gd") for n in names):
+        return "gut"
+    if any(n.endswith(("GdUnitCmdTool.gd", "runtest.sh")) for n in names):
+        return "gdunit4"
     for kind in ("vitest", "jest"):
         if kind in names:
             return kind

@@ -1,0 +1,38 @@
+Copyright AdminHead
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills, Copyright 2026 Abhishek Barali and the
+awesome-gamedev-agent-skills contributors, licensed under the Apache License,
+Version 2.0 (see LICENSE). Its NOTICE states that all of its skills are
+original works authored from primary documentation. Godot is a trademark of
+its owners and is used for identification only.
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/godot/godot-gdscript-headless-testing/SKILL.md
+
+GodotPrompter, Copyright (c) 2026 GodotPrompter Contributors, licensed under
+the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/godot-testing/SKILL.md
+
+Modifications: SKILL.md was rewritten. From awesome-gamedev-agent-skills it
+keeps the SceneTree runner, the --import step and the assert(), quit() and
+await pitfalls (rechecked by running them with Godot 4.7.2 on 2026-10-17;
+the helper is renamed check_eq). From GodotPrompter it keeps only the GUT vs
+gdUnit4 comparison and rule of thumb, the unit/integration layout, the naming
+rules and the "what not to test" list, with corrections: gdUnit4's CLI is
+addons/gdUnit4/runtest.sh (GdUnitCmdTool.gd), not a "gdunit4_runner";
+gdUnit4 finds suites by base class and generates <name>_test.gd; GUT's
+config file is res://.gutconfig.json; the default test root is res://test;
+C# suites use the [TestSuite] attribute on a plain class. Framework
+detection, the headless and CI sections and the gotchas are new.
+
+references/gut.md and references/gdunit4.md are new, written from the
+official GUT docs (bitwes/Gut @ v9.7.1, aeb5d4f3f7f0a6c9b5e178876d6c99b791fda605,
+MIT) and gdUnit4 docs and code (godot-gdunit-labs/gdUnit4 @ v6.2.2,
+0127a55f4543dfc24746f6e5c7ba6f94105d51f2, MIT;
+gdUnit4-action @ v1.3.2, MIT), not from GodotPrompter. No text was copied
+from those projects; API names and option lists are facts checked against
+their sources on 2026-10-17.

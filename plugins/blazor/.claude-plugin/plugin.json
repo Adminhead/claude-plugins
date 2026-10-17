@@ -1,0 +1,9 @@
+{
+  "name": "blazor",
+  "version": "0.1.0",
+  "description": "Blazor skill: component rules, render modes, forms and validation, auth per render mode, shared state, data loading, prerendering, JS interop, and Blazor Server to Web App conversion.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

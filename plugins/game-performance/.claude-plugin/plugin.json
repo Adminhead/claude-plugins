@@ -1,0 +1,9 @@
+{
+  "name": "game-performance",
+  "version": "0.1.0",
+  "description": "Engine-agnostic game performance, measured first: frame budgets, profiling a release build on target hardware, CPU versus GPU triage, draw calls and batching, overdraw, allocation and GC hitches, pooling, asset budgets and regression checks.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -42,7 +42,7 @@ Run `claude plugin list --json`. A plugin is effective here if it is installed a
 
 ## 4. Inspect the project
 
-List files with `git ls-files --cached --others --exclude-standard`, or outside git `fd --type f --max-depth 4`. Read `package.json`, `pyproject.toml`, `go.mod` and `Cargo.toml` for framework and library markers. Discount `node_modules`, `vendor`, `examples`, `fixtures` and `testdata`.
+List files with `git ls-files --cached --others --exclude-standard`, or outside git `fd --type f --max-depth 4`. Read `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `global.json`, `*.csproj`, `Directory.Packages.props` and `project.godot` for framework and library markers. Discount `node_modules`, `vendor`, `examples`, `fixtures` and `testdata`.
 
 Markers are hints; the catalog descriptions decide which plugin fits.
 
@@ -64,7 +64,28 @@ Markers are hints; the catalog descriptions decide which plugin fits.
 | CDK, SAM, AWS SDK | AWS |
 | `.pre-commit-config.yaml`, `devenv.nix`, `.chezmoi*` | repo tooling |
 
+Some stacks have named rules. Propose a named plugin only if it is in the catalog you read in this run; otherwise fall back to the area hint.
+
+| Evidence | Propose |
+| --- | --- |
+| `*.sln`, `*.slnx`, `*.csproj` or `global.json` | `dotnet-meta` |
+| A csproj with `Sdk="Microsoft.NET.Sdk.Web"` or `Microsoft.AspNetCore.*` packages | `aspnet-core` |
+| `Microsoft.EntityFrameworkCore*` packages | `ef-core` |
+| `Sdk="Microsoft.NET.Sdk.BlazorWebAssembly"`, `Microsoft.AspNetCore.Components.*` packages, or `*.razor` files | `blazor` |
+| `Aspire.AppHost.Sdk`, `Aspire.Hosting.*` packages, or `<IsAspireHost>true` | `aspire` |
+| `project.godot` | `godot-meta` |
+| `project.godot` plus a `.csproj` beside it | also `godot-csharp` |
+| `@rpc` in `*.gd`, `[Rpc` in `*.cs`, or `MultiplayerSpawner`/`MultiplayerSynchronizer` in `*.tscn` | also `godot-multiplayer` |
+| `addons/beehave`, `addons/limboai`, `addons/phantom_camera` or `addons/dialogue_manager` | also `godot-addons` |
+| `openxr/enabled=true` under `[xr]` in `project.godot` | also `godot-xr` |
+
+Package names come from `<PackageReference Include=...>` in csproj files and `<PackageVersion Include=...>` in `Directory.Packages.props`; the SDK from the `<Project Sdk=...>` attribute. A `.csproj` that only sits beside `project.godot` is the Godot game itself: it means `godot-csharp`, not `dotnet-meta`, unless the repo also has other .NET projects.
+
 Prefer a meta over its members: when a meta matches, propose the meta and list only focused plugins it doesn't already cover. Propose `orchestration-meta` only when the user asks for orchestrated or multi-agent sessions.
+
+### Upstream plugins
+
+`azure-sdk-dotnet` from Microsoft's `skills` marketplace is not an adminhead plugin. When csproj files or `Directory.Packages.props` reference `Azure.*` packages, mention it once in the report, with its commands, and don't put it in the confirm question: `claude plugin marketplace add microsoft/skills`, then `claude plugin install azure-sdk-dotnet@skills --scope <scope>`. Never run either command yourself; adding a marketplace is the user's call.
 
 ## 5. User-scope suggestions
 

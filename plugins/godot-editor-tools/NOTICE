@@ -1,0 +1,10 @@
+godot-editor-tools (adminhead marketplace)
+Copyright AdminHead
+
+This plugin contains material adapted from GodotPrompter, Copyright (c) 2026
+GodotPrompter Contributors, licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/addon-development/SKILL.md, skills/addon-development/references/inspector-plugins.md, skills/addon-development/references/dock-panels.md, skills/addon-development/references/gizmos-deep-dive.md, skills/addon-development/references/testing-plugins.md
+
+Modifications: Rewritten in GDScript and rechecked against the Godot 4.7.2 class reference and editor-plugin tutorials. Docks use add_dock(EditorDock) (Godot 4.6+) instead of the deprecated add_control_to_dock, with a pre-4.6 fallback; fixed the claim that @tool scripts are excluded from exports, the #if TOOLS advice for runtime C# classes, the inspector example that wrote properties directly and emitted a non-existent signal (now EditorProperty.emit_changed), the gizmo example's call to a get_undo_redo() the gizmo plugin lacks, and the self-contradictory plugin.cfg section. Added references for undoable scene edits, node ownership, in-editor servers (polling, focus-dependent latency, loopback and token rules), Logger, processes, EditorDebuggerPlugin, and headless-editor testing.

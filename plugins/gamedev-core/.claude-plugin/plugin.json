@@ -1,0 +1,19 @@
+{
+  "name": "gamedev-core",
+  "version": "0.1.0",
+  "description": "Core bundle of engine-agnostic game-development plugins that the game-engine metas install. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "game-design",
+    "game-architecture",
+    "game-feel",
+    "level-design",
+    "game-ui",
+    "game-audio",
+    "game-performance",
+    "game-playtest"
+  ]
+}

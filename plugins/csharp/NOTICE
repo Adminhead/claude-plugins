@@ -1,0 +1,28 @@
+Copyright AdminHead
+
+This plugin contains material adapted from two MIT-licensed sources (see
+LICENSE):
+
+dotnet/skills (https://github.com/dotnet/skills), Copyright (c) .NET Foundation
+and Contributors.
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet/skills/csharp-refactoring/SKILL.md, plugins/dotnet/skills/csharp-refactoring/references/operation-catalog.md, plugins/dotnet-upgrade/skills/migrate-nullable-references/SKILL.md, plugins/dotnet-upgrade/skills/migrate-nullable-references/references, plugins/dotnet-advanced/skills/csharp-scripts/SKILL.md, plugins/dotnet/skills/setup-local-sdk/SKILL.md, plugins/dotnet11/skills/process-api-net11/SKILL.md, plugins/dotnet11/skills/system-text-json-net11/SKILL.md
+
+github/awesome-copilot (https://github.com/github/awesome-copilot), Copyright
+GitHub, Inc.
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+Paths: agents/CSharpExpert.agent.md, skills/system-commandline-cli/SKILL.md
+
+Modifications: SKILL.md written fresh in the house style, folding in the
+CSharpExpert agent's design, error-handling, async and version rules; the
+upstream skills condensed into references (refactoring.md, nullable.md,
+file-based-apps.md, sdk-setup.md, net11-apis.md, cli-apps.md); PowerShell
+scripts and command forms removed (including Get-NullableReadiness.ps1 and the
+team install scripts); install scripts are downloaded then run, never piped;
+upstream plugin cross-links replaced with adminhead plugin names and
+codebase-memory / language-server navigation; file-based app and System.CommandLine
+facts rechecked against Microsoft Learn and Context7, with the unverified
+#:exclude and #:ref directives dropped; the refactoring classification gate
+simplified; .NET 11 material marked preview.

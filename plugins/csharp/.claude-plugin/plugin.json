@@ -1,0 +1,9 @@
+{
+  "name": "csharp",
+  "version": "0.1.0",
+  "description": "Writes, reviews, refactors and debugs C# and .NET code (types, nullable references, async and cancellation, exceptions, DI, options and logging in the generic host, file-based apps). Use for work in *.cs or *.csx files, \"review this C# class\", CS86xx nullable warnings, a deadlock or sync-over-async bug, or a rename across a solution.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

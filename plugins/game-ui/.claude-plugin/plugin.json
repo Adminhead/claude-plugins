@@ -1,0 +1,9 @@
+{
+  "name": "game-ui",
+  "version": "0.1.0",
+  "description": "Engine-neutral game UI and UX: HUDs, menus and overlays, a screen stack, resolution and aspect scaling, safe areas, gamepad focus navigation, event-driven HUDs, settings screens, and a game accessibility checklist.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,39 @@
+godot-multiplayer
+Copyright AdminHead
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills, Copyright 2026 Abhishek Barali and the
+awesome-gamedev-agent-skills contributors, licensed under the Apache License,
+Version 2.0 (see LICENSE). Its NOTICE states that all of its skills are
+original works authored from primary documentation. Godot is a trademark of
+its owners and is used for identification only.
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/godot/godot-multiplayer/SKILL.md, skills/godot/godot-multiplayer/references/replication-and-rpc.md
+
+GodotPrompter, Copyright (c) 2026 GodotPrompter Contributors, licensed under
+the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/multiplayer-basics/SKILL.md, skills/multiplayer-basics/references/enet-setup.md, skills/multiplayer-basics/references/spawning-networked-objects.md, skills/multiplayer-basics/references/player-join-flow.md, skills/multiplayer-basics/references/disconnect-handling.md, skills/multiplayer-sync/SKILL.md, skills/multiplayer-sync/references/interpolation.md, skills/multiplayer-sync/references/client-prediction.md, skills/multiplayer-sync/references/lag-compensation.md, skills/multiplayer-sync/references/bandwidth-optimization.md, skills/dedicated-server/SKILL.md, skills/dedicated-server/references/server-config.md, skills/dedicated-server/references/lobby-management.md, skills/dedicated-server/references/match-flow.md, skills/dedicated-server/references/deployment.md
+
+Modifications: the files were modified. SKILL.md was written fresh in the
+house style with server-authority validation first; the references were
+condensed into replication-and-rpc.md, join-and-disconnect.md,
+sync-prediction.md and dedicated-server.md, GDScript first with C# attribute
+forms. Facts were rechecked against the Godot 4.7 documentation (@rpc, Node,
+MultiplayerSpawner, MultiplayerSynchronizer, SceneMultiplayer,
+MultiplayerPeer, the high-level multiplayer tutorial, exporting for dedicated
+servers). Fixes on port: the client spawn request that load()ed a
+client-supplied path is replaced by a whitelisted spawner index;
+set_multiplayer_authority is documented as local-only and set on every peer;
+delta_interval and replication_interval 0.0 mean every network process
+frame, not "disabled"; the nonexistent "headless" feature tag is removed in
+favour of DisplayServer.get_name(); "Export as dedicated server" is described
+as a resource export mode, not a separate template; "Linux/X11" is now
+"Linux"; the snapshot interpolation uses a receive-time buffer instead of the
+physics interpolation fraction; server arguments use OS.get_cmdline_user_args()
+with documented precedence; C# server exports no longer claim the host needs
+a .NET runtime; a protocol-version check, input clamping and lag-compensation
+rewind limits were added; Dockerfile comments moved off instruction lines.

@@ -1,0 +1,10 @@
+godot-addons (adminhead marketplace)
+Copyright AdminHead
+
+This plugin contains material adapted from GodotPrompter, Copyright (c) 2026
+GodotPrompter Contributors, licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/beehave/SKILL.md, skills/beehave/references/custom-nodes.md, skills/limboai/SKILL.md, skills/limboai/references/hsm.md, skills/phantom-camera/SKILL.md, skills/phantom-camera/references/follow-modes.md, skills/dialogue-manager/SKILL.md
+
+Modifications: SKILL.md is a new router written for this plugin. references/beehave.md, limboai.md and phantom-camera.md condense the upstream skills to GDScript, with facts rechecked against the addons' current releases (Beehave v2.9.3, LimboAI v1.8.1, Phantom Camera v0.11.0.3); the Beehave custom-decorator and leaf examples, the LimboAI get_var and BTState notes, and the Phantom Camera noise and tween-director sections were rewritten from the addons' source. references/dialogue-manager.md is rewritten from the Dialogue Manager v4.1.0 documentation and source (cues, self-closing response conditions, $> mutations, DialogueStateContext and the new nodes); only its structure follows the upstream skill, which covered v3.10.4.

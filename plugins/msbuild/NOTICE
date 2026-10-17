@@ -1,0 +1,19 @@
+Copyright AdminHead
+
+This plugin contains material adapted from dotnet/skills
+(https://github.com/dotnet/skills), Copyright (c) .NET Foundation and
+Contributors, licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet/skills/msbuild/SKILL.md, plugins/dotnet/skills/msbuild/references, plugins/dotnet-msbuild/skills/check-bin-obj-clash/SKILL.md, plugins/dotnet-msbuild/skills/eliminate-redundant-restores/SKILL.md, plugins/dotnet-msbuild/skills/directory-build-organization, plugins/dotnet-msbuild/skills/item-management/SKILL.md, plugins/dotnet-msbuild/skills/property-patterns/SKILL.md, plugins/dotnet-msbuild/skills/target-authoring/SKILL.md, plugins/dotnet-msbuild/skills/including-generated-files/SKILL.md
+
+Modifications: SKILL.md rewritten and shortened from the upstream msbuild entry
+skill with a new description; the entry's references copied with PowerShell
+command blocks converted to bash and attribution lines added; new references
+bin-obj-clash.md, redundant-restores.md, directory-build.md,
+items-and-properties.md and targets.md condensed from the listed dotnet-msbuild
+skills, with binlog MCP server workflows replaced by text-log replay, some
+unverified version claims removed, and corrections to target-ordering and
+generated-file guidance. Upstream agents, the binlog MCP server, and the
+build-parallelism and resolve-project-references skills (already covered by
+the build-perf references) were not included.

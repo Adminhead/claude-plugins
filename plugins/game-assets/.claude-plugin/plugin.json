@@ -1,0 +1,9 @@
+{
+  "name": "game-assets",
+  "version": "0.1.0",
+  "description": "Art direction and asset pipeline for game art, mainly 2D: a style bible, palette and scale rules, sprite, animation, tileset, UI and icon specs, an asset manifest with naming and licenses, image-generation briefs, and import checks. Use for a game's art style, sprites, tilesets, an asset list or sourcing art.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

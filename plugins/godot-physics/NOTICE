@@ -1,0 +1,32 @@
+godot-physics plugin (AdminHead)
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills (https://github.com/gamedev-skills/awesome-gamedev-agent-skills),
+Copyright 2026 Abhishek Barali and the awesome-gamedev-agent-skills
+contributors, licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/godot/godot-2d-movement/SKILL.md, skills/godot/godot-2d-movement/references/controller-recipes.md, skills/godot/godot-physics/SKILL.md, skills/godot/godot-physics/references/bodies-and-queries.md, skills/disciplines/physics-tuning/SKILL.md, skills/disciplines/physics-tuning/references/timestep-and-ccd.md
+
+GodotPrompter (https://github.com/jame581/GodotPrompter), Copyright (c) 2026
+GodotPrompter Contributors, licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/physics-system/SKILL.md, skills/physics-system/references, skills/player-controller/SKILL.md, skills/player-controller/references/common-movement-recipes.md
+
+Modifications: the files were modified. Two upstream skills (2D movement and
+physics) were merged into one SKILL.md written fresh in the house style, with
+the Godot-side parts of physics-tuning (interpolation, CCD) and GodotPrompter's
+physics-system and player-controller recipes condensed into references
+(controllers.md, queries.md, bodies-advanced.md). Only GDScript examples were
+kept (C# halves dropped). Facts were rechecked against the Godot 4.7 docs and
+the 4.4 to 4.7 migration guides and PRs: physics interpolation (2D 4.3, 3D 4.4,
+SceneTree move in 4.5), Jolt as the default for new projects in 4.6, the three
+4.7 Jolt changes, 4.7 one_way_collision_direction, get_gravity() (4.3+) and
+CharacterBody defaults. Fixed on port: the wrong floor_block_on_wall and
+"inconsistent jump height" pitfall rows, the delta-less 3D deceleration, the
+wall jump whose kick was cancelled by input on the next tick, and the Jolt
+single-body joint convention (GodotPrompter had it backwards). Cross-references were renamed to adminhead
+plugins (game-feel, game-architecture, godot, godot-shaders,
+godot-multiplayer, godot-csharp).

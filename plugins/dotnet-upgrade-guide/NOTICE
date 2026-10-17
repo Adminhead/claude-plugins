@@ -1,0 +1,21 @@
+dotnet-upgrade-guide
+Copyright AdminHead
+
+This plugin contains material adapted from dotnet/skills (https://github.com/dotnet/skills), Copyright (c) .NET Foundation and Contributors, licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-upgrade/skills/migrate-dotnet8-to-dotnet9, plugins/dotnet-upgrade/skills/migrate-dotnet9-to-dotnet10, plugins/dotnet-upgrade/skills/migrate-dotnet10-to-dotnet11, plugins/dotnet-upgrade/skills/dotnet-aot-compat, plugins/dotnet-upgrade/skills/thread-abort-migration, plugins/dotnet-msbuild/skills/msbuild-modernization, plugins/dotnet-test-migration/skills/migrate-xunit-to-xunit-v3, plugins/dotnet-test-migration/skills/migrate-mstest-v1v2-to-v3, plugins/dotnet-test-migration/skills/migrate-mstest-v3-to-v4, plugins/dotnet-test-migration/skills/migrate-vstest-to-mtp, plugins/dotnet-test-migration/skills/migrate-xunit-to-mstest, plugins/dotnet-test-migration/skills/migrate-nunit-to-mstest
+
+Modifications: twelve upstream skills were merged into one skill with references. The
+three per-hop migration skills became a shared workflow in SKILL.md plus one overview
+per hop; their per-area reference files were copied with renamed files, contents lists,
+and a corrected file-based-app directive entry. The .NET 10 to 11 material was marked
+prerelease and extended with breaking changes Microsoft documented after Preview 3
+(through RC 2). The AOT, Thread.Abort, SDK-style and six test-migration skills were
+condensed to about half their length; the xUnit and NUnit mapping cheatsheets were
+folded into their references. Corrections: SYSLIB0046 is not Thread.Interrupt,
+JsonSerializerContext is a base class rather than an attribute, UnconditionalSuppressMessage
+is allowed with a proven justification, packages.config migration has no dotnet CLI
+command, Upgrade Assistant is deprecated, and TargetFramework is no longer set in
+Directory.Build.props examples. Upstream eval contracts, workspace-path rules,
+cross-skill links and frontmatter routing text were removed.

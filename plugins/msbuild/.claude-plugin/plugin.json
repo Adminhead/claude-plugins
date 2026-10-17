@@ -1,0 +1,9 @@
+{
+  "name": "msbuild",
+  "version": "0.1.0",
+  "description": "Diagnoses MSBuild failures and slow builds and reviews .NET build XML. Use for a failing dotnet build, restore, pack or publish, .csproj/.props/.targets conditions and custom targets, binlog capture and replay, \"it rebuilds when nothing changed\", slow evaluation or builds, bin/obj clashes, or Directory.Build.* layering.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

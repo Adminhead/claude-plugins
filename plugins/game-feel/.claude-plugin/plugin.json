@@ -1,0 +1,9 @@
+{
+  "name": "game-feel",
+  "version": "0.1.0",
+  "description": "Engine-agnostic game feel: input buffering, coyote time, variable jump, deadzones, rebinding, camera follow, look-ahead and shake, hit-stop, tweens, squash and stretch, knockback and render jitter.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

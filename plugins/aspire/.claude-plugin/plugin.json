@@ -1,0 +1,9 @@
+{
+  "name": "aspire",
+  "version": "0.1.0",
+  "description": "Aspire skill: AppHost resource model and wiring, service defaults, the aspire CLI (start, wait, describe, logs), DistributedApplicationTestingBuilder tests, and aspire publish/deploy to Compose, Kubernetes and Azure.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

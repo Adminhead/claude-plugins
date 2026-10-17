@@ -1,0 +1,20 @@
+{
+  "name": "dotnet-meta",
+  "version": "0.1.0",
+  "description": "Plugin set for C# and .NET projects, installed at project scope. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "programming-core",
+    {
+      "name": "csharp-lsp",
+      "marketplace": "claude-plugins-official"
+    },
+    "csharp",
+    "msbuild",
+    "dotnet-testing",
+    "nuget"
+  ]
+}

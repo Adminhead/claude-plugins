@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  Restored /work/Calc.Tests/Calc.Tests.csproj (in 155 ms).
+/work/Calc.Tests/CalcTests.cs(7,6): error CS0246: The type or namespace name 'FactAttribute' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]
+/work/Calc.Tests/CalcTests.cs(7,6): error CS0246: The type or namespace name 'Fact' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]
+/work/Calc.Tests/CalcTests.cs(10,6): error CS0246: The type or namespace name 'FactAttribute' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]
+/work/Calc.Tests/CalcTests.cs(10,6): error CS0246: The type or namespace name 'Fact' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]
+/work/Calc.Tests/CalcTests.cs(13,6): error CS0246: The type or namespace name 'FactAttribute' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]
+/work/Calc.Tests/CalcTests.cs(13,6): error CS0246: The type or namespace name 'Fact' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]
+/work/Calc.Tests/CalcTests.cs(16,6): error CS0246: The type or namespace name 'FactAttribute' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]
+/work/Calc.Tests/CalcTests.cs(16,6): error CS0246: The type or namespace name 'Fact' could not be found (are you missing a using directive or an assembly reference?) [/work/Calc.Tests/Calc.Tests.csproj]

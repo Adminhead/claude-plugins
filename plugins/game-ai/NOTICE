@@ -1,0 +1,23 @@
+Copyright AdminHead
+
+This plugin contains material adapted from awesome-gamedev-agent-skills,
+licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The upstream NOTICE reads:
+
+  awesome-gamedev-agent-skills
+  Copyright 2026 Abhishek Barali and the awesome-gamedev-agent-skills contributors
+  This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/disciplines/game-ai/SKILL.md, skills/disciplines/game-ai/references/behavior-trees.md, skills/disciplines/game-ai/references/pathfinding.md, skills/disciplines/ai-behavior-trees-utility-ai/SKILL.md, skills/disciplines/ai-behavior-trees-utility-ai/references/behavior-tree-core.md, skills/disciplines/ai-behavior-trees-utility-ai/references/utility-ai-system.md, skills/disciplines/ai-behavior-trees-utility-ai/references/practical-examples.md, skills/disciplines/ai-behavior-trees-utility-ai/references/best-practices-and-pitfalls.md
+
+Modifications: the two upstream skills (game-ai and
+ai-behavior-trees-utility-ai) merged into one skill and rewritten in the house
+style; the behavior-tree and utility-AI references condensed from 839 lines
+to about 205 (behavior-trees.md, utility-ai.md) with the C# runtime replaced by
+language-neutral pseudocode; pathfinding.md condensed, with flow fields, path
+smoothing and dynamic-obstacle budgets added; new sections on perception and
+difficulty knobs; the reactive-selector/memory-sequence guard trap documented;
+Unity and Unreal cross-links dropped; Godot navigation API moved out by pointer
+to the `godot` skill and addon APIs to `godot-addons`.

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="GutTests" failures="2" tests="4" >
+  <testsuite name="test/unit/test_calc.gd" tests="4" failures="2" skipped="1" time="0.007177" >
+      <testcase name="test_add" assertions="1" status="fail" classname="test/unit/test_calc.gd" time="0.000095" >
+      <failure message="failed"><![CDATA[[-1] expected to equal [3]:  add sums
+            at line 4]]></failure></testcase>
+      <testcase name="test_zero" assertions="1" status="pass" classname="test/unit/test_calc.gd" time="0.000031" >
+      </testcase>
+      <testcase name="test_pending" assertions="0" status="pending" classname="test/unit/test_calc.gd" time="0.000029" >
+      <skipped message="pending"><![CDATA[later]]></skipped></testcase>
+      <testcase name="test_error" assertions="2" status="fail" classname="test/unit/test_calc.gd" time="0.007022" >
+      <failure message="failed"><![CDATA[Unexpected Errors:
+      [1] <engine-2>Out of bounds get index '2' (on base: 'Array')
+            at line -1]]></failure></testcase>
+  </testsuite>
+</testsuites>

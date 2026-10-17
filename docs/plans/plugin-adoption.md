@@ -31,7 +31,7 @@ This overrides the wshobson reviewer's `port` rows for `terraform`, `helm`, `git
 - **Keep `claude-code-lsps` as the only allowlisted marketplace.** The stack metas depend on its LSP plugins, as the archived coding plugins did: `pyright`, `gopls`, `rust-analyzer`, `vtsls`, `bash-language-server`.
 - **`avoid-ai-writing@conorbronsdon-skills` is a direct user-scope install**, not a dependency. It wins the writing-style comparison (single skill, MIT, maintained, deterministic detector). wshobson's marketplace only mirrors it. It is already in `examples/claude-settings/settings.global.json`.
 - **Don't allowlist `claude-code-workflows` (wshobson).** Only 2 of its 92 plugins are single-component, and allowlisting exposes the other 90. Port `file-conversion` if wanted.
-- **Don't allowlist `claude-plugins-official`.** Context7 gets added on its own when a project needs it. The official pr-review-toolkit and feature-dev agents can be direct installs.
+- **`claude-plugins-official` is allowlisted only for `csharp-lsp`** (csharp-ls), which `dotnet-meta` depends on (user decision, 2026-10-17; claude-code-lsps' `omnisharp` runs the legacy server and a `brew install` hook). Don't add other dependencies on it: Context7 is added on its own when a project needs it, and the official pr-review-toolkit and feature-dev agents stay direct installs.
 - **Never depend on a mega-plugin:** ECC, mattpocock, agent-skills, taste-skill, claude-skills, claude-seo, ponytail. Port the pieces instead, or install upstream directly for SEO and game-dev work.
 
 ### 3. Meta layout
@@ -174,7 +174,21 @@ Rules for this collection:
 - Trim descriptions. Many archived ones exceed 500 characters because of long "Not for ..." lists.
 - Keep upstream attribution lines (MIT and Apache-2.0 notices). Strip ECC's pasted "Prompt Defense Baseline" from any agent.
 - Version-sensitive facts (Vite, Cypress, Prisma, uv, model names in second-opinion) get rechecked with Context7 at port time.
+- Every subagent sets `autoCompactWindow`: 100000 for haiku agents, 200000 for light focused agents, 300000 for long-running or reading-heavy agents. The field only lowers the window a subagent inherits from the session (300k in the settings example).
 - `bash-danger-guard`, `cloud-ops-guard` and `readonly-agent-gate` all vendor the same shell walker. Keep one canonical copy and sync it with a script.
+
+### 11. .NET and Godot (added 2026-10-17)
+
+The user added C#/.NET and Godot plus engine-agnostic game development. Designs: [`docs/research/design-dotnet.md`](../research/design-dotnet.md) and [`docs/research/design-godot.md`](../research/design-godot.md).
+
+- **.NET:** ported from the .NET team's [dotnet/skills](https://github.com/dotnet/skills) (MIT), not depended on: its plugins bundle up to 24 skills each with long "ALWAYS USE" descriptions and a router that installs more plugins. `dotnet-meta` = `programming-core`, `csharp`, `msbuild`, `dotnet-testing`, `nuget`, `csharp-lsp@claude-plugins-official`. Direct installs: `aspnet-core`, `ef-core`, `blazor`, `dotnet-upgrade-guide`, `dotnet-diagnostics`, `dotnet-performance`, `roslyn-analyzers`, `aspire`, `dotnet-native-interop`, `dotnet-ai-apps`, `dotnet-template-authoring`. Not ported: MAUI, WinForms, WinUI, XAML/MVVM, F#.
+- **Godot:** `godot-meta` = `programming-core`, `gamedev-core`, and the core Godot plugins (`godot`, `godot-physics`, `godot-shaders`, `godot-export`, `godot-testing`, `godot-mcp-setup`). `godot-csharp` and `godot-multiplayer` are direct installs. Godot API and every version pin live only in `godot-*` plugins; descriptions say only "Godot 4".
+- **Editor MCP:** the user's own [voidrot/godot-mcp](https://github.com/voidrot/godot-mcp) addon (MIT; the Godot editor serves MCP over HTTP). A plugin-level MCP entry doesn't fit because the port and token differ per project, so the manual `/godot-mcp-setup` skill installs the latest addon from the default branch, reads the project's port, and writes the project `.mcp.json` (relative `headersHelper`) after the user approves the diff. Third-party Godot MCP servers and a GDScript LSP bridge are not adopted.
+- **`gamedev-core`** (bundle): `game-design`, `game-architecture`, `game-feel`, `level-design`, `game-ui`, `game-audio`, `game-performance`, `game-playtest`. Direct installs: `game-ai`, `game-genres`, `game-prototype`, `game-publish`, `game-assets`.
+- **Sources:** awesome-gamedev-agent-skills (Apache-2.0) as the base, with MIT pieces from wshobson, Qb-Lab/godot-agent-skills and GodotPrompter (reviewed in full before the Godot batches).
+- **Upstream tracking:** each port's NOTICE records `Upstream: <repo> @ <sha>` and its paths; `scripts/plugins.py upstream` lists upstream changes since then.
+- **Status, 2026-10-17:** implemented in a third round of 14 batches: 15 .NET plugins and 25 Godot and game-dev plugins, registered into `dotnet-meta`, `godot-meta` and `gamedev-core`, plus four Godot extras from the GodotPrompter review (`godot-addons`, `godot-xr`, `godot-gdextension`, `godot-editor-tools`, all direct installs). Reports: `docs/research/implementation-2026-10-17/round-3/`.
+- **Bundles are explicit:** `aspnet-core` and `ef-core` collided with the `-core` bundle suffix, so a core bundle is now a marketplace entry with `category: "bundle"`; `-core` stays only a naming convention.
 
 ## Adoption list
 
@@ -271,7 +285,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | Upstream ponytail plugin | Ruleset merged into `coding`; its 5 extra skills, per-prompt node hook and band mod cost too much. |
 | Language and framework "pro" skills from claude-skills, ECC and wshobson | Generic, often stale, and weaker than the archived versions. |
 | All wshobson and ECC persona agents and commands | Auto-delegating "Use PROACTIVELY" personas with mis-graded severities; overlap built-ins. |
-| Vendor-specific sets (Azure, Power Platform, .NET, Java, SEO, game dev) | Off-stack. Install claude-seo or the game-dev bundles directly from upstream when needed. |
+| Vendor-specific sets (Azure, Power Platform, Java, SEO; Unity, Unreal and web game engines) | Off-stack. Install claude-seo or upstream game-engine bundles directly when needed. .NET and Godot are now adopted (decision 11). |
 | Offensive and SOC content in the cybersecurity set | Unsafe to ship by default, or enterprise tooling. |
 
 ## Phases

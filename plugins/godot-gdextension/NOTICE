@@ -1,0 +1,10 @@
+godot-gdextension (adminhead marketplace)
+Copyright AdminHead
+
+This plugin contains material adapted from GodotPrompter, Copyright (c) 2026
+GodotPrompter Contributors, licensed under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/gdextension/SKILL.md, skills/gdextension/references/rust-gdext.md, skills/gdextension/references/debugging-native.md
+
+Modifications: Restructured into a decision-focused SKILL.md and three references, rechecked against godot-cpp 10.0.0-stable, godot-cpp-template, the Godot 4.7 docs and engine source, and gdext v0.5.5. Replaced the stale 'godot-cpp branch must match the engine' rule with godot-cpp 10's api_version scheme; fixed the C# example (C# gets no generated wrapper for extension classes); added GDREGISTER_RUNTIME_CLASS and the other registration macros, use_hot_reload, the engine's actual load-error messages, gdext api-4-x features and typed signals, and native debugging and sanitizer recipes.

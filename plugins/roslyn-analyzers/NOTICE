@@ -1,0 +1,21 @@
+roslyn-analyzers
+Copyright AdminHead
+
+This plugin contains material adapted from github/awesome-copilot, licensed
+under the MIT License (see LICENSE).
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+Paths: skills/roslyn-analyzers/SKILL.md, skills/roslyn-analyzers/references/CSharpCodeFixVerifier.cs, skills/roslyn-analyzers/references/SourceWriter.cs
+
+Modifications: SKILL.md cut from 479 to about 120 lines, with testing,
+source-generator and packaging/versioning detail moved into three new
+references; repo-specific mandates (Docfx, Nerdbank.GitVersioning, a dedicated
+Directory.Packages.Analyzers.props) restated as conditional guidance; the
+example analyzer now resolves the target method once and compares normalized
+symbols; added a caching test sample, RS1035/CS8032/CS8785 gotchas, the
+obsolete framework-specific testing packages, and the Roslyn-to-Visual Studio
+version table link (checked against Microsoft Learn and the
+Microsoft.CodeAnalysis.Testing README on 2026-10-17). The two .cs files moved
+to assets/; SourceWriter.cs was made netstandard2.0-friendly (range slices
+replaced with Slice(), StringSyntax attributes removed) and given a PolyType
+attribution line.

@@ -1,0 +1,14 @@
+Copyright AdminHead
+
+This plugin contains material adapted from an MIT-licensed source (see
+LICENSE). The files were modified.
+
+Upstream: https://github.com/dotnet/skills @ 10d85e25fb42d5f65c568d5e979a005ee69eecb3
+Paths: plugins/dotnet-aspnetcore/skills/dotnet-webapi, plugins/dotnet-data/skills/create-datadriven-aspnetcore
+
+Modifications: the two skills were merged into one skill (SKILL.md plus three
+references) and condensed; descriptions rewritten; the deprecated WithOpenApi()
+call replaced with current .NET 10 guidance; OpenAPI XML-comment, validation and
+JSON option notes rechecked against the ASP.NET Core 10 release notes; a
+middleware-order, authentication, authorization, CORS, rate limiting, caching,
+SignalR and gRPC reference written from Microsoft Learn.

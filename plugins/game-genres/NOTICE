@@ -1,0 +1,33 @@
+Copyright AdminHead
+
+This plugin contains material adapted from two sources.
+
+1. awesome-gamedev-agent-skills, licensed under the Apache License, Version 2.0
+   (see LICENSE). The upstream NOTICE reads:
+
+  awesome-gamedev-agent-skills
+  Copyright 2026 Abhishek Barali and the awesome-gamedev-agent-skills contributors
+  This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/genres/platformer/SKILL.md, skills/genres/platformer/references/feel-tuning.md, skills/genres/roguelike/SKILL.md, skills/genres/roguelike/references/generation-fov-loot.md, skills/genres/card-game/SKILL.md, skills/genres/card-game/references/effect-resolution.md, skills/genres/puzzle/SKILL.md, skills/genres/puzzle/references/board-and-resolution.md, skills/genres/rpg/SKILL.md, skills/genres/rpg/references/stats-combat-quests.md, skills/genres/fps-shooter/SKILL.md, skills/genres/fps-shooter/references/shooting-and-feel.md, skills/genres/tower-defense/SKILL.md, skills/genres/tower-defense/references/balancing.md, skills/genres/survival-crafting/SKILL.md, skills/genres/survival-crafting/references/needs-and-crafting.md, skills/genres/visual-novel/SKILL.md, skills/genres/visual-novel/references/script-and-flow.md, skills/disciplines/dialogue-systems/SKILL.md, skills/disciplines/dialogue-systems/references/ink-and-yarn.md, skills/disciplines/dialogue-systems/references/runner.md
+
+2. GodotPrompter, licensed under the MIT License (see LICENSE-MIT),
+   Copyright (c) 2026 GodotPrompter Contributors. Used for the Godot notes in
+   references/dialogue.md only.
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/dialogue-system/SKILL.md, skills/dialogue-system/references/ui-presentation.md, skills/dialogue-system/references/branching-and-conditions.md
+
+Modifications: ten upstream skills merged into one router skill with one
+reference per genre plus dialogue.md; each reference restructured into core
+systems, data model, feel targets, balancing norms and pitfalls, condensed, and
+rewritten in the house style; engine-specific code and Unity/Unreal/Phaser
+cross-links replaced with pointers to adminhead plugins (godot, godot-physics,
+godot-addons, game-ai, game-architecture, game-design, game-feel, level-design);
+added: sliding-puzzle parity note, maze-TD placement check, effect-stacking and
+inventory-registry pitfalls, crafting output overflow handling, the
+set-on-transition rule for the dialogue runner. From GodotPrompter, only the
+typewriter, advance-input, choice-button and Expression-condition notes were
+taken, rewritten in GDScript only, with the Expression call checked against
+the Godot 4.7 class reference and its security note tightened.

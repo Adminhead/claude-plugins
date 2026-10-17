@@ -1,0 +1,9 @@
+{
+  "name": "godot",
+  "version": "0.1.0",
+  "description": "Godot 4 entry point: GDScript, nodes and scenes, signals, custom Resources, autoloads, project.godot and safe .tscn/.tres edits (uid:// and .uid files), with references for 2D, 3D, UI, input, audio, animation, saves, performance and debugging, and routing to the other godot plugins and the editor MCP.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

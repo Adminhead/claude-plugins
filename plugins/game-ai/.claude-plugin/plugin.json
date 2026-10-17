@@ -1,0 +1,9 @@
+{
+  "name": "game-ai",
+  "version": "0.1.0",
+  "description": "Engine-agnostic game AI skill: NPC and enemy decisions with FSMs, behavior trees and utility AI, steering and flocking, A*, flow fields and navmeshes in concept, perception and difficulty knobs.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

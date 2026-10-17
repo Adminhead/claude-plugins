@@ -1,0 +1,29 @@
+Running tests from /work/Calc.Tests/bin/Debug/net10.0/Calc.Tests.dll (net10.0|x64)
+skipped Calc.Tests.CalcTests.Skipped (0ms)
+  later
+  from /work/Calc.Tests/bin/Debug/net10.0/Calc.Tests.dll (net10.0|x64)
+failed Calc.Tests.CalcTests.Throws (5ms)
+  from /work/Calc.Tests/bin/Debug/net10.0/Calc.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.IndexOutOfRangeException : Index was outside the bounds of the array.
+    at Calc.Tests.Calc.Get(Int32[] xs, Int32 i) in /work/Calc.Tests/CalcTests.cs:4
+    at Calc.Tests.CalcTests.Throws() in /work/Calc.Tests/CalcTests.cs:15
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+failed Calc.Tests.CalcTests.Add_Sums (0ms)
+  from /work/Calc.Tests/bin/Debug/net10.0/Calc.Tests.dll (net10.0|x64)
+  Assert.Equal() Failure: Values differ
+  Expected: 3
+  Actual:   -1
+    at Calc.Tests.CalcTests.Add_Sums() in /work/Calc.Tests/CalcTests.cs:9
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+/work/Calc.Tests/bin/Debug/net10.0/Calc.Tests.dll (net10.0|x64) failed with 2 error(s) (1s 215ms)
+Exit code: 2
+
+Test run summary: Failed!
+  total: 4
+  failed: 2
+  succeeded: 1
+  skipped: 1
+  duration: 1s 323ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

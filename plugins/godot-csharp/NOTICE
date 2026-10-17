@@ -1,0 +1,38 @@
+godot-csharp
+Copyright AdminHead
+
+This plugin contains material adapted from two sources.
+
+awesome-gamedev-agent-skills, Copyright 2026 Abhishek Barali and the
+awesome-gamedev-agent-skills contributors, licensed under the Apache License,
+Version 2.0 (see LICENSE). Its NOTICE states that all of its skills are
+original works authored from primary documentation. Godot is a trademark of
+its owners and is used for identification only.
+
+Upstream: https://github.com/gamedev-skills/awesome-gamedev-agent-skills @ 0a70cfc64672d512c5b5b6006b5dcb5cf90dbdbd
+Paths: skills/godot/godot-csharp/SKILL.md, skills/godot/godot-csharp/references/csharp-setup-and-interop.md
+
+GodotPrompter, Copyright (c) 2026 GodotPrompter Contributors, licensed under
+the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/jame581/GodotPrompter @ bd9d18008fb1fd5919fdc297267048670b6eac1f
+Paths: skills/csharp-godot/SKILL.md, skills/csharp-godot/references/gdscript-interop.md, skills/csharp-signals/SKILL.md, skills/csharp-signals/references/awaiting-signals.md, skills/csharp-signals/references/connecting-gdscript-signals.md, skills/csharp-signals/references/custom-signal-patterns.md, skills/csharp-signals/references/disconnecting.md
+
+Modifications: the files were modified. SKILL.md was written fresh in the
+house style from both sources; the references were condensed and split into
+interop.md, signals.md and project-and-build.md. Facts were rechecked against
+the Godot 4.7 documentation (cross-language scripting, C# signals, C# basics
+and platform support, the 4.4-to-4.5 and 4.6-to-4.7 migration guides). Fixes
+on port: the .NET version is read from the project's .csproj and the
+Godot.NET.Sdk version follows the editor instead of a 4.3.0 pin; GDScript
+accesses C# members by their C# names (not snake_case); a stored lambda uses
+the generated delegate type (an Action<T> field does not compile against a
+generated [Signal] event); Connect with Callable.From is documented as
+auto-disconnecting for custom signals; [GlobalClass] goes on a Node or
+Resource subclass; the C# web export limitation, the Android .NET 9
+requirement and the verified 4.7 C# breaking changes were added; the
+unverified EnableGodotDotNetPreview property, the "namespace must match" rule,
+the ConnectOnce helper and the C#-versus-GDScript speed table were dropped;
+pointers to the godot-mcp editor addon's create_dotnet_project and
+build_dotnet tools and to the csharp, msbuild and dotnet-testing plugins were
+added.

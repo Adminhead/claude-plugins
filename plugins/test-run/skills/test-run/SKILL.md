@@ -22,6 +22,12 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/run_tests.py $ARGUMENTS
 - Pass `--cmd` only with a command the user gave. The script is pre-approved, so `--cmd` would otherwise run an unreviewed command.
 - Run `--help` for the other flags.
 
+Detected runners, scanning the repo root and two levels down:
+
+- pytest, Go, jest, vitest, an npm `test` script, cargo, and `make test` at the root.
+- .NET: a `*.slnx`, `*.sln` or `*.csproj` that has a test project means `dotnet test`. A `global.json` `test.runner` of `Microsoft.Testing.Platform` selects native MTP (`--solution`/`--project`). A project that sets `TestingPlatformDotnetTestSupport` with an MTP runner, or uses TUnit, selects the bridge, which puts MTP args after `--`. Otherwise VSTest. Name filters follow the mode: `--filter FullyQualifiedName~`, xUnit v3 `--filter-method`, TUnit `--treenode-filter`.
+- Godot: `project.godot` plus `addons/gut` runs GUT, plus `addons/gdUnit4` runs gdUnit4's `GdUnitCmdTool.gd`, and plus `test/test_runner.gd` runs that SceneTree script. All run headless with a 540 s timeout. The binary is `GODOT_BIN`, else `godot`, `godot4` or `godot-mono` on `PATH`. A checkout with no `.godot/` is imported first. gdUnit4 selects by suite, so a `path::test` id reruns the whole suite. The bare runner reports only its exit code and output tail.
+
 Output starts with `runner:` (the exact command) and `scope:`, then a summary line and one `### n. <id>` block per failure with its location, message, and user-code trace. The last line is `log: <path>` to the full raw output.
 
 | Exit | Meaning | Next step |

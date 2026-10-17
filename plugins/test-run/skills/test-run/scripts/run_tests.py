@@ -8,19 +8,34 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
 
-from detect import DetectError, parse_target, rel, select_project
+from detect import (
+    GODOT_KINDS,
+    GODOT_TIMEOUT,
+    DetectError,
+    parse_target,
+    rel,
+    select_project,
+)
 from parse import CRASH_LINES, Failure, Report, RunOutput, parse
 from plan import Plan, build_plan, changed_files, git
 
 MESSAGE_LINES = 8
 LINE_WIDTH = 200
-REPORT_SUFFIX = {"pytest": ".xml", "jest": ".json", "vitest": ".json"}
+REPORT_SUFFIX = {"pytest": ".xml", "jest": ".json", "vitest": ".json", "gut": ".xml"}
+ENV = {
+    "NO_COLOR": "1",
+    "FORCE_COLOR": "0",
+    "MSBUILDTERMINALLOGGER": "off",
+    "DOTNET_CLI_UI_LANGUAGE": "en",
+    "DOTNET_NOLOGO": "1",
+}
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -135,21 +150,39 @@ def render(
     return lines, 1 if report.failures else 0
 
 
-def execute(plan: Plan, report_path: Path | None) -> tuple[RunOutput, float]:
-    env = {**os.environ, "NO_COLOR": "1", "FORCE_COLOR": "0"}
-    started = time.monotonic()
+def run_command(plan: Plan, argv: tuple[str, ...]) -> subprocess.CompletedProcess[str]:
+    timeout = GODOT_TIMEOUT if plan.project.kind in GODOT_KINDS else None
     try:
-        proc = subprocess.run(
-            plan.argv,
+        return subprocess.run(
+            argv,
             cwd=plan.project.root,
             capture_output=True,
             text=True,
             errors="replace",
-            env=env,
+            env={**os.environ, **ENV},
+            timeout=timeout,
             check=False,
         )
     except FileNotFoundError as exc:
-        raise DetectError(f"command not found: {plan.argv[0]}") from exc
+        raise DetectError(f"command not found: {argv[0]}") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise DetectError(
+            f"runner timed out after {timeout}s: a failed assert() or a missing "
+            "quit() leaves Godot running"
+        ) from exc
+
+
+def execute(plan: Plan, report_path: Path | None) -> tuple[RunOutput, float]:
+    started = time.monotonic()
+    if plan.setup:
+        setup = run_command(plan, plan.setup)
+        if setup.returncode != 0:
+            tail = (setup.stdout + setup.stderr).splitlines()[-CRASH_LINES:]
+            raise DetectError(
+                f"setup failed (exit {setup.returncode}): "
+                + "\n".join([shlex.join(plan.setup), *tail])
+            )
+    proc = run_command(plan, plan.argv)
     elapsed = time.monotonic() - started
     report = None
     if report_path and report_path.is_file():
