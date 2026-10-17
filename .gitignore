@@ -7,3 +7,4 @@ plugins/*/evals/results/
 plugins/*/.claude-plugin/types/
 plugins/*/tsconfig.json
 plugins/*/node_modules/
+/3rd-party/

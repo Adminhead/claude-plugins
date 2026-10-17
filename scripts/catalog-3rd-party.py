@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""Catalog plugins, skills, agents, commands, hooks of a 3rd-party repo into markdown."""
+#
+# Usage: python3 -I scripts/catalog-3rd-party.py 3rd-party/<repo> docs/3rd-party/<repo>/catalog.md
+#   or:  for d in 3rd-party/*/; do n=$(basename "$d"); python3 -I scripts/catalog-3rd-party.py "$d" "docs/3rd-party/$n/catalog.md"; done
+import json, os, re, sys, configparser
+
+root = sys.argv[1].rstrip('/')
+out = sys.argv[2]
+name = os.path.basename(root)
+MAXD = 300
+
+def fm(path):
+    try:
+        text = open(path, encoding='utf-8', errors='replace').read()
+    except Exception:
+        return {}
+    if not text.startswith('---'):
+        return {}
+    end = text.find('\n---', 3)
+    if end < 0:
+        return {}
+    block = text[3:end].strip('\n').split('\n')
+    data, key, buf, mode = {}, None, [], None
+    for line in block:
+        m = re.match(r'^([A-Za-z_][\w-]*):\s*(.*)$', line)
+        if m and not line.startswith((' ', '\t')):
+            if key and mode:
+                data[key] = ' '.join(s.strip() for s in buf).strip()
+            key, val = m.group(1), m.group(2).strip()
+            if val in ('>', '|', '>-', '|-', ''):
+                mode, buf = 'block', []
+            else:
+                mode = None
+                if len(val) >= 2 and val[0] == val[-1] and val[0] in '"\'':
+                    val = val[1:-1]
+                data[key] = val
+        elif key and mode == 'block':
+            buf.append(line)
+    if key and mode:
+        data[key] = ' '.join(s.strip() for s in buf).strip()
+    return data
+
+def trunc(s):
+    s = re.sub(r'\s+', ' ', str(s or '')).replace('|', '\\|').strip()
+    return s if len(s) <= MAXD else s[:MAXD - 1].rstrip() + '…'
+
+def rel(p):
+    return os.path.relpath(p, root)
+
+def walk():
+    for d, dirs, files in os.walk(root):
+        dirs[:] = [x for x in dirs if x not in ('.git', 'node_modules', '.venv', '__pycache__')]
+        for f in files:
+            yield os.path.join(d, f)
+
+plugins, skills, agents, commands, hooks, mcps = [], [], [], [], [], []
+for p in walk():
+    r = rel(p)
+    base = os.path.basename(p)
+    parts = r.split(os.sep)
+    mdir = parts[-2] if len(parts) >= 2 else ''
+    is_claude = mdir in ('.claude-plugin', '.codex-plugin', '.qoder-plugin')
+    is_apo = parts[0] == 'plugins' and len(parts) == 3  # Copilot (agent-plugins.org): plugins/<name>/plugin.json
+    if base == 'plugin.json' and (is_claude or is_apo):
+        pdir = os.path.dirname(os.path.dirname(r)) if is_claude else os.path.dirname(r)
+        try:
+            j = json.load(open(p))
+            fmt = mdir.strip('.').replace('-plugin', '') if is_claude else 'agent-plugins.org'
+            plugins.append((pdir or '.', j.get('name', ''), j.get('version', ''), trunc(j.get('description', '')), fmt))
+        except Exception:
+            plugins.append((pdir, '?', '', 'invalid json', '?'))
+    elif base == 'marketplace.json' and '.claude-plugin' in parts:
+        try:
+            j = json.load(open(p))
+            mcps.append((r, j.get('name', ''), len(j.get('plugins', []))))
+        except Exception:
+            mcps.append((r, '?', 0))
+    elif base == 'SKILL.md':
+        d = fm(p)
+        skills.append((os.path.dirname(r), d.get('name') or os.path.basename(os.path.dirname(r)), trunc(d.get('description', ''))))
+    elif base.endswith('.md') and ('agents' in parts[:-1] or base.endswith('.agent.md')):
+        d = fm(p)
+        if d.get('description') or d.get('name') or base.endswith('.agent.md'):
+            agents.append((r, d.get('name') or re.sub(r'(\.agent)?\.md$', '', base), d.get('model', ''), trunc(d.get('tools', '')), trunc(d.get('description', ''))))
+    elif base.endswith('.md') and ('commands' in parts[:-1] or base.endswith('.prompt.md')):
+        d = fm(p)
+        commands.append((r, re.sub(r'(\.prompt)?\.md$', '', base), trunc(d.get('description', ''))))
+    elif base == 'hooks.json':
+        try:
+            j = json.load(open(p))
+            h = j.get('hooks', j)
+            evs = sorted(h.keys()) if isinstance(h, dict) else []
+            mods = j.get('modules', []) if isinstance(j, dict) else []
+            hooks.append((r, ', '.join(evs), ', '.join(mods) if isinstance(mods, list) else ''))
+        except Exception:
+            hooks.append((r, 'invalid json', ''))
+
+src = ''
+cfg = configparser.ConfigParser(strict=False)
+try:
+    cfg.read(os.path.join(root, '.git', 'config'))
+    src = cfg.get('remote "origin"', 'url', fallback='')
+except Exception:
+    pass
+src = re.sub(r'^git@github\.com:', 'https://github.com/', src).removesuffix('.git')
+try:
+    head = open(os.path.join(root, '.git', 'HEAD')).read().strip()
+except Exception:
+    head = ''
+
+for lst in (plugins, skills, agents, commands, hooks):
+    lst.sort()
+
+L = []
+L.append(f'# {name} catalog\n')
+L.append(f'Source: {src or "(no git remote)"}  ')
+L.append(f'Local path: `3rd-party/{name}/` (gitignored)  ')
+L.append(f'Generated by `scripts/catalog-3rd-party.py`; regenerate rather than hand-edit.\n')
+L.append('| Kind | Count |\n|---|---|')
+for k, v in (('Marketplaces', mcps), ('Plugins', plugins), ('Skills', skills), ('Agents', agents), ('Commands / prompts', commands), ('hooks.json files', hooks)):
+    n = str(len(v))
+    if k == 'Plugins' and plugins:
+        fmts = {}
+        for row in plugins:
+            fmts[row[4]] = fmts.get(row[4], 0) + 1
+        if len(fmts) > 1:
+            n += ' (' + ', '.join(f'{c} {f}' for f, c in sorted(fmts.items(), key=lambda x: -x[1])) + ')'
+    L.append(f'| {k} | {n} |')
+L.append('')
+if mcps:
+    L.append('## Marketplaces\n\n| File | Name | Plugins |\n|---|---|---|')
+    L += [f'| `{a}` | {b} | {c} |' for a, b, c in mcps]
+    L.append('')
+if plugins:
+    L.append('## Plugins\n\n| Path | Name | Version | Format | Description |\n|---|---|---|---|---|')
+    L += [f'| `{a}` | {b} | {c} | {e} | {d} |' for a, b, c, d, e in plugins]
+    L.append('')
+if skills:
+    L.append('## Skills\n\n| Path | Name | Description |\n|---|---|---|')
+    L += [f'| `{a}` | {b} | {c} |' for a, b, c in skills]
+    L.append('')
+if agents:
+    L.append('## Agents\n\n| Path | Name | Model | Tools | Description |\n|---|---|---|---|---|')
+    L += [f'| `{a}` | {b} | {c} | {d} | {e} |' for a, b, c, d, e in agents]
+    L.append('')
+if commands:
+    L.append('## Commands and prompts\n\n| Path | Name | Description |\n|---|---|---|')
+    L += [f'| `{a}` | {b} | {c} |' for a, b, c in commands]
+    L.append('')
+if hooks:
+    L.append('## Hooks\n\n| File | Events | Modules |\n|---|---|---|')
+    L += [f'| `{a}` | {b} | {c} |' for a, b, c in hooks]
+    L.append('')
+os.makedirs(os.path.dirname(out), exist_ok=True)
+open(out, 'w').write('\n'.join(L))
+print(f'{name}\tsrc={src}\tplugins={len(plugins)}\tskills={len(skills)}\tagents={len(agents)}\tcommands={len(commands)}\thooks={len(hooks)}')
