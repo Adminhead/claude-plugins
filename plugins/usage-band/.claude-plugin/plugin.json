@@ -1,0 +1,46 @@
+{
+  "name": "usage-band",
+  "version": "0.1.0",
+  "description": "A band above the prompt with context fill by category and rate-limit windows coloured by pace, a toast when a window turns amber or red or resets, plus session cost, cache hit rate, compactions and effort.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "limitsThreshold": {
+      "type": "number",
+      "title": "Hide limits below (%)",
+      "description": "Show a rate-limit window only once it reaches this percentage or its pace turns amber or red. 0 always shows every window.",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "weeklyThreshold": {
+      "type": "number",
+      "title": "Weekly in the collapsed row at (%)",
+      "description": "Add the weekly (and spend) window to the one-line band once it reaches this percentage or its pace turns amber or red.",
+      "default": 80,
+      "min": 0,
+      "max": 100
+    },
+    "resetStyle": {
+      "type": "string",
+      "title": "Reset time",
+      "description": "countdown shows the time left (↻1h29m); clock shows when the window resets (↻14:30).",
+      "options": ["countdown", "clock"],
+      "default": "countdown"
+    },
+    "alerts": {
+      "type": "boolean",
+      "title": "Limit toasts",
+      "description": "Toast once when a window first turns amber or red, and when a window that had alerted resets.",
+      "default": true
+    },
+    "sessionStats": {
+      "type": "boolean",
+      "title": "Session stats",
+      "description": "Show session cost, the last response's cache hit rate, the compaction count and the effort level.",
+      "default": true
+    }
+  }
+}

@@ -1,0 +1,13 @@
+kubernetes plugin (adminhead marketplace)
+
+skills/kubernetes/references/pod-security.md is derived from the
+`implementing-kubernetes-pod-security-standards` skill in
+Anthropic-Cybersecurity-Skills (https://github.com/mukul975/Anthropic-Cybersecurity-Skills),
+Copyright 2026 mukul975, licensed under the Apache License, Version 2.0.
+
+Modifications by AdminHead, 2026: rewritten and condensed into a reference
+for this skill; control tables rechecked against the Kubernetes v1.37 Pod
+Security Standards documentation; the bundled scripts, CI workflow and
+compliance mappings were not ported. The upstream project ships no NOTICE file.
+
+The rest of the plugin is adapted from MIT-licensed sources listed in LICENSE.

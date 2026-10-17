@@ -1,0 +1,9 @@
+{
+  "name": "fastapi",
+  "version": "0.1.0",
+  "description": "Bounded changes to existing FastAPI apps: lifespan, dependencies, Pydantic models, async handlers, auth dependencies, transactions and dependency_overrides tests.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

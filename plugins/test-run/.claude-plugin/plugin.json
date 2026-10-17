@@ -1,0 +1,9 @@
+{
+  "name": "test-run",
+  "version": "0.1.0",
+  "description": "Manual test-run command: detects the test runner, runs the tests affected by your changes, prints only compact failures, and fixes them in a bounded loop.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

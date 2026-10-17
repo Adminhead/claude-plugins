@@ -1,0 +1,9 @@
+{
+  "name": "terraform",
+  "version": "0.1.0",
+  "description": "Terraform, OpenTofu and Terragrunt skill: safe plan and saved-plan apply, plan review, state and refactoring blocks, Terratest, and security scanning with Trivy, Checkov and OPA.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "helm",
+  "version": "0.1.0",
+  "description": "Authors, validates and releases Helm charts: values and schema, helpers, dependencies, lint and template checks, helm diff, atomic upgrades, OCI publishing and provenance.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

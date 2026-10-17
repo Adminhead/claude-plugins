@@ -1,0 +1,9 @@
+{
+  "name": "tanstack",
+  "version": "0.1.0",
+  "description": "Works with TanStack Query, Router, Form, Table, Virtual and Start: state ownership, query keys, cache invalidation, loaders, search-param validation, server-driven tables, virtualization and SSR boundaries. Use when code imports @tanstack/*, or for stale or duplicate data, lost form values, table and pagination mismatches, or Start server functions.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

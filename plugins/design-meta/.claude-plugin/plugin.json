@@ -7,6 +7,10 @@
     "email": "support@adminhead.com"
   },
   "dependencies": [
-    "design-core"
+    "design-core",
+    "uiux-lookup",
+    "design-critique",
+    "design-system",
+    "design-handoff"
   ]
 }

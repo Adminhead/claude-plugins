@@ -1,0 +1,9 @@
+{
+  "name": "web-design",
+  "version": "0.1.0",
+  "description": "Extend an existing product's visual system: hierarchy, responsive, state and accessibility intent, DESIGN.md, and review of the rendered UI against it.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

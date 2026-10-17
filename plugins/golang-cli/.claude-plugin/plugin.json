@@ -1,0 +1,9 @@
+{
+  "name": "golang-cli",
+  "version": "0.1.0",
+  "description": "Go command-line tools with cobra and viper: command tree and hooks, flag, env and config precedence, output and exit codes, signal shutdown, testable commands.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

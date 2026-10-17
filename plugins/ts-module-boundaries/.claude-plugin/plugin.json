@@ -1,0 +1,9 @@
+{
+  "name": "ts-module-boundaries",
+  "version": "0.1.0",
+  "description": "Sets up dependency-cruiser in a TypeScript repo so each package is reachable only through its root entry-point files, with no deep imports and no cycles, then proves the rules fail on a violation. Use when the user asks to enforce package boundaries, stop deep imports or add dependency-cruiser.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

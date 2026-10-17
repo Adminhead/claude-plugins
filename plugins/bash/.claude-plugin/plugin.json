@@ -1,0 +1,9 @@
+{
+  "name": "bash",
+  "version": "0.1.0",
+  "description": "Bash skill: defensive scripts with strict mode and its holes, quoting, trap cleanup, argument parsing, ShellCheck configuration and Bats tests.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

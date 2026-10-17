@@ -83,9 +83,9 @@ Each archived plugin becomes one focused plugin per skill, agent, hooks file, MC
 **`orchestration-meta`** gives a main-thread orchestration agent and a collection of general, non-specialized agents:
 
 - `orchestration` (A): the main-thread agent, rebuilt from crew's `orchestration.md` without the hard-coded crew roster. Launched as the session agent (the old `claude-tmux` / `claude-crew` flow).
-- `agent-router` (M): builds the orchestrator's routing rules from the agents actually installed. It collects each agent type from the `agent.offer` event (name, `description`, `source`, `provider`) and writes a routing table into the system prompt through `prompt.section`, only when the main thread runs `orchestration`. So installing `web-meta` adds `browser-tester` to the routes without editing the orchestrator. To verify when building: that the agent listing is offered before the system prompt is assembled, and how a mod tells the main thread's agent type. The fallback is reading the installed plugins' `agents/` directories with `$.fs`.
+- `agent-router` (M): builds the orchestrator's routing rules from the agents actually installed. It collects each agent type from the `agent.offer` event (name, `description`, `source`, `provider`) and writes a routing table into the Agent tool's description through `tool.describe`, only when the main thread runs `orchestration`. (Implemented 2026-10-17. The plan said `prompt.section`, but a live probe showed system prompt sections also reach subagents, so the Agent tool description is used instead.) So installing `web-meta` adds `browser-tester` to the routes without editing the orchestrator. To verify when building: that the agent listing is offered before the system prompt is assembled, and how a mod tells the main thread's agent type. The fallback is reading the installed plugins' `agents/` directories with `$.fs`.
 - General agents: `coder` (one agent; the caller picks the model, replacing coder, coder-high and coder-max), `architect`, `reviewer` (absorbs quick-review; the caller picks the depth), `debugger` (absorbs debugger-critical), `scribe`.
-- `readonly-agent-gate` (H): read-only Bash for `architect`, `reviewer` and `debugger`. Plugin agents can't carry frontmatter hooks, so this is its own plugin. Its agent list is configurable, so specialized read-only agents can join it.
+- `readonly-agent-gate` (H): read-only Bash for `architect`, `reviewer` and `debugger` (bare and plugin-scoped names, plus an `extra_agents` option; writes under `/tmp`, `$TMPDIR` and the scratchpad are allowed). `devops` is not gated: its change mode needs writing validators such as `tofu init`, and `cloud-ops-guard` blocks its live verbs. Plugin agents can't carry frontmatter hooks, so this is its own plugin. Its agent list is configurable, so specialized read-only agents can join it.
 
 **Specialized agents live with their skills.** They go in the same meta as the skills they serve, or install alongside them directly:
 
@@ -277,6 +277,8 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 ## Phases
 
 Each phase ports with `scripts/plugins.py new`, applies the shared rules, and ships with `ship-plugin`.
+
+**Status, 2026-10-17:** phases 1 to 4 are implemented (79 focused plugins from 20 parallel batches, registered with `scripts/plugins.py register`), plus `implement-plan`, `test-gap-audit`, `golang-cli`, `golang-performance`, `fastapi`, `vue`, `tanstack`, `click-path-audit`, `prisma`, `ts-module-boundaries`, the extra `gh-*` skills, `rollout-plan` and `production-readiness`. All pass strict validation and their own tests; evals are not run yet, and no mod has run in a live session except `agent-router`. Batch reports with unverified facts and follow-ups: `docs/research/implementation-2026-10-17/`. Phase 5 (remaining direct installs) and phase 6 (new third-party ports, optional mods) are next.
 
 1. **Baseline and core.** The baseline and programming-core rows. About 12 plugins.
 2. **Stack metas.** Stack skills and the LSP dependencies. About 14 plugins.

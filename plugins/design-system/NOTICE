@@ -1,0 +1,16 @@
+design-system
+Original work by Anthropic. Modifications copyright 2026 AdminHead.
+
+This plugin contains a modified version of design/skills/design-system/SKILL.md from
+Anthropic's design plugin (v1.2.0) in https://github.com/anthropics/knowledge-work-plugins
+(commit c71b6f3082b1e5ace3d1a9e30ac9205934134c9c), licensed under the Apache License,
+Version 2.0. The full license text is in LICENSE.
+
+Changes made by AdminHead in 2026:
+- Removed the slash-command usage block, the CONNECTORS.md placeholders and the
+  "If Connectors Available" section (Figma, project tracker, knowledge base and
+  user feedback MCP servers are not part of this marketplace).
+- Rewrote the description and added a scope section that routes neighboring
+  requests to other plugins in this marketplace.
+- Replaced emoji severity and pass/fail markers with words.
+- Added an explicit boundary with the web-design plugin, an evidence-gathering procedure for code-side audits, and gotchas; moved the output templates to references/output-templates.md.

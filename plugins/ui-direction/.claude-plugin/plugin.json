@@ -1,0 +1,9 @@
+{
+  "name": "ui-direction",
+  "version": "0.1.0",
+  "description": "Art direction and build process for new UI or a visual reshape, such as a landing page, marketing site, portfolio, product page or a new app screen with no design system. Grounds the design in the subject, deals a researched direction, plans tokens and checks the render. Use when a page should look designed, or looks generic, templated or AI-made.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "gh-release",
+  "version": "0.1.0",
+  "description": "Cut a manual GitHub release with gh: detect release tooling first, propose a SemVer bump from the public-API diff, draft a Keep a Changelog entry, open a release PR, then tag and publish after approval.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

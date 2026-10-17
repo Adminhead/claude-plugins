@@ -1,0 +1,9 @@
+{
+  "name": "ui-critic",
+  "version": "0.1.0",
+  "description": "Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a rendered page looks generic. Not for mockups, e2e tests or WCAG audits.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

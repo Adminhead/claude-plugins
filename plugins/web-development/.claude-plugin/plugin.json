@@ -1,0 +1,9 @@
+{
+  "name": "web-development",
+  "version": "0.1.0",
+  "description": "Builds or repairs a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard and focus, request and response contracts, server validation, error mapping and measured performance, verified in a real browser. Use for a form, page or flow that must work for real users, an HTTP API contract change, or a browser or network bug.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

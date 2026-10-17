@@ -1,0 +1,9 @@
+{
+  "name": "gitops",
+  "version": "0.1.0",
+  "description": "Sets up and reviews GitOps delivery with Argo CD or Flux: choosing between them, repo layout, sync policy per environment, and secrets with External Secrets, Sealed Secrets or SOPS.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

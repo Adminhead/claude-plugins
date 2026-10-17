@@ -1,0 +1,9 @@
+{
+  "name": "e2e-testing",
+  "version": "0.1.0",
+  "description": "Write, run and diagnose browser end-to-end tests (Playwright, Cypress) for critical user journeys, with accessible locators, condition-based waits and flake triage.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

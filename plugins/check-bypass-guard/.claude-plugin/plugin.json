@@ -1,0 +1,9 @@
+{
+  "name": "check-bypass-guard",
+  "version": "0.1.0",
+  "description": "Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files. Needs bun.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

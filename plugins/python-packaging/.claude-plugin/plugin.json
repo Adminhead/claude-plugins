@@ -1,0 +1,9 @@
+{
+  "name": "python-packaging",
+  "version": "0.1.0",
+  "description": "Build and validate Python distributions and uv workflows: pyproject.toml, package data, entry points, wheel and sdist checks, uv in CI and Docker, and PyPI trusted publishing.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

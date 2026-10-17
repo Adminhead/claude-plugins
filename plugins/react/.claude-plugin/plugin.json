@@ -1,0 +1,9 @@
+{
+  "name": "react",
+  "version": "0.1.0",
+  "description": "Changes, reviews and debugs React components: state ownership, effects, keys, render purity, Server Components and Actions, accessibility, measured performance, React 19 upgrades and component tests. Use for .tsx/.jsx behavior or render cost, such as \"this list lags when I type\", \"it re-renders too much\", effect loops or hydration mismatches.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

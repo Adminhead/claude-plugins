@@ -1,0 +1,23 @@
+{
+  "name": "git-statusline",
+  "version": "0.1.0",
+  "description": "A mod that draws a git line under the prompt: repo path, branch, linked-worktree marker, ahead/behind with colour past unpushed-commit thresholds, staged/modified/new/conflict counts, changed lines and stash count.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "push_warning_threshold": {
+      "type": "number",
+      "title": "Unpushed commits: warning",
+      "description": "Colour the ahead count amber at this many unpushed commits. 0 turns it off.",
+      "default": 5
+    },
+    "push_critical_threshold": {
+      "type": "number",
+      "title": "Unpushed commits: critical",
+      "description": "Colour the ahead count red at this many unpushed commits. 0 turns it off.",
+      "default": 20
+    }
+  }
+}

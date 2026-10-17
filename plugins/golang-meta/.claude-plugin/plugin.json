@@ -7,6 +7,11 @@
     "email": "support@adminhead.com"
   },
   "dependencies": [
-    "programming-core"
+    "programming-core",
+    "golang",
+    {
+      "name": "gopls",
+      "marketplace": "claude-code-lsps"
+    }
   ]
 }

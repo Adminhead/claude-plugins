@@ -1,0 +1,9 @@
+{
+  "name": "prisma",
+  "version": "0.1.0",
+  "description": "Prisma ORM 6 and 7 traps for TypeScript backends, such as updateMany returning a count, interactive transaction timeouts, migrate dev resets, edited applied migrations, undefined filters, P2002/P2025/P2003 handling, serverless connections and driver adapters. Use when writing a Prisma schema, query, transaction or migration, or debugging one.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

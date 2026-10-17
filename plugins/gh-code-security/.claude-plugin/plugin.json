@@ -1,0 +1,9 @@
+{
+  "name": "gh-code-security",
+  "version": "0.1.0",
+  "description": "Configure and triage GitHub security features with gh: secret scanning, push protection and blocked-push recovery, path exclusions, private vulnerability reporting, and alert triage.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

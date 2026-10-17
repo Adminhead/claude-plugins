@@ -1,0 +1,32 @@
+{
+ "data": {
+  "repository": {
+   "pullRequest": {
+    "number": 7,
+    "title": "Add feature",
+    "url": "https://github.com/octo/repo/pull/7",
+    "headRefName": "feature",
+    "baseRefName": "main",
+    "reviewThreads": {
+     "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": null
+     },
+     "nodes": []
+    },
+    "reviews": {
+     "nodes": [
+      {
+       "state": "APPROVED",
+       "body": "",
+       "author": {
+        "login": "bob",
+        "__typename": "User"
+       }
+      }
+     ]
+    }
+   }
+  }
+ }
+}

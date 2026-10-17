@@ -1,0 +1,132 @@
+{
+ "data": {
+  "repository": {
+   "pullRequest": {
+    "number": 7,
+    "title": "Add feature",
+    "url": "https://github.com/octo/repo/pull/7",
+    "headRefName": "feature",
+    "baseRefName": "main",
+    "reviewThreads": {
+     "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": "CURSOR2"
+     },
+     "nodes": [
+      {
+       "isResolved": false,
+       "isOutdated": false,
+       "path": "README.md",
+       "line": null,
+       "originalLine": null,
+       "comments": {
+        "totalCount": 60,
+        "nodes": [
+         {
+          "author": {
+           "login": "dave",
+           "__typename": "User"
+          },
+          "body": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         },
+         {
+          "author": {
+           "login": "erin",
+           "__typename": "User"
+          },
+          "body": "reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply reply ",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         }
+        ]
+       }
+      },
+      {
+       "isResolved": false,
+       "isOutdated": false,
+       "path": "src/gone.py",
+       "line": null,
+       "originalLine": 5,
+       "comments": {
+        "totalCount": 1,
+        "nodes": [
+         {
+          "author": {
+           "login": "frank",
+           "__typename": "User"
+          },
+          "body": "Old line comment.",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "reviews": {
+     "nodes": [
+      {
+       "state": "COMMENTED",
+       "body": "Review of commit `aaa`. <!-- hidden -->",
+       "author": {
+        "login": "coderabbitai",
+        "__typename": "Bot"
+       }
+      },
+      {
+       "state": "CHANGES_REQUESTED",
+       "body": "Needs tests\n\nbefore merge.",
+       "author": {
+        "login": "alice",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "APPROVED",
+       "body": "LGTM",
+       "author": {
+        "login": "bob",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "COMMENTED",
+       "body": "   ",
+       "author": {
+        "login": "carol",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "DISMISSED",
+       "body": "Old concern.",
+       "author": {
+        "login": "carol",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "COMMENTED",
+       "body": "Deploy preview ready",
+       "author": {
+        "login": "github-actions",
+        "__typename": "Bot"
+       }
+      },
+      {
+       "state": "COMMENTED",
+       "body": "Review of commit `bbb`. <img src=\"x.png\"> ![P1 Badge](https://img.shields.io/x)",
+       "author": {
+        "login": "coderabbitai",
+        "__typename": "Bot"
+       }
+      }
+     ]
+    }
+   }
+  }
+ }
+}

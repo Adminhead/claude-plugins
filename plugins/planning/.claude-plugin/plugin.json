@@ -1,0 +1,9 @@
+{
+  "name": "planning",
+  "version": "0.1.0",
+  "description": "Writes, reviews, or revises implementation plans whose scope, verification, and reruns are proportionate to risk. Use for \"plan this\", \"review this plan\", \"cheapest way to verify\", work spanning several slices or risky boundaries, acceptance criteria for an ambiguous change, multi-agent or multi-session plans, and \"grill me\" stress-tests.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

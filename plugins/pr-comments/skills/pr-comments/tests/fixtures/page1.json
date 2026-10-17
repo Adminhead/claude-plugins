@@ -1,0 +1,204 @@
+{
+ "data": {
+  "repository": {
+   "pullRequest": {
+    "number": 7,
+    "title": "Add feature",
+    "url": "https://github.com/octo/repo/pull/7",
+    "headRefName": "feature",
+    "baseRefName": "main",
+    "reviewThreads": {
+     "pageInfo": {
+      "hasNextPage": true,
+      "endCursor": "CURSOR1"
+     },
+     "nodes": [
+      {
+       "isResolved": false,
+       "isOutdated": false,
+       "path": "src/app.py",
+       "line": 42,
+       "originalLine": 42,
+       "comments": {
+        "totalCount": 3,
+        "nodes": [
+         {
+          "author": {
+           "login": "alice",
+           "__typename": "User"
+          },
+          "body": "Please   rename\n\nthis variable.",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": "@@ -1,8 +1,9 @@\n line1\n line2\n line3\n line4\n line5\n line6\n line7\n+added\n"
+         },
+         {
+          "author": {
+           "login": "bob",
+           "__typename": "User"
+          },
+          "body": "Agreed,\n it is unclear.",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         },
+         {
+          "author": {
+           "login": "dependabot",
+           "__typename": "Bot"
+          },
+          "body": "noise",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         }
+        ]
+       }
+      },
+      {
+       "isResolved": true,
+       "isOutdated": false,
+       "path": "src/done.py",
+       "line": 10,
+       "originalLine": 10,
+       "comments": {
+        "totalCount": 1,
+        "nodes": [
+         {
+          "author": {
+           "login": "alice",
+           "__typename": "User"
+          },
+          "body": "Fixed already.",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         }
+        ]
+       }
+      },
+      {
+       "isResolved": false,
+       "isOutdated": true,
+       "path": "src/old.py",
+       "line": 10,
+       "originalLine": 10,
+       "comments": {
+        "totalCount": 1,
+        "nodes": [
+         {
+          "author": {
+           "login": "carol",
+           "__typename": "User"
+          },
+          "body": "Stale comment.",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         }
+        ]
+       }
+      },
+      {
+       "isResolved": false,
+       "isOutdated": false,
+       "path": "ci.yml",
+       "line": 10,
+       "originalLine": 10,
+       "comments": {
+        "totalCount": 1,
+        "nodes": [
+         {
+          "author": {
+           "login": "github-actions",
+           "__typename": "Bot"
+          },
+          "body": "Lint failed.",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         }
+        ]
+       }
+      },
+      {
+       "isResolved": false,
+       "isOutdated": false,
+       "path": "src/bot.py",
+       "line": null,
+       "originalLine": null,
+       "comments": {
+        "totalCount": 1,
+        "nodes": [
+         {
+          "author": {
+           "login": "coderabbitai",
+           "__typename": "Bot"
+          },
+          "body": "<!-- internal marker -->Consider a <b>guard</b> clause.\n<details><summary>Prompt for AI</summary>long hidden text</details>\n```suggestion\nif not x:\n    return\n\n```",
+          "url": "https://github.com/octo/repo/pull/7#c",
+          "diffHunk": null
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "reviews": {
+     "nodes": [
+      {
+       "state": "COMMENTED",
+       "body": "Review of commit `aaa`. <!-- hidden -->",
+       "author": {
+        "login": "coderabbitai",
+        "__typename": "Bot"
+       }
+      },
+      {
+       "state": "CHANGES_REQUESTED",
+       "body": "Needs tests\n\nbefore merge.",
+       "author": {
+        "login": "alice",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "APPROVED",
+       "body": "LGTM",
+       "author": {
+        "login": "bob",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "COMMENTED",
+       "body": "   ",
+       "author": {
+        "login": "carol",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "DISMISSED",
+       "body": "Old concern.",
+       "author": {
+        "login": "carol",
+        "__typename": "User"
+       }
+      },
+      {
+       "state": "COMMENTED",
+       "body": "Deploy preview ready",
+       "author": {
+        "login": "github-actions",
+        "__typename": "Bot"
+       }
+      },
+      {
+       "state": "COMMENTED",
+       "body": "Review of commit `bbb`. <img src=\"x.png\"> ![P1 Badge](https://img.shields.io/x)",
+       "author": {
+        "login": "coderabbitai",
+        "__typename": "Bot"
+       }
+      }
+     ]
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "ship",
+  "version": "0.1.0",
+  "description": "Ship finished work in one run: commit, push, and optionally open a PR, watch checks and merge, delegated to the shipper agent.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "shipper"
+  ]
+}

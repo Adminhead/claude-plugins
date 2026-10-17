@@ -1,0 +1,9 @@
+{
+  "name": "production-readiness",
+  "version": "0.1.0",
+  "description": "Evidence-based ship-or-block review (Blocked, Risky or Caveats) of an application before launch, built from local repo evidence.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "gh-repo-setup",
+  "version": "0.1.0",
+  "description": "Audit and set up a GitHub repository's surface with gh: labels, issue forms, PR template, CODEOWNERS, SECURITY.md, CONTRIBUTING.md, and branch or tag rulesets, with a dry-run plan.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -7,6 +7,13 @@
     "email": "support@adminhead.com"
   },
   "dependencies": [
-    "programming-core"
+    "programming-core",
+    "javascript",
+    "typescript",
+    "dependency-vetting",
+    {
+      "name": "vtsls",
+      "marketplace": "claude-code-lsps"
+    }
   ]
 }

@@ -1,0 +1,9 @@
+{
+  "name": "kubernetes",
+  "version": "0.1.0",
+  "description": "Writes and reviews Kubernetes manifests (probes, resources, RBAC, NetworkPolicy, Pod Security Standards and admission, Jobs, HPA, PDB, Kustomize) and triages failing workloads with read-only kubectl.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

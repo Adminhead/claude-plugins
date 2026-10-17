@@ -1,0 +1,77 @@
+   Compiling demo v0.1.0 (/work)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s
+     Running unittests src/lib.rs (target/debug/deps/demo-7e8058a2c8442f1e)
+
+running 3 tests
+test tests::later ... ignored
+test tests::ok ... ok
+test tests::adds ... FAILED
+
+failures:
+
+---- tests::adds stdout ----
+
+thread 'tests::adds' (1357081) panicked at src/lib.rs:16:9:
+assertion `left == right` failed
+  left: -1
+ right: 3
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::adds
+
+test result: FAILED. 1 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--lib`
+     Running tests/integ.rs (target/debug/deps/integ-554d704a96460556)
+
+running 2 tests
+test integ_ok ... ok
+test integ_panics ... FAILED
+
+failures:
+
+---- integ_panics stdout ----
+
+thread 'integ_panics' (1357085) panicked at tests/integ.rs:4:14:
+index out of bounds: the len is 0 but the index is 2
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    integ_panics
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--test integ`
+   Doc-tests demo
+
+running 1 test
+test src/lib.rs - add (line 3) ... FAILED
+
+failures:
+
+---- src/lib.rs - add (line 3) stdout ----
+Test executable failed (exit status: 101).
+
+stderr:
+
+thread 'main' (1357116) panicked at src/lib.rs:5:1:
+assertion `left == right` failed
+  left: 0
+ right: 3
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+
+failures:
+    src/lib.rs - add (line 3)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: doctest failed, to rerun pass `--doc`
+error: 3 targets failed:
+    `--lib`
+    `--test integ`
+    `--doc`

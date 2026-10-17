@@ -1,0 +1,15 @@
+terraform plugin (AdminHead)
+
+skills/terraform/references/security-scanning.md is adapted from the
+"auditing-terraform-infrastructure-for-security" skill in
+https://github.com/mukul975/Anthropic-Cybersecurity-Skills
+(author: mahipal), licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The file was modified: tfsec was replaced with `trivy config`, Terrascan was
+removed, the Rego policies were rewritten to Rego v1 syntax against plan JSON,
+the CI example was rewritten with SHA-pinned actions, and the text was
+condensed and reorganized.
+
+skills/terraform/references/terratest.md is adapted from
+agents/terratest-module-testing.agent.md in https://github.com/github/awesome-copilot,
+Copyright GitHub, Inc., licensed under the MIT License (text at the end of LICENSE).

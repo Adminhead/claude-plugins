@@ -1,0 +1,9 @@
+{
+  "name": "pr-comments",
+  "version": "0.1.0",
+  "description": "Manual /pr-comments: pull a PR's unresolved review threads and review summaries into context, triage them, and fix the ones you pick. Read-only on GitHub.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -8,6 +8,13 @@
   },
   "dependencies": [
     "programming-core",
-    "design-core"
+    "design-core",
+    "web-development",
+    "react",
+    "vite",
+    "e2e-testing",
+    "playwright-cli",
+    "browser-tester",
+    "web-perf-auditor"
   ]
 }

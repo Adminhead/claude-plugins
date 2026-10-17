@@ -1,0 +1,17 @@
+dependency-vetting
+Copyright AdminHead
+
+This plugin contains material adapted from Anthropic-Cybersecurity-Skills
+(https://github.com/mukul975/Anthropic-Cybersecurity-Skills), licensed under the
+Apache License, Version 2.0 (see LICENSE). Source skills:
+
+- skills/detecting-malicious-npm-packages
+- skills/detecting-typosquatting-packages-in-npm-pypi
+- skills/detecting-dependency-confusion
+
+Modifications: the three skills were merged into one skill covering npm and PyPI;
+rewritten and condensed; ATT&CK, NIST CSF and other frontmatter removed; the
+bundled scripts/agent.py helpers were not included; commands were rechecked
+against current GuardDog, OSV-Scanner, npm and uv documentation; PyPI-specific
+fetch, inspection and index-pinning guidance was added; incorrect pip
+configuration advice was corrected.

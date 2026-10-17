@@ -163,5 +163,32 @@ def test_new_rejects_core_names(root):
         run(root, "new", "web-core", "--kind", "skill", "--description", "x")
 
 
+def test_register_lists_new_dirs_and_assigns_metas(root):
+    plugins.write_json(root / "plugins/uv-lock/.claude-plugin/plugin.json",
+                       {"name": "uv-lock", "version": "0.1.0", "description": "Locks deps."})
+    skill = root / "plugins/uv-lock/skills/uv-lock/SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: uv-lock\n---\n")
+    run(root, "register", "--meta", "python-meta=uv-lock")
+    run(root, "register", "--meta", "python-meta=uv-lock")
+    meta = json.loads((root / "plugins/python-meta/.claude-plugin/plugin.json").read_text())
+    assert meta["dependencies"] == ["uv-lock"]
+    assert plugins.check(root) == []
+
+
+def test_shared_copies_must_match(root):
+    run(root, "new", "guard", "--kind", "hook", "--description", "Guards.")
+    canonical = root / "scripts/shared/shell/walk.ts"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text("export const v = 1\n")
+    copy = root / "plugins/guard/scripts/shell/walk.ts"
+    copy.parent.mkdir(parents=True)
+    copy.write_text("export const v = 0\n")
+    assert any("differs from scripts/shared/shell/walk.ts" in e for e in plugins.check(root))
+    run(root, "sync-shared")
+    assert copy.read_text() == canonical.read_text()
+    assert plugins.check(root) == []
+
+
 def test_repo_passes_check():
     assert plugins.check(REPO) == []

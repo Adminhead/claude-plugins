@@ -1,0 +1,9 @@
+{
+  "name": "click-path-audit",
+  "version": "0.1.0",
+  "description": "Audits UI event handlers for behavior bugs. It maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths and effects that reset what a click just set. Use when a button does nothing or leaves the wrong state though each function works alone, or after a shared-state refactor.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

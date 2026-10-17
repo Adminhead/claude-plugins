@@ -1,0 +1,9 @@
+{
+  "name": "typescript",
+  "version": "0.1.0",
+  "description": "Handles TypeScript type-level and compiler work, covering tsconfig strictness, narrowing, generics, discriminated unions, declarations and module resolution, public type APIs, runtime validation of unknown data, and type tests. Use when editing *.ts/*.tsx types or tsconfig.json, or fixing tsc errors.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

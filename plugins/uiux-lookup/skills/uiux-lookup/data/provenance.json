@@ -1,0 +1,311 @@
+{
+  "note": "Filtered from ui-ux-pro-max v2.15.0 (commit 56ea9cf) data-provenance.json and catalog-summary.json: only records for the files shipped in this skill are kept.",
+  "upstream": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "generatedAt": "2026-08-13T00:00:00Z",
+  "freshnessPolicy": {
+    "manual-verifiedDays": 365,
+    "needs-reviewDays": 90
+  },
+  "catalog": {
+    "verifiedAt": "2026-08-26",
+    "counts": {
+      "googleFonts": 1934,
+      "curatedIcons": 105,
+      "uxGuidelines": 119,
+      "stacks": 22,
+      "stackGuidelines": 1271
+    },
+    "snapshots": {
+      "google-fonts.csv": {
+        "sha256": "1c8c3b2ea1faf6a1012da463756def8b3889db33f2226f0343bb4daa80307d03"
+      },
+      "google-font-licenses.json": {
+        "sha256": "35688523f2955795caa1a47c53b83099e60c1708461476f9cc3a050cf3b0148a"
+      },
+      "icons.csv": {
+        "sha256": "50816c6012030178195a16ee481ebf58b47bd985d70e8ec58886cc83f6eddafc"
+      }
+    },
+    "promotionPolicy": {
+      "changedFamilySetRequiresExplicitApproval": true,
+      "relevanceGateRequired": true,
+      "unlicensedFamiliesExcluded": true
+    },
+    "pendingCandidates": [
+      {
+        "family": "Edu NSW ACT Cursive",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      },
+      {
+        "family": "Edu NSW ACT Hand Pre",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      },
+      {
+        "family": "Edu QLD Hand",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      },
+      {
+        "family": "Edu SA Hand",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      },
+      {
+        "family": "Edu VIC WA NT Hand",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      },
+      {
+        "family": "Edu VIC WA NT Hand Pre",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      },
+      {
+        "family": "Google Sans",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      },
+      {
+        "family": "Google Sans Flex",
+        "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+      }
+    ]
+  },
+  "records": [
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-wcag-22-guidance",
+      "sourceFile": "ux-guidelines.csv",
+      "sourceKey": {
+        "Scope": "No 100-107; Issue, Description, Do, Don't, and code-example fields",
+        "ConformanceBoundary": "Rows 100, 103, 104, and 107 are AA; rows 101-102 are AAA; rows 105-106 are A. Accessible Authentication (Enhanced) AAA is not represented."
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-icon-semantics",
+      "sourceFile": "icons.csv",
+      "sourceKey": {
+        "Scope": "No 1-105; Allowed Contexts and contextual accessibility guidance in Usage; No 105 library/import examples",
+        "Compatibility": "Semantic Role remains a legacy recommended-default field, not an immutable semantic classification"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/tutorials/images/decorative/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/ARIA/apg/patterns/button/"
+        },
+        {
+          "type": "official",
+          "ref": "https://github.com/phosphor-icons/react"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-native-input",
+      "sourceFile": "app-interface.csv",
+      "sourceKey": {
+        "Scope": "No 6, 31, and 32; Description, Do, Don't, and code-example fields"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://developer.apple.com/design/human-interface-guidelines/accessibility"
+        },
+        {
+          "type": "official",
+          "ref": "https://developer.android.com/guide/topics/ui/accessibility/apps"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-form-validation-errors",
+      "sourceFile": "ux-guidelines.csv",
+      "sourceKey": {
+        "Scope": "No 55 and 109; Description, Do, Don't, and code-example fields"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://design-system.service.gov.uk/components/error-summary/"
+        },
+        {
+          "type": "official",
+          "ref": "https://design-system.service.gov.uk/components/error-message/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/tutorials/forms/notifications/"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-text-layout-resilience",
+      "sourceFile": "ux-guidelines.csv",
+      "sourceKey": {
+        "Scope": "No 8, 14, 19, 78, and 110-119; Issue, Platform, Description, Do, Don't, code-example, and Severity fields",
+        "Boundary": "Heading balance is a progressive browser-controlled heuristic and does not guarantee an orphan-free or exact line break; timing and loading choices remain platform- and component-specific; compact-label guidance does not authorize blanket nonbreaking spaces, hardcoded line breaks, inaccessible truncation, or status announced by color alone"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/TR/css-text-4/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/reflow.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/text-spacing.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/components/web/react/core/tag/usage"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/components/web/react/core/skeleton/usage"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/motion"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/wait-ux"
+        },
+        {
+          "type": "official",
+          "ref": "https://m3.material.io/foundations/interaction/states/overview"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/TR/web-animations-1/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/TR/css-animations-1/"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "html-tailwind-text-layout-resilience",
+      "sourceFile": "stacks/html-tailwind.csv",
+      "sourceKey": {
+        "Scope": "No 57-59; Guideline, Description, Do, Don't, Code Good, Code Bad, Docs URL, Applies To, Status, and Verified At fields",
+        "Boundary": "Balanced wrapping is progressive enhancement; wrap-anywhere is limited to unpredictable long tokens; compact-label truncation is a last resort after collection reflow and requires a bounded shrink path"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/text-wrap"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/overflow-wrap"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/flex-wrap"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/min-width"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/white-space"
+        }
+      ]
+    },
+    {
+      "entityKind": "catalog-snapshot",
+      "entityId": "google-fonts-catalog-2026-08-13",
+      "sourceFile": "google-fonts.csv",
+      "sourceKey": {
+        "Snapshot": "catalog-summary.json",
+        "Count": 1934
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://developers.google.com/fonts/docs/developer_api"
+        },
+        {
+          "type": "official",
+          "ref": "https://github.com/google/fonts"
+        }
+      ]
+    }
+  ]
+}

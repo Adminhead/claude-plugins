@@ -1,0 +1,9 @@
+{
+  "name": "gh-actions",
+  "version": "0.1.0",
+  "description": "Create, review, harden and debug GitHub Actions workflows and custom actions with gh: least-privilege permissions, action pinning, script-injection and pull_request_target checks, and failed-run diagnosis.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

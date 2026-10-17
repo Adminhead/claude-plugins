@@ -1,0 +1,9 @@
+{
+  "name": "vite",
+  "version": "0.1.0",
+  "description": "Configures and debugs Vite 7 and 8 (Rolldown/Oxc): env variables and client-bundle exposure, dev vs build vs preview, chunking, library mode, SSR externals, pre-bundling, proxy and container access. Use when editing vite.config.*, when a build differs from dev, an env value is missing or leaked, chunks go stale after a deploy, or the dev server is slow.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

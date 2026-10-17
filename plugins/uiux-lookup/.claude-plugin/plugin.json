@@ -1,0 +1,9 @@
+{
+  "name": "uiux-lookup",
+  "version": "0.1.0",
+  "description": "Offline lookup of cited UI/UX rules (WCAG 2.2, touch, forms, navigation), 22 stack UI guideline sets including SwiftUI, Compose, Flutter, React Native, WPF, WinUI and Avalonia, Google Fonts metadata and licences, and curated icons.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

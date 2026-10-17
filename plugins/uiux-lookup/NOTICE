@@ -1,0 +1,25 @@
+uiux-lookup
+
+Adapted from ui-ux-pro-max v2.15.0 (https://github.com/nextlevelbuilder/ui-ux-pro-max-skill,
+commit 56ea9cf, 2026-10-15), Copyright (c) 2024 Next Level Builder, MIT License (see LICENSE).
+
+Changes from upstream:
+- Kept only the UX rules (ux-guidelines.csv, app-interface.csv), the 22 stack guideline CSVs,
+  the Google Fonts index and licence list, curated icons, and references/quick-reference.md and
+  references/pro-rules.md (lightly edited to drop pointers to removed features).
+- Dropped the aesthetic data (styles, colours, products, reasoning, font pairings, landing
+  patterns, motion presets, charts, React performance), the design-system generator, the
+  Phosphor upstream dump, validation scripts and the six "claudekit" skills.
+- Ported the Python search (scripts/core.py, scripts/search.py) to dependency-free Node
+  (scripts/core.mjs, scripts/search.mjs) with a compact text output; renamed the `web` domain to
+  `app` and `google-fonts` to `fonts` (old names still accepted); added licences to font results
+  and exact family-name lookup.
+- data/provenance.json is filtered from upstream data-provenance.json and catalog-summary.json
+  to the shipped files.
+
+Third-party data:
+- data/google-fonts.csv and data/google-font-licenses.json are metadata derived from the
+  google/fonts repository (METADATA.pb, revision 038b637da7b3fd956a4ed93ffc607c3d5e4ce172) and the
+  Google Fonts developer API. Each family's own licence (OFL, Apache-2.0 or UFL) is listed in
+  google-font-licenses.json; no font files are shipped.
+- data/icons.csv names icons from Phosphor Icons (MIT, https://github.com/phosphor-icons).

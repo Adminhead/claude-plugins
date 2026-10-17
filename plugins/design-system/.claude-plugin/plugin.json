@@ -1,0 +1,9 @@
+{
+  "name": "design-system",
+  "version": "0.1.0",
+  "description": "Audits, documents or extends a design system as a whole: token inventory, naming consistency, hardcoded values, component completeness, component docs, and proposals for a new component or pattern. Use for \"audit our design system\", \"document this component\", \"design a new pattern that fits\". Restyling a product screen goes to web-design.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

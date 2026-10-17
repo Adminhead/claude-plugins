@@ -100,6 +100,559 @@
       "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own.",
       "version": "0.1.0",
       "category": "meta"
+    },
+    {
+      "name": "accessibility-review",
+      "source": "./plugins/accessibility-review",
+      "description": "Audits a design, mockup or page against WCAG 2.2 AA at design level: contrast, focus visibility, target size, keyboard and dragging alternatives, labels, errors and authentication. Use for \"audit accessibility\", \"check a11y\", \"is this accessible?\" or a WCAG check before handoff.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "agent-router",
+      "source": "./plugins/agent-router",
+      "description": "Mod that lists the installed agent types, each with when to use it, in the Agent tool's description when the main thread runs the orchestration agent, so new agents get routes without editing it.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ansible",
+      "source": "./plugins/ansible",
+      "description": "Ansible skill: playbooks, roles and inventories with idempotency proof, check-mode limits, validate hooks, vault or sops secrets, and ansible-lint style.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "architect",
+      "source": "./plugins/architect",
+      "description": "A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "bash",
+      "source": "./plugins/bash",
+      "description": "Bash skill: defensive scripts with strict mode and its holes, quoting, trap cleanup, argument parsing, ShellCheck configuration and Bats tests.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "bash-danger-guard",
+      "source": "./plugins/bash-danger-guard",
+      "description": "Mod that denies destructive Bash (rm -rf of root, system or home paths, disk wipes, recursive system chmod/chown, sudo) and unparseable or oversized commands, and asks before force-pushes, hard resets and piped installers like curl | sh.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "browser-tester",
+      "source": "./plugins/browser-tester",
+      "description": "Agent that verifies a running web app in a real browser against acceptance criteria with playwright-cli, returning pass, fail or blocked per criterion with evidence.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "check-bypass-guard",
+      "source": "./plugins/check-bypass-guard",
+      "description": "Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files. Needs bun.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "click-path-audit",
+      "source": "./plugins/click-path-audit",
+      "description": "Audits UI event handlers for behavior bugs. It maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths and effects that reset what a click just set. Use when a button does nothing or leaves the wrong state though each function works alone, or after a shared-state refactor.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "cloud-ops-guard",
+      "source": "./plugins/cloud-ops-guard",
+      "description": "PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, and gates subagent plan and aws calls.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coder",
+      "source": "./plugins/coder",
+      "description": "A general implementer subagent for one bounded code change, end to end: smallest correct edit, a real check that exercises it, and a diff report. The caller picks the model per call.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coding",
+      "source": "./plugins/coding",
+      "description": "Makes the smallest complete, maintainable code change for a bounded feature, fix, integration, or behavior-preserving refactor. Use when implementing or modifying code whose approach is already clear (\"add X to Y\", \"fix this function\", \"refactor this without changing behavior\", \"simplest solution\", \"this is over-engineered\").",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "debugger",
+      "source": "./plugins/debugger",
+      "description": "A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dependabot",
+      "source": "./plugins/dependabot",
+      "description": "Configure and troubleshoot GitHub Dependabot (dependabot.yml ecosystems, groups, cooldown, ignore rules, private registries) and sweep open Dependabot PRs, merging only green ones.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "dependency-vetting",
+      "source": "./plugins/dependency-vetting",
+      "description": "Vet npm and PyPI packages before installing: fetch without running install code, GuardDog and OSV malware checks, lifecycle-script review, typosquat and dependency-confusion heuristics.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "design-critique",
+      "source": "./plugins/design-critique",
+      "description": "Gives structured feedback on a static design (mockup, wireframe, exported Figma frame or screenshot) covering usability, hierarchy, consistency and accessibility. Use for \"critique this mockup\", \"review this design\", \"what do you think of this screen?\". A rendered page or built UI goes to the ui-critic agent.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "design-handoff",
+      "source": "./plugins/design-handoff",
+      "description": "Writes a developer handoff spec from a finished design: layout, tokens, component props, states and interactions, responsive breakpoints, content limits, edge cases, motion and accessibility notes. Use when a design is ready for engineering, or for \"write handoff specs\", \"spec this screen for developers\".",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "design-system",
+      "source": "./plugins/design-system",
+      "description": "Audits, documents or extends a design system as a whole: token inventory, naming consistency, hardcoded values, component completeness, component docs, and proposals for a new component or pattern. Use for \"audit our design system\", \"document this component\", \"design a new pattern that fits\". Restyling a product screen goes to web-design.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "devops",
+      "source": "./plugins/devops",
+      "description": "Read-only-by-default infrastructure agent that reviews, validates and plans Terraform, Ansible, Docker, Kubernetes, Helm and GitOps changes using the matching skills.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "docker",
+      "source": "./plugins/docker",
+      "description": "Docker skill: Dockerfiles, Compose and .dockerignore with multi-stage builds, non-root hardened runtime, daemon.json hardening, secret handling and container debugging.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "e2e-testing",
+      "source": "./plugins/e2e-testing",
+      "description": "Write, run and diagnose browser end-to-end tests (Playwright, Cypress) for critical user journeys, with accessible locators, condition-based waits and flake triage.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "fastapi",
+      "source": "./plugins/fastapi",
+      "description": "Bounded changes to existing FastAPI apps: lifespan, dependencies, Pydantic models, async handlers, auth dependencies, transactions and dependency_overrides tests.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gh-actions",
+      "source": "./plugins/gh-actions",
+      "description": "Create, review, harden and debug GitHub Actions workflows and custom actions with gh: least-privilege permissions, action pinning, script-injection and pull_request_target checks, and failed-run diagnosis.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gh-code-security",
+      "source": "./plugins/gh-code-security",
+      "description": "Configure and triage GitHub security features with gh: secret scanning, push protection and blocked-push recovery, path exclusions, private vulnerability reporting, and alert triage.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gh-issues",
+      "source": "./plugins/gh-issues",
+      "description": "Read, create, edit, close and label single GitHub issues with gh, including issue types, sub-issues, blocked-by links, milestones, Projects V2 fields and issue search.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gh-pr",
+      "source": "./plugins/gh-pr",
+      "description": "Prepare and open a reviewer-ready GitHub pull request with gh: convention-following commits, a body with summary visuals, evidence and merge danger, opened as a draft after approval.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gh-release",
+      "source": "./plugins/gh-release",
+      "description": "Cut a manual GitHub release with gh: detect release tooling first, propose a SemVer bump from the public-API diff, draft a Keep a Changelog entry, open a release PR, then tag and publish after approval.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gh-repo-setup",
+      "source": "./plugins/gh-repo-setup",
+      "description": "Audit and set up a GitHub repository's surface with gh: labels, issue forms, PR template, CODEOWNERS, SECURITY.md, CONTRIBUTING.md, and branch or tag rulesets, with a dry-run plan.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gh-triage",
+      "source": "./plugins/gh-triage",
+      "description": "Triage existing GitHub issues and external PRs with gh: category and state labels, duplicate and prior-rejection checks, claim verification, needs-info notes, agent briefs and stale policy.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "git-commit",
+      "source": "./plugins/git-commit",
+      "description": "Writes and creates Git commits in the repository's own message convention (Conventional Commits, release-please, commitlint) and names new branches to match it.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "git-history",
+      "source": "./plugins/git-history",
+      "description": "Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "git-statusline",
+      "source": "./plugins/git-statusline",
+      "description": "A mod that draws a git line under the prompt: repo path, branch, linked-worktree marker, ahead/behind with colour past unpushed-commit thresholds, staged/modified/new/conflict counts, changed lines and stash count.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gitops",
+      "source": "./plugins/gitops",
+      "description": "Sets up and reviews GitOps delivery with Argo CD or Flux: choosing between them, repo layout, sync policy per environment, and secrets with External Secrets, Sealed Secrets or SOPS.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "golang",
+      "source": "./plugins/golang",
+      "description": "Go language skill: packages, errors, interfaces, context, goroutines and shutdown, modules, tests, with references for pitfalls, security, database/sql, gRPC, linting and modernizing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "golang-cli",
+      "source": "./plugins/golang-cli",
+      "description": "Go command-line tools with cobra and viper: command tree and hooks, flag, env and config precedence, output and exit codes, signal shutdown, testable commands.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "golang-performance",
+      "source": "./plugins/golang-performance",
+      "description": "Measurement-first Go performance: benchstat comparisons, pprof and trace reading, escape analysis, GC and GOMEMLIMIT tuning, and CI regression checks.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "handoff",
+      "source": "./plugins/handoff",
+      "description": "Compacts the current conversation into a handoff document a fresh session can pick up, and with --bg launches that session as a background agent. Manual command.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "helm",
+      "source": "./plugins/helm",
+      "description": "Authors, validates and releases Helm charts: values and schema, helpers, dependencies, lint and template checks, helm diff, atomic upgrades, OCI publishing and provenance.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "implement-plan",
+      "source": "./plugins/implement-plan",
+      "description": "Executes an approved multi-slice implementation plan file end to end, running independent slices in parallel worktrees and checking, reviewing, committing, and updating a Status block after each slice without asking. Use when the user says \"implement this plan\", \"continue implementing\", or points at a plan file to carry out.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "issue-breakdown",
+      "source": "./plugins/issue-breakdown",
+      "description": "Turn a spec, plan or conversation into a reviewed set of linked GitHub issues cut as vertical slices with blocking edges, writing a spec first when needed, and publish them with gh after a dry run and approval.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "javascript",
+      "source": "./plugins/javascript",
+      "description": "Covers JavaScript runtime semantics, meaning ESM vs CommonJS, import side effects, promises and the event loop, async cleanup and cancellation, browser vs Node/Bun/Deno/edge, measured performance and JS tests. Use when writing, reviewing or debugging *.js/*.mjs/*.cjs or runtime behavior of JS/TS code (import errors, unhandled rejections, leaks, ordering bugs).",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "kubernetes",
+      "source": "./plugins/kubernetes",
+      "description": "Writes and reviews Kubernetes manifests (probes, resources, RBAC, NetworkPolicy, Pod Security Standards and admission, Jobs, HPA, PDB, Kustomize) and triages failing workloads with read-only kubectl.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "mcp-health",
+      "source": "./plugins/mcp-health",
+      "description": "A mod that shows `mcp: <server> \u2717` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "orchestration",
+      "source": "./plugins/orchestration",
+      "description": "Main-session orchestrator agent that plans, routes work to the installed agents and verifies their results. Start it with `claude --agent orchestration:orchestration` or the `agent` setting.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "planning",
+      "source": "./plugins/planning",
+      "description": "Writes, reviews, or revises implementation plans whose scope, verification, and reruns are proportionate to risk. Use for \"plan this\", \"review this plan\", \"cheapest way to verify\", work spanning several slices or risky boundaries, acceptance criteria for an ambiguous change, multi-agent or multi-session plans, and \"grill me\" stress-tests.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "playwright-cli",
+      "source": "./plugins/playwright-cli",
+      "description": "Drive a headless, isolated browser from Bash with playwright-cli: inspect pages, fill forms, take screenshots, debug console and network errors, and run smoke QA.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "pr-comments",
+      "source": "./plugins/pr-comments",
+      "description": "Manual /pr-comments: pull a PR's unresolved review threads and review summaries into context, triage them, and fix the ones you pick. Read-only on GitHub.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "prisma",
+      "source": "./plugins/prisma",
+      "description": "Prisma ORM 6 and 7 traps for TypeScript backends, such as updateMany returning a count, interactive transaction timeouts, migrate dev resets, edited applied migrations, undefined filters, P2002/P2025/P2003 handling, serverless connections and driver adapters. Use when writing a Prisma schema, query, transaction or migration, or debugging one.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "problem-solving",
+      "source": "./plugins/problem-solving",
+      "description": "Root-cause diagnosis for failures, flaky tests and performance regressions: a red-capable feedback loop, competing falsifiable hypotheses, one-variable probes and evidence-backed fixes. Also algorithm choice under unclear constraints.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "production-readiness",
+      "source": "./plugins/production-readiness",
+      "description": "Evidence-based ship-or-block review (Blocked, Risky or Caveats) of an application before launch, built from local repo evidence.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "python",
+      "source": "./plugins/python",
+      "description": "Python idiom, review and diagnosis: typing, exceptions, resource lifetimes, asyncio, retries and background jobs, profiling and pytest.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "python-packaging",
+      "source": "./plugins/python-packaging",
+      "description": "Build and validate Python distributions and uv workflows: pyproject.toml, package data, entry points, wheel and sdist checks, uv in CI and Docker, and PyPI trusted publishing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "react",
+      "source": "./plugins/react",
+      "description": "Changes, reviews and debugs React components: state ownership, effects, keys, render purity, Server Components and Actions, accessibility, measured performance, React 19 upgrades and component tests. Use for .tsx/.jsx behavior or render cost, such as \"this list lags when I type\", \"it re-renders too much\", effect loops or hydration mismatches.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "readonly-agent-gate",
+      "source": "./plugins/readonly-agent-gate",
+      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "recommend-plugins",
+      "source": "./plugins/recommend-plugins",
+      "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "reviewer",
+      "source": "./plugins/reviewer",
+      "description": "A read-only review subagent for implementation plans, designs and diffs, checked against the brief and its acceptance criteria, returning verified findings ranked by severity. The caller picks quick or thorough depth.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "rollout-plan",
+      "source": "./plugins/rollout-plan",
+      "description": "Plans and verifies production rollouts: strategy choice, preflight go/no-go, phased verification signals, numeric rollback criteria and post-deploy follow-up.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "rust",
+      "source": "./plugins/rust",
+      "description": "Rust language skill: ownership and lifetimes, error design, traits and modules, Cargo features, async and concurrency, unsafe review, clippy and measured performance.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "screen-reader-testing",
+      "source": "./plugins/screen-reader-testing",
+      "description": "Plan, run with the user and report manual screen-reader and keyboard tests of a built web journey (NVDA, JAWS, VoiceOver, Orca, TalkBack).",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "scribe",
+      "source": "./plugins/scribe",
+      "description": "A documentation subagent that writes and updates READMEs, guides, docstrings and changelogs, checking every claim against the code and marking anything it could not verify.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ship",
+      "source": "./plugins/ship",
+      "description": "Ship finished work in one run: commit, push, and optionally open a PR, watch checks and merge, delegated to the shipper agent.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "shipper",
+      "source": "./plugins/shipper",
+      "description": "Agent that commits finished work, pushes it, and optionally opens a PR, watches checks and merges, on a cheap model. Used by the ship skill.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "tanstack",
+      "source": "./plugins/tanstack",
+      "description": "Works with TanStack Query, Router, Form, Table, Virtual and Start: state ownership, query keys, cache invalidation, loaders, search-param validation, server-driven tables, virtualization and SSR boundaries. Use when code imports @tanstack/*, or for stale or duplicate data, lost form values, table and pagination mismatches, or Start server functions.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "terraform",
+      "source": "./plugins/terraform",
+      "description": "Terraform, OpenTofu and Terragrunt skill: safe plan and saved-plan apply, plan review, state and refactoring blocks, Terratest, and security scanning with Trivy, Checkov and OPA.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "test-gap-audit",
+      "source": "./plugins/test-gap-audit",
+      "description": "Read-only audit of missing, weak and stale tests for a repo, PR or feature: maps source to tests with a bundled script and ranks gaps P0-P3 by behavior and risk, never by coverage percentage.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "test-run",
+      "source": "./plugins/test-run",
+      "description": "Manual test-run command: detects the test runner, runs the tests affected by your changes, prints only compact failures, and fixes them in a bounded loop.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ts-module-boundaries",
+      "source": "./plugins/ts-module-boundaries",
+      "description": "Sets up dependency-cruiser in a TypeScript repo so each package is reachable only through its root entry-point files, with no deep imports and no cycles, then proves the rules fail on a violation. Use when the user asks to enforce package boundaries, stop deep imports or add dependency-cruiser.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "typescript",
+      "source": "./plugins/typescript",
+      "description": "Handles TypeScript type-level and compiler work, covering tsconfig strictness, narrowing, generics, discriminated unions, declarations and module resolution, public type APIs, runtime validation of unknown data, and type tests. Use when editing *.ts/*.tsx types or tsconfig.json, or fixing tsc errors.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ui-critic",
+      "source": "./plugins/ui-critic",
+      "description": "Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a rendered page looks generic. Not for mockups, e2e tests or WCAG audits.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ui-direction",
+      "source": "./plugins/ui-direction",
+      "description": "Art direction and build process for new UI or a visual reshape, such as a landing page, marketing site, portfolio, product page or a new app screen with no design system. Grounds the design in the subject, deals a researched direction, plans tokens and checks the render. Use when a page should look designed, or looks generic, templated or AI-made.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "uiux-lookup",
+      "source": "./plugins/uiux-lookup",
+      "description": "Offline lookup of cited UI/UX rules (WCAG 2.2, touch, forms, navigation), 22 stack UI guideline sets including SwiftUI, Compose, Flutter, React Native, WPF, WinUI and Avalonia, Google Fonts metadata and licences, and curated icons.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "unit-testing",
+      "source": "./plugins/unit-testing",
+      "description": "Focused unit and regression tests for changed behavior or a confirmed bug, in any language: smallest proving test, test-first slices, seams and boundary-only mocks, plus pytest and Vitest/Jest references. No coverage quotas.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "usage-band",
+      "source": "./plugins/usage-band",
+      "description": "A band above the prompt with context fill by category and rate-limit windows coloured by pace, a toast when a window turns amber or red or resets, plus session cost, cache hit rate, compactions and effort.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ux-copy",
+      "source": "./plugins/ux-copy",
+      "description": "Writes and reviews product microcopy: button and CTA labels, error messages, empty states, confirmation dialogs, tooltips, loading and onboarding text. Use for \"what should this button say?\", \"write copy for\", \"review this error message\" or wording a dialog. Not for marketing page copy or long-form docs.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "vite",
+      "source": "./plugins/vite",
+      "description": "Configures and debugs Vite 7 and 8 (Rolldown/Oxc): env variables and client-bundle exposure, dev vs build vs preview, chunking, library mode, SSR externals, pre-bundling, proxy and container access. Use when editing vite.config.*, when a build differs from dev, an env value is missing or leaked, chunks go stale after a deploy, or the dev server is slow.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "vue",
+      "source": "./plugins/vue",
+      "description": "Builds and debugs Vue 3 components with the Composition API, Pinia stores and Nuxt 4 data fetching: props, emits, defineModel, composables, reactivity, watchers, SSR safety and tests. Use when adding, changing or debugging .vue files, Pinia stores or a Nuxt app, such as lost reactivity, stale state, hydration mismatches or duplicate fetches.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "web-design",
+      "source": "./plugins/web-design",
+      "description": "Extend an existing product's visual system: hierarchy, responsive, state and accessibility intent, DESIGN.md, and review of the rendered UI against it.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "web-development",
+      "source": "./plugins/web-development",
+      "description": "Builds or repairs a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard and focus, request and response contracts, server validation, error mapping and measured performance, verified in a real browser. Use for a form, page or flow that must work for real users, an HTTP API contract change, or a browser or network bug.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "web-perf-auditor",
+      "source": "./plugins/web-perf-auditor",
+      "description": "Agent that audits a web app's performance: a static source scan marked not measured, or a deep audit from Lighthouse, PageSpeed or CrUX data, with no fabricated numbers.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

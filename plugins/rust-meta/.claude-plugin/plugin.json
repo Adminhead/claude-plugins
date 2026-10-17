@@ -7,6 +7,11 @@
     "email": "support@adminhead.com"
   },
   "dependencies": [
-    "programming-core"
+    "programming-core",
+    "rust",
+    {
+      "name": "rust-analyzer",
+      "marketplace": "claude-code-lsps"
+    }
   ]
 }

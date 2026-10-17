@@ -1,0 +1,9 @@
+{
+  "name": "cloud-ops-guard",
+  "version": "0.1.0",
+  "description": "PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, and gates subagent plan and aws calls.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

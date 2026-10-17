@@ -1,0 +1,9 @@
+{
+  "name": "gh-issues",
+  "version": "0.1.0",
+  "description": "Read, create, edit, close and label single GitHub issues with gh, including issue types, sub-issues, blocked-by links, milestones, Projects V2 fields and issue search.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

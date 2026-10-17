@@ -1,0 +1,9 @@
+{
+  "name": "screen-reader-testing",
+  "version": "0.1.0",
+  "description": "Plan, run with the user and report manual screen-reader and keyboard tests of a built web journey (NVDA, JAWS, VoiceOver, Orca, TalkBack).",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

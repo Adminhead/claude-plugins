@@ -1,0 +1,9 @@
+{
+  "name": "golang",
+  "version": "0.1.0",
+  "description": "Go language skill: packages, errors, interfaces, context, goroutines and shutdown, modules, tests, with references for pitfalls, security, database/sql, gRPC, linting and modernizing.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

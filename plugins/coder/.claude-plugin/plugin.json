@@ -1,0 +1,9 @@
+{
+  "name": "coder",
+  "version": "0.1.0",
+  "description": "A general implementer subagent for one bounded code change, end to end: smallest correct edit, a real check that exercises it, and a diff report. The caller picks the model per call.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

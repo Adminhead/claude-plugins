@@ -7,6 +7,13 @@
     "email": "support@adminhead.com"
   },
   "dependencies": [
-    "programming-core"
+    "programming-core",
+    "python",
+    "python-packaging",
+    "dependency-vetting",
+    {
+      "name": "pyright",
+      "marketplace": "claude-code-lsps"
+    }
   ]
 }

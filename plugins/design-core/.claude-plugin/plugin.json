@@ -6,5 +6,12 @@
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
-  "dependencies": []
+  "dependencies": [
+    "ui-direction",
+    "ui-critic",
+    "web-design",
+    "screen-reader-testing",
+    "accessibility-review",
+    "ux-copy"
+  ]
 }

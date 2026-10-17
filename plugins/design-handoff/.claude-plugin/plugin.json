@@ -1,0 +1,9 @@
+{
+  "name": "design-handoff",
+  "version": "0.1.0",
+  "description": "Writes a developer handoff spec from a finished design: layout, tokens, component props, states and interactions, responsive breakpoints, content limits, edge cases, motion and accessibility notes. Use when a design is ready for engineering, or for \"write handoff specs\", \"spec this screen for developers\".",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

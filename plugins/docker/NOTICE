@@ -1,0 +1,11 @@
+docker plugin (AdminHead)
+
+skills/docker/references/daemon-hardening.md is adapted from the
+"hardening-docker-daemon-configuration" skill in
+https://github.com/mukul975/Anthropic-Cybersecurity-Skills
+(author: mahipal), licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The file was modified: condensed and reorganized, gotchas and a safety section
+added, Docker Content Trust guidance replaced because DCT is retired, SSH access
+preferred over a TCP socket, and the rootless install changed to the packaged
+setup tool.

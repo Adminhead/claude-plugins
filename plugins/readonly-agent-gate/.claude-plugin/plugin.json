@@ -1,0 +1,17 @@
+{
+  "name": "readonly-agent-gate",
+  "version": "0.1.0",
+  "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "extra_agents": {
+      "type": "string",
+      "title": "Extra read-only agents",
+      "description": "More agent types to gate, separated by commas or spaces. A bare name (security-auditor) also matches any plugin's agent of that name; a scoped name (security-auditor:security-auditor) matches only itself.",
+      "default": ""
+    }
+  }
+}

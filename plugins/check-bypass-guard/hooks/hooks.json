@@ -1,0 +1,18 @@
+{
+  "description": "Denies git hook and signing bypasses, and asks before edits to existing lint, format and hook configs.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["--no-env-file", "--config=/dev/null", "${CLAUDE_PLUGIN_ROOT}/scripts/check-bypass-guard.ts"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

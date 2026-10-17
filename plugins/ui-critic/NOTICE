@@ -1,0 +1,23 @@
+ui-critic (adminhead marketplace)
+
+This plugin contains files adapted from taste-skill by Leonxlnx
+(https://github.com/Leonxlnx/taste-skill, commit f624f37, skills/taste-skill),
+licensed under the MIT License. The license text and copyright notice are in LICENSE.
+
+Files derived from taste-skill, and how they were modified:
+
+- scripts/inspect.mjs: serves local files from the page's own directory only (or --root, which must
+  contain the page), refuses symlinks that leave that root and non-GET methods, writes to
+  .ui-critic/inspect/, reads allowances from .ui-direction/direction.json, reports the motion quota as
+  WARN, exits 2 with a message when no browser is found.
+- scripts/lint.mjs: monospace, index numbering and hairline rules report WARN; symlinks are not followed;
+  accepts a ui-critic-ignore comment.
+- scripts/lib/rules.mjs: monospace, index numbering, hairlines, outlined boxes and the picture quota
+  report WARN; fix texts reworded.
+- scripts/lib/cdp.mjs: attribution comment and a clearer no-browser error.
+- scripts/lib/probe.mjs: attribution comment only.
+- references/critique.md: owner-taste caps and quotas relaxed; existing-system mode added.
+- references/tells.md: statuses mapped to WARN for the owner-taste group; cross-references renamed.
+
+references/rendered-review.md is adapted from the adminhead archive's own web-design skill.
+agents/ui-critic.md and tests/ are original to this plugin.

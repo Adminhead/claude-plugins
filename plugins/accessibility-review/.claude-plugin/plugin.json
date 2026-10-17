@@ -1,0 +1,9 @@
+{
+  "name": "accessibility-review",
+  "version": "0.1.0",
+  "description": "Audits a design, mockup or page against WCAG 2.2 AA at design level: contrast, focus visibility, target size, keyboard and dragging alternatives, labels, errors and authentication. Use for \"audit accessibility\", \"check a11y\", \"is this accessible?\" or a WCAG check before handoff.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

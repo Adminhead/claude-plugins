@@ -1,0 +1,17 @@
+{
+  "name": "mcp-health",
+  "version": "0.1.0",
+  "description": "A mod that shows `mcp: <server> ✗` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "toast_on_first_error": {
+      "type": "boolean",
+      "title": "Toast on first error",
+      "description": "Show a toast the first time each MCP server returns an error in a session.",
+      "default": true
+    }
+  }
+}

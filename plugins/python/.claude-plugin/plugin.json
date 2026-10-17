@@ -1,0 +1,9 @@
+{
+  "name": "python",
+  "version": "0.1.0",
+  "description": "Python idiom, review and diagnosis: typing, exceptions, resource lifetimes, asyncio, retries and background jobs, profiling and pytest.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

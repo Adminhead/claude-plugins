@@ -1,0 +1,36 @@
+ui-direction (adminhead marketplace)
+
+This plugin combines and modifies material from two upstream projects.
+
+1. frontend-design, Copyright Anthropic, PBC
+   https://github.com/anthropics/skills/tree/main/skills/frontend-design (commit 41bbe19)
+   Licensed under the Apache License, Version 2.0; the full text is in LICENSE.
+   MODIFIED FILES: skills/ui-direction/SKILL.md is a modified, merged version of frontend-design's
+   SKILL.md. Its stance, "ground your designs in the subject matter", the list of AI-default traits
+   (verbatim), the two-pass token plan, restraint and quality floor, motion and writing guidance are
+   kept, reworded and combined with taste-skill's procedure. Removed: "confirm with the client" on a vague
+   brief (replaced by "decide and state your reading in one line") and the screenshot self-critique
+   paragraph (replaced by delegation to the ui-critic agent).
+
+2. taste-skill v2, Copyright (c) 2026 Leonxlnx
+   https://github.com/Leonxlnx/taste-skill (commit f624f37), skills/taste-skill and skills/redesign-skill
+   Licensed under the MIT License; the license text and copyright notice are in LICENSE-MIT.
+   Derived files, all modified:
+   - skills/ui-direction/SKILL.md: the subject inventory, argument, draw, idea sentence, competitor test,
+     live thing, copy deck, build order and special cases, condensed; absolute bans turned into defaults
+     the brief can override; motion and picture quotas turned into advice.
+   - skills/ui-direction/scripts/draw.mjs: working files and draw history kept in the project's
+     .ui-direction/ (no ~/.taste-skill/ history), printed commands carry the script's own path, quota and
+     ban wording softened.
+   - skills/ui-direction/scripts/assets.mjs: default licences CC0, public domain and CC BY (share-alike
+     opt-in with a warning); all requests refuse non-http(s) URLs and loopback, private and link-local
+     hosts, including on redirects; image downloads capped at 40 MB; query length bounded.
+   - skills/ui-direction/assets/base.css, base.js: header comments only.
+   - skills/ui-direction/library/*.json: unmodified data.
+   - skills/ui-direction/references/copy.md, type.md, colour.md, layout.md, motion.md, imagery.md,
+     tells.md, critique.md: cross-references and statuses adapted, bans softened to defaults.
+   - skills/ui-direction/references/research-digest.md: condensed from references/research.md.
+   - skills/ui-direction/references/redesign.md: scan/diagnose/fix order and rules from redesign-skill,
+     rewritten.
+
+evals/ is original to this plugin; the outcome briefs are taken from taste-skill's evals/evals.json.

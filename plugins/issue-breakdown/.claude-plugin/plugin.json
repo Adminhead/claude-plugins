@@ -1,0 +1,9 @@
+{
+  "name": "issue-breakdown",
+  "version": "0.1.0",
+  "description": "Turn a spec, plan or conversation into a reviewed set of linked GitHub issues cut as vertical slices with blocking edges, writing a spec first when needed, and publish them with gh after a dry run and approval.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

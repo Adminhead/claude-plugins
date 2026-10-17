@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="3" skipped="1" tests="7" time="0.012" timestamp="2026-09-30T05:38:54.223614-06:00" hostname="devbox"><testcase classname="tests.test_calc" name="test_add" file="tests/test_calc.py" line="5" time="0.000"><failure message="assert -1 == 3&#10; +  where -1 = add(1, 2)">tests/test_calc.py:7: in test_add
+    assert add(1, 2) == 3
+E   assert -1 == 3
+E    +  where -1 = add(1, 2)</failure></testcase><testcase classname="tests.test_calc.TestDiv" name="test_zero" file="tests/test_calc.py" line="10" time="0.000"><failure message="ZeroDivisionError: division by zero">tests/test_calc.py:12: in test_zero
+    assert div(1, 0) == 0
+           ^^^^^^^^^
+calc.py:6: in div
+    return a / b
+           ^^^^^
+E   ZeroDivisionError: division by zero</failure></testcase><testcase classname="tests.test_calc.TestDiv" name="test_param[1]" file="tests/test_calc.py" line="13" time="0.000" /><testcase classname="tests.test_calc.TestDiv" name="test_param[2]" file="tests/test_calc.py" line="13" time="0.000"><failure message="assert 2 == 1">tests/test_calc.py:16: in test_param
+    assert n == 1
+E   assert 2 == 1</failure></testcase><testcase classname="tests.test_calc" name="test_setup_error" file="tests/test_calc.py" line="23" time="0.000"><error message="failed on setup with &quot;RuntimeError: fixture boom&quot;">tests/test_calc.py:21: in broken
+    raise RuntimeError("fixture boom")
+E   RuntimeError: fixture boom</error></testcase><testcase classname="tests.test_calc" name="test_skipped" file="tests/test_calc.py" line="27" time="0.000"><skipped type="pytest.skip" message="later">/work/tests/test_calc.py:28: later</skipped></testcase><testcase classname="tests.test_calc" name="test_ok" file="tests/test_calc.py" line="32" time="0.000" /></testsuite></testsuites>

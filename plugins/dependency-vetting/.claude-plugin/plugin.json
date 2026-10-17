@@ -1,0 +1,9 @@
+{
+  "name": "dependency-vetting",
+  "version": "0.1.0",
+  "description": "Vet npm and PyPI packages before installing: fetch without running install code, GuardDog and OSV malware checks, lifecycle-script review, typosquat and dependency-confusion heuristics.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

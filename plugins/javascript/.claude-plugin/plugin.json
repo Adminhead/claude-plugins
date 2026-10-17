@@ -1,0 +1,9 @@
+{
+  "name": "javascript",
+  "version": "0.1.0",
+  "description": "Covers JavaScript runtime semantics, meaning ESM vs CommonJS, import side effects, promises and the event loop, async cleanup and cancellation, browser vs Node/Bun/Deno/edge, measured performance and JS tests. Use when writing, reviewing or debugging *.js/*.mjs/*.cjs or runtime behavior of JS/TS code (import errors, unhandled rejections, leaks, ordering bugs).",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

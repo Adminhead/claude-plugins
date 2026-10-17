@@ -1,0 +1,9 @@
+{
+  "name": "golang-performance",
+  "version": "0.1.0",
+  "description": "Measurement-first Go performance: benchstat comparisons, pprof and trace reading, escape analysis, GC and GOMEMLIMIT tuning, and CI regression checks.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

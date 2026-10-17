@@ -1,0 +1,9 @@
+{
+  "name": "design-critique",
+  "version": "0.1.0",
+  "description": "Gives structured feedback on a static design (mockup, wireframe, exported Figma frame or screenshot) covering usability, hierarchy, consistency and accessibility. Use for \"critique this mockup\", \"review this design\", \"what do you think of this screen?\". A rendered page or built UI goes to the ui-critic agent.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

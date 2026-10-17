@@ -1,0 +1,9 @@
+{
+  "name": "scribe",
+  "version": "0.1.0",
+  "description": "A documentation subagent that writes and updates READMEs, guides, docstrings and changelogs, checking every claim against the code and marking anything it could not verify.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

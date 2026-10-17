@@ -1,0 +1,54 @@
+/* Starter semantic tokens in OKLCH for a product with no color system.
+   Adjust the hue (250 here) to the brand, then verify every text, border,
+   and focus pair for contrast in both themes. */
+
+:root {
+  color-scheme: light dark;
+
+  --color-bg: oklch(0.99 0 0);
+  --color-surface: oklch(0.97 0.005 250);
+  --color-fg: oklch(0.22 0.01 250);
+  --color-muted: oklch(0.5 0.01 250);
+  --color-border: oklch(0.88 0.005 250);          /* decorative separator only */
+  --color-border-strong: oklch(0.6 0.01 250);     /* input and control boundaries */
+  --color-accent: oklch(0.5 0.15 250);
+  --color-accent-fg: oklch(0.99 0 0);
+
+  --color-success: oklch(0.5 0.12 150);
+  --color-warning: oklch(0.55 0.13 70);
+  --color-error: oklch(0.5 0.17 25);
+}
+
+/* Dark values appear twice: once as the system default, and once as an
+   explicit override that wins over a light system preference. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: oklch(0.18 0.01 250);
+    --color-surface: oklch(0.22 0.01 250);
+    --color-fg: oklch(0.94 0.005 250);
+    --color-muted: oklch(0.72 0.01 250);
+    --color-border: oklch(0.32 0.01 250);
+    --color-border-strong: oklch(0.6 0.01 250);
+    --color-accent: oklch(0.72 0.12 250);
+    --color-accent-fg: oklch(0.15 0 0);
+
+    --color-success: oklch(0.75 0.12 150);
+    --color-warning: oklch(0.8 0.12 80);
+    --color-error: oklch(0.72 0.14 25);
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-bg: oklch(0.18 0.01 250);
+  --color-surface: oklch(0.22 0.01 250);
+  --color-fg: oklch(0.94 0.005 250);
+  --color-muted: oklch(0.72 0.01 250);
+  --color-border: oklch(0.32 0.01 250);
+  --color-border-strong: oklch(0.6 0.01 250);
+  --color-accent: oklch(0.72 0.12 250);
+  --color-accent-fg: oklch(0.15 0 0);
+
+  --color-success: oklch(0.75 0.12 150);
+  --color-warning: oklch(0.8 0.12 80);
+  --color-error: oklch(0.72 0.14 25);
+}

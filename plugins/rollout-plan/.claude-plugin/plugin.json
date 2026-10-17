@@ -1,0 +1,9 @@
+{
+  "name": "rollout-plan",
+  "version": "0.1.0",
+  "description": "Plans and verifies production rollouts: strategy choice, preflight go/no-go, phased verification signals, numeric rollback criteria and post-deploy follow-up.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

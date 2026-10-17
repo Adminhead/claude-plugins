@@ -1,0 +1,9 @@
+{
+  "name": "handoff",
+  "version": "0.1.0",
+  "description": "Compacts the current conversation into a handoff document a fresh session can pick up, and with --bg launches that session as a background agent. Manual command.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

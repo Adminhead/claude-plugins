@@ -2,7 +2,9 @@
 """Scaffold, check, and catalog the plugins in this marketplace.
 
   plugins.py new <name> --kind skill|agent|hook|mcp --description TEXT [--meta META ...]
+  plugins.py register [--meta META=PLUGIN,PLUGIN ...]
   plugins.py check
+  plugins.py sync-shared
   plugins.py catalog [--check]
 
 A meta plugin is `baseline` or a name ending in `-meta`. A core bundle is a
@@ -24,6 +26,8 @@ CATALOG_START = "<!-- catalog:start -->"
 CATALOG_END = "<!-- catalog:end -->"
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 META_FILES = {".claude-plugin/plugin.json", "README.md"}
+SHARED = Path("scripts/shared")
+SHARED_FILES = ("shell/walk.ts", "vendor/unbash.js", "vendor/unbash.d.ts")
 SCOPES = {"baseline": "user", "orchestration-meta": "user or project"}
 KINDS = ("skill", "agent", "hook", "mcp")
 
@@ -155,6 +159,10 @@ def check(root):
 
     if catalog_section(root, entries, manifests) not in (root / README).read_text():
         errors.append("README.md: plugin catalog is stale; run scripts/plugins.py catalog")
+    if (root / SHARED).is_dir():
+        for canonical, copy in shared_copies(root):
+            if canonical.read_bytes() != copy.read_bytes():
+                errors.append(f"{copy.relative_to(root)}: differs from {canonical.relative_to(root)}; run scripts/plugins.py sync-shared")
     return errors
 
 
@@ -164,6 +172,24 @@ def dep_labels(manifest):
         dep_name, dep_market = parse_dep(dep)
         labels.append(f"`{dep_name}`" if not dep_market else f"`{dep_name}@{dep_market}`")
     return labels
+
+
+def shared_copies(root):
+    """Yield (canonical, copy) for each plugin copy of a file under scripts/shared."""
+    for rel in SHARED_FILES:
+        canonical = root / SHARED / rel
+        for copy in sorted((root / "plugins").glob(f"*/*/{rel}")):
+            yield canonical, copy
+
+
+def sync_shared(root):
+    changed = 0
+    for canonical, copy in shared_copies(root):
+        if canonical.read_bytes() != copy.read_bytes():
+            copy.write_bytes(canonical.read_bytes())
+            changed += 1
+            print(f"updated {copy.relative_to(root)}")
+    print(f"{changed} shared file(s) updated")
 
 
 def catalog_section(root, entries, manifests):
@@ -269,6 +295,35 @@ def new(root, name, kind, description, metas):
     print(f"Created plugins/{name} ({kind}). Fill in the TODOs, then run scripts/plugins.py check.")
 
 
+def register(root, assignments):
+    """Add marketplace entries for plugin dirs that lack one, then apply meta assignments."""
+    market, entries, manifests = load_plugins(root)
+    added = []
+    for name, manifest in manifests.items():
+        if name in entries or manifest is None:
+            continue
+        market.setdefault("plugins", []).append({
+            "name": name, "source": f"./plugins/{name}", "description": manifest.get("description", ""),
+            "version": manifest.get("version", "0.1.0"), "category": "meta" if is_group(name) else "development"})
+        added.append(name)
+    write_json(root / MARKETPLACE, market)
+    for spec in assignments:
+        group, _, members = spec.partition("=")
+        if not is_group(group) or manifests.get(group) is None:
+            raise SystemExit(f"{group}: no such meta plugin or core bundle")
+        path = root / "plugins" / group / ".claude-plugin/plugin.json"
+        manifest = load_json(path)
+        deps = manifest.setdefault("dependencies", [])
+        known = {parse_dep(d)[0] for d in deps}
+        for member in filter(None, (m.strip() for m in members.split(","))):
+            if member not in known:
+                deps.append(member)
+                known.add(member)
+        write_json(path, manifest)
+    write_catalog(root)
+    print(f"registered {len(added)} plugin(s){': ' + ', '.join(added) if added else ''}")
+
+
 def main(argv=None, root=ROOT):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -277,13 +332,21 @@ def main(argv=None, root=ROOT):
     p_new.add_argument("--kind", choices=KINDS, required=True)
     p_new.add_argument("--description", required=True)
     p_new.add_argument("--meta", action="append", default=[], help="meta plugin or core bundle to add it to (repeatable)")
+    p_reg = sub.add_parser("register", help="add marketplace entries for unlisted plugin dirs")
+    p_reg.add_argument("--meta", action="append", default=[], metavar="META=PLUGIN,PLUGIN",
+                       help="also add these plugins to a meta plugin or core bundle (repeatable)")
     sub.add_parser("check", help="check structure rules and catalog freshness")
+    sub.add_parser("sync-shared", help="copy scripts/shared files over their plugin copies")
     p_cat = sub.add_parser("catalog", help="regenerate the README plugin catalog")
     p_cat.add_argument("--check", action="store_true", help="exit 1 if the catalog is stale")
     args = parser.parse_args(argv)
 
     if args.cmd == "new":
         new(root, args.name, args.kind, args.description, args.meta)
+    elif args.cmd == "register":
+        register(root, args.meta)
+    elif args.cmd == "sync-shared":
+        sync_shared(root)
     elif args.cmd == "check":
         errors = check(root)
         for e in errors:

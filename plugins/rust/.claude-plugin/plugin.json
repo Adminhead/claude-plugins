@@ -1,0 +1,9 @@
+{
+  "name": "rust",
+  "version": "0.1.0",
+  "description": "Rust language skill: ownership and lifetimes, error design, traits and modules, Cargo features, async and concurrency, unsafe review, clippy and measured performance.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

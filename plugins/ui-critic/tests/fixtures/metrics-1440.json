@@ -1,0 +1,225 @@
+{
+ "viewport": {
+  "w": 1440,
+  "h": 900
+ },
+ "page": {
+  "height": 1505,
+  "screens": 1.7,
+  "words": 35,
+  "img": 0,
+  "video": 0,
+  "canvas": 0,
+  "svg": 0,
+  "sections": 0,
+  "horizontalOverflow": 0,
+  "overflowCulprits": [],
+  "uiFragments": 0,
+  "uiAbuse": false,
+  "realPictures": 0,
+  "videoCount": 0,
+  "uiPictures": 0,
+  "pictureSamples": [],
+  "blendText": 0,
+  "sideScrollers": 0,
+  "brokenImages": [],
+  "emoji": []
+ },
+ "hero": {
+  "text": "Glazed by hand in Porto",
+  "words": 5,
+  "chars": 23,
+  "lines": 2,
+  "size": 129.6,
+  "vw": 9,
+  "font": "Georgia",
+  "weight": 700,
+  "tracking": 0,
+  "leading": 0.95,
+  "upper": false,
+  "italic": false,
+  "mono": false,
+  "align": "left",
+  "position": "center",
+  "widthRatio": 0.97,
+  "top": 129,
+  "tag": "h1",
+  "kind": "heading"
+ },
+ "h1": {
+  "text": "Glazed by hand in Porto",
+  "words": 5,
+  "lines": 2,
+  "size": 129.6,
+  "font": "Georgia"
+ },
+ "headings": [
+  {
+   "text": "Glazed by hand in Porto",
+   "words": 5,
+   "chars": 23,
+   "lines": 2,
+   "size": 129.6,
+   "vw": 9,
+   "font": "Georgia",
+   "weight": 700,
+   "tracking": 0,
+   "leading": 0.95,
+   "upper": false,
+   "italic": false,
+   "mono": false,
+   "align": "left",
+   "position": "center",
+   "widthRatio": 0.97,
+   "top": 129,
+   "tag": "h1",
+   "kind": "heading"
+  }
+ ],
+ "headingSummary": {
+  "count": 1,
+  "maxLines": 2,
+  "over2Lines": 0,
+  "statements": 0,
+  "centered": 0,
+  "medianWords": null,
+  "mixedFontHeadings": 0
+ },
+ "type": {
+  "families": [
+   {
+    "family": "Georgia",
+    "share": 1,
+    "mono": false
+   }
+  ],
+  "familyCount": 1,
+  "sizes": [
+   12,
+   16,
+   18,
+   130
+  ],
+  "sizeCount": 4,
+  "notLoaded": [],
+  "body": {
+   "font": "Georgia",
+   "size": 18,
+   "leading": 1.2,
+   "weight": 400,
+   "tracking": 0,
+   "contrast": 14.2
+  },
+  "measureChars": 74,
+  "max": {
+   "size": 129.6,
+   "vw": 9,
+   "font": "Georgia",
+   "text": "Glazed by hand in Porto"
+  },
+  "monoShare": 0,
+  "monoProseShare": 0,
+  "monoFamilies": [],
+  "monoSamples": [],
+  "microLabels": 1,
+  "microLabelShare": 0.064,
+  "microSamples": [
+   "New \u00b7 Porto"
+  ],
+  "upperShare": 0.06,
+  "centerShare": 0,
+  "smallText": 0
+ },
+ "eyebrows": [
+  {
+   "text": "New \u00b7 Porto",
+   "above": "Glazed by hand in Porto",
+   "upper": true,
+   "tracked": true,
+   "mono": false,
+   "pill": false,
+   "size": 12,
+   "top": 91
+  }
+ ],
+ "numbered": [
+  {
+   "text": "01",
+   "size": 18,
+   "top": 1460
+  }
+ ],
+ "color": {
+  "bodyBg": "#e9efe9",
+  "bodyBgHsl": {
+   "h": 120,
+   "s": 0.16,
+   "l": 0.93
+  },
+  "dark": false,
+  "sectionBgs": [],
+  "textColors": [
+   {
+    "color": "#14211b",
+    "share": 0.94
+   },
+   {
+    "color": "#ffffff",
+    "share": 0.06
+   }
+  ],
+  "button": {
+   "bg": "#14211b",
+   "hsl": {
+    "h": 152,
+    "s": 0.25,
+    "l": 0.1
+   },
+   "fg": "#ffffff"
+  },
+  "lowContrast": []
+ },
+ "buttons": {
+  "count": 1,
+  "inHero": 1,
+  "radius": 0,
+  "height": 47,
+  "withShadow": 0,
+  "withGradient": 0,
+  "mono": 0,
+  "upper": 0,
+  "heroLabels": [
+   "Order a set"
+  ]
+ },
+ "surfaces": {
+  "shadowStatic": 0,
+  "shadowOverlay": 0,
+  "shadowSamples": [],
+  "gradients": 0,
+  "scrims": 0,
+  "gradientSamples": [],
+  "gradientText": 0,
+  "hairlines": 0,
+  "hairlineSamples": [],
+  "outlinedBoxes": 0,
+  "dashed": 0,
+  "blurred": 0,
+  "roundedBoxes": 0,
+  "boxRadius": 0,
+  "squareMedia": 0,
+  "roundedMedia": 0,
+  "mediaRadius": 0,
+  "textShadow": 0,
+  "cardRows": []
+ },
+ "heroMedia": [],
+ "nav": {
+  "links": 0,
+  "fixed": false,
+  "height": 67,
+  "floatingPill": false,
+  "blur": false
+ },
+ "fontsLoaded": []
+}

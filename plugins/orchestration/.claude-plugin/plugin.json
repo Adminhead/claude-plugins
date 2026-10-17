@@ -1,0 +1,9 @@
+{
+  "name": "orchestration",
+  "version": "0.1.0",
+  "description": "Main-session orchestrator agent that plans, routes work to the installed agents and verifies their results. Start it with `claude --agent orchestration:orchestration` or the `agent` setting.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

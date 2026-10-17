@@ -1,0 +1,9 @@
+{
+  "name": "ansible",
+  "version": "0.1.0",
+  "description": "Ansible skill: playbooks, roles and inventories with idempotency proof, check-mode limits, validate hooks, vault or sops secrets, and ansible-lint style.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

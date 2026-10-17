@@ -1,0 +1,9 @@
+{
+  "name": "docker",
+  "version": "0.1.0",
+  "description": "Docker skill: Dockerfiles, Compose and .dockerignore with multi-stage builds, non-root hardened runtime, daemon.json hardening, secret handling and container debugging.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

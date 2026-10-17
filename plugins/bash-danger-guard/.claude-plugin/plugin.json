@@ -1,0 +1,9 @@
+{
+  "name": "bash-danger-guard",
+  "version": "0.1.0",
+  "description": "Mod that denies destructive Bash (rm -rf of root, system or home paths, disk wipes, recursive system chmod/chown, sudo) and unparseable or oversized commands, and asks before force-pushes, hard resets and piped installers like curl | sh.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

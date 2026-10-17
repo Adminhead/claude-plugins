@@ -1,0 +1,9 @@
+{
+  "name": "implement-plan",
+  "version": "0.1.0",
+  "description": "Executes an approved multi-slice implementation plan file end to end, running independent slices in parallel worktrees and checking, reviewing, committing, and updating a Status block after each slice without asking. Use when the user says \"implement this plan\", \"continue implementing\", or points at a plan file to carry out.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

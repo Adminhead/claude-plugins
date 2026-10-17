@@ -1,0 +1,9 @@
+{
+  "name": "ux-copy",
+  "version": "0.1.0",
+  "description": "Writes and reviews product microcopy: button and CTA labels, error messages, empty states, confirmation dialogs, tooltips, loading and onboarding text. Use for \"what should this button say?\", \"write copy for\", \"review this error message\" or wording a dialog. Not for marketing page copy or long-form docs.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

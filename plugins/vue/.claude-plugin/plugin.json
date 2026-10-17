@@ -1,0 +1,9 @@
+{
+  "name": "vue",
+  "version": "0.1.0",
+  "description": "Builds and debugs Vue 3 components with the Composition API, Pinia stores and Nuxt 4 data fetching: props, emits, defineModel, composables, reactivity, watchers, SSR safety and tests. Use when adding, changing or debugging .vue files, Pinia stores or a Nuxt app, such as lost reactivity, stale state, hydration mismatches or duplicate fetches.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

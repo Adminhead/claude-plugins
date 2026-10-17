@@ -1,0 +1,14 @@
+{"ImportPath":"example.com/demo/sub [example.com/demo/sub.test]","Action":"build-output","Output":"# example.com/demo/sub [example.com/demo/sub.test]\n"}
+{"ImportPath":"example.com/demo/sub [example.com/demo/sub.test]","Action":"build-output","Output":"sub/broken.go:2:28: cannot use \"x\" (untyped string constant) as int value in return statement\n"}
+{"ImportPath":"example.com/demo/sub [example.com/demo/sub.test]","Action":"build-fail"}
+{"Time":"2026-09-30T05:39:04.626011522-06:00","Action":"start","Package":"example.com/demo"}
+{"Time":"2026-09-30T05:39:04.626168943-06:00","Action":"start","Package":"example.com/demo/sub"}
+{"Time":"2026-09-30T05:39:04.626219593-06:00","Action":"output","Package":"example.com/demo/sub","Output":"FAIL\texample.com/demo/sub [build failed]\n","OutputType":"frame"}
+{"Time":"2026-09-30T05:39:04.626239993-06:00","Action":"fail","Package":"example.com/demo/sub","Elapsed":0,"FailedBuild":"example.com/demo/sub [example.com/demo/sub.test]"}
+{"Time":"2026-09-30T05:39:04.627020259-06:00","Action":"run","Package":"example.com/demo","Test":"TestRoot"}
+{"Time":"2026-09-30T05:39:04.62705119-06:00","Action":"output","Package":"example.com/demo","Test":"TestRoot","Output":"=== RUN   TestRoot\n","OutputType":"frame"}
+{"Time":"2026-09-30T05:39:04.62705912-06:00","Action":"output","Package":"example.com/demo","Test":"TestRoot","Output":"--- PASS: TestRoot (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-30T05:39:04.62706086-06:00","Action":"pass","Package":"example.com/demo","Test":"TestRoot","Elapsed":0}
+{"Time":"2026-09-30T05:39:04.62706359-06:00","Action":"output","Package":"example.com/demo","Output":"PASS\n","OutputType":"frame"}
+{"Time":"2026-09-30T05:39:04.627151761-06:00","Action":"output","Package":"example.com/demo","Output":"ok  \texample.com/demo\t0.001s\n"}
+{"Time":"2026-09-30T05:39:04.627314082-06:00","Action":"pass","Package":"example.com/demo","Elapsed":0.001}
