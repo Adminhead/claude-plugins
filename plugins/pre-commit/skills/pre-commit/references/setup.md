@@ -31,7 +31,7 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.10
+    rev: v0.17.1
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -54,7 +54,7 @@ prek install --hook-type pre-push --hook-type commit-msg   # more stages, if the
 prek install --prepare-hooks # also builds hook environments up front
 ```
 
-Existing hooks from `pre-commit install` need `prek install --overwrite` once (`-f` also works). `prek install` installs only `pre-commit` unless `--hook-type` or `default_install_hook_types` in the config says otherwise. For pre-commit use `pre-commit install` with the same `--hook-type` flag.
+Existing hooks from `pre-commit install` need `prek install -f` (`--force`) once. `prek install` installs only `pre-commit` unless `--hook-type` or `default_install_hook_types` in the config says otherwise. For pre-commit use `pre-commit install` with the same `--hook-type` flag.
 
 Installing is a per-clone step. Document it in the contributing guide, or script it into the repo's setup command, since the shim lives in `.git/hooks` and isn't committed.
 

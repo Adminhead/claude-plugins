@@ -165,8 +165,9 @@ function gitHit(v: View): GitHit['rule'] | null {
     if (a === '--') break
     if (a.startsWith('--')) {
       const name = a.split('=')[0]
-      // git takes any unambiguous prefix of a long option: --no-veri runs as --no-verify.
-      if (VERIFY_SUBS.has(sub) && prefixOf(name, '--no-verify', '--no-veri'.length)) return 'no-verify'
+      // git takes any unambiguous prefix of a long option: --no-veri runs as --no-verify. am has no --verbose,
+      // so there --no-v is already unambiguous (git 2.56).
+      if (VERIFY_SUBS.has(sub) && prefixOf(name, '--no-verify', (sub === 'am' ? '--no-v' : '--no-veri').length)) return 'no-verify'
       if (prefixOf(name, '--no-gpg-sign', '--no-g'.length)) return 'no-gpg-sign'
       if (!a.includes('=') && LONG_VALUED.has(a)) i++
       continue

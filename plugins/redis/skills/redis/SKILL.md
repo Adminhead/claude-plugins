@@ -47,7 +47,7 @@ Set `maxmemory` and a `maxmemory-policy` that match the data.
 | `allkeys-lfu` | Evicts least frequently used keys | Skewed access patterns |
 | `volatile-ttl` | Evicts keys closest to expiry | Preferring to keep long-lived keys |
 
-A `volatile-*` policy with few TTL'd keys behaves like `noeviction`, so confirm that the keys you expect to evict carry a TTL. Newer versions add further policies (`*-lrm`), so check the eviction docs for the installed version.
+A `volatile-*` policy with few TTL'd keys behaves like `noeviction`, so confirm that the keys you expect to evict carry a TTL. Redis 8.6 adds least-recently-modified policies (`allkeys-lrm`, `volatile-lrm`) that Valkey's config doesn't list, so check the eviction docs for the installed version.
 
 ## 4. Caching
 

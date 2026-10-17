@@ -65,7 +65,7 @@ Plan intent first and vendor syntax later.
 
 ## Firewall rules
 
-Default-deny between zones with named exceptions. A VLAN without rules gives no isolation, because inter-VLAN routing is open until rules block it. Rule order matters: on OPNsense, floating rules are evaluated first, then interface group rules, then interface rules, and a matching "quick" rule (the default) stops evaluation. So allow the narrow exception (for example IoT to the DNS resolver on port 53) above the broader block (IoT to private ranges). Read `references/vlan-and-firewall.md` for the rule pattern, trunk and access ports, and verification.
+Default-deny between zones with named exceptions. A VLAN without inter-zone rules may give no isolation: many routers route between VLANs until rules block it, and on OPNsense or pfSense, where a new interface blocks inbound by default, the usual allow-any rule added for internet access also reaches the other VLANs. Rule order matters: on OPNsense, floating rules are evaluated first, then interface group rules, then interface rules, and a matching "quick" rule (the default) stops evaluation. So allow the narrow exception (for example IoT to the DNS resolver on port 53) above the broader block (IoT to private ranges). Read `references/vlan-and-firewall.md` for the rule pattern, trunk and access ports, and verification.
 
 ## DNS filtering
 

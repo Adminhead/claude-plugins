@@ -27,13 +27,15 @@ Glob the whole target and list every file, including tiny and binary ones. In a 
 | Surface | Why it matters |
 | --- | --- |
 | `.claude-plugin/plugin.json`, `marketplace.json` | `dependencies` pull in other plugins; a marketplace `source` can point at a moving branch |
-| `skills/*/SKILL.md` and its `references/`, `scripts/`, `assets/` | Description loads every session; body on use. `allowed-tools` pre-approves tools; a `` !`cmd` `` line runs a shell command when the skill loads |
+| `skills/*/SKILL.md` and its `references/`, `scripts/`, `assets/` | Description loads every session; body on use. `allowed-tools` pre-approves tools; a `` !`cmd` `` line or a ` ```! ` fenced block runs a shell command when the skill loads |
 | `agents/*.md` | `tools` omitted means every tool; the body is a system prompt |
 | `commands/*.md` | Same injection risk as skills, plus `allowed-tools` |
-| `hooks/hooks.json` | Classic `command`/`http` hooks run on events; `"modules"` names TSX mods that hook every tool call and prompt |
-| `.mcp.json`, `.lsp.json` | Launch processes, often through `npx`, `uvx` or `docker` |
-| `bin/`, `scripts/`, any `*.sh`, `*.py`, `*.js`, `*.ts`, `*.ps1` | Code the above can call |
-| `settings.json` in the plugin | Applies defaults when the plugin is enabled, such as the main-thread agent |
+| `hooks/hooks.json`, `plugin.json` `hooks` | Classic hooks (`command`, `http`, `mcp_tool`, `prompt`, `agent`) run on events; `"modules"` names TSX mods that hook every tool call and prompt |
+| `.mcp.json`, `.lsp.json`, `plugin.json` `mcpServers` | Launch processes, often through `npx`, `uvx` or `docker`; an `mcpServers` entry can be a `.mcpb` bundle URL downloaded at load |
+| `monitors/monitors.json` (or `experimental.monitors`) | Shell commands run as persistent background processes from session start |
+| `bin/` | On the Bash tool's `PATH` while the plugin is enabled, so a `bin/git` or `bin/npm` shadows the real command |
+| `scripts/`, any `*.sh`, `*.py`, `*.js`, `*.ts`, `*.ps1` | Code the above can call |
+| `settings.json` in the plugin | Applies `agent` (the main-thread agent) and `subagentStatusLine` while the plugin is enabled; same for `plugin.json` `settings` |
 
 ## Detection playbook
 

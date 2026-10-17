@@ -1,6 +1,6 @@
 # Flux
 
-Check API versions against the installed controllers (`flux check`, `kubectl api-resources --api-group fluxcd.io`). These manifests use the stable APIs documented at fluxcd.io: `source.toolkit.fluxcd.io/v1`, `kustomize.toolkit.fluxcd.io/v1`, and `helm.toolkit.fluxcd.io/v2`.
+Check API versions against the installed controllers (`flux check`, or `kubectl api-resources | grep fluxcd.io`, since `--api-group` matches one group exactly). These manifests use the stable APIs documented at fluxcd.io: `source.toolkit.fluxcd.io/v1`, `kustomize.toolkit.fluxcd.io/v1`, and `helm.toolkit.fluxcd.io/v2`.
 
 ## Install and bootstrap
 
@@ -55,7 +55,7 @@ spec:
 ```
 
 - `prune` is required. `true` garbage-collects resources removed from Git. Protect a resource by labelling or annotating it `kustomize.toolkit.fluxcd.io/prune: disabled`.
-- `wait: true` health-checks everything the Kustomization applied, and `healthChecks` lists specific resources to wait on. `dependsOn` orders Kustomizations, so infrastructure reconciles before the apps that need it.
+- `wait: true` health-checks everything the Kustomization applied, and `healthChecks` lists specific resources to wait on (it is ignored when `wait: true`). `dependsOn` orders Kustomizations, so infrastructure reconciles before the apps that need it.
 - `interval` is the reconcile period (minimum 60 s). `retryInterval` sets the retry period after a failure and defaults to `interval`.
 - `suspend: true` pauses reconciliation and drift detection. Use it for a controlled manual change, and resume afterward.
 - Flux reverts drift on each reconcile for the resources it manages. That is the equivalent of Argo CD's `selfHeal`.

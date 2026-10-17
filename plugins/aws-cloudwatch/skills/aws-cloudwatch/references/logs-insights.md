@@ -18,7 +18,7 @@ aws logs get-query-results --profile <profile> --region <region> --query-id "$QI
   --query '{status:status,stats:statistics,rows:results}'
 ```
 
-- `--limit` defaults to 10,000 rows and has the same maximum. Set a small `--limit` (20 to 100) on any query that returns raw `@message` text, so less log content reaches your context.
+- `--limit` accepts up to 100,000 events for Logs Insights QL, but one `get-query-results` call returns at most 10,000 and the rest page through `nextToken`. Set a small `--limit` (20 to 100) on any query that returns raw `@message` text, so less log content reaches your context.
 - Never use the `unmask` command. It reveals content that a data protection policy masked.
 - Log lines can hold tokens, keys, and personal data. Redact them before quoting a line in the report, and quote the shortest fragment that shows the point.
 - A `Running` status returns partial results. Poll again before trusting totals.

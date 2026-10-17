@@ -1,10 +1,10 @@
 # WireGuard remote access
 
-Read when planning or reviewing a WireGuard setup. Checked against wireguard.com/quickstart. Server firewall and forwarding rules vary by OS, so derive them from the user's platform instead of copying a snippet.
+Read when planning or reviewing a WireGuard setup. Checked against wireguard.com/quickstart and the Cryptokey Routing section of wireguard.com. Server firewall and forwarding rules vary by OS, so derive them from the user's platform instead of copying a snippet.
 
 ## Model
 
-Each device has its own keypair. A peer is identified by its public key. `AllowedIPs` does two jobs, as the quickstart says: it is the routing table for traffic going to the peer, and the filter for source addresses accepted from it.
+Each device has its own keypair. A peer is identified by its public key. `AllowedIPs` does two jobs, as wireguard.com's Cryptokey Routing section says: it is the routing table for traffic going to the peer, and the filter for source addresses accepted from it.
 
 ## Keys
 

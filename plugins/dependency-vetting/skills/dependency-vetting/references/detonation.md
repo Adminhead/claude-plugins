@@ -13,7 +13,7 @@ Read this only when steps 3 to 7 are inconclusive and the user has agreed to run
 
 ```bash
 # npm
-npm install --foreground-scripts <name>@<version>          # sandbox only; npm 12 also needs --allow-scripts=<name>
+npm install --foreground-scripts <name>@<version>          # sandbox only; npm 12 skips unapproved scripts, so add --dangerously-allow-all-scripts (--allow-scripts is an error in a project install)
 node -e "require('<name>')"
 
 # PyPI

@@ -10,12 +10,12 @@ Read this when the diff touches `.github/workflows/`, other CI config, Dockerfil
 - **Token scope.** No top-level `permissions:` block (the token then gets the repository or org default, often write), or `write-all`, or writes granted where a job only reads. Safe form: `permissions: {}` or `contents: read` at the top, widened per job.
 - **Unpinned actions.** `uses: owner/action@v4` or `@main` follows a mutable ref, so a compromised maintainer account or a moved tag runs new code with your secrets. Pin third-party actions to a full 40-character commit SHA with the version in a comment, and let Dependabot or Renovate bump them. First-party `actions/*` are lower risk but the same rule applies where the repository's policy demands it. Also check reusable workflows (`uses: org/repo/.github/workflows/x.yml@ref`) and `docker://` images.
 - **Credentials left behind.** `actions/checkout` without `persist-credentials: false` in a job that later runs untrusted code or uploads the workspace as an artifact.
-- **Bot-identity checks.** Gating auto-merge or secrets on `github.actor == 'dependabot[bot]'` alone. The actor is whoever triggered the run, which can differ from the PR author on re-runs and some event types. Check the PR author and the event type together, or use Dependabot's own metadata action.
+- **Bot-identity checks.** Gating auto-merge or secrets on `github.actor == 'dependabot[bot]'` alone. `github.actor` is whoever triggered the event that started the run, not necessarily the PR author (someone else may have pushed to the branch), and a re-run keeps that actor's privileges while `github.triggering_actor` names who re-ran it. Check the PR author and the event type together, or use Dependabot's own metadata action.
 - **Self-hosted runners on public repositories.** Fork PRs can run on them unless approval for outside contributors is required; a non-ephemeral runner keeps state between jobs.
 - **Cache poisoning.** A job that runs untrusted code and also saves a cache key that privileged or release workflows restore.
 - **`curl | sh` and unpinned tool downloads** in workflow steps or Dockerfiles, without a checksum or signature check.
 
-If installed, `zizmor` and `actionlint` find most of these statically. Run them read-only; never install them during an audit. The `gh-actions` skill, if installed, covers fixing workflows.
+If installed, `zizmor` and `actionlint` find most of these statically. Run them read-only: no `zizmor --fix` (it edits files in place), and `zizmor --offline` if a `GH_TOKEN` in the environment should not be sent to the GitHub API. Never install them during an audit. The `gh-actions` skill, if installed, covers fixing workflows.
 
 ## Cloud identity (OIDC federation)
 

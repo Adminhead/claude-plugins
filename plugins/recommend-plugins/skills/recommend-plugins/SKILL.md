@@ -22,7 +22,7 @@ The scope is `$ARGUMENTS` (`local` or `project`), default `local`. Say which set
 2. Read `<installLocation>/.claude-plugin/marketplace.json` for each plugin's `name`, `description`, `category` and `source`. Then read `<installLocation>/<source>/.claude-plugin/plugin.json` for its `dependencies`: a bare string is an adminhead plugin, an object `{"name", "marketplace"}` is a cross-marketplace dependency.
 3. If the target is a clone of this marketplace, the `README.md` table between `<!-- catalog:start -->` and `<!-- catalog:end -->` gives the same data grouped into meta plugins, core bundles and focused plugins. Prefer the installed marketplace when the two disagree; it is what `install` resolves against.
 
-Don't use `claude plugin list --available`, which omits installed plugins.
+Don't use `claude plugin list --json --available` for the catalog: its entries carry no category or dependency lists.
 
 Sort the catalog into four kinds:
 
@@ -33,7 +33,7 @@ Sort the catalog into four kinds:
 
 ## 3. Inventory
 
-Run `claude plugin list --json`. A plugin is effective here if it is installed at user scope, or at project or local scope with `projectPath` equal to the target.
+Run `claude plugin list --json`. A plugin is effective here if it is installed at user or `synced` scope, or at project or local scope with `projectPath` equal to the target.
 
 - Expand each effective meta and bundle through its dependency list. Skip every plugin already effective, directly or through a set.
 - Report disabled ones and suggest `claude plugin enable <id> --scope <scope>`.

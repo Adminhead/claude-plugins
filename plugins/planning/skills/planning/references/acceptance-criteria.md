@@ -34,7 +34,7 @@ When a criterion is stated as one sentence (in a spec, ticket, or the Expected f
 | Ubiquitous | The system shall <response>. | It always holds |
 | Event-driven | When <trigger>, the system shall <response>. | One trigger causes it |
 | State-driven | While <state>, the system shall <response>. | It holds throughout a state |
-| Conditional | While <state>, when <trigger>, the system shall <response>. | A trigger matters only in a state |
+| Complex | While <state>, when <trigger>, the system shall <response>. | A trigger matters only in a state |
 | Optional feature | Where <feature is enabled>, the system shall <response>. | It depends on a flag or configuration |
 | Unwanted behavior | If <unwanted condition>, then the system shall <response>. | Errors, faults, and abuse |
 

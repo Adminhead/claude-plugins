@@ -72,7 +72,7 @@ Argo CD leaves `prune` and `selfHeal` off unless you set them, and doesn't retry
 
 ## Workflow
 
-1. **Read what exists.** Find the GitOps repo layout, the Application or Kustomization resources, and the installed controller versions (`argocd version`, `flux --version`). Check API versions against the installed controllers, not the examples here.
+1. **Read what exists.** Find the GitOps repo layout, the Application or Kustomization resources, and the installed controller versions (`argocd version`, `flux version`). Check API versions against the installed controllers, not the examples here.
 2. **Pick the tool** with the table above, or follow what the repo already uses.
 3. **Write the resources** from [argocd](references/argocd.md) or [flux](references/flux.md). Apply the sync policy table per environment.
 4. **Handle secrets** with [secrets](references/secrets.md). Plaintext Secrets never go in the repo.

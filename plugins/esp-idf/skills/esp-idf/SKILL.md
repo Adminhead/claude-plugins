@@ -14,7 +14,7 @@ A wrong pin, a small task stack, or an ISR-unsafe call shows up as a reset, not 
 Read the project before asking. Most answers are already in it.
 
 - **Chip.** `CONFIG_IDF_TARGET` in `sdkconfig`, or `idf.py set-target` history. The chip decides core count, peripherals, memory map, and sleep and wakeup APIs, so it matters. Ask only when the task depends on it and nothing in the repo shows it.
-- **ESP-IDF version.** `idf.py --version`, or `dependencies.idf` in `idf_component.yml`. As of 2026-10-17, v6.1 (2026-08-27) is the latest feature release; v6.0.3 and v5.5.6 are the newest patch releases of the older supported lines. v6.0 removed the legacy ADC driver and marked legacy I2C (`driver/i2c.h`) end-of-life. Follow the driver style the project already uses unless the task is a migration.
+- **ESP-IDF version.** `idf.py --version`, or `dependencies.idf` in `idf_component.yml`. As of 2026-10-17, v6.1 (2026-08-27) is the latest feature release; v6.0.3 and v5.5.6 are the newest patch releases of the older supported lines. v6.0 removed the legacy ADC, DAC, timer group, RMT, I2S, PCNT, MCPWM and sigma-delta drivers and marked legacy I2C (`driver/i2c.h`) end-of-life (removal planned for v7.0). Follow the driver style the project already uses unless the task is a migration.
 - **Hardware facts.** Pin map, pull-ups, PSRAM, flash size, display controller, console transport. When missing, state the values you assume and carry them into the report.
 - **Components.** Exact LVGL, ESP-ADF, and ESP-SR versions (`dependencies.lock`).
 

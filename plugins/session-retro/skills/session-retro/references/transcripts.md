@@ -4,10 +4,10 @@ Read this in step 1 to find a session and pull its evidence. Checked against cod
 
 ## Where they are
 
-- `~/.claude/projects/<project>/<session-id>.jsonl`, one JSON object per line. `<project>` is the working directory path with every non-alphanumeric character replaced by `-`, so `/home/me/src/app` becomes `-home-me-src-app`.
-- `CLAUDE_CONFIG_DIR` moves the whole tree (`$CLAUDE_CONFIG_DIR/projects/...`), and `CLAUDE_CODE_PROJECT_DIR_NAME` overrides the `<project>` folder name.
+- `~/.claude/projects/<project>/<session-id>.jsonl`, one JSON object per line. `<project>` is the working directory path with every non-alphanumeric character replaced by `-`, so `/home/me/src/app` becomes `-home-me-src-app`. A converted name longer than 200 characters is truncated and gets a hash suffix, so match it with `ls` rather than rebuilding it. Hooks and status line commands also receive the exact file as `transcript_path`.
+- `CLAUDE_CONFIG_DIR` moves the whole tree (`$CLAUDE_CONFIG_DIR/projects/...`), and `CLAUDE_CODE_PROJECT_DIR_NAME` overrides the `<project>` folder name (only when `CLAUDE_CONFIG_DIR` is also set).
 - Next to each transcript, `<session-id>/subagents/agent-<id>.jsonl` holds each subagent's own transcript, with `agent-<id>.meta.json` giving its type and description. `<session-id>/tool-results/` holds tool outputs too large to inline.
-- Transcripts older than `cleanupPeriodDays` (default 30) are deleted at startup.
+- Transcripts older than `cleanupPeriodDays` (default 30) are deleted by the retention sweep.
 
 Set the path once:
 

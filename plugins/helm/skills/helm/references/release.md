@@ -8,8 +8,9 @@
 # Helm 3.18 and later
 helm plugin install https://github.com/databus23/helm-diff --version <version>
 # Helm 4 verifies plugin signatures by default, and a git URL can't be verified.
-# Import the maintainer's GPG key, check its fingerprint against the release notes,
-# then install the versioned release tarball (its .prov file sits beside it).
+# Import the maintainer's GPG key (curl -sL https://github.com/databus23.gpg | gpg --import),
+# check its fingerprint against the helm-diff README, then install the release tarball
+# for a pinned tag (its .prov file sits beside it). <os> is linux, macos, windows or freebsd.
 helm plugin install https://github.com/databus23/helm-diff/releases/download/v<version>/helm-diff-<os>-<arch>.tgz
 ```
 

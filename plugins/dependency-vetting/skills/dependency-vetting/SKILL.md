@@ -53,7 +53,7 @@ curl -s https://api.osv.dev/v1/query \
 osv-scanner scan -L <lockfile>   # package-lock.json, pnpm-lock.yaml, yarn.lock, bun.lock, uv.lock, poetry.lock, pylock.toml
 ```
 
-Any `MAL-` advisory is a malicious verdict. Stop and report. Also check whether the registry has removed the version (npm replaces a removed malicious package with a `0.0.1-security` placeholder; PyPI returns 404 or marks the release yanked) and any advisory the user cited.
+Any `MAL-` advisory is a malicious verdict. Stop and report. Also check whether the registry has removed the version (npm replaces a removed malicious package with a "security holding package" placeholder, usually `0.0.1-security`; PyPI returns 404 or marks the release yanked) and any advisory the user cited.
 
 ### 4. Metadata and provenance
 
@@ -116,8 +116,8 @@ Report the evidence for each step (command, result, file and line for code findi
 Offer these when the project lacks them, without changing config unasked:
 
 - Install from a lockfile in CI (`npm ci`, `uv sync --locked`).
-- Disable dependency install scripts and allowlist the few that need them. npm 12 does this by default (`npm approve-scripts`, `allow-scripts`); on npm 11 set `ignore-scripts=true` in `.npmrc`; pnpm 10+ blocks them by default (`pnpm approve-builds`), and bun runs them only for `trustedDependencies` and its built-in allowlist.
-- Add a release cooldown so brand-new versions aren't picked up at once: npm `min-release-age=<days>`, pnpm `minimumReleaseAge`, uv `exclude-newer = "1 week"`.
+- Disable dependency install scripts and allowlist the few that need them. npm 12 does this by default (`npm approve-scripts` writes the `allowScripts` field in package.json); on npm 11 set `ignore-scripts=true` in `.npmrc`; pnpm 10+ blocks them by default (`pnpm approve-builds`), and bun runs them only for `trustedDependencies` and its built-in allowlist.
+- Add a release cooldown so brand-new versions aren't picked up at once: npm `min-release-age=<days>`, pnpm `minimumReleaseAge` (minutes; pnpm 11 defaults to 1440), uv `exclude-newer = "1 week"`.
 - Pin internal packages to the private index; see [references/name-attacks.md](references/name-attacks.md).
 
 ## Gotchas

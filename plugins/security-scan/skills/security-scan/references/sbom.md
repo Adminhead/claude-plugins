@@ -25,7 +25,7 @@ syft registry:ghcr.io/org/app:1.4.2 -o spdx-json=sbom.spdx.json   # image straig
 syft ghcr.io/org/app:1.4.2 -o cyclonedx-json=app.cdx.json -o spdx-json=app.spdx.json -o table
 ```
 
-Source prefixes: `dir:`, `file:`, `registry:` (no Docker daemon), `docker:`, `oci-archive:`; a bare name is treated as an image. `--scope all-layers` includes packages deleted in later layers. A source-directory SBOM lists what manifests declare; an image SBOM lists what actually shipped, so prefer the image for release artifacts.
+Source prefixes: `dir:`, `file:`, `registry:` (no Docker daemon), `docker:`, `oci-archive:`; without a prefix Syft auto-detects (an existing path is read from disk, otherwise the argument is tried as an image, daemons first, then the registry). `--scope all-layers` includes packages deleted in later layers. A source-directory SBOM lists what manifests declare; an image SBOM lists what actually shipped, so prefer the image for release artifacts.
 
 ## Scan and gate with Grype
 

@@ -28,13 +28,13 @@ Restart the session, then check `/mcp` for a connected `sentry` server. Its tool
 
 ## Token scopes and tool groups
 
-Grant the token only what the tool groups you enable need.
+Grant the token only what the tool groups you enable need. The scopes below are the `requiredScopes` each tool declares in `@sentry/mcp-server` 0.42.0.
 
 | Tool group (`Granted tool groups`) | What it can do | Token scopes |
 | --- | --- | --- |
 | `inspect` (default) | Read issues, events, traces, replays, releases, monitors, profiles, project metadata, docs | `org:read`, `project:read`, `team:read`, `event:read` |
 | `triage` | Resolve, assign and update issues | add `event:write` |
-| `project-management` | Create and change projects, teams, DSNs, monitors, alert rules | add `project:write`, `team:write` |
+| `project-management` | Create and change projects, teams, DSNs, monitors, alert rules | add `project:write`, `team:write`, and `alerts:write` for metric monitors and alert rules |
 | `seer` | Sentry's AI debugger | only if Seer is available on your instance |
 
 Combine groups with commas, for example `inspect,triage`. Change the value later in `/config` or by re-enabling the plugin.

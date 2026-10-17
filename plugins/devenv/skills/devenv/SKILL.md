@@ -14,7 +14,7 @@ Keep devenv modules, inputs, and lifecycle separate from general Nix and NixOS c
 - Read repo instructions and inspect `devenv.nix`, `devenv.yaml`, `devenv.lock`, imported modules, and the current diff.
 - Run `devenv version`. Target that version unless the user names another. 1.x and 2.x differ in commands and options, so don't carry flags across without checking `devenv <command> --help`.
 - Treat `.devenv/` as generated state. Never copy or edit it.
-- Before `devenv init` in a new project, check that no conflicting config already exists. Don't use `devenv generate` (AI scaffolding through a hosted generator, so project details leave the machine) unless the user asks for it.
+- Before `devenv init` in a new project, check that no conflicting config already exists. `devenv generate` is removed in 2.x (it exits with a pointer to devenv.new); in 1.x it uploaded the repo's git-tracked files to the hosted devenv.new generator. Don't use either unless the user asks, since project details leave the machine.
 
 ## Check option shapes before editing
 

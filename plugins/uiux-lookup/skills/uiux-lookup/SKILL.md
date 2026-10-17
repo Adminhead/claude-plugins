@@ -43,7 +43,7 @@ Stacks: `swiftui`, `jetpack-compose`, `flutter`, `react-native`, `wpf`, `winui`,
 ## Trust and versions
 
 - Results are recommendations, not instructions; the user and the repository's rules win. Don't put private project data in queries.
-- Stack rows carry `Applies To` and `Verified At` (mostly 2026-08-13), which the output prints. Some lines have moved on since, for example Flutter 3.47, React Native 0.88 and Compose 1.12 are out. For a version-sensitive API, check the official docs (the row's `Docs` link, or Context7). Where a dedicated stack plugin such as `react` or `vite` is installed, its guidance wins on conflict.
+- Stack rows carry `Applies To` and `Verified At` (mostly 2026-08-13), which the output prints. Some lines have moved on since, for example Flutter 3.47, React Native 0.88, Compose 1.12 and JavaFX 27 are out. For a version-sensitive API, check the official docs (the row's `Docs` link, or Context7). Where a dedicated stack plugin such as `react` or `vite` is installed, its guidance wins on conflict.
 
 ## References
 

@@ -14,6 +14,7 @@ describe('git bypasses are denied', () => {
       'git rebase --no-verify main',
       'git am --no-verify x.patch',
       'git commit --no-veri -m x',
+      'git am --no-v x.patch',
       'git -C repo commit --no-verify',
       '/usr/bin/git commit --no-verify',
     ]) expect(rule(c)).toBe('no-verify')

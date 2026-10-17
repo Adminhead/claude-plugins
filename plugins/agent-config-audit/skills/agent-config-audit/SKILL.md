@@ -9,7 +9,7 @@ allowed-tools:
 
 Agent configuration runs with the person's authority. A hook is a shell command, an MCP server is a process, and CLAUDE.md is text the model obeys, so each file in `.claude/` is an attack surface. This skill reads them as a security reviewer would and reports findings. It changes nothing.
 
-Scope: configuration that is or will be active for this person, in a project or user scope. Vetting a third-party plugin, skill, agent or MCP config before installing it is the `plugin-vetter` agent's job (if installed); hand it the plugin directory. Not for bloat or staleness cleanup (`config-audit`), code or dependency security (`security-scan`, if installed), the source code of an MCP server (`mcp-server-audit`, if installed), or trimming permission prompts (`fewer-permission-prompts`).
+Scope: configuration that is or will be active for this person, in a project or user scope. Vetting a third-party plugin, skill, agent or MCP config before installing it is the `plugin-vetter` agent's job (if installed); hand it the plugin directory. Not for bloat or staleness cleanup (`config-audit`), code or dependency security (`security-scan`, if installed), the source code of an MCP server (`mcp-server-review`, if installed), a configured server's live tool descriptions for poisoning or rug pulls (`mcp-server-audit`, if installed), or trimming permission prompts (`fewer-permission-prompts`).
 
 ## Rules
 
@@ -32,7 +32,7 @@ Scope: configuration that is or will be active for this person, in a project or 
 | Check | Why it matters |
 | --- | --- |
 | `permissions.allow` holds bare `Bash`, `Bash(*)`, or an interpreter such as `Bash(python:*)` or `Bash(curl:*)` | Any prompt-injected text can run arbitrary commands without a prompt |
-| `permissions.defaultMode` is `bypassPermissions` or `auto` | Skips prompts for the whole session. A hit in user or managed settings is the real exposure; check the current settings docs for whether project and local values are honored before grading one there |
+| `permissions.defaultMode` is `bypassPermissions` or `auto` | `bypassPermissions` skips prompts for the whole session; `auto` hands approval to a classifier (and is the built-in start mode from v2.1.283, so grade `auto` by the deny rules around it). A hit in user or managed settings is the real exposure. Terminal sessions ignore these two values in `.claude/settings.json` and `.claude/settings.local.json` (`auto` falls back to the built-in default, `bypassPermissions` to Manual), so a project or local hit is Low: it shows intent but does not take effect |
 | `permissions.disableBypassPermissionsMode` (and `disableAutoMode`) not set to `"disable"` in a shared or managed setup | Anyone can enter bypass or auto mode |
 | No `permissions.deny` for secret reads (`Read(./.env)`, key and credential paths) | The agent can read what it should never see |
 | `permissions.additionalDirectories` points at `~`, `/`, or another repo | Widens file access beyond the project |

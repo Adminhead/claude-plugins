@@ -44,7 +44,7 @@ A server meant to be private that returns a tool list here without a token is a 
 | ID | Name | Applies to |
 | --- | --- | --- |
 | OWASP MCP03:2025 | Tool Poisoning | poisoning, shadowing, rug pull |
-| OWASP MCP01:2025 | Prompt Injection | poisoned descriptions, untrusted tool output |
+| OWASP MCP06:2025 | Prompt Injection via Contextual Payloads | poisoned descriptions, untrusted tool output |
 | MITRE ATLAS AML.T0010 | ML Supply Chain Compromise | a poisoned third-party server |
 | MITRE ATLAS AML.T0051.001 | LLM Prompt Injection: Indirect | descriptions as injected context |
 | MITRE ATLAS AML.T0053 | LLM Plugin Compromise | MCP tools as the agent's plugins |

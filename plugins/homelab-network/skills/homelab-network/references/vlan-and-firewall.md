@@ -15,7 +15,7 @@ On OPNsense:
 1. Floating rules, then interface group rules, then interface rules.
 2. Inside a group, rules run top to bottom by sequence.
 3. A rule with "quick" (the default) ends evaluation on its first match. Without it, the last match wins.
-4. Traffic matching no rule is dropped.
+4. Inbound traffic matching no rule is blocked. Traffic leaving the firewall is allowed by default.
 
 Check your platform's own rule for the same questions (processing order, first or last match, implicit deny) before writing rules, since they differ.
 

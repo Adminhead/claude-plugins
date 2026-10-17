@@ -10,7 +10,7 @@
     "ttl": {
       "type": "string",
       "title": "Cache TTL",
-      "description": "How long the prompt cache is assumed to live after the last main-loop turn: 5m (the API default) or 1h (extended cache).",
+      "description": "How long the prompt cache is assumed to live after the last main-loop turn: 5m (the API default, used by API-key sessions) or 1h (Claude Code's main-conversation cache on a Claude subscription, or with ENABLE_PROMPT_CACHING_1H).",
       "options": ["5m", "1h"],
       "default": "5m"
     },

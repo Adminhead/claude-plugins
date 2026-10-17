@@ -15,7 +15,7 @@ curl -sG "$PROM_URL/api/v1/query" --data-urlencode 'query=up{job="api"}' -H @"$H
 
 ## Optional: promql CLI
 
-`promql-cli` (github.com/nalbury/promql-cli) gives ASCII graphs and subcommands (`metrics`, `labels`, `meta`). Its repository was archived and read-only as of March 2026, so treat it as optional and unmaintained. Use it only if already installed.
+`promql-cli` (github.com/nalbury/promql-cli) gives ASCII graphs and subcommands (`metrics`, `labels`, `meta`). Its repository is archived and read-only (last commit 2023), so treat it as optional and unmaintained. Use it only if already installed.
 
 ```bash
 promql 'up'                                   # instant query

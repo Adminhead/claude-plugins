@@ -42,7 +42,7 @@ Claude Code v2.1.277+ can read `AGENTS.md` directly, through a built-in plugin (
 
 - `~/.claude/CLAUDE.md`, managed files, and `.claude/rules/` don't count for that check.
 - Adding a `CLAUDE.local.md` silently stops `AGENTS.md` from loading under the default setting.
-- The user can change this with `/config` → **Project instructions** (`claude-md-or-agents-md` by default, or `claude-md-and-agents-md`, `claude-md`, `managed-only`). It is set through `/config` or the built-in plugin's `instructionFiles` option in settings, so a teammate's value may differ; don't rely on it for shared behavior.
+- The user can change this with `/config` → **Project instructions** (`claude-md-or-agents-md` by default, or `claude-md-and-agents-md`, `claude-md`, `managed-only`). It is set through `/config` or `pluginConfigs` → `cc-plugin-agents-md@builtin` → `options.instructionFiles`, which Claude Code reads only from user settings, a `--settings` file or managed settings and ignores in project and local settings. It can't be committed with the repo, so a teammate's value may differ; don't rely on it for shared behavior.
 - Not read: `AGENTS.local.md`, `AGENTS.override.md`, and anything under `.agents/`.
 - Versions before v2.1.277, sessions with the plugin disabled, and (before v2.1.281) some sessions such as Amazon Bedrock or telemetry-disabled ones read `CLAUDE.md` only.
 - In subdirectories, Claude reads a subdirectory's `AGENTS.md` when it opens a file there and that subdirectory has no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` of its own.
