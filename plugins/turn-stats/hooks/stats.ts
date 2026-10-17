@@ -64,14 +64,15 @@ export function toastText(e: TurnLike, o: StatsOptions): string | null {
   if (!(typeof e.durationMs === 'number' && e.durationMs >= o.thresholdMs)) return null
   const aborted = e.isAborted === true || e.reason === 'aborted'
   if (aborted && !o.includeAborted) return null
-  const parts = [`turn ${fmtDuration(e.durationMs)}`]
+  // Compact, because the notification bar is shared and clips long text.
+  const parts = [fmtDuration(e.durationMs)]
   if (e.usage) {
-    parts.push(`${fmtTokens(num(e.usage.output_tokens))} out`)
+    parts.push(`${fmtTokens(num(e.usage.output_tokens))}↑`)
     const hit = cacheHit(e.usage)
-    if (hit !== null) parts.push(`cache ${hit}%`)
+    if (hit !== null) parts.push(`${hit}%c`)
   }
   if (aborted) parts.push('interrupted')
-  else if (e.reason === 'error') parts.push('ended on error')
+  else if (e.reason === 'error') parts.push('error')
   else if (e.reason === 'refusal') parts.push('refused')
-  return parts.join(' · ')
+  return parts.join(' ')
 }

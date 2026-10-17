@@ -3,14 +3,14 @@
 A mod that shows a toast after a long main-loop turn:
 
 ```
-turn 3m12s · 41k out · cache 90%
+3m12s 41k↑ 90%c
 ```
 
 - duration: the turn's wall-clock length (`turn.complete` `durationMs`)
 - output tokens: summed over the turn's API responses (`usage.output_tokens`)
 - cache hit rate: cache reads over all input tokens (`cache_read / (input + cache_read + cache_creation)`)
 
-A turn that ended on an API error or a refusal says so at the end. A turn with no API response shows only its duration. Short turns and subagent turns get no toast; nothing stays on screen.
+The text is compact (duration, output tokens with `↑`, cache hit rate with `%c`) because the notification bar is shared with other notices and clips long lines. A turn that ended on an API error or a refusal says so at the end. A turn with no API response shows only its duration. Short turns and subagent turns get no toast; nothing stays on screen.
 
 ## Install
 

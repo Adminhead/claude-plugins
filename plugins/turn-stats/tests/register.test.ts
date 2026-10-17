@@ -37,12 +37,12 @@ describe('stats', () => {
   })
 
   test('toast text and when there is none', () => {
-    expect(toastText(turn(), DEFAULTS)).toBe('turn 3m12s · 41k out · cache 90%')
+    expect(toastText(turn(), DEFAULTS)).toBe('3m12s 41k↑ 90%c')
     expect(toastText(turn({ durationMs: 30_000 }), DEFAULTS)).toBeNull()
     expect(toastText(turn({ agentId: 'a1' }), DEFAULTS)).toBeNull()
     expect(toastText(turn({ isAborted: true, reason: 'aborted' }), DEFAULTS)).toBeNull()
-    expect(toastText(turn({ isAborted: true, reason: 'aborted', usage: undefined }), { ...DEFAULTS, includeAborted: true })).toBe('turn 3m12s · interrupted')
-    expect(toastText(turn({ reason: 'error' }), DEFAULTS)).toBe('turn 3m12s · 41k out · cache 90% · ended on error')
+    expect(toastText(turn({ isAborted: true, reason: 'aborted', usage: undefined }), { ...DEFAULTS, includeAborted: true })).toBe('3m12s interrupted')
+    expect(toastText(turn({ reason: 'error' }), DEFAULTS)).toBe('3m12s 41k↑ 90%c error')
   })
 })
 
@@ -58,6 +58,6 @@ describe('register', () => {
     expect(out.text).toBe('')
     await $.turn.complete(turn({ durationMs: 5_000 }) as never)
     await $.turn.complete(turn({ agentId: 'a1' }) as never)
-    expect(toasts).toEqual(['turn 3m12s · 41k out · cache 90%'])
+    expect(toasts).toEqual(['3m12s 41k↑ 90%c'])
   })
 })
