@@ -1,0 +1,859 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T20:03:11.601Z",
+  "durationSeconds": 50,
+  "costUsd": 0.9047744000000001,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/git",
+    "ablation": "with-without",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "git",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/git"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "branch-routing",
+      "dir": "evals/branch-routing",
+      "source": "prose",
+      "promptMarkdown": "I need to start work on a login timeout bug, ticket ENG-482. What should I name the branch, and which base should I cut it from?",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-branch",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:branch\""
+          }
+        },
+        {
+          "name": "not-worktree",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:worktree\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.048627399999999994,
+            "judgeCostUsd": 0,
+            "durationSeconds": 9,
+            "startedAt": "2026-10-02T20:03:11.616Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-16nVL7/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-branch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-worktree",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.0342662,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T20:03:11.616Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-7tLo7r/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-worktree",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "commit-breaking-change-marker",
+      "dir": "evals/commit-breaking-change-marker",
+      "source": "prose",
+      "promptMarkdown": "We redesigned the config file format and old config files no longer load. The repo uses Conventional Commits. Write only the commit message; do not run any commands.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-commit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        },
+        {
+          "name": "has-marker",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(?i)(^|\\n)\\w+(\\([^)]*\\))?!:|BREAKING[ -]CHANGE:",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "marks-breaking",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if the commit message marks the break machine-readably: a \"!\" after the type or scope, a \"BREAKING CHANGE:\" footer, or both. It must also not use the type \"fix\" and must keep an imperative, lowercase subject. FAIL if the break is mentioned only in prose in the body.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if the commit message marks the break machine-readably: a \"!\" after the type or scope, a \"BREAKING CHANGE:\" footer, or both. It must also not use the type \"fix\" and must keep an imperative, lowercase subject. FAIL if the break is mentioned only in prose in the body.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.0251696,
+            "judgeCostUsd": 0.00084,
+            "durationSeconds": 3,
+            "startedAt": "2026-10-02T20:03:11.616Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-JYitYV/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-commit",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "has-marker",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: Invalid regular expression: unrecognized character after (?",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "marks-breaking",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "```\nfeat(config)!: redesign config file format\n\nReplace the previous config file layout with a redesigned format. Config\nfiles written in the old format are no longer loaded and must be migrated\nto the new format.\n\nBREAKING CHANGE: the config file format has changed. Existing config files\nare not backward compatible and will fail to load until they are updated to\nthe new format.\n```"
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.0228656,
+            "judgeCostUsd": 0.0013519999999999997,
+            "durationSeconds": 4,
+            "startedAt": "2026-10-02T20:03:11.616Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-dvorVK/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "has-marker",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: Invalid regular expression: unrecognized character after (?",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "marks-breaking",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "```\nfeat!: redesign config file format\n\nReplace the previous config file layout with a new format. Config\nfiles written for the old format are no longer accepted and will fail\nto load.\n\nBREAKING CHANGE: old config files are incompatible with the new format\nand must be rewritten before they can be loaded.\n```"
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5,
+        "passRate": 0,
+        "scoreWithout": 0.5,
+        "passRateWithout": 0,
+        "delta": 0
+      }
+    },
+    {
+      "name": "commit-near-miss",
+      "dir": "evals/commit-near-miss",
+      "source": "prose",
+      "promptMarkdown": "Show me the last five commits on this branch with their authors and dates, one line per commit. Tell me which git command gives that.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "not-commit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?commit\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0671126,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T20:03:14.637Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-mRWWyY/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-commit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.062453600000000005,
+            "judgeCostUsd": 0,
+            "durationSeconds": 9,
+            "startedAt": "2026-10-02T20:03:15.436Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-aziuoX/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-commit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "commit-one-keyword-per-issue",
+      "dir": "evals/commit-one-keyword-per-issue",
+      "source": "prose",
+      "promptMarkdown": "My commit fixes two separate bugs: issue #101 (a null pointer crash) and issue #102 (an infinite loop). Write the footer lines that close both automatically on GitHub. Do not run any commands.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-commit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        },
+        {
+          "name": "keyword-each",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if each issue number is preceded by its own closing keyword (for example \"Closes #101\" and \"Closes #102\", on separate lines or each with its own keyword). FAIL if one keyword is shared (\"Closes #101 and #102\", \"Closes #101, #102\").\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if each issue number is preceded by its own closing keyword (for example \"Closes #101\" and \"Closes #102\", on separate lines or each with its own keyword). FAIL if one keyword is shared (\"Closes #101 and #102\", \"Closes #101, #102\").\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "no-shared-keyword",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(?i)(close[sd]?|fix(es|ed)?|resolve[sd]?):?\\s+#101\\s*(,|and|&)\\s*#102",
+            "flags": "",
+            "match": "not_contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.0269616,
+            "judgeCostUsd": 0.0018719999999999987,
+            "durationSeconds": 4,
+            "startedAt": "2026-10-02T20:03:19.905Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-leIoXQ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-commit",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "keyword-each",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Put these in the footer, separated from the body by a blank line:\n\n```\nCloses #101\nCloses #102\n```\n\nGitHub needs a closing keyword in front of each issue number. `Closes #101, #102` would only close #101, so repeat the keyword on every line. `Fixes` and `Resolves` work the same way.\n\nThe issues close when the commit reaches the default branch (`main` here). A merge or push of the commit does this. If you open a PR instead, put the keywords in the PR description as well, because GitHub doesn't always read commit footers on a PR branch."
+              },
+              {
+                "name": "no-shared-keyword",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: Invalid regular expression: unrecognized character after (?",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.0236966,
+            "judgeCostUsd": 0.001546999999999999,
+            "durationSeconds": 3,
+            "startedAt": "2026-10-02T20:03:20.398Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-g508A6/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "keyword-each",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Add one closing keyword per issue. GitHub only closes the issues that are named directly after a keyword, so `Fixes #101, #102` would close only #101.\n\n```\nFixes #101\nFixes #102\n```\n\n`Closes` and `Resolves` work the same way. Put these lines in the commit message body or footer. GitHub closes the issues when the commit reaches the default branch, which here is `main`. If you open a PR instead, put the same lines in the PR description."
+              },
+              {
+                "name": "no-shared-keyword",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: Invalid regular expression: unrecognized character after (?",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5,
+        "passRate": 0,
+        "scoreWithout": 0.5,
+        "passRateWithout": 0,
+        "delta": 0
+      }
+    },
+    {
+      "name": "commit-squash-pr-title",
+      "dir": "evals/commit-squash-pr-title",
+      "source": "prose",
+      "promptMarkdown": "We always squash-merge PRs here, and the repo uses Conventional Commits with release tooling that reads the main-branch history. My PR title for this branch is \"Add user dashboard feature\". What should I know before merging? Answer briefly and do not run any commands.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-commit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        },
+        {
+          "name": "title-becomes-commit",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if the answer (1) says the PR title becomes the single commit message on the main branch after the squash, (2) says \"Add user dashboard feature\" does not follow Conventional Commits because it lacks a type prefix, and (3) offers a corrected title such as \"feat: add user dashboard\". FAIL if it only describes squash-merging generally.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if the answer (1) says the PR title becomes the single commit message on the main branch after the squash, (2) says \"Add user dashboard feature\" does not follow Conventional Commits because it lacks a type prefix, and (3) offers a corrected title such as \"feat: add user dashboard\". FAIL if it only describes squash-merging generally.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0301306,
+            "judgeCostUsd": 0.002195,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T20:03:22.870Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-IEqqHl/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-commit",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "title-becomes-commit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Since you squash-merge, the **PR title becomes the commit message on main**. That's what your release tooling will read. \"Add user dashboard feature\" isn't a valid Conventional Commit, so the release tooling will probably skip it. It won't trigger a version bump or appear in the changelog.\n\n**Before merging:**\n\n1. **Rename the title** with a type prefix, for example `feat: add user dashboard`. Use `feat(dashboard): add user dashboard` if you use scopes. Lowercase after the colon is the usual style.\n2. **Use the right type.** `feat` gives a minor bump, `fix` gives a patch bump, and `docs`, `chore`, `refactor` and similar usually give no release.\n3. **Mark breaking changes** with `!` (for example `feat!:`) or a `BREAKING CHANGE:` footer. Otherwise the major bump won't happen.\n4. **Check the squash commit body.** GitHub pre-fills it with the individual commit messages. Footers like `BREAKING CHANGE:` can be hidden there or added by accident, so edit it to match what you want released.\n5. **Check for a title lint.** If you have a PR-title check (such as `action-semantic-pull-request`), it should fail on the current title. If you don't have one, consider adding it.\n\nI haven't looked at the repo, so I don't know your configured scopes or release tool. Check those against your config."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0286136,
+            "judgeCostUsd": 0.002783999999999999,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T20:03:23.571Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-t7QZxB/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "title-becomes-commit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Because you squash-merge, the PR title usually becomes the commit message on main. Release tooling reads that message, so the title matters.\n\n- **\"Add user dashboard feature\" isn't a Conventional Commit.** It has no type prefix, so release tooling will probably ignore it. It won't trigger a version bump or appear in the changelog.\n- **Suggested title:** `feat: add user dashboard`. You could add a scope, such as `feat(dashboard): add user dashboard`. Use lowercase and the imperative mood, with no trailing period. `feat` triggers a minor bump.\n- **Breaking changes:** If the PR breaks an existing API or behavior, use `feat!:` or add a `BREAKING CHANGE:` footer in the squash body. Without one, the release won't be a major bump.\n- **Squash body:** GitHub pre-fills the body with the individual commit messages. Trim it, or replace it with a clean description. Stray lines like `fix:` or `BREAKING CHANGE` in the body can confuse the release parser.\n- **Check the final message at merge time.** Depending on repo settings, GitHub may use the first commit's message instead of the PR title when the PR has a single commit. Confirm the commit message in the merge dialog.\n- **Title linting:** If the repo has a PR-title check, such as `action-semantic-pull-request`, it will probably flag the current title.\n\nI haven't run any commands, so I haven't checked your repo's config, such as commitlint or the release tool's settings. Those would confirm the allowed types and scopes."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "commit-trigger",
+      "dir": "evals/commit-trigger",
+      "source": "prose",
+      "promptMarkdown": "I've staged a rename of src/utils/fmt.py to src/utils/formatting.py (git mv, plus updating the 4 imports that referenced the old name). The repo uses Conventional Commits enforced by commitlint. Please commit my staged changes with a good message.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "fires-commit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.1995126,
+            "judgeCostUsd": 0,
+            "durationSeconds": 35,
+            "startedAt": "2026-10-02T20:03:23.618Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-gNiPPu/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-commit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 2x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 3,
+            "costUsd": 0.17344060000000003,
+            "judgeCostUsd": 0,
+            "durationSeconds": 38,
+            "startedAt": "2026-10-02T20:03:24.052Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-Zqf1zP/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-commit",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 1
+      }
+    },
+    {
+      "name": "history-routing",
+      "dir": "evals/history-routing",
+      "source": "prose",
+      "promptMarkdown": "My branch has 9 commits, including three \"fix typo\" ones. Squash the fixups into the commits they belong to and rebase onto main without opening an editor.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-history",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:history\""
+          }
+        },
+        {
+          "name": "not-commit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.044331999999999996,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T20:03:29.521Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-plQX0J/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-history",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-commit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.0291426,
+            "judgeCostUsd": 0,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T20:03:30.202Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-rHCPvg/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-commit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "worktree-routing",
+      "dir": "evals/worktree-routing",
+      "source": "prose",
+      "promptMarkdown": "I have three git worktrees under ../wt and two are for merged branches. List them and remove the finished ones without losing any local work.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-worktree",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:worktree\""
+          }
+        },
+        {
+          "name": "not-branch",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:branch\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.0433928,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T20:03:36.668Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-0V5lut/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-worktree",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-branch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.045056399999999996,
+            "judgeCostUsd": 0,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T20:03:37.697Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-ePjBBX/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-branch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 8,
+    "casesPassed": 6,
+    "overallScore": 0.875,
+    "overallPassRate": 0.75,
+    "meanDelta": 0.125
+  }
+}

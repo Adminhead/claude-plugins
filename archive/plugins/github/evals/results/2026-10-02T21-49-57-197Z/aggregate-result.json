@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:49:57.197Z",
+  "durationSeconds": 36,
+  "costUsd": 0.1671297,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/github",
+    "ablation": "with-without",
+    "caseFilter": "stance-actions-pin",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "github",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/github"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "stance-actions-pin",
+      "dir": "evals/stance-actions-pin",
+      "source": "mixed",
+      "promptMarkdown": "Pin the actions in `.github/workflows/deploy.yml`. Some of them use floating refs and I want that fixed. Edit the file.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 12,
+      "graders": [
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:actions\""
+          }
+        },
+        {
+          "name": "follow-convention",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule from the skill (\"Action version policy\"): pick the ref format in order: an explicit user ref, a documented repo convention, a clear majority among the repo's external action refs (\"Tag majority means `@vN`\"), otherwise the latest stable moving major `@vN`. Every other workflow in this repo uses `@v4` tags.\n\nPASS only if ALL of these, judged from the edited `.github/workflows/deploy.yml` and the answer:\n1. Every external `uses:` ref in deploy.yml is a `@vN` major tag (e.g. `@v4`), with no 40-character SHA and no `@main`/`@master`.\n2. The answer says the refs follow the repo's existing `@vN` convention (or equivalent wording), not a blanket SHA-pin policy.\n3. It does not invent commit SHAs.\nFAIL otherwise. Do not reward length.",
+          "config": {
+            "criteria": "Rule from the skill (\"Action version policy\"): pick the ref format in order: an explicit user ref, a documented repo convention, a clear majority among the repo's external action refs (\"Tag majority means `@vN`\"), otherwise the latest stable moving major `@vN`. Every other workflow in this repo uses `@v4` tags.\n\nPASS only if ALL of these, judged from the edited `.github/workflows/deploy.yml` and the answer:\n1. Every external `uses:` ref in deploy.yml is a `@vN` major tag (e.g. `@v4`), with no 40-character SHA and no `@main`/`@master`.\n2. The answer says the refs follow the repo's existing `@vN` convention (or equivalent wording), not a blanket SHA-pin policy.\n3. It does not invent commit SHAs.\nFAIL otherwise. Do not reward length.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "no-floating-branch",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": {
+              "source": "file",
+              "path": ".github/workflows/deploy.yml"
+            },
+            "pattern": "@(main|master)\\b",
+            "flags": "",
+            "match": "not_contains"
+          }
+        },
+        {
+          "name": "no-sha-pins",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": {
+              "source": "file",
+              "path": ".github/workflows/deploy.yml"
+            },
+            "pattern": "@[0-9a-f]{40}",
+            "flags": "",
+            "match": "not_contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 8,
+            "costUsd": 0.1256697,
+            "judgeCostUsd": 0.002097,
+            "durationSeconds": 23,
+            "startedAt": "2026-10-02T21:49:57.207Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-poPMRF/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-convention",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I edited `.github/workflows/deploy.yml`, but I pinned the actions to major tags (`@v4`), not commit SHAs. I couldn't look up SHAs because `gh` needs Bash, which isn't available in this session (or to subagents). I didn't want to guess a SHA.\n\n- `actions/checkout@main` is now `@v4`.\n- `actions/setup-node@v3` is now `@v4`.\n- `actions/upload-artifact@master` is now `@v4`.\n\n`ci.yml` and `lint.yml` already use `@v4` for these actions, so the three workflows now match. The branch refs (`main` and `master`) were the truly floating ones. A major tag still moves, and it isn't an immutable pin. I also didn't check whether a newer major than v4 exists.\n\nIf you want full-SHA pins, run this where `gh` works and send me the output. I'll swap the SHAs in, with the tag as a trailing comment:\n\n```sh\nfor r in actions/checkout actions/setup-node actions/upload-artifact; do\n  tag=$(gh release view --repo $r --json tagName --jq .tagName)\n  read type sha < <(gh api repos/$r/git/ref/tags/$tag --jq '[.object.type,.object.sha]|@tsv')\n  [ \"$type\" = tag ] && sha=$(gh api repos/$r/git/tags/$sha --jq .object.sha)\n  echo \"$r $tag $sha\"\ndone\n```\n\nI haven't run `actionlint` or any other check on the edited file."
+              },
+              {
+                "name": "no-floating-branch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-sha-pins",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.04146,
+            "judgeCostUsd": 0.0016799999999999992,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T21:50:20.475Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-jT4RVx/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "follow-convention",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I fixed the two branch refs in `.github/workflows/deploy.yml`, but I didn't pin anything to a commit SHA.\n\n- `actions/checkout@main` is now `actions/checkout@v4`.\n- `actions/upload-artifact@master` is now `actions/upload-artifact@v4`.\n- `actions/setup-node@v3` is unchanged.\n\nI couldn't look up SHAs here because I have no network access or shell. I didn't want to guess at SHAs, since a wrong one would break the workflow. Version tags are also not immutable, because the maintainers can move them. The `@v4` refs are much safer than a branch, but they aren't a full pin.\n\nTo pin fully, run `gh api repos/actions/checkout/commits/v4 --jq .sha` for each action. Then use the form `uses: actions/checkout@<sha> # v4`. Alternatively, give me the SHAs and I'll edit them in. Tools like `pinact` or Dependabot can also do this and keep the pins updated."
+              },
+              {
+                "name": "no-floating-branch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-sha-pins",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

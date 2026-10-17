@@ -1,0 +1,361 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "adminhead",
+  "description": "Adminhead's Claude Code plugins: skills, agents, commands, hooks, and MCP servers.",
+  "owner": {
+    "name": "Buck Brady",
+    "email": "bbrady145@gmail.com"
+  },
+  "allowCrossMarketplaceDependenciesOn": [
+    "claude-code-lsps"
+  ],
+  "plugins": [
+    {
+      "name": "baseline",
+      "source": "./plugins/baseline",
+      "description": "The default adminhead set: installs the everyday plugins (coding, review, research, testing, GitHub, git, code search, authoring, setup, coremods, and crew) in one step. Ships no skills of its own.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "code-search",
+      "source": "./plugins/code-search",
+      "description": "Code search: ripgrep, CodeGraph's local symbol graph with auto-indexing, Context7 library docs, public GitHub code via grep.app, and always-on search guidelines.",
+      "version": "0.3.1",
+      "category": "development"
+    },
+    {
+      "name": "git",
+      "source": "./plugins/git",
+      "description": "Git skills: focused commits, branches, history rewrites and recovery, and worktrees.",
+      "version": "0.2.5",
+      "category": "development"
+    },
+    {
+      "name": "github",
+      "source": "./plugins/github",
+      "description": "GitHub workflow skills: issues, issue breakdown, triage, pull requests and review comments, shipping commits through merge, and releases, plus the GitHub remote MCP server.",
+      "version": "0.7.0",
+      "category": "development"
+    },
+    {
+      "name": "github-admin",
+      "source": "./plugins/github-admin",
+      "description": "GitHub repository administration: Actions workflows, code security settings and alerts, Dependabot config and PR sweeps, and repo setup.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coding-core",
+      "source": "./plugins/coding-core",
+      "description": "Coding process skills: the coding workflow, planning, problem-solving, and implementing an approved plan.",
+      "version": "0.5.0",
+      "category": "development"
+    },
+    {
+      "name": "review",
+      "source": "./plugins/review",
+      "description": "Review skills: second-opinion reviews from another model, review-fix loops, anti-slop cleanup, and poka-yoke error-proofing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "research",
+      "source": "./plugins/research",
+      "description": "Research skill for cited answers to external questions, plus the Exa web search MCP server.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "prototype",
+      "source": "./plugins/prototype",
+      "description": "Throwaway prototypes that answer one design question, as a single-file logic demo or as UI variants.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "experiment-loop",
+      "source": "./plugins/experiment-loop",
+      "description": "Autonomous optimize-and-measure loops on a dedicated git branch, with one hypothesis per commit and a results log.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "modernize",
+      "source": "./plugins/modernize",
+      "description": "Plans for modernizing a legacy system: feasibility spike, safety ladder, hazard red-team, and phased exit criteria.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coding-shell",
+      "source": "./plugins/coding-shell",
+      "description": "Shell skills: Bash scripting practice.",
+      "version": "0.2.0",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "bash-language-server",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
+    },
+    {
+      "name": "coding-go",
+      "source": "./plugins/coding-go",
+      "description": "Go skills: the language, CLI tools, and performance work.",
+      "version": "0.2.0",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "gopls",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
+    },
+    {
+      "name": "coding-python",
+      "source": "./plugins/coding-python",
+      "description": "Python skills: the language, packaging, and FastAPI services.",
+      "version": "0.2.0",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "pyright",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
+    },
+    {
+      "name": "coding-js",
+      "source": "./plugins/coding-js",
+      "description": "JavaScript and TypeScript skills: the languages, React, Vue, Vite, TanStack, and click-path audits of UI flows.",
+      "version": "0.2.0",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "vtsls",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
+    },
+    {
+      "name": "coding-rust",
+      "source": "./plugins/coding-rust",
+      "description": "Rust skills: the language and its tooling.",
+      "version": "0.2.0",
+      "category": "development",
+      "dependencies": [
+        {
+          "name": "rust-analyzer",
+          "marketplace": "claude-code-lsps"
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "source": "./plugins/web",
+      "description": "Web skills: front-end web development and web design, plus a headless Playwright MCP browser.",
+      "version": "0.3.0",
+      "category": "development"
+    },
+    {
+      "name": "auth",
+      "source": "./plugins/auth",
+      "description": "Authentication skills: login, sessions, and token validation for your own app, plus Better Auth.",
+      "version": "0.2.0",
+      "category": "development"
+    },
+    {
+      "name": "db",
+      "source": "./plugins/db",
+      "description": "Database skills: schema design, Postgres, MySQL, and Redis.",
+      "version": "0.2.0",
+      "category": "development"
+    },
+    {
+      "name": "coding-esp",
+      "source": "./plugins/coding-esp",
+      "description": "ESP32 skills: ESP-IDF firmware engineering.",
+      "version": "0.2.0",
+      "category": "development"
+    },
+    {
+      "name": "testing",
+      "source": "./plugins/testing",
+      "description": "Testing skills: unit and regression tests, browser end-to-end tests, running the project's tests, building test harnesses, and auditing test gaps.",
+      "version": "0.2.0",
+      "category": "development"
+    },
+    {
+      "name": "security",
+      "source": "./plugins/security",
+      "description": "Security skills: threat modeling, privacy review, and a manual security audit scan.",
+      "version": "0.2.0",
+      "category": "development"
+    },
+    {
+      "name": "authoring",
+      "source": "./plugins/authoring",
+      "description": "Skills for authoring Claude Code skills, agent instruction files, architecture decision records, and docs; mapping codebases and domain models; planning agent teams; and auditing documentation and reviewing Claude Code config for bloat and security.",
+      "version": "0.5.1",
+      "category": "development"
+    },
+    {
+      "name": "devenv",
+      "source": "./plugins/devenv",
+      "description": "Configure, migrate, debug, and verify devenv.sh developer environments.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "chezmoi",
+      "source": "./plugins/chezmoi",
+      "description": "Manage, migrate, and troubleshoot chezmoi-managed dotfiles.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "pass-cli",
+      "source": "./plugins/pass-cli",
+      "description": "Use the Proton Pass CLI without exposing secrets.",
+      "version": "0.1.0",
+      "category": "security"
+    },
+    {
+      "name": "sentry-core",
+      "source": "./plugins/sentry-core",
+      "description": "Instrument apps with official Sentry SDKs.",
+      "version": "0.3.0",
+      "category": "development"
+    },
+    {
+      "name": "sentry-mcp",
+      "source": "./plugins/sentry-mcp",
+      "description": "Sentry's remote MCP server (OAuth) for querying issues, events, traces, and releases on sentry.io. Off until enabled.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "sentry-mcp-self-hosted",
+      "source": "./plugins/sentry-mcp-self-hosted",
+      "description": "Sentry's MCP server over stdio with a user auth token, for self-hosted Sentry. Off until enabled; prompts for host and token.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "playwright-cli",
+      "source": "./plugins/playwright-cli",
+      "description": "Drive a headless, isolated browser from Bash with playwright-cli.",
+      "version": "0.2.2",
+      "category": "testing"
+    },
+    {
+      "name": "termwright",
+      "source": "./plugins/termwright",
+      "description": "Drive and test terminal UI apps with the termwright CLI.",
+      "version": "0.1.1",
+      "category": "testing"
+    },
+    {
+      "name": "accessibility",
+      "source": "./plugins/accessibility",
+      "description": "Accessibility skills: manual screen-reader and keyboard testing of web journeys.",
+      "version": "0.2.2",
+      "category": "testing"
+    },
+    {
+      "name": "tooling",
+      "source": "./plugins/tooling",
+      "description": "Repo tooling skills: EditorConfig files and commit-time hooks with prek or pre-commit, and repairing failing hooks.",
+      "version": "0.2.1",
+      "category": "development"
+    },
+    {
+      "name": "observability",
+      "source": "./plugins/observability",
+      "description": "Observability skills: instrumentation and SLOs, PromQL and Prometheus config, Grafana dashboards, and blameless postmortems.",
+      "version": "0.1.1",
+      "category": "development"
+    },
+    {
+      "name": "api",
+      "source": "./plugins/api",
+      "description": "Public API design skills: REST contracts, idempotency and retries, webhooks, versioning, gRPC, GraphQL, API keys, and OAuth providers.",
+      "version": "0.1.2",
+      "category": "development"
+    },
+    {
+      "name": "infra",
+      "source": "./plugins/infra",
+      "description": "Infrastructure skills: Terraform (with OpenTofu and Terragrunt) and Ansible, plus a guard hook for unsafe `tofu` and `aws` commands.",
+      "version": "0.6.0",
+      "category": "development"
+    },
+    {
+      "name": "deploy",
+      "source": "./plugins/deploy",
+      "description": "Deployment skills: Docker, Kubernetes, Helm, GitOps, rollouts, and production-readiness reviews.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "homelab",
+      "source": "./plugins/homelab",
+      "description": "Home and homelab network planning: VLANs, trust zones, DNS cutover, and WireGuard tunnels, read-only first.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "mcp",
+      "source": "./plugins/mcp",
+      "description": "Model Context Protocol server skills: design the tool surface, build with the official SDKs, and review security and release readiness.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "aws",
+      "source": "./plugins/aws",
+      "description": "AWS skills: resource inspection, CloudWatch incident investigation, and Well-Architected and cost review, plus the AWS MCP Server.",
+      "version": "0.2.2",
+      "category": "development"
+    },
+    {
+      "name": "coremods",
+      "source": "./plugins/coremods",
+      "description": "A home for the user's core Claude Code mods: a git status line under the prompt, a usage band above it, and an agent status line with an expandable panel, plus read-only git log, blame and show tools for subagents and tool-mgr, which blocks Bash sed file reads, heredoc, printf and echo file writes, and dangerous commands (rm -rf of system paths, disk wipes, sudo), asks before piped installers and git force-pushes, optionally adds asks and denies through a local model check, and keeps a per-call log with DuckDB metrics. Requires Claude Code 2.1.289 or later.",
+      "version": "0.6.0",
+      "category": "productivity"
+    },
+    {
+      "name": "setup",
+      "source": "./plugins/setup",
+      "description": "Setup skills: recommend and install the adminhead plugins that fit the current project.",
+      "version": "0.1.1",
+      "category": "development"
+    },
+    {
+      "name": "crew",
+      "source": "./plugins/crew",
+      "description": "The orchestrated-session crew: 14 subagents (coders, reviewers, debuggers, architect, devops, dba, scribe, browser tester) plus the orchestration main-thread agent, with a read-only Bash gate for the read-only agents, orchestration nudge hooks, and the orchestration system-prompt file. Agents are spawned as crew:<name>.",
+      "version": "0.1.1",
+      "category": "development"
+    }
+  ],
+  "renames": {
+    "ripgrep": "code-search",
+    "efficient-core": "coding-core",
+    "efficient-testing": "testing",
+    "efficient-security": "security",
+    "efficient-db": "db",
+    "efficient-auth": "auth",
+    "efficient-web": "web",
+    "efficient-go": "coding-go",
+    "efficient-python": "coding-python",
+    "efficient-js": "coding-js",
+    "efficient-rust": "coding-rust",
+    "efficient-shell": "coding-shell",
+    "efficient-esp": "coding-esp",
+    "sentry": "sentry-core"
+  }
+}

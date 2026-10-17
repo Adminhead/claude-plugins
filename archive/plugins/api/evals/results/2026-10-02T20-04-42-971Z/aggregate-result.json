@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T20:04:42.971Z",
+  "durationSeconds": 31,
+  "costUsd": 0.10557620000000001,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/api",
+    "ablation": "with-without",
+    "caseFilter": "webhooks-reliability-contract",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "api",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/api"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "webhooks-reliability-contract",
+      "dir": "evals/webhooks-reliability-contract",
+      "source": "prose",
+      "promptMarkdown": "We are writing the reliability page for our new outbound webhooks. Marketing wants it to say \"every event is delivered exactly once, in order.\" Engineering's design is a queue with parallel workers, retries on non-2xx, and a stable event ID on every payload. Draft the delivery-guarantee section of the docs and tell us whether the marketing wording can stay.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "contract",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Rejects 'exactly once' and promises at-least-once delivery instead, explaining that a consumer can process an event and crash before acknowledging, so it sees the event again.\n- Rejects 'in order' as a guarantee given parallel workers and retries (ordering is best-effort), and tells consumers not to depend on arrival order.\n- Tells consumers to deduplicate on the stable event ID.\n- Puts the contract in concrete findable terms (guarantee, retry schedule or retry window, acknowledgement timeout, which field carries the dedup ID) in the drafted section.\nFail if the drafted docs promise exactly-once or ordered delivery.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Rejects 'exactly once' and promises at-least-once delivery instead, explaining that a consumer can process an event and crash before acknowledging, so it sees the event again.\n- Rejects 'in order' as a guarantee given parallel workers and retries (ordering is best-effort), and tells consumers not to depend on arrival order.\n- Tells consumers to deduplicate on the stable event ID.\n- Puts the contract in concrete findable terms (guarantee, retry schedule or retry window, acknowledgement timeout, which field carries the dedup ID) in the drafted section.\nFail if the drafted docs promise exactly-once or ordered delivery.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:webhooks\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0653476,
+            "judgeCostUsd": 0.004344000000000001,
+            "durationSeconds": 16,
+            "startedAt": "2026-10-02T20:04:42.982Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-5lWgyu/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "contract",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Short answer: the marketing wording can't stay.** \"Every event is delivered exactly once, in order\" is false for this design, on both counts.\n\n- **Not exactly once.** Retries on non-2xx, plus timeouts and crashes, make this at-least-once. If a customer processes an event and then crashes or times out before replying, we send it again. Exactly-once delivery over HTTP isn't achievable. What customers can get is exactly-once *processing*, by deduplicating on the stable event ID.\n- **Not in order.** Parallel workers and retries reorder events. If event A fails and is retried while B succeeds, B arrives first. Strict ordering would need one in-flight delivery per endpoint. A single failing delivery would then block everything behind it, which is a different design.\n\n**Wording marketing can use instead:** \"Every event is delivered at least once, with automatic retries for up to ~3 days. Each event carries a stable ID so you can safely deduplicate.\" That is a real strength and it's accurate.\n\nIf marketing needs ordering, engineering would have to build an opt-in per-endpoint FIFO mode. Don't promise it until it exists.\n\n---\n\n## Draft: Delivery guarantees\n\n### Summary\n\n- **At-least-once delivery.** We deliver every event to each subscribed endpoint at least once. An event may be delivered more than once.\n- **Best-effort ordering.** Events are not guaranteed to arrive in the order they occurred.\n- **Stable event ID.** Every delivery carries the same `webhook-id` for a given event, across all retries. Use it to deduplicate.\n\n### At-least-once delivery\n\nWe treat a delivery as successful only when your endpoint returns a `2xx` response within the timeout. If we don't get one, we retry. This means you may see the same event more than once, for example when your server processes an event and then crashes or times out before it responds.\n\n**Make your handler idempotent.** Record the `webhook-id` of each event you process. If you receive an ID you've already handled, return `2xx` and skip the work.\n\n### Ordering\n\nEvents can arrive out of order. We deliver through parallel workers, and a failed delivery is retried later while newer events continue to flow. Don't rely on arrival order or on `timestamp` to infer sequence. To get the current state of a resource, fetch it from the API when you receive an event rather than applying events as a sequence of changes.\n\n### Response handling and timeouts\n\n| Your response | What we do |\n|---|---|\n| `2xx` | Success. No further attempts. |\n| `3xx` | Treated as a failure. Update your endpoint URL. |\n| `408`, `429`, `5xx`, timeout, connection error | Retry on the schedule below. We honor `Retry-After` on `429` and `503`. |\n| `410 Gone` | We disable the endpoint. |\n| Other `4xx` | Not retried. The event moves to the dead-letter queue. |\n\nWe wait up to **[15–30] seconds** for a response. Queue the work and acknowledge quickly instead of processing inline.\n\n### Retry schedule\n\nFailed deliveries are retried with exponential backoff and jitter. **[Engineering to confirm the exact schedule.]** For example, 10 attempts over about 75 hours, with intervals growing from seconds to many hours. Each retry carries the same `webhook-id`.\n\n### When delivery fails permanently\n\nIf all retries fail, the event goes to a dead-letter queue and is kept for **[7–30] days**. You can inspect it in the dashboard and redeliver it. If an endpoint keeps failing, we disable it and notify you by email. Events are not delivered to a disabled endpoint until you re-enable it. **[Engineering to confirm what happens to events during the disabled period.]**\n\n### Recovering missed events\n\n- Use the delivery log in the dashboard to see every attempt, with headers, body, response code, and timing.\n- Redeliver individual events, or replay a range after an outage.\n- For high-stakes events such as payments, reconcile against the API periodically. Webhooks are a notification channel, and the API remains the source of truth.\n\n---\n\n## Gaps for engineering before this ships\n\nThe draft promises things the design you described doesn't yet include. Confirm or build each one:\n\n1. **Retry schedule, timeout, and dead-letter retention.** The bracketed values are placeholders.\n2. **Endpoint auto-disable** and the notification to the customer.\n3. **Delivery log and redeliver/replay** in the dashboard or API. If there's no automatic retry, these are mandatory.\n4. **Per-endpoint isolation.** One slow customer endpoint shouldn't delay delivery to others.\n5. **Signing.** I'd recommend Standard Webhooks (`webhook-id`, `webhook-timestamp`, `webhook-signature`). The stable event ID can live in `webhook-id`.\n6. **SSRF protection** on customer-supplied URLs.\n\nI can also draft the signature-verification snippets and the event catalog page if you want them."
+              },
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0402286,
+            "judgeCostUsd": 0.003705,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-02T20:04:58.865Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-M4Pw7v/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "contract",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Can the marketing wording stay?\n\nNo. \"Exactly once, in order\" contradicts the design in two ways.\n\n- **Not exactly once.** Retrying on non-2xx makes this at-least-once delivery. If the receiver processes an event and its 200 response is lost or times out, we retry and it sees the event twice. True exactly-once delivery isn't possible over an unreliable network. What you can offer is at-least-once delivery plus a stable event ID, which lets receivers get exactly-once *processing* by deduplicating.\n- **Not in order.** Parallel workers and retries both reorder events. Event B can be delivered while event A is waiting for a retry, and a retried A then arrives after B.\n\n**Wording that is true and still sells:**\n> \"Every event is delivered at least once, with automatic retries and a stable event ID so you can safely process each event exactly once.\"\n\nDon't use \"guaranteed delivery\" without qualification either. Retries are bounded, so an endpoint that is down long enough will lose events unless you offer replay.\n\nIf marketing wants real ordering, engineering would need per-key serialization, such as routing all events for one resource to one worker and blocking on retry. That costs throughput and causes head-of-line blocking. I'd recommend against it. Ship sequence metadata instead (see the last section).\n\n---\n\n# Draft: Delivery guarantees\n\n## Summary\n\n| Property | Guarantee |\n|---|---|\n| Delivery | **At least once.** Every event is retried until your endpoint acknowledges it or retries are exhausted. |\n| Duplicates | **Possible.** The same event may be delivered more than once. |\n| Ordering | **Not guaranteed.** Events may arrive out of order. |\n| Identity | Every event has a stable `id` that is identical across all delivery attempts. |\n\n## Delivery and retries\n\nWe deliver each event with an HTTP `POST` to your endpoint. A response with a `2xx` status code means success. Any other outcome counts as a failure and triggers a retry. This includes non-2xx responses, connection errors, and timeouts longer than `[N]` seconds.\n\nWe retry failed deliveries `[up to N times over N hours, with exponential backoff]`. After that, the event is marked failed `[and can be replayed from the dashboard/API]`.\n\nReturn a `2xx` as soon as you have durably accepted the event, ideally before doing slow work. If your handler is slow, we may time out and retry an event you actually processed.\n\n## Duplicates\n\nBecause we retry on any failure, including a lost acknowledgment, your endpoint may receive the same event more than once. Every attempt for an event carries the same `id`. Use it to deduplicate:\n\n1. On receipt, check whether you've already processed `id`.\n2. If so, return `2xx` and do nothing.\n3. If not, process the event and record the `id`, ideally in the same transaction as your side effects.\n\nHandled this way, each event takes effect exactly once on your side.\n\n## Ordering\n\nEvents are delivered by parallel workers and may arrive in a different order than they occurred. A retried event can arrive after later events. Don't assume arrival order reflects the order of occurrence.\n\nTo handle this:\n- Use `[created_at / sequence]` in the payload to determine the true order of events.\n- For state changes, prefer fetching the current resource state from the API over applying events as deltas.\n- Make handlers tolerant of stale events. For example, ignore an update older than the one you've already applied.\n\n## Best practices\n\n- Respond quickly with `2xx`, and process asynchronously.\n- Make handlers idempotent.\n- Store processed event IDs for at least `[retry window + margin]`.\n- Monitor for failed deliveries `[via dashboard/alerts]`.\n\n---\n\n**Placeholders to fill in:** timeout, retry schedule and count, and whether replay exists. I don't know these from what you've told me, and the page shouldn't go out without them. If the payload has no `created_at` or per-resource sequence number, I'd add one before launch, because the ordering guidance depends on it."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

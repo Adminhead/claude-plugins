@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:53:23.529Z",
+  "durationSeconds": 43,
+  "costUsd": 0.2254808,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/git",
+    "ablation": "with-without",
+    "caseFilter": "stance-commit-convention",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "git",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/git"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "stance-commit-convention",
+      "dir": "evals/stance-commit-convention",
+      "source": "mixed",
+      "promptMarkdown": "Write the commit message for the staged change in `staged.diff` and save it to `COMMIT_MSG.txt` (message only). The recent history is in `history.txt`. Do not run git.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 12,
+      "graders": [
+        {
+          "name": "conventional-header",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": {
+              "source": "file",
+              "path": "COMMIT_MSG.txt"
+            },
+            "pattern": "^(feat|fix|refactor|perf|docs|test|chore|build|ci)(\\([^)]+\\))?!?: \\S",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        },
+        {
+          "name": "follow-contract",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule from the skill: \"When release-please is configured, its Conventional Commit contract beats stylistic patterns in history... Don't copy isolated historical exceptions.\" The repo has `release-please-config.json`, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message in `COMMIT_MSG.txt` ALL of these:\n1. Starts with a Conventional Commit header, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The subject is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line, explains why (stale discount on an empty cart), and contains no second Conventional Commit header.\n4. The answer notes that release-please's contract, not the history, set the format.\nFAIL otherwise. Do not reward length.",
+          "config": {
+            "criteria": "Rule from the skill: \"When release-please is configured, its Conventional Commit contract beats stylistic patterns in history... Don't copy isolated historical exceptions.\" The repo has `release-please-config.json`, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message in `COMMIT_MSG.txt` ALL of these:\n1. Starts with a Conventional Commit header, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The subject is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line, explains why (stale discount on an empty cart), and contains no second Conventional Commit header.\n4. The answer notes that release-please's contract, not the history, set the format.\nFAIL otherwise. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.0389062,
+            "judgeCostUsd": 0.0014010000000000001,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T21:53:23.541Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-CvxhJv/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. The history has no fixed convention, so I wrote a plain imperative subject line with a short body.\n\n```\nFix stale discount when removing last cart item\n\nremoveItem now resets the discount to 0 when the cart becomes empty,\nso an empty cart no longer keeps a discount applied.\n\nremoveItem also now returns the updated cart object ({ ...cart, items,\ndiscount }) instead of just the filtered items array.\n```\n\nThe diff also changes `removeItem`'s return value from an array to a cart object. I put that in the body because callers that expect an array will break."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.0390812,
+            "judgeCostUsd": 0.0014579999999999999,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T21:53:29.927Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-ckRHh4/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\nThe history has no consistent convention, so I used a plain imperative subject line with a short body:\n\n```\nReset discount when removing the last cart item\n\nremoveItem left a stale discount applied to an empty cart. Clear the\ndiscount when no items remain.\n\nremoveItem now returns the updated cart object instead of just the\nfiltered items array, so callers that expect an array need to use\nthe returned cart's items.\n```\n\nThe last paragraph is there because `removeItem` used to return an array and now returns the cart object. Any caller that treats the result as an array will break. I didn't check the callers, so you may want to."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.038927199999999995,
+            "judgeCostUsd": 0.00135,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T21:53:38.334Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-JlbZjY/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. It covers two things:\n\n- **Fix:** removing the last item from a cart now resets the discount to 0, so an empty cart no longer keeps a stale discount.\n- **Return type change:** `removeItem` now returns the whole cart object instead of just the items array. Callers that used the returned array will need to read `cart.items`. I put this in the message body because it could break existing code.\n\nThe recent history has no consistent convention, so I used a plain imperative subject line."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.036324,
+            "judgeCostUsd": 0.0014340000000000004,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T21:53:44.864Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-IPutPq/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`:\n\n```\nFix stale discount when removing last cart item\n\nremoveItem left the existing discount applied after the last item was\nremoved, so an empty cart still carried a discount. Reset the discount\nto 0 when no items remain.\n\nremoveItem now returns the updated cart ({ ...cart, items, discount })\ninstead of only the filtered items array.\n```\n\nThe diff also changes what `removeItem` returns. It used to return the filtered items array and now returns the whole cart object. I put that in the body so callers that expect an array get flagged.\n\nThe history has no consistent convention, so I used a plain imperative subject line."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.0358166,
+            "judgeCostUsd": 0.0016030000000000003,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T21:53:51.223Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-mrU4bf/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\nThe subject line is \"Reset discount when removing the last cart item\". The body explains the stale discount on an empty cart. It also flags that `removeItem` now returns the whole cart object instead of just the items array, so any caller expecting an array has to read `items` from the result.\n\nThe history has no consistent convention, so I used a plain imperative subject line."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.0364256,
+            "judgeCostUsd": 0.0014520000000000002,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T21:53:59.113Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-pL8QWi/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. It reads:\n\n```\nReset discount when removing the last cart item\n\nremoveItem left a stale discount applied to an empty cart. Reset the\ndiscount to 0 when no items remain.\n\nremoveItem now returns the updated cart object ({ ...cart, items,\ndiscount }) instead of just the filtered items array, so callers that\nexpect an array need to read cart.items.\n```\n\nThe history has no consistent convention, so I used a short imperative subject line with a brief body. I called out the return-type change because `removeItem` used to return an array and now returns the cart object. I didn't check whether any callers depend on the old return value."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0,
+    "overallPassRate": 0,
+    "meanDelta": 0
+  }
+}

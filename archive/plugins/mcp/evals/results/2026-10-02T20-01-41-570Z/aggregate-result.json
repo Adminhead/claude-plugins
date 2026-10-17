@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T20:01:41.570Z",
+  "durationSeconds": 62,
+  "costUsd": 0.6835384000000001,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/mcp",
+    "ablation": "with-without",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "mcp",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/mcp"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "description-breaking-edits",
+      "dir": "evals/description-breaking-edits",
+      "source": "prose",
+      "promptMarkdown": "Our MCP server's CI diffs the tool JSON schemas to catch breaking changes, and it has been green. Last week a teammate reworded the description of `search_orders` to be clearer and renamed a toolset, and agents in production started calling the wrong tools. Nothing in the schema changed. How should we version and review the tool surface so this does not happen again?",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"mcp:design\""
+          }
+        },
+        {
+          "name": "versioning",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Says tool descriptions (and tool or toolset names) are part of the contract that models act on, so a wording change or rename can change tool selection even with an identical schema; it must be treated as a breaking change.\n- Recommends a check that covers the description and name layer, such as hashing or snapshotting descriptions and names in CI, and reviewing edits like code.\n- Recommends behavioral evidence for those edits, such as golden prompts or tool-selection evals run before release.\nFail if it says schema diffing is sufficient or that description edits are a docs-only concern.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Says tool descriptions (and tool or toolset names) are part of the contract that models act on, so a wording change or rename can change tool selection even with an identical schema; it must be treated as a breaking change.\n- Recommends a check that covers the description and name layer, such as hashing or snapshotting descriptions and names in CI, and reviewing edits like code.\n- Recommends behavioral evidence for those edits, such as golden prompts or tool-selection evals run before release.\nFail if it says schema diffing is sufficient or that description edits are a docs-only concern.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.054451599999999996,
+            "judgeCostUsd": 0.004487,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-02T20:01:41.583Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-GatjVJ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "versioning",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Your CI only checks the schema. What an agent chooses from is the tool's name, description, toolset grouping and schema together, and the model reads all of them. A reworded description or a renamed toolset can change which tool gets picked without touching the schema.\n\n## Treat the whole surface as the contract\n\nThree layers change at different speeds, so version them separately.\n\n1. **Protocol revision.** Pin exact SDK versions and read the release notes before upgrading. This layer is negotiated, so it isn't what bit you.\n2. **Public tool API.** Renaming or removing a tool, or moving it between toolsets, is a breaking change because agents find tools by name. Keep the old name as an alias, and publish a deprecation window. Your toolset rename should have gone through this process.\n3. **Names, descriptions and schemas.** No spec covers this layer. Treat a description edit as a breaking change, because it can change tool selection even when the schema is identical.\n\n## CI changes\n\n- **Hash the full surface, not just the schemas.** Snapshot every tool's name, description, annotations, input and output schemas, and toolset membership into one golden file that is checked in. Any diff fails CI until someone updates the snapshot deliberately. This turns a silent wording change into a visible diff in the PR.\n- **Run golden prompts.** Keep a fixed set of prompts, such as \"find orders for customer X from last week\" and \"cancel this order\". Each is paired with the tool it must select. Run them against a real model on every PR that touches the snapshot. Include near-miss cases between sibling tools. `search_orders` against `list_orders` or `get_order` is exactly where a reworded description causes mix-ups. Track the selection rate rather than a single pass or fail, since model output is noisy.\n- **Classify changes mechanically.** A script that diffs the snapshot can label each change: *rename or removal* (breaking), *description or toolset change* (behavioral, needs golden-prompt evidence), *new optional parameter* (additive), and so on. Print the label in the PR.\n\n## Review process\n\n- Add a CODEOWNERS entry for the snapshot file and the tool definitions, so a tool-surface owner has to approve. Copy editing isn't a reason to skip this.\n- Use a PR template with questions like these:\n  - Did any names, descriptions or toolsets change?\n  - Which golden prompts cover the change?\n  - Is there an alias or a deprecation note?\n- Write descriptions for tool selection, not as documentation. Each one should say when to use the tool, what it returns, which parameters are required, and how it differs from its nearest sibling. \"Clearer\" prose that drops the sibling distinction is a regression.\n- Keep a changelog of the tool surface and bump a surface version, such as semver, on each change. Breaking means rename, removal, or a selection regression. Minor means additive. Patch means a wording change with golden prompts unchanged.\n\n## Rollout\n\n- Ship description and toolset changes behind a flag or to a canary, and compare tool-call distributions and error rates against the baseline before going wide. Tool-call telemetry is the only way to catch what golden prompts miss.\n- Log which tool names get called and which calls fail with unknown or invalid tools. A spike after a deploy is your alarm.\n- Keep rollback simple: the surface should be one versioned artifact you can revert.\n\n## Related design points\n\n- Keep the surface to roughly 5 to 15 tools. Toolset switching and dynamic loading make the surface harder to snapshot and test, so use them only when you have a breadth need you can demonstrate.\n- Generate tools from your stable API contract where you can, so the two don't drift apart.\n\nI haven't looked at your repo. If you want, I can look at the existing CI diff job and add the surface snapshot and a golden-prompt harness to it."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0423836,
+            "judgeCostUsd": 0.005376000000000001,
+            "durationSeconds": 16,
+            "startedAt": "2026-10-02T20:01:41.583Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-JmRVv3/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "versioning",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Your CI is diffing the wrong artifact. For an agent, the tool surface is a prompt plus an API, and the schema diff only covers the API half. Descriptions, toolset names and grouping, and parameter docs steer tool selection. A reworded description or a renamed toolset can break agents without changing a single type.\n\n## 1. Snapshot the whole surface, not just the schema\n\nCapture what `tools/list` actually returns, plus the server `instructions`. Check it in as a golden file:\n\n- tool names, titles, and descriptions\n- `inputSchema` including every nested `description`, enum, and default\n- annotations (`readOnlyHint` and so on)\n- toolset and group membership and names\n- tool ordering, if clients see it\n\nCI fails on any diff until the snapshot is updated in the same PR. This makes description and toolset changes visible in review instead of silent.\n\n## 2. Classify changes, with different gates\n\n| Change | Class | Gate |\n|---|---|---|\n| Removed or renamed tool, toolset, or param; type narrowing | Breaking (major) | Deprecation period and an alias |\n| Description, toolset grouping, or enum wording change | **Behavioral** (minor, but needs eval) | Eval run and sign-off |\n| New optional param or new tool | Additive | Eval, since a new tool can steal calls from old ones |\n\nToolset names are identifiers. Clients allowlist them in config, so renaming one is a breaking change. Keep the old name as an alias for a release or two and log its use.\n\n## 3. Add behavioral evals\n\nThis is the check that would have caught last week's incident. Keep a fixed set of prompts, each with the expected tool and key arguments. Put extra weight on confusable pairs, such as `search_orders` against its neighbors. In CI, run them against the models you support:\n\n- Compare tool-selection accuracy on the base branch and on the PR.\n- Fail on regression beyond a threshold.\n- Run each case several times, since selection is stochastic.\n\nSeed the set from real production traces, and add the cases from last week's incident.\n\n## 4. Review as a prompt change\n\n- Put CODEOWNERS on the snapshot and on description strings, with an owner who knows how agents consume them.\n- Add a PR template question: \"Which calls could this reroute?\"\n- \"Clearer wording\" is not a neutral change. Require the eval diff in the PR description.\n\n## 5. Version and roll out the surface explicitly\n\n- Keep a surface version separate from the package version, and expose it in `serverInfo` or metadata.\n- Roll description changes out gradually, with a canary or a flag, and keep rollback cheap.\n- Alert in production on shifts in the per-tool call distribution and on error rates for tool-argument validation. A misrouting like last week's shows up there quickly.\n\n## Order of work\n\n1. The snapshot diff is about an hour of work and closes the visibility gap.\n2. The eval harness is the most valuable piece and takes longer.\n3. Aliases and deprecation policy come next.\n4. Production telemetry and canarying come after that.\n\nIf you want, I can look at your CI setup and sketch the snapshot step or the eval harness for this repo."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "route-build-vs-mcp-integration",
+      "dir": "evals/route-build-vs-mcp-integration",
+      "source": "prose",
+      "promptMarkdown": "Help me write an MCP server in TypeScript with the official SDK. It should expose two tools, `lookup_order` and `refund_order`, over Streamable HTTP, with structured tool errors, and I want to test it with the MCP Inspector.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"mcp:build\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.1635712,
+            "judgeCostUsd": 0,
+            "durationSeconds": 47,
+            "startedAt": "2026-10-02T20:01:41.583Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-TGiEhe/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 3,
+            "costUsd": 0.06652839999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 26,
+            "startedAt": "2026-10-02T20:01:41.583Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-uQQPhP/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 1
+      }
+    },
+    {
+      "name": "server-side-enforcement",
+      "dir": "evals/server-side-enforcement",
+      "source": "prose",
+      "promptMarkdown": "Our MCP server has `send_payment` and `send_customer_message` tools. We rely on the MCP client to show a confirmation dialog before calling them, and we set the destructive-hint annotation on both. Product says that is enough. Is it? What do we change in the server?",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "enforcement",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Says client confirmation dialogs and tool annotations are not security controls, because users can switch clients, disable prompts, or a prompt-injected agent can call the tool directly.\n- Puts enforcement on the server, with concrete controls for the money and message tools (for example limits, allowlisted recipients, scoped authorization, idempotency, or a server-verified approval step).\n- Does not rely on a client-supplied flag (such as approved=true) as the gate.\nFail if it accepts the client dialog plus annotations as sufficient.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Says client confirmation dialogs and tool annotations are not security controls, because users can switch clients, disable prompts, or a prompt-injected agent can call the tool directly.\n- Puts enforcement on the server, with concrete controls for the money and message tools (for example limits, allowlisted recipients, scoped authorization, idempotency, or a server-verified approval step).\n- Does not rely on a client-supplied flag (such as approved=true) as the gate.\nFail if it accepts the client dialog plus annotations as sufficient.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"mcp:design\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.0671458,
+            "judgeCostUsd": 0.003498000000000001,
+            "durationSeconds": 16,
+            "startedAt": "2026-10-02T20:01:56.537Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-DkWpVD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "enforcement",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**No, it isn't enough.** Product's position treats the client dialog as a security control, and the MCP spec says it isn't one.\n\n**Why it fails**\n- **Annotations are hints.** The spec requires clients to treat annotations as untrusted unless the server is trusted. `destructiveHint` tells a client how to behave, and nothing enforces it.\n- **The dialog is outside your control.** Some clients auto-approve. Users pick \"always allow\". Headless and unattended agents have nobody to click. Someone can also switch to a client with no prompt at all. A confirmation you don't enforce doesn't count as a confirmation.\n- **Dialogs are weak even when they appear.** A prompt-injected agent can issue a plausible-looking `send_payment`, and users who see many prompts click through them.\n- **The tiers are different.** Sending a customer message is a contained write. `send_payment` moves money, which is critical tier. Critical tools should be disabled by default and, if enabled, gated on every call. They should also have a spend cap and a dry-run.\n\n**What to change in the server**\n\n1. **Scoped credentials.** Give the server an upstream credential limited to the operations it needs, not a full-power key. Use a sandbox or test-mode account where one exists. It's the cheapest fix, so ship it first.\n2. **Server-side approval on every call to both tools.** Use the protocol's input-required round trip (or elicitation on legacy connections). Show the real amount, payee, message body and recipient, taken from the server's own data rather than model text. Log the decision.\n3. **Two-phase flow with dry-run.** Add `dry_run: true`, or split each tool into a preview step and a commit step. The preview returns exactly what would be sent or paid and changes nothing. The commit takes a short-lived, single-use token bound to those exact arguments, so the model can't preview one thing and commit another.\n4. **Idempotency keys, required on both tools.** A retried call must not pay or message twice.\n5. **Caps enforced per credential or user.**\n   - Payments: a per-payment limit, a daily total, and an allow-list or known-payee check. Anything above the limit needs out-of-band approval.\n   - Messages: rate and volume limits, plus recipient validation (the customer must belong to the caller's scope).\n6. **Disabled by default, plus read-only mode.** Make `send_payment` opt-in per deployment. Add a server flag that removes write tools from `tools/list` and rejects the calls. Test that the tools are actually absent, because a flag that is set but not honored is the common failure.\n7. **Authorization and attribution.**\n   - Act as the calling user, with scopes checked per tool. Return 403 `insufficient_scope` otherwise.\n   - On remote HTTP, validate the token audience and never pass the caller's token through to upstream.\n   - Write an audit log with identity, tool, redacted arguments, approval result and outcome.\n8. **Treat tool output as untrusted input to the model.** Keep descriptions static. Don't echo customer-supplied text back as if it were instructions.\n\nKeep the annotations and set them honestly. `destructiveHint` and `openWorldHint` are right for both tools, and they're still worth having for supervised users. Just describe them to product as a UX nicety rather than the safeguard.\n\n**Suggested order:** 1 → 6 (default-off payments) → 2 and 4 → 5 → 3 → 7. Messages can ship earlier with approval, an idempotency key and a rate cap. Payments should wait for approval, caps and dry-run.\n\nI haven't looked at your server code, since this working directory has no MCP server in it. If you point me at the repo, I can map these changes onto the actual handlers."
+              },
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.040833600000000005,
+            "judgeCostUsd": 0.0031020000000000006,
+            "durationSeconds": 17,
+            "startedAt": "2026-10-02T20:01:57.260Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-PMLuCg/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "enforcement",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "No, it isn't enough. Annotations and client dialogs are UX hints, not a security control.\n\n**Why it fails**\n- The MCP spec says clients *should* prompt, but nothing makes them. Annotations are untrusted hints from the client's point of view, and a client can ignore them.\n- Many clients offer \"always allow\", auto-approve modes, or headless and scheduled agent runs with no human present. Your server can't tell which case it is in.\n- A user who sees a dialog dozens of times a day stops reading it. The risky case is prompt injection, where text in a customer message or ticket steers the model into calling `send_payment`. The dialog is then the only defense, and it shows model-written arguments.\n- Other clients, scripts, or a compromised token can call your server directly and skip any client-side dialog.\n\nIf product's position is \"the client handles it\", then nothing on your side stops a payment when the client doesn't.\n\n**What to change in the server**\n1. **Enforce authorization server-side.**\n   - Authenticate every call.\n   - Give these two tools their own OAuth scopes (e.g. `payments:send`, `messages:send`), so a token that can read data can't spend money or message customers.\n   - Check that the caller may act on that specific account or customer.\n2. **Require approval that the server verifies.**\n   - Use a two-phase flow. The tool creates a pending action and returns a preview with an action ID. Execution happens only after an approval the server verifies.\n   - For payments, approval should come out-of-band, such as your own UI, a push notification, or a signed link. If the model can call the confirm step itself, it isn't a real gate.\n   - MCP elicitation is a reasonable middle ground. The server asks the user directly through the client. Fail closed if the client doesn't declare the capability. It's still client-mediated, so for high-value payments use the out-of-band route.\n3. **Add hard limits that don't depend on approval.**\n   - Per-payment and daily amount caps, with step-up approval above a threshold.\n   - Recipient or payee allowlists.\n   - Rate limits and velocity checks on both tools.\n   - For customer messages, restrict recipients to the authenticated account's customers and consider templates or content checks.\n4. **Make the tools idempotent.** Require an idempotency key so retries or duplicate model calls can't pay or message twice.\n5. **Validate every input server-side.** Treat arguments as untrusted: amounts, currency, destination, and recipient.\n6. **Write an audit log** with the principal, client, arguments, approval evidence, and result. You'll want it for incident review.\n7. **Keep the annotations, but only as hints.** Make sure `readOnlyHint: false` and `destructiveHint: true` are set, and add `openWorldHint: true` on `send_customer_message`. `idempotentHint` should be true only if you actually implement idempotency keys.\n\nFor priority, I'd do 1, 3, and 4 first because they're cheap and independent of the client. Then do 2 for payments.\n\nI haven't looked at your server code. If you point me at the repo, I can check how these tools are implemented and sketch the pending-action flow."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "token-passthrough",
+      "dir": "evals/token-passthrough",
+      "source": "prose",
+      "promptMarkdown": "We are moving our MCP server from stdio to a public remote deployment for customers. Today it forwards whatever bearer token the client sends straight to our internal REST API, and we keep session state on one instance using sticky sessions. Review this for a production launch and tell us what must change.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"mcp:design\""
+          }
+        },
+        {
+          "name": "passthrough",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Identifies token passthrough (forwarding the client's token to the upstream API) as something to remove, and says the server must validate that tokens were issued for its own audience and use a separate credential for upstream calls.\n- Describes the server as an OAuth resource server: protected resource metadata, audience validation, and a pointer to the authorization server.\n- Addresses sticky sessions as a risk or scaling problem and recommends stateless handling or session binding that does not rely on the session ID for authentication.\nFail if it keeps passthrough or treats the session ID as authentication.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Identifies token passthrough (forwarding the client's token to the upstream API) as something to remove, and says the server must validate that tokens were issued for its own audience and use a separate credential for upstream calls.\n- Describes the server as an OAuth resource server: protected resource metadata, audience validation, and a pointer to the authorization server.\n- Addresses sticky sessions as a risk or scaling problem and recommends stateless handling or session binding that does not rely on the session ID for authentication.\nFail if it keeps passthrough or treats the session ID as authentication.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.08732979999999999,
+            "judgeCostUsd": 0.006958999999999998,
+            "durationSeconds": 21,
+            "startedAt": "2026-10-02T20:02:07.648Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-6XxbLd/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "passthrough",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I couldn't find the server source. The working directory is empty (only untracked `.aws/` and `.gitconfig` sit beside it), and a search of the home tree for MCP SDK usage found nothing. So this is a design-level review based on what you described, with no `file:line` evidence. Point me at the repo and I'll turn it into a full static review.\n\n## Must change before launch\n\n**1. Stop forwarding the client's bearer token (critical, confused deputy).**\n- The spec says an MCP server must accept only tokens issued for it as the audience. It must not pass through any other tokens.\n- Forwarding means the internal API trusts whatever token a customer presents. Any token that API accepts works against your MCP server, and the reverse.\n- It also means the MCP server cannot enforce scopes or tenancy itself.\n- **Inbound:** validate every request on every route. Check the signature, issuer, expiry, and `aud` equal to your MCP server's canonical URI (RFC 8707).\n- **Outbound:** call the internal API with your own credential. Use OAuth token exchange (RFC 8693) to mint a short-lived, narrowly scoped token for the user. If you can't, use a service credential plus a verified user and tenant identity passed in a signed form the API checks. A bare \"on-behalf-of\" header is not enough.\n- Never send the inbound `Authorization` header upstream. Add a test that fails if it appears in outbound calls.\n\n**2. Publish proper OAuth resource-server behavior.**\n- Serve protected resource metadata (RFC 9728) at `/.well-known/oauth-protected-resource`.\n- Return 401 with a `WWW-Authenticate` header pointing to that metadata for missing or invalid tokens. Return 403 for insufficient scope.\n- Leave only the metadata route unauthenticated.\n- Use a real authorization server. If it isn't built yet, `api:oauth-provider` covers that.\n- Separate read, write, and admin scopes, and enforce them per tool on the server. Tool annotations are advisory and must not gate access.\n\n**3. Remove the dependence on sticky sessions.**\n- First decide which protocol revisions you serve. Under 2026-07-28 there are no protocol sessions or `initialize` handshake, so a server serving only that revision needs no session state.\n- If you support older revisions, a session ID must never act as authentication. Generate IDs with a CSPRNG, bind them to the authenticated principal, and re-check the token on every request. A stolen or replayed ID must grant nothing.\n- Move any state that has to survive across requests into a shared store such as Redis or a database, keyed by tenant and user. Then any instance can serve any request. Test by killing an instance mid-conversation.\n- For handles that stateful tools return, check authorization against the handle on every call.\n- Streamable HTTP's optional server-initiated streams and resumption also need a shared store (event log) or must be dropped.\n\n**4. Add rate limiting in the server itself.**\n- The spec requires it. A gateway alone is not enough.\n- Key limits by authenticated identity or tenant, and use tighter budgets for write and expensive tools. Cover discovery calls too.\n- Return 429 with `Retry-After` before any backend call.\n- With multiple instances, the counters need a shared store, or you need a per-instance budget that accounts for the instance count.\n- Set the budgets from your internal API's capacity.\n\n**5. Validate input on every call.**\n- Give each tool an explicit schema with types, bounds, enums, required fields, and closed properties.\n- Invalid input should fail before any backend call.\n- Errors should not leak stack traces, internal hostnames, or upstream response bodies.\n- Check any tool that takes a URL, path, or free-form query for SSRF, path traversal, and injection into REST paths. Encode path parameters rather than concatenating them.\n\n**6. Add transport hardening.**\n- Validate `Origin` on all HTTP connections and return 403 for a bad one. Many SDK handlers don't do this by default.\n- Terminate TLS, and set CORS to an explicit allowlist.\n- Cap request size and apply timeouts.\n- Check that the `MCP-Protocol-Version` header and the other routing headers agree with the request body.\n- Don't put sensitive parameters in headers.\n\n**7. Add audit logging and tenant isolation.**\n- Log every tool call with caller identity, tenant, tool, time, and outcome. Redact tokens and arguments that hold secrets, and send logs to central storage.\n- Keep no cache, state, or response data shared across tenants.\n- Return minimal data, and treat upstream content returned to the model as untrusted data.\n\n## Housekeeping\n- Use an official SDK, pinned to exact versions with a lockfile. A hand-written HTTP layer needs evidence for each control above.\n- Inject secrets at runtime, and keep them out of the repo and logs. The untracked `.aws/` directory sits next to this working directory, so make sure it never gets committed.\n- Put the server in your inventory with an owner. Keep dev and staging isolated from production.\n- Add a health endpoint, graceful shutdown, and per-instance resource limits.\n\n## Needs the code or deployment config to settle\n- Whether the server hand-rolls HTTP or uses an SDK, and which version.\n- Which revisions it serves, and where session IDs are generated and stored.\n- What the internal API enforces on its own, including whether it trusts the forwarded token's claims.\n- Gateway or ingress settings, such as TLS, `Origin` handling, and rate limits.\n- The tool list, to check each for command injection, SSRF, and path traversal.\n\nI haven't run anything. For the tests, I'll describe each one for you to run in an isolated environment instead of sending payloads to a live server. Examples are an audience-mismatched token, a replayed session ID on another instance, and a link-local URL passed to a URL-taking tool."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.06100640000000001,
+            "judgeCostUsd": 0.005012999999999997,
+            "durationSeconds": 24,
+            "startedAt": "2026-10-02T20:02:12.721Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-y4Zj7q/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "passthrough",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I couldn't find any MCP server code to review. The working directory (`/tmp/claude-eval-y4Zj7q/home/cwd`) is empty, and the git repo has no commits or tracked files. The only untracked items are `.aws/` and `.gitconfig` in the parent directory, which I left alone because they aren't part of the server. Everything below is based on your description of the design, not on the code. If you point me at the repo, I'll check each item against the implementation.\n\n## Must change before launch\n\n**1. Stop forwarding client bearer tokens to the internal API (token passthrough).**\n- The MCP authorization spec explicitly forbids this. The server must only accept tokens issued for itself, and it must not pass them through to downstream APIs.\n- Today the internal REST API is effectively exposed to the internet, with the MCP server as a dumb proxy. Any token the client presents is trusted downstream, and the API can't tell a token minted for it from one minted for something else.\n- Audience confusion and replay become possible. A token stolen from any service that shares your issuer could be replayed through the MCP server.\n- Audit logs, rate limits and attribution on the internal API will see the MCP server, not the real caller.\n- **Fix:**\n  - The MCP server validates the token as a resource server: signature, `iss`, `exp`, and `aud` equal to the MCP server's canonical URI (RFC 8707 resource indicators).\n  - It then calls the internal API with its own credential. Use OAuth token exchange (RFC 8693) or a service identity (mTLS or workload identity) with the user's identity and scopes carried as a signed claim.\n  - The internal API should enforce authorization against that exchanged identity, not just trust the MCP server.\n\n**2. Implement the MCP authorization flow properly.**\n- Act as an OAuth 2.1 resource server.\n- Publish Protected Resource Metadata (RFC 9728) at `/.well-known/oauth-protected-resource`.\n- Return `401` with a `WWW-Authenticate` header pointing at that metadata.\n- Require PKCE, and support Client ID Metadata Documents or Dynamic Client Registration.\n- Enforce per-tool scopes. Return `403` with `insufficient_scope` when a scope is missing.\n- Use a real authorization server (your IdP) and don't build your own.\n- Tokens must be short-lived, with refresh handled by the client. Never accept tokens in query strings.\n\n**3. Replace sticky-session state with a stateless or externalized design.**\n- Sticky sessions mean a deploy, crash or autoscale event drops sessions. They also cause hot instances and make failover painful.\n- Prefer the stateless Streamable HTTP mode: no server-side session required per request, and each request is self-contained.\n- If you need state (subscriptions, long-running tasks, resumable streams), put it in Redis or a database. Key it by session ID plus authenticated principal.\n- **Session IDs are not authentication.** Generate them with a CSPRNG and bind each one to the user and token's `sub`. Re-verify the token on every request, and reject a session ID presented by a different principal. This prevents session hijacking and event injection.\n- Any instance must be able to serve any request. For SSE resumption, store events externally (`Last-Event-ID`).\n\n**4. Multi-tenant isolation.** Every tool call, resource and cache entry must be scoped by tenant and user derived from the validated token, never from request arguments. Confirm that no module-level or global state, left over from the stdio single-user model, leaks between customers.\n\n**5. Transport hardening for a public endpoint.**\n- Require TLS, and validate the `Origin` header on all requests to defend against DNS rebinding and browser-based attacks. Use a strict CORS allowlist.\n- Don't bind to `0.0.0.0` without a gateway or WAF in front.\n- Enforce request size limits, timeouts, per-tenant and per-token rate limits and concurrency caps, and cap SSE stream duration and count.\n\n**6. Treat tool inputs, and tool outputs, as untrusted.**\n- stdio assumed a trusted local user. Now arguments come from arbitrary clients, so validate them against schemas server-side and don't build internal API paths or queries by string concatenation (SSRF, path traversal, injection).\n- Tool results that include customer-controlled data are a prompt-injection vector against your customers' LLMs. Keep tool descriptions static and versioned, and don't return secrets or internal error details.\n- Mark destructive tools clearly, and require confirmation or narrow scopes for them.\n\n**7. Secrets and error handling.** Never log `Authorization` headers or tokens. Redact them in access logs, traces and error reports. Map internal API errors to sanitized MCP errors.\n\n## Should have for production\n- **Observability:** per-tenant metrics, structured audit logs (who called which tool, with what scope), and request and trace IDs propagated to the internal API.\n- **Operations:** health and readiness endpoints, graceful shutdown that drains SSE streams, and a deploy strategy that tolerates reconnects.\n- **Abuse controls:** quotas, a kill switch per tenant, and token revocation handling. Use short TTLs or introspection for high-risk scopes.\n- **Testing:** conformance tests for auth failure paths (wrong audience, expired, replayed session ID from another user), plus load tests that include instance restarts mid-session.\n- **Supply chain and compliance:** dependency pinning and scanning, a security review or pen test, and a documented data-retention policy for logged tool payloads.\n\n## Suggested order\n1. Token validation plus a downstream credential (items 1 and 2). This is the blocker, because it determines the trust model.\n2. Externalize or remove session state (item 3).\n3. Tenant isolation and input validation (items 4 and 6).\n4. Transport limits and observability (items 5 and 7).\n\nIf you share the repo path or a branch, I can map these to specific files and write up concrete findings."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "tool-curation",
+      "dir": "evals/tool-curation",
+      "source": "prose",
+      "promptMarkdown": "We generated an MCP server from our OpenAPI spec and it exposes 74 tools, one per endpoint (`get_invoices_by_id`, `post_customers_search`, and so on). Agents often pick the wrong tool or loop. We want to ship it to customers. What should we change about the tool surface?",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "curation",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Recommends cutting the endpoint-mirror set down to a small curated set of workflow-oriented tools (roughly 5 to 15), designed from user tasks rather than endpoints, merging or dropping low-value ones.\n- Recommends renaming tools to task-oriented names and rewriting descriptions for a reader with no product knowledge (when to use, what it returns, how it differs from siblings).\n- Assigns a risk level to each tool (read, write, destructive) and ties safeguards to it.\nFail if it keeps all or most of the 74 tools and only tweaks descriptions.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Recommends cutting the endpoint-mirror set down to a small curated set of workflow-oriented tools (roughly 5 to 15), designed from user tasks rather than endpoints, merging or dropping low-value ones.\n- Recommends renaming tools to task-oriented names and rewriting descriptions for a reader with no product knowledge (when to use, what it returns, how it differs from siblings).\n- Assigns a risk level to each tool (read, write, destructive) and ties safeguards to it.\nFail if it keeps all or most of the 74 tools and only tweaks descriptions.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"mcp:design\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 3,
+            "costUsd": 0.062465400000000004,
+            "judgeCostUsd": 0.01135,
+            "durationSeconds": 20,
+            "startedAt": "2026-10-02T20:02:14.445Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-v0cU2R/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "curation",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "Don't ship 74 endpoint mirrors. Redesign the surface around the jobs agents do. I haven't looked at your repo or spec, so this is general guidance, not a design for your endpoints.\n\n## Why agents fail now\n\n- **Wrong picks:** 74 names and descriptions load into context every session. Many are near-duplicates, such as `get_invoices_by_id`, `get_invoices`, and `post_invoices_search`. Auto-generated descriptions say what the endpoint does, not when to use it.\n- **Loops:** Agents chain `search → get → get → post` by hand. Any ambiguity or unhelpful error sends them back to the start. Raw API errors and unbounded list responses make this worse.\n\n## What to change\n\n1. **Cut to about 5–15 tools, each doing one job.**\n   - Start from customer workflows, not endpoints.\n   - Collapse chains into one tool. For example, `acme_create_invoice(customer_id, items)` replaces `get_customer` + `get_price` + `post_invoice`.\n   - Merge `get`/`list`/`search` variants into one `acme_find_invoices` tool with optional filters, plus one `acme_get_invoice` for a known ID.\n   - Leave out admin and rarely used endpoints. Add a generic \"call any endpoint\" escape hatch only if you can show a real need for breadth.\n\n2. **Rename the tools.** Use verb-first, service-prefixed `snake_case`, such as `acme_list_invoices`. Drop the `_by_id` and `post_..._search` style.\n\n3. **Rewrite every description by hand.** Each one should say:\n   - when to use the tool\n   - what it returns\n   - which parameters are required\n   - how it differs from its nearest sibling\n\n   This is the biggest lever on tool selection.\n\n4. **Make wrong calls hard.**\n   - Use enums instead of free strings.\n   - Mark required fields as required.\n   - Bound integers.\n   - Use absolute IDs.\n\n5. **Paginate lists.** Use a `limit` defaulting to 20–50, and return a cursor and a has-more flag. Keep results concise, and add `structuredContent` plus an `outputSchema` where callers parse the output.\n\n6. **Make errors actionable.**\n   - Return fixable problems as tool results with `isError: true`, for example \"customer_id not found; use acme_find_customers to look it up\".\n   - Reserve protocol errors for malformed requests and server faults.\n   - Never expose stack traces or internals.\n\n7. **Give each tool one risk tier.**\n   - A tool that reads and also irreversibly writes should be two tools.\n   - Set `readOnlyHint`, `destructiveHint`, and `idempotentHint` honestly. Clients treat them as untrusted hints, so they enforce nothing.\n   - Enforce write safety on the server:\n     - scoped credentials\n     - a read-only mode\n     - approval for writes\n     - dry-run\n     - idempotency keys and spend caps\n   - Disable irreversible tools (delete, void, refund, send) by default.\n\n## Before shipping to customers\n\n- **Auth:** If the server is remote, make it an OAuth 2.1 resource server only.\n  - Publish protected resource metadata.\n  - Validate the token audience.\n  - Never forward the customer's token to your upstream API. Use a separate upstream credential.\n  - Return 403 with `insufficient_scope` when a token lacks permission.\n- **Hardening:** Validate inputs against their schemas, and add rate limits.\n- **Versioning:** Treat tool names, descriptions, and schemas as a public API. A wording change can change which tool a model picks. Hash the surface in CI, and keep a golden-prompt test set that must still select the right tools.\n\n## Suggested next step\n\nSend me the OpenAPI spec or the repo path. I'll group the 74 endpoints into workflows and draft a design doc. It would contain:\n\n- a tool table with risk tiers and safeguards\n- the auth posture\n- what you deliberately left out\n- golden prompts\n\nAfter that, `mcp:build` can implement it and `mcp:review` can check it before release.\n\nTwo questions would shape that design:\n- Which jobs do customers need agents to do?\n- Which of those write, spend money, or message people?"
+              },
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0378226,
+            "judgeCostUsd": 0.004379000000000001,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-02T20:02:28.176Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-uiTBCp/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "curation",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  false
+                ],
+                "evidence": "Don't ship a 1:1 endpoint mirror. Redesign the surface around what an agent is trying to do, not around how your REST API is laid out.\n\n## Why it fails today\n\n- **74 near-identical tools.** Names like `get_invoices_by_id` and `post_customers_search` differ only in path fragments, so the model has little to choose between them on. Selection accuracy drops as tool count grows, and the definitions eat context on every turn.\n- **Descriptions come from the spec.** They explain what the endpoint does, not when to use it or how it differs from the three similar ones next to it.\n- **Raw API shapes leak through.** Pagination cursors, internal IDs, and huge JSON payloads push agents into retry or paging loops.\n- **Multi-step workflows are left to the agent.** For example, \"find the customer, then find their unpaid invoices, then fetch each one\" takes many calls, and every call is another chance to go wrong or loop.\n\n## What to change\n\n1. **Cut to about 10–20 task-level tools.**\n   - Group by user intent, not endpoint. For example, `find_invoices(customer, status, date_range)` replaces list, search, and get-by-customer. `get_invoice(id)` stays separate.\n   - Merge the CRUD variants with a small action or enum parameter only where the semantics really are the same.\n   - Drop endpoints no customer agent needs: admin, internal, and deprecated ones.\n\n2. **Split read and write, and flag the risk.**\n   - Set the MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) so clients can auto-approve reads and gate writes.\n   - Consider shipping a read-only server profile or scope by default. Customers can then opt into writes.\n\n3. **Rewrite the descriptions by hand.**\n   - Say when to use the tool and when not to (\"Use for lookup by customer or status. For a known invoice ID, use `get_invoice`\").\n   - Document parameter formats with examples.\n   - Say what comes back.\n\n4. **Make responses agent-sized.**\n   - Return the useful fields, not the whole object, and add a `detail`/`fields` option for more.\n   - Use sensible default limits and tell the agent when results are truncated, for example \"showing 20 of 143, narrow with `status`\".\n   - Resolve names to IDs server-side where you can, so agents don't have to chain lookups.\n\n5. **Write actionable errors.** Instead of `400 Bad Request`, return something like \"`date_range.end` must be after `start`; format is YYYY-MM-DD\". Opaque errors are a major cause of retry loops.\n\n6. **Make writes safe to retry.** Accept idempotency keys, and have a repeated create return the existing result with a note. That stops duplicate-invoice loops.\n\n7. **Consider a code-execution or search-tools layer if you really need breadth.** If customers need the long tail of endpoints, expose a few core tools plus a `search_api` and `call_api` pair. That's better than 74 always-loaded definitions.\n\n## How to validate it\n\nBuild a small eval set of 30–50 realistic customer tasks, such as \"which of Acme's invoices are overdue?\" Run it against the current and redesigned servers. Track:\n- the rate of picking the right tool,\n- the average number of calls per task,\n- the loop rate,\n- the token cost.\n\nIterate on the descriptions and the merges against that. It's also the cheapest regression test for future API changes.\n\nIf you'd like, I can look at the generated server in this repo and propose a concrete grouping of the 74 tools."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": -1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 5,
+    "casesPassed": 4,
+    "overallScore": 0.8,
+    "overallPassRate": 0.8,
+    "meanDelta": 0
+  }
+}

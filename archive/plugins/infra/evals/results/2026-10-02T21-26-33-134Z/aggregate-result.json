@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:26:33.134Z",
+  "durationSeconds": 37,
+  "costUsd": 0.2830498,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/infra",
+    "ablation": "with-without",
+    "caseFilter": "task-*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "infra",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/infra"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "task-dockerfile-secrets",
+      "dir": "evals/task-dockerfile-secrets",
+      "source": "mixed",
+      "promptMarkdown": "We are about to publish the image for the project in `/home/buck/Projects/adminhead/claude-plugins/plugins/infra/evals/task-dockerfile-secrets/fixture` to a public registry. Review the Dockerfile and the surrounding project files before we do, and give me the corrected files.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "context-secrets",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule: a `COPY . .` bakes everything in the build context into an image layer, so secret files must be kept out of the context with a `.dockerignore`, and build secrets must not be passed through ARG or written into a layer.\n\nPASS only if the answer does BOTH:\n1. Notes that `COPY . .` with no `.dockerignore` would copy `.env` and `secrets/` (the signing key) into the published image, and provides a `.dockerignore` that excludes `.env` (or `.env*`) and `secrets/`.\n2. Notes that `NPM_TOKEN` passed as `ARG` and written to `.npmrc` leaves the token recoverable from image history or layers, and replaces it with a BuildKit secret mount (`RUN --mount=type=secret`) or removes the file in the same layer in a way that is not left in a published stage (a multi-stage build whose final stage never receives it also counts).\nFAIL if either point is missing, or if the answer only says to add `.dockerignore` and keeps the ARG token. Do not reward length or unrelated hardening advice.",
+          "config": {
+            "criteria": "Rule: a `COPY . .` bakes everything in the build context into an image layer, so secret files must be kept out of the context with a `.dockerignore`, and build secrets must not be passed through ARG or written into a layer.\n\nPASS only if the answer does BOTH:\n1. Notes that `COPY . .` with no `.dockerignore` would copy `.env` and `secrets/` (the signing key) into the published image, and provides a `.dockerignore` that excludes `.env` (or `.env*`) and `secrets/`.\n2. Notes that `NPM_TOKEN` passed as `ARG` and written to `.npmrc` leaves the token recoverable from image history or layers, and replaces it with a BuildKit secret mount (`RUN --mount=type=secret`) or removes the file in the same layer in a way that is not left in a published stage (a multi-stage build whose final stage never receives it also counts).\nFAIL if either point is missing, or if the answer only says to add `.dockerignore` and keeps the ARG token. Do not reward length or unrelated hardening advice.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"infra:docker\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 13,
+            "costUsd": 0.10457580000000001,
+            "judgeCostUsd": 0.004541999999999999,
+            "durationSeconds": 37,
+            "startedAt": "2026-10-02T21:26:33.143Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-mgGYC9/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "context-secrets",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I couldn't write any files because the Write tool is disabled in this session. I haven't changed anything on disk. The corrected files are below, ready to paste in.\n\n## Problems found\n\n**Blocking for a public push**\n1. **`COPY . .` with no `.dockerignore`.** The fixture directory holds `.env` and `secrets/signing.key`, so both get baked into the image layers. Anyone who pulls the image can extract them. I didn't open either file, but treat them as exposed if an image was ever built from this context. **Rotate the signing key and anything in `.env` if a build was already pushed anywhere.**\n2. **`NPM_TOKEN` is written to `.npmrc` in the image.** The `ARG` is recorded in the image history, and `.npmrc` stays in the layer, so the token leaks.\n3. **`.gitignore` doesn't list `.env`, `secrets/`, or `*.key`.** They're likely to be committed too. Check `git log` for whether they already were. If so, rotate the secrets and rewrite history.\n\n**Other problems**\n4. The image runs as root.\n5. It uses the unpinned, full `node:22` image and ships dev dependencies and source.\n6. `npm ci` will fail because there's no `package-lock.json`.\n7. `tsc` will fail because there's no `tsconfig.json` and no `typescript` dependency.\n8. The `COPY . .` comes before the install, so every source edit invalidates the dependency cache.\n\n## Corrected files\n\n**`Dockerfile`**\n```dockerfile\nFROM node:22.12.0-slim AS build\nWORKDIR /app\n\nCOPY package.json package-lock.json ./\n# .npmrc is mounted for this step only and never lands in a layer.\n# Build with: docker build --secret id=npmrc,src=$HOME/.npmrc .\nRUN --mount=type=secret,id=npmrc,target=/app/.npmrc \\\n    npm ci\n\nCOPY tsconfig.json ./\nCOPY src ./src\nRUN npm run build\n\nFROM build AS prod-deps\nRUN --mount=type=secret,id=npmrc,target=/app/.npmrc \\\n    npm prune --omit=dev\n\nFROM node:22.12.0-slim AS runtime\nENV NODE_ENV=production\nWORKDIR /app\n\nCOPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules\nCOPY --from=build --chown=node:node /app/dist ./dist\nCOPY --chown=node:node package.json ./\n\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"dist/server.js\"]\n```\n\n**`.dockerignore`** (new)\n```\n.git\n.env\n.env.*\n.npmrc\nsecrets/\n*.pem\n*.key\nnode_modules\ndist\ncoverage\n*.log\nDockerfile\n.dockerignore\n```\n\n**`.gitignore`**\n```\nnode_modules\ndist\n.env\n.env.*\n.npmrc\nsecrets/\n*.pem\n*.key\n*.log\n```\n\n**`package.json`**\n```json\n{\n  \"name\": \"billing-api\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"start\": \"node dist/server.js\"\n  },\n  \"dependencies\": {},\n  \"devDependencies\": {\n    \"@types/node\": \"^22.10.0\",\n    \"typescript\": \"^5.7.0\"\n  }\n}\n```\n\n**`tsconfig.json`** (new)\n```json\n{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"commonjs\",\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true\n  },\n  \"include\": [\"src\"]\n}\n```\n\n## Before you publish\n- Run `npm install` to generate and commit `package-lock.json`. I can't produce it here, and the Dockerfile needs it.\n- Build with `docker build --secret id=npmrc,src=$HOME/.npmrc -t billing-api .`. If the project has no private npm packages, drop the secret mounts.\n- Check the result with `docker run --rm billing-api ls -a /app`. The output shouldn't include `.env`, `secrets`, or `.npmrc`. Use `docker history` to confirm no layer contains the token.\n- `node:22.12.0-slim` is a placeholder pin. Use the current 22.x tag, and pin by digest for the release build.\n- If you'd like me to apply these edits, re-enable Write or tell me to use another method."
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 8,
+            "costUsd": 0.0603768,
+            "judgeCostUsd": 0.004218,
+            "durationSeconds": 18,
+            "startedAt": "2026-10-02T21:26:33.143Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-GwXrNk/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "context-secrets",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I reviewed the Dockerfile, `.gitignore`, `package.json` and `src/server.ts`. I only listed `.env` and `secrets/signing.key`, not their contents. I can't write files in this session, so the corrected files are below for you to apply.\n\n## Problems found\n\n**Critical: don't publish until these are fixed**\n1. **`COPY . .` with no `.dockerignore`.** This copies `.env` and `secrets/signing.key` into the image, and anyone who pulls a public image can extract them.\n2. **The npm token is baked into the image.** `ARG NPM_TOKEN` is visible in `docker history`. The `.npmrc` written with the token also stays in the layer, and `COPY . .` would copy any local `.npmrc` too.\n3. **`.gitignore` only lists `node_modules` and `dist`.** `.env`, `secrets/` and `.npmrc` are not ignored, so they may already be committed. Check with `git log --all -- .env secrets/`. If they are in history, **rotate the signing key and every value in `.env`**. Rewriting the image doesn't undo a leak.\n\n**Should fix**\n4. The final image is the full build image, so it includes source, dev tooling and the compiler.\n5. The container runs as root.\n6. `node:22` is an unpinned, large image.\n7. `package.json` has no `typescript` dev dependency and no `start` script, so `npm run build` (`tsc`) will fail. There is also no `package-lock.json` in the fixture, which `npm ci` requires.\n\n## Corrected files\n\n**`Dockerfile`**\n```dockerfile\n# syntax=docker/dockerfile:1\nFROM node:22-slim AS build\nWORKDIR /app\n\nCOPY package.json package-lock.json ./\n# The token is mounted only for this step and never written to a layer.\n# Build with: docker build --secret id=npmrc,src=$HOME/.npmrc .\nRUN --mount=type=secret,id=npmrc,target=/root/.npmrc \\\n    npm ci\n\nCOPY tsconfig.json ./\nCOPY src ./src\nRUN npm run build\n\nFROM node:22-slim AS runtime\nENV NODE_ENV=production\nWORKDIR /app\n\nCOPY package.json package-lock.json ./\nRUN --mount=type=secret,id=npmrc,target=/root/.npmrc \\\n    npm ci --omit=dev && npm cache clean --force\n\nCOPY --from=build /app/dist ./dist\n\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"dist/server.js\"]\n```\nPin the base image by digest (`node:22-slim@sha256:...`) for reproducible builds. If the project has no private packages, which is likely given `\"dependencies\": {}`, drop both secret mounts.\n\n**`.dockerignore`** (new)\n```\n.git\n.gitignore\n.env\n.env.*\nsecrets\n.npmrc\nnode_modules\ndist\nDockerfile\n.dockerignore\n*.md\n*.key\n*.pem\n```\n\n**`.gitignore`**\n```\nnode_modules\ndist\n.env\n.env.*\n!.env.example\nsecrets/\n.npmrc\n*.key\n*.pem\n```\n\n**`package.json`**\n```json\n{\n  \"name\": \"billing-api\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"start\": \"node dist/server.js\"\n  },\n  \"dependencies\": {},\n  \"devDependencies\": {\n    \"typescript\": \"^5.6.0\"\n  }\n}\n```\nYou also need a `tsconfig.json` with `outDir: \"dist\"` and a committed `package-lock.json`. Neither is in the fixture.\n\n## Before you publish\n- Pass runtime secrets (the contents of `.env`, the signing key) at run time instead of baking them in. Use `docker run --env-file`, orchestrator secrets, or a mounted volume.\n- After building, check the image: `docker run --rm <image> ls -la /app` and `docker history --no-trunc <image>`. Neither should show `.env`, `secrets/` or a token.\n- If any secret was ever pushed in an earlier image or commit, treat it as compromised and rotate it."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "task-terraform-replace-db",
+      "dir": "evals/task-terraform-replace-db",
+      "source": "mixed",
+      "promptMarkdown": "Someone tidied the naming in our Terraform and opened a PR. The saved `terraform plan` output is `/home/buck/Projects/adminhead/claude-plugins/plugins/infra/evals/task-terraform-replace-db/fixture/plan.txt` and the config is beside it. Is it safe to apply? I want a go or no-go and, if no-go, what the PR should do instead.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"infra:terraform\""
+          }
+        },
+        {
+          "name": "stop-on-replace",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule: replacement (`-/+`) of a stateful resource such as a database is a stop sign. Every destroy or replace needs a reason, and an address or name change should not recreate the resource.\n\nPASS only if the answer does ALL of these:\n1. Gives a no-go (does not call the plan safe to apply as-is).\n2. Identifies that `aws_db_instance.orders` is destroyed and recreated because the `identifier` change forces replacement, and says this deletes the production data.\n3. Notes that `skip_final_snapshot = true` (and no deletion protection) means no automatic backup is taken on destroy, or otherwise states the data would be lost.\n4. Recommends keeping the original identifier (revert the rename) or another non-destructive route (for example keeping the name and using tags, or a planned snapshot-and-restore or blue/green migration), not applying the plan.\nFAIL if it approves the apply, treats the replacement as routine, or misses the forcing attribute. Do not reward length.",
+          "config": {
+            "criteria": "Rule: replacement (`-/+`) of a stateful resource such as a database is a stop sign. Every destroy or replace needs a reason, and an address or name change should not recreate the resource.\n\nPASS only if the answer does ALL of these:\n1. Gives a no-go (does not call the plan safe to apply as-is).\n2. Identifies that `aws_db_instance.orders` is destroyed and recreated because the `identifier` change forces replacement, and says this deletes the production data.\n3. Notes that `skip_final_snapshot = true` (and no deletion protection) means no automatic backup is taken on destroy, or otherwise states the data would be lost.\n4. Recommends keeping the original identifier (revert the rename) or another non-destructive route (for example keeping the name and using tags, or a planned snapshot-and-restore or blue/green migration), not applying the plan.\nFAIL if it approves the apply, treats the replacement as routine, or misses the forcing attribute. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.07299520000000001,
+            "judgeCostUsd": 0.0030540000000000003,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T21:26:33.143Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-P9uqd6/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "stop-on-replace",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**No-go.** Don't apply this plan.\n\n**Why**\n\nThe PR changes `identifier` on `aws_db_instance.orders` from `orders-prod` to `orders-production` (`plan.txt:18`, `main.tf:2`). In the AWS provider, that change forces replacement, and `moved` blocks don't help. A `moved` block fixes Terraform addresses, but the RDS identifier is a real attribute of the instance. The plan shows `-/+ destroy and then create replacement` for the production orders database.\n\nApplying it would do the following:\n- **Data loss:** `skip_final_snapshot = true` means no final snapshot is taken when the old instance is destroyed. The 500 GB of data would be gone, and the replacement would be an empty database.\n- **No safety net:** `deletion_protection = false` means nothing blocks the destroy.\n- **New endpoint:** `endpoint`, `arn` and `id` are all \"known after apply\". Anything pointing at `orders-prod.example...` would break.\n\nThe security group change is harmless: it adds ingress `10.20.0.0/16`. It isn't part of a naming cleanup, though, so ask the author whether it's intentional.\n\n**What the PR should do instead**\n\n1. **Revert the identifier.** Set `identifier = \"orders-prod\"` in `main.tf` and keep the rest of the cleanup. The plan should then show no change on the database. The identifier is the real RDS name, so the tidy-up has to leave it alone. Rename only the Terraform resource label if you want a different name there, and pair that with a `moved` block. The plan should say \"has moved to\" with no destroy.\n2. **If the new name is a hard requirement,** treat it as a migration, not a tidy-up. RDS can rename an instance in place (`modify-db-instance --new-db-instance-identifier`), but that still changes the endpoint. Plan it as a separate change with a maintenance window and a snapshot first. Then sync Terraform with the new name, using `terraform plan` to confirm it shows no replacement. Note that Terraform's `apply_immediately` and in-place rename behaviour depend on the provider version, so check the plan output either way.\n3. **Add guardrails** whatever you decide:\n   - `deletion_protection = true`\n   - `skip_final_snapshot = false` plus a `final_snapshot_identifier`\n   - `lifecycle { prevent_destroy = true }` on the database\n4. **Split the security group change** into its own PR, or confirm it's intended.\n5. **Re-plan and re-review.** The new plan should show no `-/+` on the database before anyone applies it.\n\nI didn't run any Terraform commands. This verdict comes from reading the saved plan and `main.tf`. The config in the fixture doesn't contain the security group resource, so I couldn't check that part against the code."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.045102,
+            "judgeCostUsd": 0.0028260000000000004,
+            "durationSeconds": 11,
+            "startedAt": "2026-10-02T21:26:45.473Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-zTCBAi/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "stop-on-replace",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**No-go.** Don't apply this plan.\n\n**Why**\n\n- The rename of `identifier` from `orders-prod` to `orders-production` forces replacement of `aws_db_instance.orders` (plan.txt:18). Terraform will destroy the production Postgres instance and create a new, empty one.\n- `skip_final_snapshot = true` (main.tf:7, plan.txt:24) means the destroy takes no final snapshot. The 500 GB of order data would be gone, apart from any automated backups. Those are normally deleted along with the instance unless you've set them to be retained.\n- `deletion_protection = false` (plan.txt:25) means nothing blocks the destroy.\n- The endpoint and ARN change too (plan.txt:15-16). Anything pointing at `orders-prod.example...` would break, even if data were restored.\n\nThe security group change is harmless. It only adds `10.20.0.0/16` to the ingress rules. Note that it isn't a naming change, so it's worth asking whether it belongs in a \"tidy naming\" PR.\n\n**What the PR should do instead**\n\n1. **Revert the identifier change.** Keep `identifier = \"orders-prod\"`. If `-production` is wanted for consistency, treat it as a separate, planned migration rather than a tidy-up. A tag or a Terraform resource label can carry the nicer name without touching the live instance.\n2. **Rename only in Terraform, if that's the goal.** To rename the resource address (`aws_db_instance.orders`), use a `moved {}` block. That changes state only, not the real instance.\n3. **Check the plan is clean.** After the revert, `terraform plan` should show no change to `aws_db_instance.orders`. Only the security group update should remain.\n4. **Add guardrails in a follow-up.** Set `deletion_protection = true`, set `skip_final_snapshot = false` with a `final_snapshot_identifier`, and add `lifecycle { prevent_destroy = true }` on the DB. Any future replacement would then fail loudly instead of silently wiping production.\n5. **If the rename is really wanted,** do it deliberately. Take a manual snapshot, then either use the RDS rename, which can be done in-place (`apply_immediately`) and keeps the data, or restore from the snapshot into the new identifier. Plan for a cutover window and update the endpoint consumers. Don't do it through Terraform replacement.\n\nI only read the saved plan and `main.tf`. I haven't run anything against AWS or looked at the PR diff itself."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 2,
+    "casesPassed": 2,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

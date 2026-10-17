@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:25:58.295Z",
+  "durationSeconds": 34,
+  "costUsd": 0.193919,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/api",
+    "ablation": "with-without",
+    "caseFilter": "task-*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "api",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/api"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "task-idempotency-race",
+      "dir": "evals/task-idempotency-race",
+      "source": "mixed",
+      "promptMarkdown": "Support keeps finding duplicate charges when the mobile app retries on flaky networks, even though the app sends an Idempotency-Key header. The handler and schema are in `/home/buck/Projects/adminhead/claude-plugins/plugins/api/evals/task-idempotency-race/fixture`. Review the handler, tell me what is wrong, and show the corrected handler and schema.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "atomic-claim",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rules for a correct idempotency design: the winner of concurrent requests is chosen by the database, not by a prior SELECT; keys are scoped per account; a reused key with a different payload is rejected.\n\nPASS only if the answer does ALL of these:\n1. Identifies that the SELECT-then-charge-then-INSERT sequence is a check-then-act race: two concurrent or retried requests both see no row and both call `processor.charge`.\n2. Fixes it with an atomic claim: a UNIQUE constraint on `(account_id, key)` (not on `key` alone) and a claim inserted BEFORE the processor call (or in the same transaction), where the loser is told the request is in progress (for example 409) or replays the stored response, instead of charging again.\n3. Stores a fingerprint or hash of the request payload and rejects (4xx) a reused key whose payload differs.\nFAIL if the fix only adds a UNIQUE constraint to the final INSERT (the charge has already happened by then), only adds locking in application memory, omits the per-account scope, or omits payload-mismatch rejection. Do not reward length.",
+          "config": {
+            "criteria": "Rules for a correct idempotency design: the winner of concurrent requests is chosen by the database, not by a prior SELECT; keys are scoped per account; a reused key with a different payload is rejected.\n\nPASS only if the answer does ALL of these:\n1. Identifies that the SELECT-then-charge-then-INSERT sequence is a check-then-act race: two concurrent or retried requests both see no row and both call `processor.charge`.\n2. Fixes it with an atomic claim: a UNIQUE constraint on `(account_id, key)` (not on `key` alone) and a claim inserted BEFORE the processor call (or in the same transaction), where the loser is told the request is in progress (for example 409) or replays the stored response, instead of charging again.\n3. Stores a fingerprint or hash of the request payload and rejects (4xx) a reused key whose payload differs.\nFAIL if the fix only adds a UNIQUE constraint to the final INSERT (the charge has already happened by then), only adds locking in application memory, omits the per-account scope, or omits payload-mismatch rejection. Do not reward length.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:idempotency-retry\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 8,
+            "costUsd": 0.120213,
+            "judgeCostUsd": 0.007311,
+            "durationSeconds": 34,
+            "startedAt": "2026-10-02T21:25:58.305Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-7x5zh3/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "atomic-claim",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## What's wrong\n\nThe app sends the key, but the handler doesn't use it safely. These are the problems, most serious first.\n\n1. **Check-then-act race (`handler.py:11-35`).** The handler looks the key up, calls `processor.charge`, and only then inserts the key. On a flaky network the first request is often still running when the retry arrives, so the key row doesn't exist yet. Both requests see \"absent\" and both charge the card. This is the duplicate-charge bug.\n2. **No uniqueness in the schema.** `idempotency_keys.key` has no `PRIMARY KEY` or `UNIQUE` constraint. Even if the handler claimed first, the database couldn't pick a single winner. The second `INSERT` would succeed and leave duplicate rows.\n3. **The key isn't scoped to an account.** The lookup is `WHERE key = ?`. Two accounts that send the same key collide, and one account gets another account's stored response, including its `processor_ref`. The key should be unique on `(account_id, key)`.\n4. **No in-flight state.** A key exists only after the charge has finished, so a retry arriving mid-charge has nothing to find. The key has to be claimed before the charge, with an \"in progress\" state.\n5. **No payload fingerprint.** Reusing a key with a different amount silently replays the old response. This should be rejected.\n6. **The card call isn't safe to repeat.** If the process crashes after the processor charges the card but before the commit, nothing is recorded. The retry then charges again. The processor call needs its own idempotency key derived from the client's key.\n7. **Smaller issues.**\n   - Replays always return `201`, and the stored status and headers are not kept.\n   - The key is optional, so any client that omits it has no protection.\n   - There is no cap on key length.\n   - There is no expiry or cleanup.\n\n## Corrected schema\n\n```sql\nCREATE TABLE charges (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  account_id    TEXT NOT NULL,\n  amount_cents  INTEGER NOT NULL,\n  currency      TEXT NOT NULL,\n  processor_ref TEXT NOT NULL\n);\n\nCREATE TABLE idempotency_keys (\n  id                  INTEGER PRIMARY KEY AUTOINCREMENT,\n  account_id          TEXT NOT NULL,\n  idempotency_key     TEXT NOT NULL,                -- client-minted, max 255 chars\n  request_fingerprint TEXT NOT NULL,                -- sha256 of canonical payload\n  locked_at           INTEGER NOT NULL,             -- epoch seconds; lock is live while response_status IS NULL\n  lock_generation     INTEGER NOT NULL DEFAULT 0,   -- fencing token, bumped on takeover\n  response_status     INTEGER,                      -- NULL = in flight\n  response_body       TEXT,\n  created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  UNIQUE (account_id, idempotency_key)\n);\n```\n\n## Corrected handler\n\n```python\n\"\"\"POST /v1/charges, called by integrators and by our own mobile app.\"\"\"\nimport hashlib\nimport json\nimport time\n\nimport processor  # wrapper around the card processor's HTTP API\n\nLOCK_TIMEOUT_S = 60  # must exceed the processor call's own timeout\n\n\ndef create_charge(db, account_id, headers, body):\n    key = headers.get(\"Idempotency-Key\")\n    if not key or len(key) > 255:\n        return 400, {\"error\": \"idempotency_key_required\"}\n\n    fingerprint = hashlib.sha256(\n        json.dumps(body, sort_keys=True, separators=(\",\", \":\")).encode()\n    ).hexdigest()\n    now = int(time.time())\n\n    # Atomic claim: the UNIQUE constraint picks exactly one winner.\n    claimed = db.execute(\n        \"INSERT INTO idempotency_keys\"\n        \" (account_id, idempotency_key, request_fingerprint, locked_at)\"\n        \" VALUES (?, ?, ?, ?)\"\n        \" ON CONFLICT (account_id, idempotency_key) DO NOTHING\",\n        (account_id, key, fingerprint, now),\n    ).rowcount == 1\n    db.commit()\n\n    if claimed:\n        generation = 0\n    else:\n        fp, status, resp, locked_at, gen = db.execute(\n            \"SELECT request_fingerprint, response_status, response_body,\"\n            \" locked_at, lock_generation FROM idempotency_keys\"\n            \" WHERE account_id = ? AND idempotency_key = ?\",\n            (account_id, key),\n        ).fetchone()\n\n        if fp != fingerprint:\n            return 422, {\"error\": \"idempotency_key_reused\"}\n        if status is not None:\n            return status, json.loads(resp)  # replay verbatim, no re-execution\n        if locked_at > now - LOCK_TIMEOUT_S:\n            return 409, {\"error\": \"idempotency_request_in_progress\"}\n\n        # Original executor died: take over, fenced by lock_generation.\n        took_over = db.execute(\n            \"UPDATE idempotency_keys\"\n            \" SET locked_at = ?, lock_generation = lock_generation + 1\"\n            \" WHERE account_id = ? AND idempotency_key = ?\"\n            \" AND response_status IS NULL AND lock_generation = ?\",\n            (now, account_id, key, gen),\n        ).rowcount == 1\n        db.commit()\n        if not took_over:\n            return 409, {\"error\": \"idempotency_request_in_progress\"}\n        generation = gen + 1\n\n    # Foreign call, made safe to repeat: the processor dedupes on this key,\n    # so a takeover after a crash returns the original charge.\n    ref = processor.charge(\n        account_id=account_id,\n        amount_cents=body[\"amount_cents\"],\n        currency=body[\"currency\"],\n        idempotency_key=f\"{account_id}:{key}\",\n    )\n\n    response = {\"processor_ref\": ref, \"amount_cents\": body[\"amount_cents\"]}\n    db.execute(\n        \"INSERT INTO charges (account_id, amount_cents, currency, processor_ref)\"\n        \" VALUES (?, ?, ?, ?)\",\n        (account_id, body[\"amount_cents\"], body[\"currency\"], ref),\n    )\n    # Fenced completion in the same transaction as the charge row.\n    finished = db.execute(\n        \"UPDATE idempotency_keys SET response_status = 201, response_body = ?\"\n        \" WHERE account_id = ? AND idempotency_key = ?\"\n        \" AND lock_generation = ? AND response_status IS NULL\",\n        (json.dumps(response), account_id, key, generation),\n    ).rowcount == 1\n    if not finished:  # we were superseded; commit nothing\n        db.rollback()\n        return 409, {\"error\": \"idempotency_request_in_progress\"}\n    db.commit()\n    return 201, response\n```\n\n## Required follow-ups\n\n- **`processor.charge` needs an `idempotency_key` parameter.** The stub in `processor.py` doesn't have one. It must forward the value as the card processor's own idempotency header. Without it, a crash between the card call and the commit can still double-charge on takeover, so fix 6 isn't in place until this is done.\n- **The key is now mandatory** on this endpoint (`400` if absent). Check that the mobile app and integrators always send it. The app must reuse one key across all retries of a single purchase and mint a new one for each new purchase.\n- **Clients should retry `409 idempotency_request_in_progress`** with the same key. They should not retry `422`.\n- **Migrating the existing table.** Old rows have no `account_id`, so you'll need a backfill or a fresh table.\n- **Retention.** Add a job that deletes keys older than your longest retry chain, with about 24 hours as a floor and about 72 hours as a reasonable default.\n- **Failures.** I left a processor exception unstored. The lock expires after 60 seconds and the next retry takes over, which is safe because of the processor-side key. If you'd rather store declined cards and replay them, add that explicitly.\n\nI haven't edited the fixture files or run any tests. I can apply these changes and add a concurrency test if you want, with N parallel requests on one key and exactly one charge expected."
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.07370600000000001,
+            "judgeCostUsd": 0.0062640000000000005,
+            "durationSeconds": 28,
+            "startedAt": "2026-10-02T21:25:58.305Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-eZkJnV/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "atomic-claim",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## What's wrong\n\n`create_charge` in `handler.py` checks for the key, charges the card, and only then records the key. Several problems follow from that.\n\n1. **Check-then-act race (the main cause).** On a flaky network the app often retries while the first request is still waiting on the processor. Both requests run the `SELECT`, both miss, and both call `processor.charge`. The key isn't written until after the charge returns, so the window is the full processor round-trip.\n2. **The schema can't enforce uniqueness.** `idempotency_keys.key` has no `PRIMARY KEY` or `UNIQUE`. Even if the handler were correct, the database would accept two rows for the same key.\n3. **The charge and the key aren't recorded safely.** If the process dies after `processor.charge` succeeds but before `commit`, the money has moved and nothing is recorded. The retry then charges again. The processor is never told about the key, so it can't deduplicate either.\n4. **Keys are global, not per account.** A key from one account can replay another account's stored response. Mobile keys are probably UUIDs, but integrators choose their own.\n5. **The request body isn't checked.** Reusing a key with a different amount silently returns the old response instead of an error.\n6. **Smaller issue.** There's no way to tell \"in progress\" from \"done\", so a concurrent retry has nothing sensible to return.\n\n## Fix\n\nThe idea is to claim the key first, using a unique constraint as the lock. Commit that claim before touching the processor. Then charge, and record the charge and complete the key in one transaction.\n\n### `schema.sql`\n\n```sql\nCREATE TABLE charges (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  account_id    TEXT NOT NULL,\n  amount_cents  INTEGER NOT NULL,\n  currency      TEXT NOT NULL,\n  processor_ref TEXT NOT NULL\n);\n\nCREATE TABLE idempotency_keys (\n  account_id          TEXT NOT NULL,\n  key                 TEXT NOT NULL,\n  request_fingerprint TEXT NOT NULL,\n  status              TEXT NOT NULL DEFAULT 'in_progress'\n                        CHECK (status IN ('in_progress', 'completed')),\n  response            TEXT,\n  created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (account_id, key)\n);\n```\n\nIf this table already has data, dedupe it before adding the primary key. Existing rows have no fingerprint or status, so backfill those too.\n\n### `handler.py`\n\n```python\n\"\"\"POST /v1/charges, called by integrators and by our own mobile app.\"\"\"\nimport hashlib\nimport json\n\nimport processor  # wrapper around the card processor's HTTP API\n\n\ndef _fingerprint(body):\n    canonical = json.dumps(\n        {\"amount_cents\": body[\"amount_cents\"], \"currency\": body[\"currency\"]},\n        sort_keys=True,\n    )\n    return hashlib.sha256(canonical.encode()).hexdigest()\n\n\ndef create_charge(db, account_id, headers, body):\n    key = headers.get(\"Idempotency-Key\")\n    if not key:\n        return _charge(db, account_id, body, key=None)\n\n    fp = _fingerprint(body)\n\n    # Claim the key. The primary key makes this atomic: exactly one concurrent\n    # request gets rowcount == 1. Commit before calling the processor so that\n    # retries arriving mid-charge see the claim.\n    cur = db.execute(\n        \"INSERT INTO idempotency_keys (account_id, key, request_fingerprint)\"\n        \" VALUES (?, ?, ?) ON CONFLICT (account_id, key) DO NOTHING\",\n        (account_id, key, fp),\n    )\n    claimed = cur.rowcount == 1\n    db.commit()\n\n    if not claimed:\n        status, stored_fp, response = db.execute(\n            \"SELECT status, request_fingerprint, response FROM idempotency_keys\"\n            \" WHERE account_id = ? AND key = ?\",\n            (account_id, key),\n        ).fetchone()\n        if stored_fp != fp:\n            return 422, {\"error\": \"Idempotency-Key reused with a different request\"}\n        if status != \"completed\":\n            return 409, {\"error\": \"original request still in progress, retry shortly\"}\n        return 201, json.loads(response)\n\n    return _charge(db, account_id, body, key=key, fp=fp)\n\n\ndef _charge(db, account_id, body, key, fp=None):\n    try:\n        # Pass the key through so the processor dedupes if we crash or time out\n        # after it has charged (requires processor.charge to accept it).\n        ref = processor.charge(\n            account_id=account_id,\n            amount_cents=body[\"amount_cents\"],\n            currency=body[\"currency\"],\n            idempotency_key=f\"{account_id}:{key}\" if key else None,\n        )\n    except processor.CardDeclined:\n        # Definite failure: release the claim so the client can retry.\n        if key:\n            db.execute(\n                \"DELETE FROM idempotency_keys WHERE account_id = ? AND key = ?\",\n                (account_id, key),\n            )\n            db.commit()\n        raise\n    # Any other exception (timeout, 5xx) is an unknown outcome: leave the claim\n    # in_progress rather than risk a second charge.\n\n    response = {\"processor_ref\": ref, \"amount_cents\": body[\"amount_cents\"]}\n    db.execute(\n        \"INSERT INTO charges (account_id, amount_cents, currency, processor_ref)\"\n        \" VALUES (?, ?, ?, ?)\",\n        (account_id, body[\"amount_cents\"], body[\"currency\"], ref),\n    )\n    if key:\n        db.execute(\n            \"UPDATE idempotency_keys SET status = 'completed', response = ?\"\n            \" WHERE account_id = ? AND key = ?\",\n            (json.dumps(response), account_id, key),\n        )\n    db.commit()  # charge row and completed key land together\n    return 201, response\n```\n\n## Things to check or decide\n\n- **I haven't run this.** `processor.py` is a stub, so I couldn't test it.\n- **Processor changes it assumes.** `processor.charge` needs an `idempotency_key` parameter, passed through to the card processor's own idempotency header. It also needs a `CardDeclined` exception for definite failures. Both are assumptions about the real wrapper.\n- **Stuck `in_progress` claims.** After a timeout or crash, the claim stays `in_progress` and retries get 409 indefinitely. Add a staleness rule: if the claim is older than the processor timeout, allow a retake. That's safe because the processor dedupes on the key. Alternatively, run a reconciliation job.\n- **Existing duplicates.** The fix prevents new duplicate charges. Support will still need to find and refund the ones already created.\n- **Other databases.** The `ON CONFLICT DO NOTHING` syntax works on SQLite and Postgres. On MySQL, use `INSERT IGNORE`."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

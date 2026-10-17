@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:31:03.039Z",
+  "durationSeconds": 160,
+  "costUsd": 1.2685084,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/authoring",
+    "ablation": "none",
+    "caseFilter": "*-trigger",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "authoring",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/authoring"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "adr-trigger",
+      "dir": "evals/adr-trigger",
+      "source": "prose",
+      "promptMarkdown": "We decided to use SQLite instead of Postgres for the local job queue, because it needs zero ops and the workload is a single writer. Record that decision as an ADR in docs/adr/.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "fires-adr-writing",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:adr-writing\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.4518816000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 78,
+            "startedAt": "2026-10-02T21:31:03.052Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-4sQmha/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-adr-writing",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "agent-instructions-trigger",
+      "dir": "evals/agent-instructions-trigger",
+      "source": "prose",
+      "promptMarkdown": "My repo has a single 600-line root CLAUDE.md that mixes build commands, frontend conventions, and backend API rules. Reorganize it into a lean root CLAUDE.md plus nested CLAUDE.md files and path-scoped .claude/rules/ files, and make AGENTS.md coexist with it.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "fires-manage-agent-instructions",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:manage-agent-instructions\""
+          }
+        },
+        {
+          "name": "not-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?create-skill\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 8,
+            "costUsd": 0.1537644,
+            "judgeCostUsd": 0,
+            "durationSeconds": 30,
+            "startedAt": "2026-10-02T21:31:03.052Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-aAcGjv/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-manage-agent-instructions",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "not-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "create-skill-trigger",
+      "dir": "evals/create-skill-trigger",
+      "source": "prose",
+      "promptMarkdown": "Use the authoring:create-skill skill to create a new Claude Code skill that helps with rotating API keys safely. It should trigger when someone asks to rotate, revoke, or audit credentials, and keep the SKILL.md lean with details in references/.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "fires-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:create-skill\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 11,
+            "costUsd": 0.6628623999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 160,
+            "startedAt": "2026-10-02T21:31:03.052Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-6EselM/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 3,
+    "casesPassed": 3,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

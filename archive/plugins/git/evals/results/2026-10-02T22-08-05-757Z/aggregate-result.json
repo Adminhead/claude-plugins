@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T22:08:05.757Z",
+  "durationSeconds": 48,
+  "costUsd": 0.26252220000000004,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/git",
+    "ablation": "with-without",
+    "caseFilter": "stance-commit-convention",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "git",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/git"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "stance-commit-convention",
+      "dir": "evals/stance-commit-convention",
+      "source": "mixed",
+      "promptMarkdown": "Write the commit message for the staged change in `staged.diff` and save it to `COMMIT_MSG.txt` (message only). The recent history is in `history.txt`. Do not run git.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 12,
+      "graders": [
+        {
+          "name": "conventional-header",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": {
+              "source": "file",
+              "path": "COMMIT_MSG.txt"
+            },
+            "pattern": "^(feat|fix|refactor|perf|docs|test|chore|build|ci)(\\([^)]+\\))?!?: \\S",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        },
+        {
+          "name": "follow-contract",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule from the skill: follow the convention the repo's config and history evidence. The repo has `release-please-config.json`, so Conventional Commits applies, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message in `COMMIT_MSG.txt` ALL of these:\n1. Starts with a Conventional Commit header with a correct type and scope for the change, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The description is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line and contains no second Conventional Commit header.\nJudge only the commit message text shown in the answer, not the surrounding commentary. Do not require naming release-please, and do not penalize remarks about `!` or breaking changes in the commentary.\nFAIL otherwise. Do not reward length.",
+          "config": {
+            "criteria": "Rule from the skill: follow the convention the repo's config and history evidence. The repo has `release-please-config.json`, so Conventional Commits applies, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message in `COMMIT_MSG.txt` ALL of these:\n1. Starts with a Conventional Commit header with a correct type and scope for the change, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The description is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line and contains no second Conventional Commit header.\nJudge only the commit message text shown in the answer, not the surrounding commentary. Do not require naming release-please, and do not penalize remarks about `!` or breaking changes in the commentary.\nFAIL otherwise. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.053294,
+            "judgeCostUsd": 0.0016619999999999998,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T22:08:05.768Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-od6tso/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched ^(feat|fix|refactor|perf|docs|test|chore|build|ci)(\\([^)]+\\))?!?: \\S",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`:\n\n```\nfix(cart): reset discount when last item is removed\n\nRemoving the last item left the previous discount applied to an empty\ncart. removeItem now returns the whole cart with the discount cleared\nin that case, instead of only the filtered items array.\n```\n\n- **Convention:** `history.txt` has no consistent format (\"wip\", \"tweaks\", \"Fixed the thing…\"), and there is no commitlint or release-please config in what I could see. I used Conventional Commits, as the skill says to when the evidence is mixed.\n- **Return type:** `removeItem` used to return an items array and now returns a cart object. Any caller that expects an array will break. I kept this as a `fix` because the diff shows no other callers. If other code depends on the array, change it to `fix(cart)!:` and add a `BREAKING CHANGE:` footer.\n\nI didn't run git."
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.0494778,
+            "judgeCostUsd": 0.0015990000000000002,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T22:08:14.263Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-tIDkfV/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched ^(feat|fix|refactor|perf|docs|test|chore|build|ci)(\\([^)]+\\))?!?: \\S",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\n```\nfix(cart): clear discount when last item is removed\n\nRemoving the last item left the previous discount applied to an empty\ncart. removeItem now returns the whole cart with the updated items and\nresets the discount to 0 when none remain.\n```\n\n`history.txt` has no consistent convention (messages like \"wip\" and \"tweaks\"), and I found no commitlint or release-please config. So I used Conventional Commits.\n\nOne thing the diff shows that the header doesn't: `removeItem` used to return only the filtered items array. It now returns the full cart object. Any caller that relied on getting an array back will break, so check the callers. If that counts as a breaking change for you, the header would need a `!` and a `BREAKING CHANGE:` footer."
+              }
+            ]
+          },
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 6,
+            "costUsd": 0.0512522,
+            "judgeCostUsd": 0.002260999999999999,
+            "durationSeconds": 10,
+            "startedAt": "2026-10-02T22:08:21.976Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-QXm75s/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched ^(feat|fix|refactor|perf|docs|test|chore|build|ci)(\\([^)]+\\))?!?: \\S",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL PASS FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  true,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\n```\nfix(cart): clear discount when last item is removed\n\nRemoving the last item left the previous discount applied to an empty\ncart. removeItem now resets the discount to 0 when no items remain.\n\nremoveItem also now returns the full cart object with the updated items\ninstead of just the filtered items array.\n```\n\n- **Convention:** `history.txt` has no consistent format, and I found no commitlint or release-please config. I used Conventional Commits.\n- **Return type change:** The diff also changes `removeItem` from returning an array to returning the whole cart object. I put that in the body. If any callers rely on the array, you may want to mark it as a breaking change (`fix!:` with a `BREAKING CHANGE:` footer)."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.0367656,
+            "judgeCostUsd": 0.0015120000000000003,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T22:08:31.968Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-6IkqEt/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\nThe history has no consistent convention, so I wrote a plain imperative subject line with a short body:\n\n```\nReset discount when last item is removed from cart\n\nremoveItem left the existing discount in place when the cart became\nempty, so an empty cart still carried a stale discount.\n\nClear the discount when no items remain. removeItem now returns the\nupdated cart object (items and discount) instead of only the filtered\nitems array, so callers that used the returned array need to read\n`.items` instead.\n```\n\nThe diff changes `removeItem`'s return value from an array to the cart object. The message says so, because existing callers may break. I didn't check the callers."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.0358386,
+            "judgeCostUsd": 0.0013349999999999985,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T22:08:39.947Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-G6o2b7/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\nThe subject line is \"Reset cart discount when the last item is removed\". The body explains the stale discount on an empty cart.\n\nThe diff also changes what `removeItem` returns. It used to return the filtered items array and now returns the whole cart object. I added a line to the body saying callers that expected an array need to read `.items`.\n\nThe history has no consistent convention, so I used a plain imperative subject."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.035894,
+            "judgeCostUsd": 0.0014220000000000014,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T22:08:46.796Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-PttzJq/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\n```\nReset discount when removing the last cart item\n\nremoveItem left a stale discount applied to an empty cart. Clear the\ndiscount when no items remain.\n\nremoveItem now returns the updated cart object ({ ...cart, items,\ndiscount }) instead of just the filtered items array.\n```\n\nThe diff also changes what `removeItem` returns: it used to return the filtered array and now returns the whole cart object. I put that in the body because callers that expect an array will break. The history has no real convention, so I used a short imperative subject line."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333334,
+        "passRate": 0.6666666666666666,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 0.8333333333333334
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.8333333333333334,
+    "overallPassRate": 0.6666666666666666,
+    "meanDelta": 0.8333333333333334
+  }
+}

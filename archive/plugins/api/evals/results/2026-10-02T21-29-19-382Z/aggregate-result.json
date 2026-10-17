@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:29:19.382Z",
+  "durationSeconds": 39,
+  "costUsd": 0.2169122,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/api",
+    "ablation": "with-without",
+    "caseFilter": "task-*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "api",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/api"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "task-idempotency-race",
+      "dir": "evals/task-idempotency-race",
+      "source": "mixed",
+      "promptMarkdown": "Support keeps finding duplicate charges when the mobile app retries on flaky networks, even though the app sends an Idempotency-Key header. The server handler and schema are in `/home/buck/Projects/adminhead/claude-plugins/plugins/api/evals/task-idempotency-race/fixture`, and the app client is in its `app/` directory. Review both sides, tell me what is wrong, and show the corrected code.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 12,
+      "graders": [
+        {
+          "name": "atomic-claim",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rules for a correct idempotency design, on both sides.\n\nPASS only if the answer does ALL of these:\n1. Server: identifies the check-then-act race and fixes it with an atomic claim in the database (UNIQUE on `(account_id, key)`, claim inserted before the processor call, loser gets an in-progress conflict or the stored replay).\n2. Server: rejects a reused key with a different payload (stores and compares a fingerprint).\n3. Server: handles the crash window after `processor.charge` succeeds but before the local commit, by sending the processor its own idempotency key derived from the client key, or by recording intent before the call and checking the processor's state on resume.\n4. Client: identifies that `Date.now()` mints a fresh key per attempt, which defeats the mechanism, and fixes it by generating the key once per logical charge and reusing it for every retry.\n5. Client: fixes the retry loop to use jittered exponential backoff (not a fixed 1 s) and to retry only retryable outcomes (network errors, 408/429/5xx, in-flight conflict), not every non-ok response including 4xx such as the payload-mismatch rejection.\nFAIL if any of the five is missing. Do not reward length.",
+          "config": {
+            "criteria": "Rules for a correct idempotency design, on both sides.\n\nPASS only if the answer does ALL of these:\n1. Server: identifies the check-then-act race and fixes it with an atomic claim in the database (UNIQUE on `(account_id, key)`, claim inserted before the processor call, loser gets an in-progress conflict or the stored replay).\n2. Server: rejects a reused key with a different payload (stores and compares a fingerprint).\n3. Server: handles the crash window after `processor.charge` succeeds but before the local commit, by sending the processor its own idempotency key derived from the client key, or by recording intent before the call and checking the processor's state on resume.\n4. Client: identifies that `Date.now()` mints a fresh key per attempt, which defeats the mechanism, and fixes it by generating the key once per logical charge and reusing it for every retry.\n5. Client: fixes the retry loop to use jittered exponential backoff (not a fixed 1 s) and to retry only retryable outcomes (network errors, 408/429/5xx, in-flight conflict), not every non-ok response including 4xx such as the payload-mismatch rejection.\nFAIL if any of the five is missing. Do not reward length.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:idempotency-retry\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 9,
+            "costUsd": 0.13535060000000002,
+            "judgeCostUsd": 0.010592999999999998,
+            "durationSeconds": 39,
+            "startedAt": "2026-10-02T21:29:19.392Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-AYejO7/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "atomic-claim",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Neither side is safe on its own, and they fail in different ways. I only read the code and didn't run or edit anything, so the fixes below are untested.\n\n## What's wrong\n\n**Client (`app/api_client.js`)**\n1. **The key changes on every attempt.** `Idempotency-Key: charge-${Date.now()}` is built inside the retry loop, so each retry carries a new key and the server sees a new request. This is the main cause of your duplicates. A timeout where the first request actually succeeded is the usual trigger. Even with a stable key, `Date.now()` can collide across devices or taps.\n2. **Retry policy is unbounded and indiscriminate.** It retries every non-2xx response, including 400, 401 and 422, which can never succeed. It also retries 10 times at a fixed 1s with no jitter, so a fleet re-synchronizes after an outage. There is no overall deadline or per-attempt timeout, and the final error discards the cause.\n\n**Server (`handler.py`, `schema.sql`)**\n3. **Check-then-insert race.** Two concurrent retries both run `SELECT`, both see nothing, and both call `processor.charge`. `idempotency_keys` has no unique constraint, so even the later `INSERT` can't stop the duplicate. This is the race the eval is named for.\n4. **The key is recorded only after the charge.** If the process dies after `processor.charge` but before `commit`, the card is charged and nothing is stored. The retry charges again. There is also no in-flight state.\n5. **The key is global, not per account.** One account's key can replay another account's response.\n6. **No payload fingerprint.** The same key with a different amount silently replays the old response.\n7. **The replay is lossy and hardcoded.** It always returns 201 and doesn't store the status.\n8. **The processor call carries no idempotency key.** Even a correct server can't be crash-safe without one.\n9. **The key is optional.** A missing header silently disables all protection.\n\n## Corrected code\n\n**`schema.sql`**\n```sql\nCREATE TABLE charges (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  account_id    TEXT NOT NULL,\n  amount_cents  INTEGER NOT NULL,\n  currency      TEXT NOT NULL,\n  processor_ref TEXT NOT NULL\n);\n\nCREATE TABLE idempotency_keys (\n  id                  INTEGER PRIMARY KEY AUTOINCREMENT,\n  account_id          TEXT NOT NULL,\n  idempotency_key     TEXT NOT NULL CHECK (length(idempotency_key) <= 255),\n  request_fingerprint TEXT NOT NULL,\n  locked_at           REAL,                      -- epoch seconds; set while in flight\n  lock_generation     INTEGER NOT NULL DEFAULT 0, -- fencing token, bumped on takeover\n  response_status     INTEGER,                   -- NULL until complete\n  response_body       TEXT,\n  created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  UNIQUE (account_id, idempotency_key)\n);\n```\n\n**`processor.py`** (the processor must dedupe on a key we derive)\n```python\ndef charge(account_id, amount_cents, currency, idempotency_key):\n    \"\"\"Calls the card processor and returns its charge reference.\n\n    The processor returns the original charge for a repeated idempotency_key,\n    so re-running this call after a crash cannot charge twice.\n    \"\"\"\n    raise NotImplementedError(\"network call, stubbed in this fixture\")\n```\n\n**`handler.py`**\n```python\n\"\"\"POST /v1/charges, called by integrators and by our own mobile app.\"\"\"\nimport hashlib\nimport json\nimport time\n\nimport processor  # wrapper around the card processor's HTTP API\n\n# Must exceed the processor call's timeout, or a slow request gets taken over.\nLOCK_TIMEOUT_S = 60\n\n\ndef _fingerprint(body):\n    canonical = json.dumps(body, sort_keys=True, separators=(\",\", \":\"))\n    return hashlib.sha256(canonical.encode()).hexdigest()\n\n\ndef _error(status, code, message):\n    return status, {\"error\": {\"code\": code, \"message\": message}}\n\n\ndef create_charge(db, account_id, headers, body):\n    key = headers.get(\"Idempotency-Key\")\n    if not key or len(key) > 255:\n        return _error(400, \"idempotency_key_required\",\n                      \"Idempotency-Key header is required (max 255 chars).\")\n\n    fingerprint = _fingerprint(body)\n    now = time.time()\n\n    # Atomic claim: the unique constraint picks exactly one winner. Committed\n    # before the foreign call so concurrent retries see the in-flight row.\n    cur = db.execute(\n        \"INSERT INTO idempotency_keys\"\n        \" (account_id, idempotency_key, request_fingerprint, locked_at)\"\n        \" VALUES (?, ?, ?, ?)\"\n        \" ON CONFLICT (account_id, idempotency_key) DO NOTHING\",\n        (account_id, key, fingerprint, now),\n    )\n    db.commit()\n\n    if cur.rowcount == 1:\n        row_id = db.execute(\n            \"SELECT id FROM idempotency_keys\"\n            \" WHERE account_id = ? AND idempotency_key = ?\",\n            (account_id, key),\n        ).fetchone()[0]\n        generation = 0\n    else:\n        row_id, stored_fp, status, response, locked_at, generation = db.execute(\n            \"SELECT id, request_fingerprint, response_status, response_body,\"\n            \" locked_at, lock_generation FROM idempotency_keys\"\n            \" WHERE account_id = ? AND idempotency_key = ?\",\n            (account_id, key),\n        ).fetchone()\n\n        if stored_fp != fingerprint:\n            return _error(422, \"idempotency_key_reused\",\n                          \"This key was used with a different request. \"\n                          \"Use a new key or resend the original payload.\")\n        if status is not None:\n            return status, json.loads(response)  # verbatim replay, no re-execution\n\n        in_flight = _error(409, \"idempotency_request_in_progress\",\n                           \"Original request still running; retry with the same key.\")\n        if locked_at is not None and now - locked_at < LOCK_TIMEOUT_S:\n            return in_flight\n\n        # Original executor crashed or stalled: take over atomically and fence it.\n        taken = db.execute(\n            \"UPDATE idempotency_keys\"\n            \" SET locked_at = ?, lock_generation = lock_generation + 1\"\n            \" WHERE id = ? AND response_status IS NULL\"\n            \" AND (locked_at IS NULL OR locked_at < ?)\",\n            (now, row_id, now - LOCK_TIMEOUT_S),\n        )\n        db.commit()\n        if taken.rowcount == 0:\n            return in_flight\n        generation += 1\n\n    # Foreign call. The derived key makes a re-run after a crash return the\n    # original charge instead of creating a second one.\n    ref = processor.charge(\n        account_id=account_id,\n        amount_cents=body[\"amount_cents\"],\n        currency=body[\"currency\"],\n        idempotency_key=f\"{account_id}:{key}:charge\",\n    )\n\n    response = {\"processor_ref\": ref, \"amount_cents\": body[\"amount_cents\"]}\n\n    # Local write and final response commit together, fenced by generation.\n    done = db.execute(\n        \"UPDATE idempotency_keys\"\n        \" SET response_status = 201, response_body = ?, locked_at = NULL\"\n        \" WHERE id = ? AND lock_generation = ? AND response_status IS NULL\",\n        (json.dumps(response), row_id, generation),\n    )\n    if done.rowcount == 0:  # lost the lock to a takeover; commit nothing\n        db.rollback()\n        return _error(409, \"idempotency_request_in_progress\",\n                      \"Request was taken over; retry with the same key.\")\n    db.execute(\n        \"INSERT INTO charges (account_id, amount_cents, currency, processor_ref)\"\n        \" VALUES (?, ?, ?, ?)\",\n        (account_id, body[\"amount_cents\"], body[\"currency\"], ref),\n    )\n    db.commit()\n    return 201, response\n```\n\n**`app/api_client.js`**\n```js\n// Mobile app client for POST /v1/charges.\nconst BASE = \"https://api.example.com\";\nconst MAX_ATTEMPTS = 5;\nconst BASE_MS = 500;\nconst CAP_MS = 8000;\nconst DEADLINE_MS = 30000;\nconst ATTEMPT_TIMEOUT_MS = 8000;\nconst RETRYABLE_STATUS = new Set([408, 429, 502, 503, 504]);\n\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst fullJitter = (attempt) =>\n  Math.random() * Math.min(CAP_MS, BASE_MS * 2 ** attempt);\n\n// Mint the key once per user intent (e.g. when the Pay button is tapped) and\n// persist it with the pending charge, so a restart retries with the same key.\nexport const newChargeKey = () => `charge-${crypto.randomUUID()}`;\n\nexport async function createCharge(token, charge, idempotencyKey) {\n  const deadline = Date.now() + DEADLINE_MS;\n  let lastError;\n\n  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {\n    const remaining = deadline - Date.now();\n    if (remaining <= 0) break;\n\n    let wait = fullJitter(attempt);\n    try {\n      const res = await fetch(`${BASE}/v1/charges`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${token}`,\n          \"Content-Type\": \"application/json\",\n          \"Idempotency-Key\": idempotencyKey, // identical on every attempt\n        },\n        body: JSON.stringify(charge),\n        signal: AbortSignal.timeout(Math.min(ATTEMPT_TIMEOUT_MS, remaining)),\n      });\n      if (res.ok) return await res.json();\n\n      const err = await res.json().catch(() => ({}));\n      const inFlight = err?.error?.code === \"idempotency_request_in_progress\";\n      if (!RETRYABLE_STATUS.has(res.status) && !inFlight) {\n        // 400/401/402/422 etc. cannot succeed on retry (includes key reuse).\n        throw Object.assign(new Error(`charge rejected: ${res.status}`), {\n          fatal: true, status: res.status, body: err,\n        });\n      }\n      const retryAfter = Number(res.headers.get(\"Retry-After\"));\n      if (retryAfter > 0) wait = Math.max(wait, retryAfter * 1000);\n      lastError = new Error(`HTTP ${res.status}`);\n    } catch (e) {\n      if (e.fatal) throw e;\n      lastError = e; // timeout or network error: safe to retry because the key is stable\n    }\n    console.warn(`createCharge attempt ${attempt + 1} failed: ${lastError.message}; waiting ${Math.round(wait)}ms`);\n    await sleep(Math.min(wait, Math.max(0, deadline - Date.now())));\n  }\n  throw new Error(`charge failed after retries: ${lastError?.message}`);\n}\n```\n\n## Notes and decisions to confirm\n- **Existing integrators:** requiring the header returns 400 to any who omit it today. Roll it out with a deprecation notice, or keep it optional and accept that those callers stay unprotected.\n- **Transient failures:** I don't store processor errors. They leave the key in flight, so the retry re-attempts after the lock expires, which is safe because the processor dedupes on the derived key. If you'd rather replay declines verbatim, store a 402 on a definitive decline.\n- **Retention:** nothing deletes `idempotency_keys` rows yet. Add a reaper (about 72h) and a replay window of at least your longest retry chain, about 24h by default.\n- **Database:** the code uses SQLite syntax. On Postgres, `INSERT ... ON CONFLICT` works as written, and `rowcount` behaves the same.\n- **Verification:** the next step is a concurrency test, with N parallel identical requests producing exactly one charge. Add a crash test that kills the process after `processor.charge` and then retries."
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.0815616,
+            "judgeCostUsd": 0.007584,
+            "durationSeconds": 30,
+            "startedAt": "2026-10-02T21:29:19.392Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-NktR0L/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "atomic-claim",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## What's wrong\n\nEither side alone would still produce duplicates, and the two bugs compound each other.\n\n### Client (`app/api_client.js`)\n\n1. **The key changes on every retry.** `` `charge-${Date.now()}` `` is evaluated inside the loop, so each attempt sends a new key. The server never sees the same key twice, so its dedup never runs. This is the main cause of the duplicate charges you're seeing.\n2. **The key is weak.** Two devices, or two taps in the same millisecond, can collide, which would wrongly merge two different charges. The key should be a UUID. It should also be generated once per logical charge and ideally persisted, so it survives an app restart mid-retry.\n3. **Retry policy.**\n   - It retries every non-2xx response, including 4xx errors that can never succeed.\n   - There is no fetch timeout, so a hung request stalls the loop.\n   - The delay is a fixed 1s with no backoff or jitter.\n\n### Server (`schema.sql`, `handler.py`)\n\n1. **Check-then-act race.** The handler runs `SELECT`, then calls the processor, then `INSERT`s the key. When the app times out and retries while the first request is still in flight, both requests miss the lookup and both call `processor.charge`. This is the \"idempotency race\" in the fixture's name.\n2. **No uniqueness on the key.** `idempotency_keys.key` has no `PRIMARY KEY` or `UNIQUE` constraint, so the database can't stop duplicate rows. The key also isn't scoped to the account, so two accounts that send the same key would collide.\n3. **The processor call isn't covered by the key.** If the process crashes after `processor.charge` but before `commit`, the card is charged and nothing is recorded. The retry then charges again. The key must also be passed to the processor.\n4. **No request fingerprint.** Reusing a key with a different body silently returns the old response.\n\n## Corrected code\n\n**`schema.sql`**\n```sql\nCREATE TABLE charges (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  account_id    TEXT NOT NULL,\n  amount_cents  INTEGER NOT NULL,\n  currency      TEXT NOT NULL,\n  processor_ref TEXT NOT NULL\n);\n\nCREATE TABLE idempotency_keys (\n  account_id   TEXT NOT NULL,\n  key          TEXT NOT NULL,\n  request_hash TEXT NOT NULL,\n  status       TEXT NOT NULL DEFAULT 'in_progress',  -- in_progress | complete\n  response     TEXT,\n  created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (account_id, key)\n);\n```\n\n**`handler.py`**\n```python\n\"\"\"POST /v1/charges, called by integrators and by our own mobile app.\"\"\"\nimport hashlib\nimport json\n\nimport processor  # wrapper around the card processor's HTTP API\n\n\ndef create_charge(db, account_id, headers, body):\n    key = headers.get(\"Idempotency-Key\")\n    if not key:\n        return 400, {\"error\": \"Idempotency-Key header is required\"}\n\n    request_hash = hashlib.sha256(\n        json.dumps(body, sort_keys=True).encode()\n    ).hexdigest()\n\n    # Atomically claim the key. The PRIMARY KEY makes exactly one concurrent\n    # request win; everyone else sees rowcount == 0.\n    claim = db.execute(\n        \"INSERT OR IGNORE INTO idempotency_keys (account_id, key, request_hash)\"\n        \" VALUES (?, ?, ?)\",\n        (account_id, key, request_hash),\n    )\n    db.commit()\n\n    if claim.rowcount == 0:\n        status, stored_hash, response = db.execute(\n            \"SELECT status, request_hash, response FROM idempotency_keys\"\n            \" WHERE account_id = ? AND key = ?\",\n            (account_id, key),\n        ).fetchone()\n        if stored_hash != request_hash:\n            return 422, {\"error\": \"Idempotency-Key reused with a different request\"}\n        if status == \"complete\":\n            return 201, json.loads(response)\n        return 409, {\"error\": \"original request still in progress, retry shortly\"}\n\n    try:\n        # The processor dedups on the same key, so a crash/retry after this\n        # call can't charge the card twice.\n        ref = processor.charge(\n            account_id=account_id,\n            amount_cents=body[\"amount_cents\"],\n            currency=body[\"currency\"],\n            idempotency_key=f\"{account_id}:{key}\",\n        )\n    except Exception:\n        db.execute(\n            \"DELETE FROM idempotency_keys WHERE account_id = ? AND key = ?\",\n            (account_id, key),\n        )\n        db.commit()\n        raise\n\n    response = {\"processor_ref\": ref, \"amount_cents\": body[\"amount_cents\"]}\n    # Record the charge and complete the key in a single transaction.\n    db.execute(\n        \"INSERT INTO charges (account_id, amount_cents, currency, processor_ref)\"\n        \" VALUES (?, ?, ?, ?)\",\n        (account_id, body[\"amount_cents\"], body[\"currency\"], ref),\n    )\n    db.execute(\n        \"UPDATE idempotency_keys SET status = 'complete', response = ?\"\n        \" WHERE account_id = ? AND key = ?\",\n        (json.dumps(response), account_id, key),\n    )\n    db.commit()\n    return 201, response\n```\n\n`processor.charge` needs to accept `idempotency_key` and forward it as the processor's own idempotency header. This assumes your card processor supports that, as Stripe and Adyen do. If it doesn't, the crash window in point 3 can't be fully closed. You'd have to reconcile `in_progress` rows against the processor.\n\nIf a process dies mid-request, the key stays `in_progress` and clients get 409 indefinitely. You'll want a stale-claim takeover, for example reclaiming rows older than N minutes. That is safe only because the processor dedups on the key.\n\n**`app/api_client.js`**\n```js\n// Mobile app client for POST /v1/charges.\nconst BASE = \"https://api.example.com\";\nconst MAX_ATTEMPTS = 6;\nconst TIMEOUT_MS = 15000;\n\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\n// Retry network failures, timeouts, 408/409/429 and 5xx. Other 4xx can't succeed.\nconst isRetryable = (status) =>\n  status === 408 || status === 409 || status === 429 || status >= 500;\n\n// `idempotencyKey` is generated ONCE per user intent (when the user taps \"Pay\")\n// and persisted by the caller, so it survives retries and app restarts.\nexport function newIdempotencyKey() {\n  return crypto.randomUUID();\n}\n\nexport async function createCharge(token, charge, idempotencyKey) {\n  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {\n    try {\n      const res = await fetch(`${BASE}/v1/charges`, {\n        method: \"POST\",\n        headers: {\n          Authorization: `Bearer ${token}`,\n          \"Content-Type\": \"application/json\",\n          \"Idempotency-Key\": idempotencyKey, // same key on every attempt\n        },\n        body: JSON.stringify(charge),\n        signal: AbortSignal.timeout(TIMEOUT_MS),\n      });\n      if (res.ok) return await res.json();\n      if (!isRetryable(res.status)) {\n        throw new Error(`charge rejected: ${res.status}`);\n      }\n    } catch (e) {\n      if (e.message?.startsWith(\"charge rejected\")) throw e;\n      // network error or timeout: fall through to retry with the same key\n    }\n    // exponential backoff with jitter, capped at 30s\n    await sleep(Math.min(30000, 1000 * 2 ** attempt) * (0.5 + Math.random() / 2));\n  }\n  throw new Error(\"charge failed\");\n}\n```\n\nCallers should do `const key = newIdempotencyKey()` once when the user initiates payment, store it with the pending order, and pass it to every call to `createCharge`.\n\nI haven't run any of this. The fixture's `processor.charge` is stubbed, so neither the handler nor the client was exercised. I also haven't changed any files. Say so if you'd like me to apply the changes and add a concurrent-request test."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

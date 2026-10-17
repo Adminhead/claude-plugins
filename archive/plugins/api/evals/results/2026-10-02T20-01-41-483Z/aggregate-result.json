@@ -1,0 +1,962 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T20:01:41.483Z",
+  "durationSeconds": 111,
+  "costUsd": 1.1205666,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/api",
+    "ablation": "with-without",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "api",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/api"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "error-problem-json",
+      "dir": "evals/error-problem-json",
+      "source": "prose",
+      "promptMarkdown": "Our public billing API (Node, Express) returns three different error shapes depending on which team wrote the endpoint: `{\"error\": \"bad request\"}`, `{\"success\": false, \"message\": \"...\"}`, and `{\"code\": 1042, \"detail\": \"...\"}`. Some validation failures return HTTP 200 with `success: false`. Validation errors on a well-formed body currently come back as 400 on some routes and 422 on others. Propose one error format for all endpoints and tell us which status to use for each case. Give a short audit table of what to change first.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "envelope",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Picks one envelope based on RFC 9457 (Problem Details) served as application/problem+json, replacing the three shapes.\n- Says an error must never be returned with HTTP 200; the HTTP status carries the outcome.\n- Gives a single consistent rule for 400 versus 422 (for example 400 for malformed or unparseable requests, 422 for well-formed but semantically invalid), and applies it to every route.\n- Puts field-level validation failures in a machine-readable structure inside the problem body.\nFail if it keeps more than one envelope, or leaves 400 and 422 both in use for the same kind of failure.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Picks one envelope based on RFC 9457 (Problem Details) served as application/problem+json, replacing the three shapes.\n- Says an error must never be returned with HTTP 200; the HTTP status carries the outcome.\n- Gives a single consistent rule for 400 versus 422 (for example 400 for malformed or unparseable requests, 422 for well-formed but semantically invalid), and applies it to every route.\n- Puts field-level validation failures in a machine-readable structure inside the problem body.\nFail if it keeps more than one envelope, or leaves 400 and 422 both in use for the same kind of failure.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:rest-design\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.0803884,
+            "judgeCostUsd": 0.008688999999999999,
+            "durationSeconds": 19,
+            "startedAt": "2026-10-02T20:01:41.499Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-3rBzih/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "envelope",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Proposed error contract for the billing API\n\nI haven't looked at your routes. This is based on the three shapes you described and on RFC 9457 and RFC 9110. Checking the routes against it is the first audit step.\n\n## One envelope: RFC 9457 problem details\n\nSend `Content-Type: application/problem+json` on every error, with an HTTP status that matches the failure.\n\n```json\n{\n  \"type\": \"https://api.example.com/errors/validation-error\",\n  \"title\": \"Validation error\",\n  \"status\": 422,\n  \"detail\": \"Two fields failed validation.\",\n  \"code\": \"validation_error\",\n  \"errors\": [\n    {\"field\": \"amount\", \"code\": \"out_of_range\", \"message\": \"amount must be > 0; received -5.\"}\n  ],\n  \"retryable\": false,\n  \"documentation_url\": \"https://docs.example.com/errors#validation_error\",\n  \"request_id\": \"req_abc123\"\n}\n```\n\n- `title` stays the same for every occurrence of an error type. `detail` describes this specific occurrence.\n- `code` is the string clients branch on. It is stable and must be listed in a published catalog.\n- `errors[]` holds field-level detail. Each entry names the field, the value received, and the constraint violated.\n- `request_id` goes in the body and in an `X-Request-ID` header.\n- Never put stack traces, SQL or internal paths in a body.\n\n**Migrating without breaking clients:** keep the old fields as extension members during the transition.\n- Team A clients: also send `\"error\"`, with the same text as `title`.\n- Team B clients: also send `\"message\"`, with the same text as `detail`.\n- Team C clients: map `code: 1042` to `\"legacy_code\": 1042`, plus a new string `code`.\n- Remove the legacy members only at a version boundary, with a deprecation notice.\n\n## Status code rules\n\n| Case | Status |\n|---|---|\n| Malformed JSON, wrong content type, bad query or path param syntax | **400** |\n| Well-formed body that fails validation (missing field, out of range, bad format) | **422** |\n| Business-rule violation (for example, refunding an already-refunded invoice) | **409** if it conflicts with current state, otherwise **422** |\n| Missing or invalid credentials | **401** |\n| Authenticated but not allowed | **403** |\n| Resource not found | **404** |\n| Idempotency key reused with a different payload | **422** (non-retryable) |\n| Idempotency request still in flight | **409**, with `retryable: true` |\n| Rate limited | **429**, with `Retry-After` |\n| Unexpected server fault | **500** |\n| Upstream or dependency failure, or overload | **502**, **503** or **504**, with `Retry-After` on 503 |\n\n**Your 400-versus-422 split:** use 400 for requests that can't be parsed and 422 for requests that parse but are invalid. Your current mix of 400 and 422 for the same validation failure should become 422 everywhere. 400 for validation is also defensible, but only if applied everywhere. I recommend 422 because it separates \"can't parse\" from \"parsed, but wrong\".\n\n**Never return 200 with `success: false`.** Clients, proxies, monitoring and retry logic all treat a 200 as success. The only exception is a bulk endpoint, where per-item results may appear inside a 200. Each failed item should reuse the same problem shape.\n\n## Audit table: what to change first\n\n| Priority | Finding | Fix | Risk |\n|---|---|---|---|\n| 1 | `200` with `{\"success\": false, ...}` on validation failures | Return 422 with the problem body. Keep `success: false` and `message` as legacy members for now. | **Breaking.** Clients checking `success` may also check `res.ok`. Notify them and use a version or opt-in header. |\n| 2 | 400 versus 422 for validation on a well-formed body | Standardize on 422. Keep 400 for unparseable input. | Behavior change on the 400 routes. Announce it. |\n| 3 | Three envelopes | Add one shared Express error-handling middleware that emits problem+json. Have all routes `next(err)` into it instead of calling `res.status().json()` directly. | Additive if the legacy members are kept. |\n| 4 | Numeric `code: 1042` with no catalog | Publish a catalog of string codes. Map each numeric code to one, keeping the number as `legacy_code`. | Additive. |\n| 5 | No request ID on errors | Add middleware that sets `X-Request-ID` and echoes it in the body. | Additive. |\n| 6 | Possible leaks in 500 bodies | Make the handler return a generic 500 body and log details server-side. | Safe. |\n| 7 | Unlisted 404, 401, 405 and body-parser errors that bypass your routes | Add a catch-all 404 handler. Have the final error middleware handle `express.json()` parse errors as 400. | Safe. |\n| 8 | OpenAPI `responses` missing errors | Add a shared `Problem` schema and reference it from every operation. Add a lint rule to CI. | Safe. |\n\n## Rollout order\n\n1. Build the shared error helper and middleware, with legacy members included. This is additive and safe.\n2. Move routes over one team at a time. Add contract tests that assert every non-2xx response is `application/problem+json` with `code` and `request_id`.\n3. Change the status codes (items 1 and 2) as a announced breaking change, because this API is public. Use a deprecation window or a version. For example, send the old behavior unless the client sends `API-Version: 2026-11`, then make the new behavior the default after the window.\n4. Remove the legacy members at the next version boundary.\n\nIf you'd like, I can look through the repo, list the routes by error shape and status, and draft the middleware."
+              },
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0504546,
+            "judgeCostUsd": 0.010213,
+            "durationSeconds": 19,
+            "startedAt": "2026-10-02T20:01:41.499Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-iBED9F/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "envelope",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Proposed error format: RFC 9457 Problem Details\n\nUse `Content-Type: application/problem+json` on every non-2xx response.\n\n```json\n{\n  \"type\": \"https://api.example.com/errors/validation-failed\",\n  \"title\": \"Validation failed\",\n  \"status\": 422,\n  \"detail\": \"2 fields are invalid.\",\n  \"code\": \"validation_failed\",\n  \"request_id\": \"req_8f3a...\",\n  \"errors\": [\n    { \"field\": \"amount\", \"code\": \"must_be_positive\", \"message\": \"amount must be > 0\" }\n  ]\n}\n```\n\n- **Required:** `type`, `title`, `status`, `code`, `request_id`.\n- **`code`:** a stable string, not an integer. Clients branch on it, and `type` is the same identifier as a URL.\n- **`detail`:** human-readable and safe to show. Never put stack traces or internals in it.\n- **`errors[]`:** only for field-level validation failures.\n- **No success flag:** the HTTP status is the success signal. Any `{\"success\": false}` body is retired.\n- **Legacy `code` 1042:** keep a mapping table from old numeric codes to new string codes. During migration, optionally add `legacy_code: 1042`.\n\n# Status code per case\n\n| Case | Status | `code` |\n|---|---|---|\n| Malformed JSON, wrong content type, unparseable body | 400 | `malformed_request` |\n| Well-formed body that fails validation (missing field, bad value, bad format) | **422** | `validation_failed` |\n| Missing or invalid credentials | 401 | `unauthenticated` |\n| Authenticated but not allowed | 403 | `forbidden` |\n| Resource doesn't exist | 404 | `not_found` |\n| Method not allowed | 405 | `method_not_allowed` |\n| State conflict (duplicate, idempotency-key reuse with a different body, invoice already paid) | 409 | `conflict` |\n| Payload too large | 413 | `payload_too_large` |\n| Rate limited (include `Retry-After`) | 429 | `rate_limited` |\n| Unexpected server error (generic message, log details server-side) | 500 | `internal_error` |\n| Upstream (payment processor) failure | 502 or 503 | `upstream_unavailable` |\n\n**Why 422 for validation:** it cleanly separates \"I couldn't parse this\" (400) from \"I understood it but it's invalid\" (422). Both are already in use, so pick one rule and apply it everywhere. The alternative is to use 400 for everything, which is also defensible. What matters is that there is one rule. Business-rule rejections, such as refunding more than the charge, can also be 422 with a specific `code`, or 409 if they depend on current resource state.\n\n**Never return 200 for a failure.** Clients, proxies, retry logic, and monitoring all key off the status.\n\n# What to change first\n\n| Priority | Item | Why | Action |\n|---|---|---|---|\n| 1 | Endpoints returning 200 with `success: false` | Silent failures. Clients may treat them as paid or created, and your error-rate dashboards miss them. | Return the correct 4xx. This is a breaking change, so version it or announce it with a deprecation window. |\n| 2 | One central Express error handler plus an `ApiError` class | Fixes the format at the source. Each team stops hand-writing `res.status().json()`. | Routes `throw new ApiError(status, code, detail, errors)`. Add a final `app.use((err, req, res, next) => …)` that serializes to problem+json and maps unknown errors to a generic 500. Wrap async handlers (or use Express 5) so rejections reach it. |\n| 3 | Validation: 400 vs 422 split | Inconsistent behavior for the same failure. | Put validation in one shared middleware (zod, Joi, or ajv) that throws `validation_failed` with `errors[]`. Standardize on 422. |\n| 4 | `{\"code\": 1042, \"detail\": …}` endpoints | Closest to the target shape, so it's the cheapest migration. | Map numeric codes to string codes, then switch the serializer. |\n| 5 | `{\"error\": \"bad request\"}` endpoints | Tells the client nothing actionable. | Move to the central handler and give each case a real `code`. |\n| 6 | 404 and 405 for unknown routes, and body-parser errors | Express defaults return HTML. | Add a catch-all 404 handler. Map `entity.parse.failed` to 400 and `entity.too.large` to 413. |\n| 7 | Contract tests | Prevents regression. | One test that hits every route with a bad input and asserts `application/problem+json` and the required fields. Publish the shape in your OpenAPI spec as a shared `Problem` schema. |\n\n# Rollout\n\n1. Ship the handler and `ApiError` first, with no behavior change for existing routes.\n2. Migrate routes team by team.\n3. For breaking changes (200 to 4xx, and 400 to 422 where clients depend on it), either put them behind a new API version or give a dated deprecation notice. Public billing clients will have code that parses the old shapes.\n4. Log old-shape responses during the transition so you know when it's safe to remove them.\n\nI can scan the repo to list which routes currently use each shape and which return 200 with `success: false`, and then draft the error handler. The working directory looks like it doesn't contain the API code, so tell me where it lives."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "idempotency-retry-unsafe-methods",
+      "dir": "evals/idempotency-retry-unsafe-methods",
+      "source": "prose",
+      "promptMarkdown": "We are adding automatic retries to our SDK and want to retry every PUT and DELETE without an idempotency key, because the HTTP spec says those methods are idempotent. Here are two server endpoints we checked:\n\n- `PUT /v1/accounts/{id}/notes` appends the request body as a new note to the account's note log.\n- `DELETE /v1/cart/items/{sku}` decrements the item's quantity by one and removes the line only when it reaches zero.\n\nAudit the plan. Which endpoints are safe to retry, what should we change on the server, and what should the SDK retry policy be?",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "audit",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Says the PUT-that-appends is not idempotent in effect (a retry adds a duplicate note) despite the method's semantics.\n- Says the DELETE-that-decrements is not idempotent in effect (a retry decrements twice) despite the method's semantics.\n- Says method semantics alone do not make a retry safe; safety is verified from the handler's behavior.\n- Proposes a fix: either make the endpoints truly idempotent (PUT replaces state, DELETE removes the line by identity), or require an idempotency key with server-side deduplication, and retry only endpoints that are safe or keyed.\nFail if it approves blanket retry of PUT and DELETE.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Says the PUT-that-appends is not idempotent in effect (a retry adds a duplicate note) despite the method's semantics.\n- Says the DELETE-that-decrements is not idempotent in effect (a retry decrements twice) despite the method's semantics.\n- Says method semantics alone do not make a retry safe; safety is verified from the handler's behavior.\n- Proposes a fix: either make the endpoints truly idempotent (PUT replaces state, DELETE removes the line by identity), or require an idempotency key with server-side deduplication, and retry only endpoints that are safe or keyed.\nFail if it approves blanket retry of PUT and DELETE.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:idempotency-retry\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.07343799999999999,
+            "judgeCostUsd": 0.006785,
+            "durationSeconds": 18,
+            "startedAt": "2026-10-02T20:01:41.499Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-BCUzSd/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "audit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "The plan has a flaw: RFC 9110 says PUT and DELETE *should* be idempotent, but the spec can't make your server behave that way. Both endpoints you checked break the rule, so \"retry every PUT and DELETE without a key\" would cause duplicate writes.\n\n## Endpoint audit\n\n| Endpoint | Idempotent? | Why | Retry without a key? |\n|---|---|---|---|\n| `PUT /v1/accounts/{id}/notes` | No | It appends a new note on every call. If the response is lost and the SDK retries, the log gets duplicate notes. | **No** |\n| `DELETE /v1/cart/items/{sku}` | No | It decrements the quantity by one. A retry after a lost response removes a second unit, or removes the line when the user wanted one fewer. | **No** |\n\nRFC 9110 idempotency means N identical requests leave the same server state as one request. Neither endpoint meets that.\n\nBoth are the worst case for retries. A timeout or reset doesn't tell the client whether the first attempt ran, and a blind retry turns that uncertainty into silent data corruption. Nothing errors, so you'd find out from customer reports.\n\n## Server changes\n\nPick one fix per endpoint, and fix the contract rather than the SDK.\n\n**Notes (`PUT .../notes`)**\n- Best option: make it a real PUT. Use a client-chosen note ID (`PUT /v1/accounts/{id}/notes/{note_id}`). Repeating the call with the same ID rewrites the same note, so it is idempotent by construction.\n- Alternative: keep the append semantics but make it `POST /notes` with `Idempotency-Key` support. `POST` is the honest method for an append.\n- Changing the method or path is a breaking change. Keep the old route, mark it deprecated, and don't give it automatic retries.\n\n**Cart (`DELETE .../items/{sku}`)**\n- Decrement-by-one is not a delete. Model it as one of these:\n  - `PUT /v1/cart/items/{sku}` with `{\"quantity\": N}`, which sets an absolute state and is idempotent.\n  - `POST /v1/cart/items/{sku}/decrement` with `Idempotency-Key`.\n- Keep `DELETE` for \"remove the line entirely\", which is naturally idempotent. A repeat returns 204 or 404, and the SDK should treat both as success.\n\n**Idempotency-key support, for any endpoint that stays non-idempotent**\n- The client mints the key. The server never derives it from the payload.\n- Scope it per account with a unique constraint on `(account_id, idempotency_key)`.\n- Store a payload fingerprint with the key. The same key with a different body gets a distinct error (`422` or `409`), not a silent replay.\n- Claim the key atomically, in the same transaction as the mutation. Don't check then insert.\n- Track three states: absent, in-flight, and complete. For in-flight, return `409` with code `idempotency_request_in_progress`. For complete, replay the stored response verbatim.\n- Set the replay window from your longest retry chain. 24 hours is a common default. Keep records longer than that, for example 72 hours.\n- Decide whether a stored failure replays or can be re-attempted, and document the decision.\n- `Idempotency-Key` is not a standard. The IETF draft expired, so you own the semantics. Document them.\n\n## SDK retry policy\n\n**What to retry**\n- Retry automatically only on:\n  - methods that are idempotent in behavior: GET, HEAD, and PUT/DELETE endpoints that your server team has verified, via an explicit per-operation allowlist\n  - any operation that carries an idempotency key\n- Don't decide by HTTP verb alone. Make each operation in the SDK's generated spec carry an `idempotent: true` flag. Default it to false.\n- For unsafe operations, have the SDK generate a key once per logical call and reuse it on every attempt. A fresh key per attempt defeats the mechanism.\n\n**When to retry**\n- Retry on `408`, `429` (honor `Retry-After`), `502`, `503`, `504`, connection timeouts and resets, and `409 idempotency_request_in_progress` (same key).\n- Treat `500` carefully, since many are deterministic bugs.\n- Never retry other 4xx, auth failures, or the payload-mismatch error.\n\n**How to retry**\n- Use full-jitter exponential backoff: `sleep = random(0, min(cap, base * 2^attempt))`.\n- Cap attempts at about 3, and set one overall deadline for the whole call. Don't reset the timeout on each attempt.\n- Add a client-side retry budget. Stop retrying once retries exceed a share of traffic over a sliding window, so a fleet doesn't amplify an outage.\n- Log every retry with the attempt number, the error, and the next wait.\n- Default retries on, and document the defaults.\n\n## Verification before shipping\n1. **Concurrency test:** fire N identical requests with the same key at each state-changing endpoint. Exactly one side effect should happen, and the rest should get the in-flight conflict or the stored replay.\n2. **Kill test:** drop the connection after the server commits but before the client reads the response. Retry, and confirm exactly one note is appended and one unit is removed.\n3. **Audit the rest:** these two endpoints were the ones you happened to check. Check every other PUT and DELETE for the same append or decrement behavior before enabling the allowlist. Start with the allowlist empty and add endpoints as each is verified.\n\nI haven't looked at your server or SDK code, so this audit rests only on the endpoint behavior you described. I can go through the router or OpenAPI spec and flag every PUT and DELETE that isn't idempotent in practice, if you point me at it."
+              },
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0387056,
+            "judgeCostUsd": 0.003876,
+            "durationSeconds": 14,
+            "startedAt": "2026-10-02T20:01:41.499Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-WdYgkR/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "audit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "The plan is flawed. HTTP says PUT and DELETE are *intended* to be idempotent, but the spec can't make your server behave that way. Retry safety depends on what each endpoint does, not on its verb.\n\n## Endpoint audit\n\n**`PUT /v1/accounts/{id}/notes`: not safe to retry.**\n- It appends a note on every call, so a retry after a timeout or lost response creates duplicate notes.\n- This is a POST-style operation sent as PUT. It violates the PUT contract, which says repeating the request leaves the same server state as sending it once.\n\n**`DELETE /v1/cart/items/{sku}`: not safe to retry.**\n- Each call decrements the quantity by one. A retry after a lost response removes a second unit, so the customer loses an item they didn't ask to remove.\n- Real DELETE semantics would remove the line, so repeating the call has the same effect as sending it once.\n\nBoth failures show up in the cases that matter most: timeouts, connection resets, and 502/503/504 responses. In those cases the client can't tell whether the server already applied the request.\n\n## Server changes\n\nYou have two options for each endpoint. Pick one per endpoint.\n\n1. **Make the endpoint match its verb.**\n   - Notes: use `POST /v1/accounts/{id}/notes` for appends. If you need PUT, make it `PUT /v1/accounts/{id}/notes/{note_id}` with a client-generated ID, so a repeat overwrites the same note.\n   - Cart: make `DELETE /v1/cart/items/{sku}` remove the whole line. Add `PATCH /v1/cart/items/{sku}` with an absolute `{\"quantity\": n}`, or a separate decrement endpoint that takes an idempotency key.\n2. **Keep the behavior and support idempotency keys.**\n   - Accept an `Idempotency-Key` header on every non-idempotent endpoint, including these two if you keep their current behavior.\n   - Store the key, a hash of the request, and the response for a fixed window, such as 24 hours.\n   - Replay the stored response when the same key and request arrive again. Return 409 or 422 if the key is reused with a different request body.\n   - Make the key check and the write atomic, for example a unique constraint in the same transaction, so concurrent retries can't both apply.\n\nChanging the semantics of existing routes is a breaking change. Version them or deprecate them rather than editing them in place.\n\nAlso audit every other PUT and DELETE before the SDK ships. These two were the only ones you checked, and they were both wrong.\n\n## SDK retry policy\n\nDon't key retries on the HTTP method. Key them on whether the request is known to be safe to repeat.\n\n- **Always retry (with backoff):**\n  - Failures that happen before the request is sent: connection refused and DNS failures.\n  - 429 and 503 responses that include `Retry-After`. The server is explicitly saying it didn't process the request.\n- **Retry only if safe:** timeouts, connection resets, and 500/502/504 responses. Retry these if either condition holds:\n  - the request carries an idempotency key (SDK-generated, reused across all attempts of one logical call), or\n  - the endpoint is explicitly marked idempotent in your API spec.\n- **Never auto-retry:** POST, and any endpoint not marked idempotent, when there's no idempotency key.\n- **Mechanics:**\n  - Use exponential backoff with jitter and honor `Retry-After`.\n  - Cap attempts and total elapsed time.\n  - Generate the idempotency key once per logical call, not once per attempt.\n  - Make retries configurable per call and per client.\n\nThe \"marked idempotent\" flag should be an explicit allowlist in the SDK, generated from the API spec and set after each endpoint is audited. That way a verb alone never decides, and an endpoint like these two can't be retried by accident.\n\n## Rollout order\n\n1. Ship the SDK with the allowlist empty, plus key-based retries.\n2. Fix or key the two endpoints above.\n3. Audit the remaining PUT and DELETE endpoints and add the safe ones to the allowlist."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "idempotency-toctou",
+      "dir": "evals/idempotency-toctou",
+      "source": "prose",
+      "promptMarkdown": "At Orbitshelf (inventory SaaS, Postgres + Rails) we already store idempotency keys. The controller SELECTs from the keys table, and if no row exists it INSERTs the key and then creates the invoice. Last Tuesday a customer's integration fired the same request twice within 30ms and both created invoices. A teammate wants to put a Redis SETNX lock with a 10-second TTL in front of the endpoint to serialize requests. Review that approach and tell us exactly how to fix the race.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "claim",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Names SELECT-then-INSERT as a check-then-insert race in which both requests see the key absent.\n- Replaces it with an atomic claim: an INSERT arbitrated by a unique constraint (for example on account and idempotency key, ON CONFLICT DO NOTHING), where the loser learns it lost from the insert result rather than from a second existence check.\n- Says the key claim and the invoice creation must be made safe together (same transaction, or a recorded state with recovery) so that at most one effective side effect occurs.\n- Says a bare Redis SETNX with a TTL is not sufficient, because a client paused past lease expiry can still write; if a lock is kept at all it needs a fencing token, and the database constraint is preferred.\nFail if any proposed path can create a second invoice, or if it endorses the SETNX lock as the fix.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Names SELECT-then-INSERT as a check-then-insert race in which both requests see the key absent.\n- Replaces it with an atomic claim: an INSERT arbitrated by a unique constraint (for example on account and idempotency key, ON CONFLICT DO NOTHING), where the loser learns it lost from the insert result rather than from a second existence check.\n- Says the key claim and the invoice creation must be made safe together (same transaction, or a recorded state with recovery) so that at most one effective side effect occurs.\n- Says a bare Redis SETNX with a TTL is not sufficient, because a client paused past lease expiry can still write; if a lock is kept at all it needs a fencing token, and the database constraint is preferred.\nFail if any proposed path can create a second invoice, or if it endorses the SETNX lock as the fix.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:idempotency-retry\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.07734579999999999,
+            "judgeCostUsd": 0.007289999999999998,
+            "durationSeconds": 20,
+            "startedAt": "2026-10-02T20:01:55.708Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-UtbFWe/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "claim",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Review of the Redis SETNX lock, and the fix for the race\n\n## Verdict on the SETNX proposal\n\nDon't use it as the fix. It narrows the window without closing it, and it adds a new failure mode.\n\n- **The lease can expire while the holder is still running.** If request A pauses (GC, slow DB, network stall) for more than 10 seconds, the lock expires and request B takes it. Both then create invoices. Without a fencing token, nothing stops A's late write.\n- **Redis failover or loss loses the lock.** A failover, restart, or eviction drops it, and two requests run concurrently again.\n- **Redis and Postgres can't commit together.** The lock and the invoice live in separate systems. Releasing the lock after a crash or timeout says nothing about whether the invoice exists.\n- **It's a second system on the critical path.** If Redis is down you either fail every write or fail open, and failing open brings the race back.\n\nThe 30ms double-fire is a check-then-insert race, and Postgres can fix it on its own.\n\n## Root cause\n\n```\nA: SELECT key  → none\nB: SELECT key  → none\nA: INSERT key; create invoice\nB: INSERT key (no unique constraint, or error swallowed); create invoice\n```\n\nThe SELECT can't pick a winner. Only an atomic operation in the storage layer can.\n\n## The fix\n\n**1. Add a unique constraint scoped per account.**\n\n```sql\nALTER TABLE idempotency_keys\n  ADD COLUMN request_fingerprint text NOT NULL,\n  ADD COLUMN status text NOT NULL DEFAULT 'in_flight',  -- in_flight | complete\n  ADD COLUMN response_status int,\n  ADD COLUMN response_headers jsonb,\n  ADD COLUMN response_body jsonb,\n  ADD COLUMN locked_at timestamptz,\n  ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();\n\nCREATE UNIQUE INDEX CONCURRENTLY idx_idem_account_key\n  ON idempotency_keys (account_id, key);\n```\n\nBefore creating the index, dedupe any existing duplicates. If the current table has no unique index, that is the actual bug.\n\n**2. Replace SELECT-then-INSERT with an atomic claim, in the same transaction as the invoice.**\n\n```ruby\ndef create\n  key  = request.headers[\"Idempotency-Key\"] or return render_error(400)\n  fp   = Digest::SHA256.hexdigest(request.raw_post)\n\n  IdempotencyKey.transaction do\n    claimed = IdempotencyKey.insert(\n      { account_id: current_account.id, key: key, request_fingerprint: fp,\n        status: \"in_flight\", locked_at: Time.current },\n      unique_by: %i[account_id key]          # INSERT ... ON CONFLICT DO NOTHING RETURNING id\n    ).rows.any?\n\n    unless claimed\n      # Lock the existing row. If the winner is still mid-transaction,\n      # this blocks until it commits or rolls back.\n      rec = IdempotencyKey.lock.find_by!(account_id: current_account.id, key: key)\n\n      return render_error(422, \"idempotency_key_reused\") if rec.request_fingerprint != fp\n      return replay(rec)                     if rec.status == \"complete\"\n      return render_error(409, \"idempotency_request_in_progress\")\n    end\n\n    invoice = Invoice.create!(invoice_params.merge(account: current_account))\n    # store the full response so a replay is identical\n    IdempotencyKey.where(account_id: current_account.id, key: key).update_all(\n      status: \"complete\", response_status: 201,\n      response_headers: { \"Location\" => invoice_path(invoice) },\n      response_body: InvoiceSerializer.new(invoice).as_json\n    )\n    render json: invoice, status: :created, location: invoice\n  end\nend\n```\n\nHow it behaves under the 30ms double-fire:\n- Postgres lets exactly one `INSERT` through. The other sees a conflict.\n- The key row and the invoice commit together. If the invoice fails and the transaction rolls back, the key is released and the client can retry. This also fixes the inverse bug, where a key is recorded for an invoice that was never created.\n- The loser blocks on the row lock until the winner commits. It then reads `complete` and replays the stored response, so the integrator gets the same `201` and invoice ID from both calls.\n\n**3. Decisions to make and document**\n- **Payload mismatch:** the same key with a different body returns a distinct error (`422 idempotency_key_reused`). Keep it separate from the in-flight `409`.\n- **Stored failures:** decide whether a 4xx or 5xx replays verbatim or may be retried. With the transaction above, a rolled-back failure leaves no key, so it re-executes. If you want validation errors to replay, store them.\n- **Retention:** keep keys at least as long as your longest retry chain. 24h is the usual floor, and keeping rows about 72h is cheap. Add a reaper job to delete expired rows.\n- **Scope:** keys are unique on `(account_id, key)`, never globally.\n\n## If the invoice flow calls external systems\n\nIf creating an invoice also does something that can't be rolled back (a payment call, an email), a single transaction isn't enough. Split the work into phases with a recovery point stored on the key row. Send the vendor its own idempotency key derived from `(key, phase)`. Add a completer job for abandoned `in_flight` rows. If you need lock takeover, add a `lock_generation` column and put `AND lock_generation = ?` in every update, so a stalled executor's late writes affect zero rows. That is the fencing the Redis approach lacks.\n\n## Verify before shipping\n\n1. **Concurrency test:** fire 20 identical concurrent requests with one key. Expect exactly one invoice row. The other 19 get the identical stored `201` or `409 idempotency_request_in_progress`.\n2. **Mismatch test:** the same key with a different body returns 422 and creates nothing.\n3. **Rollback test:** force `Invoice.create!` to raise. Confirm no key row remains and a retry succeeds.\n4. **Backfill check:** look for duplicate `(account_id, key)` rows before adding the index.\n5. **Client guidance:** tell the integrator to mint the key once per logical operation (for example `invoice-<orderId>`) and reuse it on every retry. If their client generates a fresh key per attempt, no server-side fix helps.\n\nI haven't looked at your controller or schema, since the working directory has no Orbitshelf code. If you point me at the repo, I can check the actual constraint, the transaction boundaries, and whether the INSERT's error is being swallowed."
+              },
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.05131460000000001,
+            "judgeCostUsd": 0.0046710000000000085,
+            "durationSeconds": 22,
+            "startedAt": "2026-10-02T20:01:59.292Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-vn8r62/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "claim",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Short answer:** don't use the Redis lock as the fix. The race comes from a missing database constraint, and the fix is to let Postgres arbitrate.\n\n## Why SELECT-then-INSERT fails\n\nTwo requests 30ms apart both run the SELECT before either INSERT commits. Both see no row, both insert, and both create invoices. If the keys table has no unique index on the key, both inserts even succeed. If it does have one, the loser gets a constraint error that the controller probably doesn't handle, or the invoice is created outside the transaction. Check which case you're in, because it changes the migration.\n\n## Why the Redis SETNX lock is the wrong fix\n\n- **The TTL is a guess.** If a request outlives 10s (slow query, GC pause, deploy), the lock expires and a duplicate gets through. Redlock-style leases give no fencing guarantee.\n- **The lock and the commit are separate.** If the lock is released before the DB transaction commits, a second request can read stale state and still duplicate.\n- **Redis is a new failure mode.** On failover or an outage you must choose between failing open (duplicates return) and failing closed (the invoice endpoint goes down).\n- **The invariant stays unenforced.** Retries from jobs, other endpoints, or a console session bypass the lock. Postgres is already your source of truth, so the guarantee should live there.\n\nRedis can still serve as an optional optimization to reduce contention. It shouldn't be the thing that provides correctness.\n\n## The fix\n\n**1. Add a unique index.** Scope it to whatever the key's uniqueness scope is, typically the account.\n\n```ruby\n# dedupe existing rows first if any exist\nclass AddUniqueIndexToIdempotencyKeys < ActiveRecord::Migration[7.1]\n  disable_ddl_transaction!\n  def change\n    add_index :idempotency_keys, [:account_id, :key],\n              unique: true, algorithm: :concurrently,\n              name: :idx_idempotency_keys_account_key\n  end\nend\n```\n\n**2. Insert first, in the same transaction as the invoice.** Use `INSERT ... ON CONFLICT DO NOTHING` instead of SELECT-then-INSERT.\n\n```ruby\ndef create\n  invoice = nil\n  existing = nil\n\n  ApplicationRecord.transaction do\n    res = IdempotencyKey.insert(\n      { account_id: current_account.id, key: idem_key, request_hash: request_hash },\n      unique_by: :idx_idempotency_keys_account_key,\n      returning: %w[id]\n    )\n\n    if res.rows.empty?\n      existing = IdempotencyKey.find_by!(account_id: current_account.id, key: idem_key)\n    else\n      invoice = Invoice.create!(invoice_params.merge(account: current_account))\n      IdempotencyKey.where(id: res.rows.first.first)\n                    .update_all(invoice_id: invoice.id)\n    end\n  end\n\n  if existing\n    return render json: { error: \"key reused with different payload\" }, status: 422 if existing.request_hash != request_hash\n    return render json: InvoiceSerializer.new(existing.invoice), status: :ok\n  end\n\n  render json: InvoiceSerializer.new(invoice), status: :created\nend\n```\n\n**Why this closes the race:** when two transactions insert the same key, the second blocks on the first one's uncommitted index entry.\n\n- If the first commits, the second's insert does nothing, and it returns the stored invoice.\n- If the first rolls back, the second's insert succeeds and it proceeds.\n\nBecause the key and the invoice commit atomically, a crash can't leave a key with no invoice.\n\n## Details to get right\n\n- **Store a request fingerprint** (`request_hash`) so reusing a key with a different body returns 422 instead of silently returning the wrong invoice.\n- **Set `lock_timeout` or `statement_timeout`** (for example 5s) so a blocked duplicate doesn't hold a connection indefinitely.\n- **Keep slow external calls out of the transaction**, such as payment gateways or webhooks. If you need them, use a two-phase pattern instead: commit the key as `started` with a `locked_at`, do the work, then mark it `completed`. Concurrent duplicates get 409 while `started`.\n- **Add a backstop** with a unique index on `invoices (account_id, idempotency_key)` if invoices can be created through other paths.\n- **Expire old keys** with a periodic job, for example after 24-48h.\n\n## Test it\n\nAdd a test that uses real concurrency and non-transactional fixtures (`use_transactional_tests = false`). Fire 5-10 threads, each with its own DB connection, at the same key, and assert that exactly one invoice exists and every response refers to it. Run it against the old code first to confirm it reproduces Tuesday's bug.\n\nI haven't looked at your codebase, since the working directory has no Orbitshelf code in it. If you point me at the controller and the schema, I can write the actual migration and patch."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "keys-hash-storage",
+      "dir": "evals/keys-hash-storage",
+      "source": "prose",
+      "promptMarkdown": "We issue API keys to our customers' servers (random 32-byte values, shown once at creation). Our security reviewer says to store them like passwords with bcrypt. Our API handles about 3,000 requests per second and every request carries the key. How should we store and look up keys? Settle the bcrypt question.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:keys\""
+          }
+        },
+        {
+          "name": "hash",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Recommends a fast hash (SHA-256 or equivalent) of the key, stored hash-only, rather than bcrypt or argon2 for these machine-generated high-entropy keys.\n- Explains why: a random 256-bit key cannot be brute-forced at any hash speed, so a slow hash adds CPU to every request (3,000 rps) with no security gain; password hashes are for low-entropy human secrets.\n- Handles lookup without scanning: an indexed non-secret prefix or lookup ID column fetches the candidate row, then compares hashes in constant time.\nFail if it recommends bcrypt or argon2id for these keys.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Recommends a fast hash (SHA-256 or equivalent) of the key, stored hash-only, rather than bcrypt or argon2 for these machine-generated high-entropy keys.\n- Explains why: a random 256-bit key cannot be brute-forced at any hash speed, so a slow hash adds CPU to every request (3,000 rps) with no security gain; password hashes are for low-entropy human secrets.\n- Handles lookup without scanning: an indexed non-secret prefix or lookup ID column fetches the candidate row, then compares hashes in constant time.\nFail if it recommends bcrypt or argon2id for these keys.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0650416,
+            "judgeCostUsd": 0.005974,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-02T20:02:00.131Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-F0IpVb/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "hash",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Don't use bcrypt. Store a SHA-256 hash of each key. Your reviewer's rule is right for passwords and wrong for this credential.**\n\n**Why bcrypt is the wrong tool**\n- Slow hashes exist to make guessing a low-entropy secret expensive. A random 32-byte key has 256 bits of entropy. No attacker can brute-force it at any hash speed, so a slow hash adds no security.\n- It does add cost. bcrypt at a sane work factor takes about 50–100 ms of CPU per check. At 3,000 req/s that is roughly 150–300 cores spent only on authentication. Attackers can also use that cost against you by sending garbage keys.\n- bcrypt truncates input at 72 bytes, and many implementations choke on NUL bytes. Both are bad properties for a binary-derived credential.\n- You can't look up by bcrypt hash, because each hash has its own salt. You would need a separate lookup ID anyway.\n\n**What the reviewer is actually protecting against**\nThe goal is that a database leak doesn't hand over usable credentials. Hashing the key achieves that. For 256-bit random inputs, SHA-256 is preimage-resistant, so the stored hash can't be reversed. You can say this to the reviewer directly: the bcrypt guidance is for human-chosen passwords, and the OWASP Password Storage Cheat Sheet is about those.\n\n**Design**\n1. **Format:** use `sk_live_<random body><checksum>`. Put the environment (live or test) in the prefix from the start. The body comes from a CSPRNG with at least 120 bits of entropy. Your 32 bytes is well above that. Show the key once at creation.\n2. **Table:**\n   ```sql\n   CREATE TABLE api_keys (\n     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n     owner_id uuid NOT NULL,\n     key_prefix text NOT NULL,   -- indexed lookup handle\n     key_hash bytea NOT NULL,    -- SHA-256 of the full key\n     name text NOT NULL,\n     scopes text[] NOT NULL,     -- empty means no access\n     created_at timestamptz NOT NULL DEFAULT now(),\n     last_used_at timestamptz,\n     expires_at timestamptz,\n     revoked_at timestamptz\n   );\n   CREATE INDEX ON api_keys (key_prefix);\n   ```\n3. **Per request:**\n   - Check the prefix, length and checksum. Reject malformed keys with no database call.\n   - Fetch candidate rows by indexed `key_prefix`. Use the type and environment prefix plus a few body characters, or a separate random lookup ID embedded in the key. Count only the unstored part of the body toward the entropy floor. 32 random bytes leaves plenty.\n   - Compute SHA-256 of the full key and compare with `key_hash` in constant time.\n   - Check `expires_at` and `revoked_at`, then enforce scopes.\n   - Update `last_used_at` asynchronously so it never blocks the request.\n4. **At 3,000 req/s:** SHA-256 costs microseconds. Put a short-TTL in-process cache in front of the lookup, keyed by the hash, so the database is not hit on every request. Keep the TTL to seconds so revocation propagates quickly, or add explicit invalidation.\n\n**Conditions that make this safe**\n- Enforce the entropy floor at generation. If anyone can later choose their own key, SHA-256 is no longer enough.\n- Fail closed. A missing secret, such as a KMS key, should stop the service at startup and never fall back to a default.\n- Rate-limit validation failures and key creation like login endpoints.\n- Return 401 for a bad key and 403 for a valid key without the scope.\n\n**Operational items to add**\n- Support rotation with two valid keys at once and a scheduled end for the old one.\n- Track `last_used_at` so you can see when old keys go quiet.\n- Give keys service-account or org owners, not individuals.\n- Consider registering the key format with GitHub secret scanning.\n\n**If the reviewer pushes back**\nAn HMAC-SHA-256 with a server-side pepper held in a KMS is a reasonable extra layer. It means a database-only leak can't even be checked against guesses. It's optional here because the keys are already unguessable. It also adds a secret to manage, so fail startup if it is missing."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.03505260000000001,
+            "judgeCostUsd": 0.0032310000000000047,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T20:02:00.815Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-TU5GX3/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "hash",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Don't use bcrypt for these keys. Store a fast, keyed or unkeyed SHA-256 hash and look up by it.**\n\n**Why bcrypt is wrong here**\n\nPassword hashing is deliberately slow because passwords are low-entropy. An attacker who steals the database can guess candidates, and the cost factor makes each guess expensive. Your keys are 256 bits of CSPRNG output. Brute force is infeasible whatever the hash speed, so the slowness protects nothing. It does cost you:\n\n- **CPU:** bcrypt at cost 10–12 takes about 50–250 ms per verification. At 3,000 req/s that is 150–750 CPU-cores of hashing, just to authenticate.\n- **DoS surface:** anyone can send garbage keys and force an expensive hash each time.\n- **No direct lookup:** bcrypt is salted, so you can't compute a hash and query by it. You would need a key ID and a second lookup, or a scan of every row.\n\nThe reviewer's rule is right for passwords. It doesn't carry over to high-entropy machine credentials. GitHub, Stripe and others hash tokens this way.\n\n**Recommended design**\n\n1. **Key format:** `prefix_<id>_<secret>`, or just a prefix plus 32 random bytes encoded in base62 or base64url. The prefix (e.g. `sk_live_`) helps secret scanners find leaked keys.\n2. **Storage:** store `HMAC-SHA256(server_pepper, key)`, or plain `SHA-256(key)`, in a column with a unique index. Never store the raw key. Show it once at creation, as you do now.\n3. **Pepper (recommended):** keep the HMAC key in a KMS or secrets manager, not in the database. A database-only leak then yields nothing verifiable. If you skip it, plain SHA-256 is still sound for 256-bit random input.\n4. **Lookup:** hash the presented key and do an indexed equality query, or a cache hit. Because the hash is unique and the comparison happens inside the database index, timing attacks on the secret aren't practical. If you compare in application code, use a constant-time compare.\n5. **Cache:** at 3k req/s, keep an in-process or Redis cache keyed by the hash, with a short TTL (30–60 s). Add explicit invalidation on revoke, or accept that TTL as the revocation delay.\n6. **Operations:** store metadata beside the hash (key ID, customer, created/last-used, scopes, revoked-at). Store a short non-secret display suffix, such as the last 4 characters, so customers can identify keys. Support rotation with overlapping keys.\n\n**What to tell the reviewer**\n\nThe control they want is \"a database leak doesn't expose usable credentials.\" One-way hashing gives you that. Bcrypt's work factor only matters when the input can be guessed. For 256-bit random secrets, SHA-256 gives the same protection without the cost. This is the same guidance as OWASP's, which says to use slow hashes for user-chosen passwords and not for random API tokens. If they still want a slow hash, offer the HMAC pepper as the extra layer instead.\n\n**Caveat:** this holds only because the keys are truly random and at least 128 bits. If any keys are ever human-chosen or derived from something guessable, they need a different scheme."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "oauth-refresh-rotation",
+      "dir": "evals/oauth-refresh-rotation",
+      "source": "prose",
+      "promptMarkdown": "We run an OAuth authorization server for third-party apps. Refresh tokens are currently long-lived opaque strings that stay valid until the user revokes the app. A security review flagged this. Public clients (mobile and SPA) are the main concern. What should the refresh token policy be, and what should the server do when it sees a refresh token presented a second time?",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:oauth-provider\""
+          }
+        },
+        {
+          "name": "rotation",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Recommends rotating refresh tokens for public clients: each refresh issues a new token and invalidates the old one (sender-constrained tokens such as DPoP may be named as an alternative).\n- Describes reuse detection: presenting an already-consumed refresh token revokes the whole token family descended from the original grant, and forces re-authentication.\n- Adds a bound on lifetime, such as an absolute or idle expiry, rather than keeping tokens valid until manual revocation.\nFail if it only suggests shortening the lifetime without rotation, or treats a replayed token as a plain error with no revocation.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Recommends rotating refresh tokens for public clients: each refresh issues a new token and invalidates the old one (sender-constrained tokens such as DPoP may be named as an alternative).\n- Describes reuse detection: presenting an already-consumed refresh token revokes the whole token family descended from the original grant, and forces re-authentication.\n- Adds a bound on lifetime, such as an absolute or idle expiry, rather than keeping tokens valid until manual revocation.\nFail if it only suggests shortening the lifetime without rotation, or treats a replayed token as a plain error with no revocation.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0644126,
+            "judgeCostUsd": 0.004139999999999998,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-02T20:02:13.202Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-lxRpuO/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "rotation",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Refresh token policy\n\n**Public clients (mobile and SPA): rotate on every use and detect reuse.** RFC 9700 requires public-client refresh tokens to be either sender-constrained or rotated. An unconstrained, reusable, never-expiring refresh token is the case the review flagged, and it isn't allowed.\n\n- **Rotation:** Each refresh request returns a new access token and a new refresh token. The old refresh token is marked consumed.\n- **Families:** Every refresh token belongs to a family that traces back to the original authorization grant. Store the family ID and the consumed or active state.\n- **Lifetimes:**\n  - Use an idle timeout, such as 30 days for mobile and shorter for SPAs. The timeout slides forward with each rotation.\n  - Also use an absolute cap on the family, such as 90 days for mobile and days to a couple of weeks for SPAs. After the cap the user re-authenticates.\n  - Browser storage is the most exposed, so SPAs get the tightest limits.\n  - These numbers are starting points. Choose them from your own usage patterns.\n- **Access tokens:** Keep them at about an hour or less. If they are JWTs, they can't be revoked mid-life, so keep them short.\n- **Sender-constraining:** Offer DPoP (RFC 9449) or mTLS as an option, and make it the default where tokens guard financial or health data or long-lived agent access. Many client libraries don't support DPoP yet, so don't make it a baseline until you know your clients.\n- **Revocation:** Keep user revocation of an app, which revokes the whole family. Add RFC 7009 `/revoke` so apps can revoke their own tokens on logout.\n\n**Confidential clients:** Client authentication already constrains these. Non-rotating tokens with a per-client lifetime cap are defensible, but rotation is still the simpler default to apply everywhere.\n\n## When a refresh token is presented a second time\n\n**Revoke the whole family: every refresh token and the access tokens issued from them.** The server can't tell whether the attacker or the legitimate client presented the stale token. It only knows that the token was used twice, so it is safest to kill the active token too. RFC 9700 §4.14 describes this as a tripwire, not proof of theft. Log the event, and require re-authentication, since the user must sign in again.\n\n**Add a short grace window, on the order of seconds, to avoid false positives.** Multi-tab SPAs, network retries, and a mobile app killed mid-response all re-present a token that was just consumed. Without a window these look like attacks and log out real users.\n\n- Inside the window, return the **successor already issued** for that token. Make the refresh idempotent.\n- Do **not** mint a second sibling token. A second child would let a replayed stolen token start a branch that reuse detection never sees.\n- If you must re-issue, allow it once, then revoke the family on the next presentation.\n- Outside the window, treat the presentation as reuse and revoke the family.\n- Choose the window length from your own client behavior.\n\n**Implementation notes**\n\n- If you hash refresh tokens at rest, keep the predecessor's hash with a \"consumed at\" timestamp. Without it you can't recognize the just-consumed token during the grace window, or detect reuse after it.\n- Make rotation atomic. Two concurrent refreshes must not both succeed. Use a conditional update on the token's state, or a transaction.\n- Apply the same family revocation to authorization-code reuse. A code presented twice should revoke the tokens already issued from it.\n\n## Rollout for existing tokens\n\nExisting refresh tokens are long-lived and not in families. A reasonable migration is:\n\n1. Ship rotation and family tracking. On an old token's next use, start a family and rotate it.\n2. Apply the idle and absolute caps to migrated tokens, measured from migration time or from the original issue date, whichever you prefer.\n3. For public clients, put a deadline on tokens that haven't been migrated, and force re-authorization after it.\n4. Tell developers about the new `invalid_grant` behavior. Clients must store the new refresh token on every refresh and handle `invalid_grant` by sending the user back through sign-in.\n\n## What to test\n\nI haven't verified any of this against your code. Before you ship, test at least these cases:\n\n- A replayed, consumed refresh token revokes its family.\n- Two concurrent refreshes don't log a legitimate user out.\n- A refresh inside the grace window returns the existing successor and doesn't mint a sibling.\n- The idle and absolute caps are enforced.\n\nI can look at your token endpoint and storage code for how refresh tokens are issued and stored today, and sketch the schema and migration. Do you want me to do that?"
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0401326,
+            "judgeCostUsd": 0.003950999999999996,
+            "durationSeconds": 17,
+            "startedAt": "2026-10-02T20:02:15.021Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-lxCCiT/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "rotation",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Recommended policy\n\n**Public clients (mobile, SPA): rotate on every use, and revoke the whole grant if a token is reused.** This is what RFC 9700 (the OAuth Security BCP) and OAuth 2.1 require when refresh tokens aren't sender-constrained.\n\n**Confidential clients:** these are authenticated with a client secret or key, so they have less exposure. You can use longer lifetimes and make rotation optional. Rotation is still a good default.\n\n### Token lifetimes\n- **Access tokens:** 5–15 minutes.\n- **Refresh tokens, idle timeout:** 7–30 days for public clients. Each rotation resets it.\n- **Refresh tokens, absolute lifetime:** 30–90 days from the original authorization, after which the user must re-authenticate. Pick the value based on your app's risk. A \"valid until revoked\" token should no longer exist for public clients.\n- **Scope:** a refresh can keep or narrow the scope, never widen it.\n\n### Rotation\n- Every refresh request returns a new access token and a new refresh token. The old refresh token is immediately marked used.\n- Keep all tokens from one authorization in a **token family** (a `family_id`, or a grant ID on every token). The family is the unit you revoke.\n- Store only hashes of refresh tokens. Keep them opaque and high-entropy (at least 128 bits).\n\n### When a used refresh token is presented again\nA used token appearing again means either an attacker has a copy or the legitimate client lost the response. You can't tell which. The BCP-recommended response is:\n\n1. **Reject the request** with `invalid_grant`.\n2. **Revoke the entire family**: the current refresh token and the access tokens issued from it, where you can.\n3. **Log and alert** with the client ID, user, IP and user agent of both the original and the replayed use, and the time gap.\n4. **Force re-authentication.** The user logs in again, and the client gets a new family.\n\nWithout step 2, an attacker who steals a token and uses it first can keep refreshing, and the real user would simply be logged out. Revoking the family ends the attacker's session whichever of them replays first.\n\n### Handling legitimate retries\nStrict reuse detection will log out users whose network dropped the refresh response. There are two ways to reduce that:\n\n- **Grace window:** allow the just-rotated token to be replayed for about 10–30 seconds. Return the same successor token, or a new one in the same family. Keep the window short and tied to the same client. Many providers do this, but it is a deliberate weakening, so make it configurable.\n- **Client guidance:** tell client developers to serialize refresh calls. In an SPA, a single in-flight promise or a cross-tab lock prevents the most common cause of self-inflicted reuse, which is two tabs refreshing at once.\n\n### Stronger option: sender-constrained tokens\nRotation detects theft after the fact. **DPoP (RFC 9449)** prevents a stolen token from being usable. The client holds a non-exportable key (WebCrypto in a SPA, Keystore or Secure Enclave on mobile) and binds the refresh token to it. If you can, support DPoP for public clients and require it for high-risk scopes. Rotation and DPoP work well together.\n\n### Other controls\n- Bind the refresh token to the `client_id`. Reject it from any other client.\n- Require PKCE for all authorization code flows. It protects the initial grant, not the refresh.\n- Let users see and revoke individual grants, and let admins revoke by user or client.\n- Revoke families on password reset, on a security event, and on explicit logout.\n- For SPAs, recommend a backend-for-frontend (BFF) where the refresh token never reaches browser JavaScript. That is stronger than anything done at the token layer.\n\n### Migration\nYou already have long-lived tokens in the field.\n1. Add the family model and rotation. Treat each existing token as the head of a new family.\n2. Roll out rotation for public clients first, with metrics on reuse-detection hits before you enforce revocation.\n3. Add the absolute lifetime and idle timeout. Apply them to existing tokens by capping their expiry at issuance date plus the absolute lifetime, with a deprecation notice period.\n\nIf you want, I can look through the codebase for the token issuance and storage code and sketch the schema and endpoint changes."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "route-keys-vs-auth",
+      "dir": "evals/route-keys-vs-auth",
+      "source": "prose",
+      "promptMarkdown": "We are building API-key issuance for our public API so customers can call it from their servers. Design the key format, how we store and look up keys, scopes, and how customers rotate and revoke them.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:keys\""
+          }
+        },
+        {
+          "name": "not-neighbour",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"efficient:auth\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0675358,
+            "judgeCostUsd": 0,
+            "durationSeconds": 20,
+            "startedAt": "2026-10-02T20:02:16.038Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-aD5rFC/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0497956,
+            "judgeCostUsd": 0,
+            "durationSeconds": 25,
+            "startedAt": "2026-10-02T20:02:21.730Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-fS6BNB/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "route-oauth-vs-auth",
+      "dir": "evals/route-oauth-vs-auth",
+      "source": "prose",
+      "promptMarkdown": "Third-party apps want to access our users' data. We need to build our own OAuth authorization server so users can grant those apps scoped access. Design the grants, PKCE, token lifetimes, refresh tokens, scopes, and consent screen.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:oauth-provider\""
+          }
+        },
+        {
+          "name": "not-neighbour",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"efficient:auth\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0775438,
+            "judgeCostUsd": 0,
+            "durationSeconds": 26,
+            "startedAt": "2026-10-02T20:02:28.348Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-vgpCDn/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.06674359999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 38,
+            "startedAt": "2026-10-02T20:02:31.818Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-3UXumA/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "route-rest-vs-web",
+      "dir": "evals/route-rest-vs-web",
+      "source": "prose",
+      "promptMarkdown": "We are about to open our product to third-party developers with a public REST API. Before we write code, help us design the contract: resources and URLs, methods and status codes, pagination, one error format, and how we will keep it compatible as it evolves.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:rest-design\""
+          }
+        },
+        {
+          "name": "not-neighbour",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"efficient:web-development\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.0906528,
+            "judgeCostUsd": 0,
+            "durationSeconds": 28,
+            "startedAt": "2026-10-02T20:02:36.037Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-HJPrGx/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0505376,
+            "judgeCostUsd": 0,
+            "durationSeconds": 24,
+            "startedAt": "2026-10-02T20:02:46.772Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-rpG1Z2/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "route-webhooks-vs-idempotency",
+      "dir": "evals/route-webhooks-vs-idempotency",
+      "source": "prose",
+      "promptMarkdown": "We want to notify customers' servers when an invoice is paid or a subscription changes. Design our outbound webhooks: the event catalog, payloads, signing, retries, and what customers can see in a delivery log.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:webhooks\""
+          }
+        },
+        {
+          "name": "not-neighbour",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:idempotency-retry\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0822232,
+            "judgeCostUsd": 0,
+            "durationSeconds": 30,
+            "startedAt": "2026-10-02T20:02:54.815Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-SBD68i/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.05924779999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 28,
+            "startedAt": "2026-10-02T20:03:04.402Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-c2PUcT/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-neighbour",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 9,
+    "casesPassed": 9,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

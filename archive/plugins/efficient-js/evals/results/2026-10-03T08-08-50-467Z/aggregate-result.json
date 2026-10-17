@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.288",
+  "startedAt": "2026-10-03T08:08:50.467Z",
+  "durationSeconds": 19,
+  "costUsd": 0.1838988,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/efficient-js",
+    "ablation": "none",
+    "caseFilter": "click-path-audit-vs-react",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "efficient-js",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/efficient-js"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "click-path-audit-vs-react",
+      "dir": "evals/click-path-audit-vs-react",
+      "source": "prose",
+      "promptMarkdown": "In our React checkout, pressing \"Apply coupon\" shows the discounted total for a split second and then it jumps back to the full price. I read through applyCoupon, recalcTotals and the cart reducer and each one looks right on its own. This is the wiring, in order of what runs on click:\n\n```tsx\n<button onClick={() => { applyCoupon(code); recalcTotals(); refreshCart(); }}>Apply coupon</button>\n\nuseEffect(() => { setDiscount(0); }, [cart.items]);\n```\n\nCan you walk through everything that fires when the button is clicked and tell me which step is wiping the discount?",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-click-path-audit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"efficient-js:click-path-audit\""
+          }
+        },
+        {
+          "name": "not-react",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"efficient-js:react\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.06090039999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-03T08:08:50.475Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-3sqfud/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-click-path-audit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "not-react",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.06335160000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 19,
+            "startedAt": "2026-10-03T08:08:50.475Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-Asr9pC/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-click-path-audit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "not-react",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.0596468,
+            "judgeCostUsd": 0,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-03T08:08:50.475Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-LVUqWA/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-click-path-audit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "not-react",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

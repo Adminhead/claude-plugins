@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T22:23:14.099Z",
+  "durationSeconds": 64,
+  "costUsd": 0.2715932,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/git",
+    "ablation": "with-without",
+    "caseFilter": "stance-commit-convention",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "git",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/git"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "stance-commit-convention",
+      "dir": "evals/stance-commit-convention",
+      "source": "mixed",
+      "promptMarkdown": "I need a message for the change sitting in `staged.diff`. Put just the message text in `COMMIT_MSG.txt`. The recent history is in `history.txt`. Do not run git.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 12,
+      "graders": [
+        {
+          "name": "conventional-header",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": {
+              "source": "file",
+              "path": "COMMIT_MSG.txt"
+            },
+            "pattern": "^(feat|fix|refactor|perf|docs|test|chore|build|ci)(\\([^)]+\\))?!?: \\S",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        },
+        {
+          "name": "follow-contract",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule from the skill: follow the convention the repo's config and history evidence. The repo has `release-please-config.json`, so Conventional Commits applies, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message text, whether written to `COMMIT_MSG.txt` or shown in the answer, meets ALL of these:\n1. Starts with a Conventional Commit header with a correct type and scope for the change, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The description is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line and contains no second Conventional Commit header.\nJudge only the commit message text, not the surrounding commentary. Do not require naming release-please, and do not penalize remarks about `!` or breaking changes in the commentary.\nFAIL otherwise. Do not reward length.",
+          "config": {
+            "criteria": "Rule from the skill: follow the convention the repo's config and history evidence. The repo has `release-please-config.json`, so Conventional Commits applies, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message text, whether written to `COMMIT_MSG.txt` or shown in the answer, meets ALL of these:\n1. Starts with a Conventional Commit header with a correct type and scope for the change, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The description is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line and contains no second Conventional Commit header.\nJudge only the commit message text, not the surrounding commentary. Do not require naming release-please, and do not penalize remarks about `!` or breaking changes in the commentary.\nFAIL otherwise. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 6,
+            "costUsd": 0.054679399999999996,
+            "judgeCostUsd": 0.0018149999999999998,
+            "durationSeconds": 9,
+            "startedAt": "2026-10-02T22:23:14.111Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-QteSXT/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: case \"stance-commit-convention\" grader focus file \"COMMIT_MSG.txt\": path \"COMMIT_MSG.txt\" does not exist",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I couldn't create `COMMIT_MSG.txt`. The Write tool is disabled in this session, and I have no other way to write files, so nothing was saved. Here is the message to put in it:\n\n```\nfix(cart): reset discount when last item is removed\n\nRemoving the last item left the previous discount applied to an empty\ncart. removeItem now returns the updated cart with the discount zeroed\nwhen no items remain, instead of just the filtered items array.\n```\n\n- **Convention:** `history.txt` has no consistent format (\"Fixed login stuff\", \"wip\", \"tweaks\"), and I saw no commitlint or release-please config. I used Conventional Commits and didn't copy the history's style.\n- **Return type change:** `removeItem` used to return an items array and now returns the whole cart object. I kept the type as `fix:` because the diff comment frames it as a bug fix. Any caller that expects an array will break, though. If there are such callers, change the header to `fix(cart)!:` and add a `BREAKING CHANGE:` footer.\n\nIf you enable Write or tell me another way to save the file, I'll create it."
+              }
+            ]
+          },
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 6,
+            "costUsd": 0.053215599999999995,
+            "judgeCostUsd": 0.001824,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T22:23:23.432Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-sso6UE/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: case \"stance-commit-convention\" grader focus file \"COMMIT_MSG.txt\": path \"COMMIT_MSG.txt\" does not exist",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I couldn't create `COMMIT_MSG.txt`. The Write tool is disabled in this session, and I have no other tool that can write files. The message is below, so you can save it yourself.\n\n```text\nfix(cart): clear discount when last item is removed\n\nRemoving the last item left the previous discount applied to an empty\ncart. removeItem now resets the discount to 0 in that case.\n\nremoveItem also now returns the updated cart rather than the bare items\narray, so the discount can be returned alongside the items.\n```\n\n- **Convention:** `history.txt` has no consistent format (for example \"wip\", \"tweaks\", \"Fixed the thing with the cart\"). I found no commitlint or release-please config in what you gave me, so I used Conventional Commits.\n- **Return type change:** the diff changes `removeItem` from returning an items array to returning a cart object. Any caller that expects an array will break. If callers depend on the old return value, you may want to mark this as `fix(cart)!:` with a `BREAKING CHANGE:` footer.\n\nIf you enable Write, or tell me another way to save the file, I'll create it."
+              }
+            ]
+          },
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 6,
+            "costUsd": 0.050526600000000005,
+            "judgeCostUsd": 0.0017009999999999994,
+            "durationSeconds": 9,
+            "startedAt": "2026-10-02T22:23:35.300Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-mIwccX/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: case \"stance-commit-convention\" grader focus file \"COMMIT_MSG.txt\": path \"COMMIT_MSG.txt\" does not exist",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I couldn't create `COMMIT_MSG.txt`. The Write tool is disabled in this session, and I have no other way to write files. Here is the message so you can save it yourself:\n\n```\nfix(cart): clear discount when last item is removed\n\nRemoving the last item left the previous discount applied to an empty\ncart. removeItem now returns the whole cart with the updated items, and\nresets the discount to 0 when no items remain.\n```\n\n`history.txt` has no consistent convention (entries like \"wip\", \"tweaks\" and \"Fixed the thing with the cart\"). I used Conventional Commits, with `fix` as the type and `cart` as the scope from `src/cart.js`.\n\nThe diff also changes what `removeItem` returns, from an array of items to the full cart object. I left that out of the message because it reads as part of the fix. If other callers expect an array, mention it in the body.\n\nIf you enable a write tool, I'll write the file."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.038546000000000004,
+            "judgeCostUsd": 0.0028660000000000005,
+            "durationSeconds": 14,
+            "startedAt": "2026-10-02T22:23:44.272Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-PKjNVf/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: case \"stance-commit-convention\" grader focus file \"COMMIT_MSG.txt\": path \"COMMIT_MSG.txt\" does not exist",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I couldn't create `COMMIT_MSG.txt`. The Write tool is disabled in this session, including for subagents, and I have no other way to write files. Here is the message so you can save it yourself:\n\n```\nReset discount when removing the last cart item\n\nremoveItem left the existing discount applied after the final item was\nremoved, so an empty cart still carried a discount.\n\nClear the discount when no items remain. removeItem now returns the\nupdated cart object (items and discount) instead of just the filtered\nitems array, so callers that expect an array need to use cart.items.\n```\n\nThe history in `history.txt` has no consistent convention, so I used a short imperative subject line with a body. The body notes that the return type changed from an array to a cart object. The diff makes that change, and callers could break on it.\n\nIf you enable Write, I'll save it to the file."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.038151,
+            "judgeCostUsd": 0.002679000000000001,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T22:23:57.865Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-RUnkdm/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: case \"stance-commit-convention\" grader focus file \"COMMIT_MSG.txt\": path \"COMMIT_MSG.txt\" does not exist",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I couldn't create `COMMIT_MSG.txt`. The Write tool is disabled in this session, and I have no other tool that can write files. Here is the message so you can save it yourself:\n\n```\nFix stale discount after removing last cart item\n\nremoveItem returned only the filtered items array, and removing the\nlast item left any discount applied to an empty cart. Reset the\ndiscount to 0 when no items remain.\n\nremoveItem now returns the full cart object ({ ...cart, items,\ndiscount }) instead of a bare items array.\n```\n\nThe diff changes `removeItem` in `src/cart.js` so it returns the whole cart object instead of a bare array. That could break callers that expect an array, so I put it in the message body. If you'd rather keep the message short, drop the last paragraph.\n\nIf you enable Write, I'll create the file."
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.036474599999999996,
+            "judgeCostUsd": 0.0015449999999999995,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T22:24:09.904Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-j0ZPtg/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: case \"stance-commit-convention\" grader focus file \"COMMIT_MSG.txt\": path \"COMMIT_MSG.txt\" does not exist",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I couldn't create `COMMIT_MSG.txt`. The Write tool is disabled in this session, and I have no other way to write files (and you said not to run git). Here is the message to put in the file:\n\n```\nReset cart discount when the last item is removed\n\nremoveItem left the previous discount applied after the cart became\nempty. Clear it when no items remain.\n\nremoveItem now returns the updated cart object (with items and\ndiscount) instead of just the filtered items array, so callers that\nexpected an array need to read cart.items.\n```\n\nThe diff changes `removeItem` in `src/cart.js` from returning an array to returning the cart object. I put that in the body because existing callers may break. If you enable writing, I can save it to the file."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5,
+        "passRate": 0,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 0.5
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.5,
+    "overallPassRate": 0,
+    "meanDelta": 0.5
+  }
+}

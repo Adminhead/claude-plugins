@@ -1,0 +1,605 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T20:01:22.159Z",
+  "durationSeconds": 109,
+  "costUsd": 1.7790308000000001,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/authoring",
+    "ablation": "with-without",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "authoring",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/authoring"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "adr-trigger",
+      "dir": "evals/adr-trigger",
+      "source": "prose",
+      "promptMarkdown": "We decided to use SQLite instead of Postgres for the local job queue, because it needs zero ops and the workload is a single writer. Record that decision as an ADR in docs/adr/.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "fires-adr-writing",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:adr-writing\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.4981948,
+            "judgeCostUsd": 0,
+            "durationSeconds": 83,
+            "startedAt": "2026-10-02T20:01:22.173Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-qjnyen/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-adr-writing",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 5,
+            "costUsd": 0.25329060000000003,
+            "judgeCostUsd": 0,
+            "durationSeconds": 45,
+            "startedAt": "2026-10-02T20:01:22.173Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-IYgKZW/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-adr-writing",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 1
+      }
+    },
+    {
+      "name": "agent-instructions-trigger",
+      "dir": "evals/agent-instructions-trigger",
+      "source": "prose",
+      "promptMarkdown": "My repo has a single 600-line root CLAUDE.md that mixes build commands, frontend conventions, and backend API rules. Reorganize it into a lean root CLAUDE.md plus nested CLAUDE.md files and path-scoped .claude/rules/ files, and make AGENTS.md coexist with it.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "fires-manage-agent-instructions",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:manage-agent-instructions\""
+          }
+        },
+        {
+          "name": "not-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?create-skill\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 10,
+            "costUsd": 0.1566736,
+            "judgeCostUsd": 0,
+            "durationSeconds": 17,
+            "startedAt": "2026-10-02T20:01:22.173Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-PDVHZt/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-manage-agent-instructions",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.0717,
+            "judgeCostUsd": 0,
+            "durationSeconds": 13,
+            "startedAt": "2026-10-02T20:01:22.173Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-IVn3VY/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "create-skill-trigger",
+      "dir": "evals/create-skill-trigger",
+      "source": "prose",
+      "promptMarkdown": "Write a new Claude Code skill that helps with rotating API keys safely: it should trigger when someone asks to rotate, revoke, or audit credentials, and keep the SKILL.md lean with details in references/. Set it up for me.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "fires-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:create-skill\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.3941106,
+            "judgeCostUsd": 0,
+            "durationSeconds": 96,
+            "startedAt": "2026-10-02T20:01:34.962Z",
+            "error": "exit 1: Reached maximum number of turns (5)",
+            "tracePath": "/tmp/claude-eval-XSskr4/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.2242386,
+            "judgeCostUsd": 0,
+            "durationSeconds": 64,
+            "startedAt": "2026-10-02T20:01:39.518Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-SiCfil/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 1
+      }
+    },
+    {
+      "name": "skill-pointer-hygiene",
+      "dir": "evals/skill-pointer-hygiene",
+      "source": "prose",
+      "promptMarkdown": "Review this pointer in my SKILL.md and tell me whether it is good: \"For advanced scenarios, see references/advanced.md for more information.\"",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:create-skill\""
+          }
+        },
+        {
+          "name": "flags-vague-pointer",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if the answer (1) says the pointer does not state when to read the file (no concrete, observable condition), and (2) proposes a rewrite that names a specific condition and uses a filename that says what the file covers. FAIL if it accepts the pointer or only suggests cosmetic wording changes.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if the answer (1) says the pointer does not state when to read the file (no concrete, observable condition), and (2) proposes a rewrite that names a specific condition and uses a filename that says what the file covers. FAIL if it accepts the pointer or only suggests cosmetic wording changes.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0353466,
+            "judgeCostUsd": 0.0017130000000000001,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T20:02:07.475Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-S6dlhJ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "flags-vague-pointer",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "It's functional but weak. The path is correct and one level deep, which is good. The problem is that it doesn't tell the model **when** to load the file or **what's in it**.\n\n**Issues**\n- **\"Advanced scenarios\" is vague.** The model can't tell whether its current task counts as advanced, so it may skip the file when it needs it or read it when it doesn't.\n- **\"For more information\" is filler.** It says nothing about the contents, so the model has no basis for deciding the read is worth the context cost.\n- **It has no trigger condition.** A good pointer ties the read to a concrete situation, such as an error, a feature, or a input type.\n\n**Better version**\n\nName the specific cases and what the file gives the model:\n\n```markdown\nFor batch processing, custom schema overrides, or auth failures (401/403),\nread references/advanced.md. It covers the config options, retry strategy,\nand error-code table.\n```\n\nReplace those examples with the real topics in your file. If `advanced.md` covers several unrelated topics, that's a sign to split it into focused files (e.g. `references/auth.md`, `references/batch.md`). Then each pointer can say exactly when to load its file.\n\n**Optional extras**\n- If the file is over ~100 lines, start it with a table of contents so the model can find the right section quickly.\n- Confirm the file exists at that path. A dangling pointer is worse than no pointer.\n\nI can read your SKILL.md and `references/advanced.md` and write a pointer based on what's actually in the file, if you'd like."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0274776,
+            "judgeCostUsd": 0.0016320000000000006,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T20:02:14.960Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-QLEjrr/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "flags-vague-pointer",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Verdict: it's weak. It points to the right place but doesn't help the reader decide whether to follow it.**\n\n**Problems**\n- **\"Advanced scenarios\" is vague.** Claude can't tell what counts as advanced, so it can't tell when to open the file. Either it loads the file unnecessarily or it skips it when it was needed.\n- **\"For more information\" is filler.** It says nothing about what the file contains.\n- **It doesn't say what triggers the read.** A good pointer ties the file to a concrete situation.\n\n**Better versions**\n\nName the specific scenarios and what the file covers:\n> For custom auth flows, batch processing, or retry/backoff configuration, see [references/advanced.md](references/advanced.md).\n\nOr phrase it as a trigger condition:\n> If the user needs X or the basic workflow above fails with Y, read `references/advanced.md` for Z.\n\n**Other tips**\n- Replace my placeholders (auth flows, X, Y, Z) with what's actually in your file.\n- If `advanced.md` covers several unrelated topics, split it into focused files such as `references/auth.md` and `references/batching.md`. Then each pointer can say exactly when to load its file.\n- Keep the path one level deep from SKILL.md, as you have it. Don't chain references through other reference files.\n- If the file is long, add a table of contents at its top.\n\nIf you paste the contents or headings of `advanced.md`, I can write the exact pointer line."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "skill-rare-critical-stays",
+      "dir": "evals/skill-rare-critical-stays",
+      "source": "prose",
+      "promptMarkdown": "I have a security-scanning skill. One section covers critical authentication-bypass checks. It only matters when the code touches auth modules, roughly 15% of runs. Should I move it to references/auth-checks.md to cut context in the other 85%? Answer briefly.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:create-skill\""
+          }
+        },
+        {
+          "name": "keeps-critical-inline",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if the answer advises against moving the auth-bypass checks into an optional reference file, or says they must stay in SKILL.md (or be loaded by an explicit, unmissable instruction), because the model may skip a reference and the content is critical. FAIL if it approves the move on the strength of the 15% load rate alone.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if the answer advises against moving the auth-bypass checks into an optional reference file, or says they must stay in SKILL.md (or be loaded by an explicit, unmissable instruction), because the model may skip a reference and the content is critical. FAIL if it approves the move on the strength of the 15% load rate alone.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.0342996,
+            "judgeCostUsd": 0.0017759999999999998,
+            "durationSeconds": 8,
+            "startedAt": "2026-10-02T20:02:21.573Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-v0x5DR/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "keeps-critical-inline",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "Yes, move it, but keep a pointer in SKILL.md so the critical checks still get loaded when they apply.\n\n- **Why move it:** Skipping the section in 85% of runs saves context, and progressive disclosure is built for this kind of conditional content.\n- **Main risk:** A missed auth-bypass check costs far more than the tokens you save. If the model doesn't recognize that auth is involved, it won't open the reference file.\n- **Mitigation:**\n  - Leave a short, explicit trigger in SKILL.md, for example: \"If the code touches authentication, sessions, tokens, login, password reset, permissions, or middleware guards, you MUST read `references/auth-checks.md` before reporting.\"\n  - Make the trigger broad, since auth code often hides in middleware, routing, or config files.\n  - Optionally keep a one-line summary of the top checks inline as a backstop.\n- **Check afterward:** Run a few cases where auth is touched only indirectly, such as a route decorator or a JWT helper. Confirm the file still gets read."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.025415599999999997,
+            "judgeCostUsd": 0.0013679999999999994,
+            "durationSeconds": 5,
+            "startedAt": "2026-10-02T20:02:29.354Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-EsPBv4/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "keeps-critical-inline",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Probably not, at least not as a plain move. The section is critical, and a reference file only loads if the model decides to read it. If it misses an auth-touching run, you lose a security check, which costs far more than the context you save.\n\n- **Move it and keep a trigger in SKILL.md.** Leave a short, explicit line such as \"If the code touches auth, session, token, or login modules, read `references/auth-checks.md` and apply it before reporting.\" That keeps most of the savings and makes the load condition concrete.\n- **Leave it inline if the section is short.** Under about 50 lines, the 85% savings is small and the risk of a missed load isn't worth it.\n- **Move it if it's long and detailed.** That means long checklists or code examples. It's also worth moving if the trigger is easy to detect, such as file paths or imports.\n\nIf you do move it, test with a few auth-touching inputs to confirm the reference actually gets read. I'd also keep a one-line summary of the critical checks inline, so the model knows what it's being asked to load."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": -1
+      }
+    },
+    {
+      "name": "skill-split-not-trigger-fix",
+      "dir": "evals/skill-split-not-trigger-fix",
+      "source": "prose",
+      "promptMarkdown": "My skill only activates about 30% of the time when it should. The SKILL.md is 350 lines. Should I split it into a main file plus reference files so it is lighter and easier for Claude to activate? Answer briefly.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "diagnoses-description",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if the answer: (1) states that splitting SKILL.md into reference files does not affect whether the skill triggers, and (2) attributes triggering to the frontmatter description and recommends revising it. FAIL if it recommends splitting as a fix for the triggering problem.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if the answer: (1) states that splitting SKILL.md into reference files does not affect whether the skill triggers, and (2) attributes triggering to the frontmatter description and recommends revising it. FAIL if it recommends splitting as a fix for the triggering problem.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:create-skill\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0327116,
+            "judgeCostUsd": 0.0014280000000000004,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T20:02:34.616Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-DfLCrR/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "diagnoses-description",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Probably not. Splitting reduces the body size, but it doesn't fix the cause of a low activation rate. Claude decides whether to activate a skill from the frontmatter `name` and `description`, which are always in context. The body of SKILL.md only loads after the skill has triggered.\n\n**Fix the description first:**\n- Say what the skill does and when to use it (\"Use when…\").\n- Include the phrases and keywords users actually type, plus the file types or tools involved.\n- Make it a little pushy. Claude tends to under-trigger, so list the situations explicitly.\n- Avoid vague wording. Check that it doesn't overlap with other skills' descriptions.\n\n**Then consider splitting.** 350 lines is fine, since the usual guidance is to stay under about 500. Split only if parts of the body are needed only occasionally, such as long examples, API tables or edge cases. Move those into `references/` files and link to them from SKILL.md. The benefit is less context use and better adherence after activation, not a higher trigger rate.\n\nTo test, run 10–20 realistic prompts, change only the description, and see whether the rate moves. The `authoring:create-skill` skill covers fixing under-triggering. If you'd like, I can review your description."
+              },
+              {
+                "name": "fires-create-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0255716,
+            "judgeCostUsd": 0.0013319999999999999,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T20:02:40.124Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-fE1DNJ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "diagnoses-description",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Probably not. Splitting mainly helps with context load after the skill triggers. Activation depends almost entirely on the `description` field in the frontmatter, because that is what Claude sees when deciding whether to invoke the skill.\n\nTry these first:\n\n1. **Rewrite the description.** Say what the skill does and when to use it. Include the specific phrases, file types, and tasks a user would mention. Descriptions that are vague or too short under-trigger, so make yours a bit \"pushy\".\n2. **Check the name and description for overlap** with other skills or built-in behaviors that might win instead.\n3. **Test with realistic prompts**, including ones that don't name the skill, and adjust the description based on the misses.\n\n350 lines is fine. The usual guidance is to keep SKILL.md under about 500 lines. Splitting is still worthwhile if parts of the file are only needed in some cases, such as long examples or rarely used variants. Move those into reference files and link to them from SKILL.md. That saves context, but it won't fix activation.\n\nIf you paste your frontmatter, I can suggest a rewrite."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 6,
+    "casesPassed": 5,
+    "overallScore": 0.8333333333333334,
+    "overallPassRate": 0.8333333333333334,
+    "meanDelta": 0.16666666666666666
+  }
+}

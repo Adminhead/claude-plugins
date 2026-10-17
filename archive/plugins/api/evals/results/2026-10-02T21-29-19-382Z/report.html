@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eval report — api v0.1.0</title>
+</head>
+<body>
+<style>
+:root{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}}
+:root[data-theme="dark"]{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}
+:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:880px;margin:0 auto;padding:40px 24px 64px;display:flex;flex-direction:column;gap:20px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+header h1{margin:2px 0 0;font-size:24px;font-weight:600;line-height:1.25;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;color:var(--ink-2);font-size:13px}
+.meta .num{font-variant-numeric:tabular-nums lining-nums}
+.banner{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;
+  border:1px solid var(--hairline);background:var(--surface);font-size:13px}
+.banner .chip-warn{color:var(--warning);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:4px}
+.tile .label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.tile .value{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums lining-nums;line-height:1.1}
+.tile.hero .value{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:48px}
+.tile .sub{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tile .value.delta-pos{color:var(--delta-good)}
+.tile .value.delta-neg{color:var(--critical)}
+.toolbar{display:flex;gap:8px;justify-content:flex-end}
+.toolbar button{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink-2);
+  background:var(--surface);border:1px solid var(--hairline);border-radius:6px;padding:4px 10px;cursor:pointer}
+.toolbar button:hover{color:var(--ink)}
+.toolbar button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.case{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:18px 20px;
+  display:flex;flex-direction:column;gap:10px}
+.case-regressed{border-left:3px solid var(--critical)}
+.verdict{margin:6px 0 0;font-size:15px}
+.verdict .delta{font-size:15px}
+.flag{font-size:11px;font-weight:600;color:var(--warning);white-space:nowrap}
+.star{color:var(--warning);font-size:.45em;vertical-align:super;line-height:0;cursor:help}
+.legend summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.legend-list{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--ink-2)}
+.case-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.case-head h2{margin:0;font-size:16px;font-weight:600}
+.case-head .spacer{flex:1}
+.case-score{font-size:15px;font-weight:600}
+.mono{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.muted{color:var(--ink-3);font-size:12px}
+.meter{display:inline-block;position:relative;width:120px;height:6px;border-radius:4px;background:var(--grid);
+  vertical-align:middle}
+.meter>span{display:block;height:100%;border-radius:4px;max-width:100%}
+.meter .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-3);border-radius:1px}
+.m-accent>span{background:var(--accent)}
+.m-base>span{background:var(--base-fill)}
+.delta{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.delta-pos{color:var(--delta-good)}
+.delta-neg{color:var(--critical)}
+.delta-zero{color:var(--ink-3)}
+details.section{border-top:1px solid var(--grid);padding-top:10px}
+details.section>summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-2);list-style-position:outside;margin-left:2px}
+details.section>summary:hover{color:var(--ink)}
+details.section[open]>summary{margin-bottom:8px}
+.md{display:flex;flex-direction:column;gap:8px;background:var(--inset);border-radius:8px;
+  padding:12px 14px;overflow-wrap:break-word}
+.md>:first-child{margin-top:0}
+.md h1,.md h2,.md h3,.md h4,.md h5,.md h6{margin:4px 0 0;font-size:1em;font-weight:600;line-height:1.3}
+.md p,.md ul,.md ol,.md blockquote,.md table,.md pre,.md hr{margin:0}
+.md ul,.md ol{display:flex;flex-direction:column;gap:4px;padding-left:20px}
+.md blockquote{border-left:2px solid var(--hairline);padding-left:10px;color:var(--ink-2)}
+.md :not(pre)>code{background:var(--inset);padding:1px 4px;border-radius:4px;
+  font:.92em "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre{background:var(--inset);border:1px solid var(--hairline);padding:10px 12px;border-radius:6px;
+  overflow-x:auto;font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre code{background:none;padding:0;font:inherit}
+.md table{width:100%;border-collapse:collapse}
+.md th,.md td{padding:5px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--grid)}
+.md th{font-weight:600;color:var(--ink-2)}
+.md a{color:var(--accent);text-decoration:none}
+.md a:hover{text-decoration:underline}
+.grader-def{display:flex;flex-direction:column;gap:6px;padding:8px 0}
+.grader-def+.grader-def{border-top:1px solid var(--grid)}
+.grader-def-head{display:flex;align-items:baseline;gap:8px}
+.grader-name{font:13px "SF Mono",ui-monospace,Menlo,Consolas,monospace;font-weight:600}
+.badge{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
+  border:1px solid var(--hairline);border-radius:999px;padding:1px 8px}
+.config{display:flex;flex-direction:column;gap:2px;background:var(--inset);border-radius:8px;padding:10px 14px}
+.config code{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.arm{display:flex;flex-direction:column;gap:8px;padding:6px 0}
+.arm+.arm{border-top:1px dashed var(--grid);margin-top:4px;padding-top:12px}
+.arm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.arm-label{font-size:13px;font-weight:600}
+.run{border:1px solid var(--grid);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.run-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.run-title{font-size:12px;font-weight:600;color:var(--ink-2)}
+.run-error .explanation{color:var(--ink-2)}
+.note{font-size:12px;color:var(--ink-2)}
+.graders{display:flex;flex-direction:column;gap:4px}
+details.grader{border-radius:6px}
+details.grader>summary{cursor:pointer;display:flex;align-items:baseline;gap:8px;padding:3px 4px;
+  border-radius:6px;list-style:none}
+details.grader>summary::-webkit-details-marker{display:none}
+details.grader>summary::before{content:'▸';font-size:10px;color:var(--ink-3);flex:none;
+  transition:transform .12s ease}
+details.grader[open]>summary::before{transform:rotate(90deg)}
+details.grader>summary:hover{background:var(--inset)}
+details.grader>summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.grader-body{padding:6px 8px 8px 24px;display:flex;flex-direction:column;gap:6px}
+.chip{font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.chip-pass{color:var(--good);border:1px solid currentColor}
+.chip-fail{color:var(--critical);border:1px solid currentColor}
+.chip.chip-warn{color:var(--warning);border:1px solid currentColor}
+.explanation{margin:0;font-size:13px;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:break-word}
+.kv{display:flex;gap:8px;font-size:12px;color:var(--ink-3)}
+.votes{font-variant-numeric:tabular-nums;letter-spacing:.1em}
+pre.evidence{margin:0;background:var(--inset);border:1px solid var(--hairline);border-radius:6px;
+  padding:8px 10px;overflow-x:auto;max-height:320px;
+  font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:break-word}
+footer{color:var(--ink-3);font-size:12px;text-align:center;padding-top:8px}
+@media (prefers-reduced-motion:no-preference){
+  details.grader>summary,.toolbar button{transition:background .12s ease,color .12s ease}
+}
+@media (prefers-reduced-motion:reduce){
+  details.grader>summary::before{transition:none}
+}
+@media print{
+  :root,:root[data-theme="dark"],:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+  body{background:#fff}
+  .toolbar{display:none}
+  .case,.run,.grader-def{break-inside:avoid}
+  pre.evidence{max-height:none}
+}
+</style>
+<div class="wrap">
+<header>
+<div class="eyebrow">Plugin eval report</div>
+<h1>api v0.1.0</h1>
+<p class="verdict">Plugin effect: <span class="delta delta-zero">· 0.0 pts</span> vs baseline — improved 0 · flat 1 · regressed 0 of 1 case.</p>
+<div class="meta">
+<span class="mono">.</span>
+<span>Claude Code v2.1.286</span>
+<span class="num">2026-10-02 21:29 UTC</span>
+<span class="num">39s</span>
+<span class="num">$0.22</span>
+<span class="num">2 runs</span>
+<span class="num">3 in flight</span>
+
+
+<span>judge default</span>
+<span class="num">threshold 100%</span>
+<span>filtered: --case task-*</span>
+</div>
+</header>
+
+<section class="tiles">
+<div class="tile hero"><span class="label">Suite score · with plugin</span><span class="value">100%</span><span class="sub">mean of per-case scores</span></div>
+<div class="tile"><span class="label">Ablation Δ</span><span class="value num delta-zero">0.0</span><span class="sub">score points vs baseline, 1 of 1 case</span></div>
+<div class="tile"><span class="label">Baseline score</span><span class="value num">100%</span><span class="sub">without the plugin</span></div>
+<div class="tile"><span class="label">Cases</span><span class="value num">1</span><span class="sub">1 of 1 ≥ 100% threshold</span></div>
+<div class="tile"><span class="label">Perfect runs</span><span class="value num">100%</span><span class="sub">runs where every grader passed</span></div>
+</section>
+<details class="section legend">
+<summary>How to read this report</summary>
+<ul class="legend-list">
+<li>A run's score is the weighted fraction of its graders that passed; a "perfect" run passed every grader.</li>
+<li>A case's score is the mean of its runs; a case passes when its score is at or above the 100% threshold (the tick on each case bar).</li>
+<li>The suite score is the mean of the per-case scores.</li>
+<li>Judge votes are independent samples of the LLM judge; the majority decides pass or fail.</li>
+<li>"With plugin" and "Baseline" runs are identical except for the plugin being loaded; Δ is the with-plugin score minus the baseline score.</li>
+
+</ul>
+</details>
+<div class="toolbar"><button type="button" data-act="expand">Expand all</button><button type="button" data-act="collapse">Collapse all</button></div>
+<article class="case" id="case-1">
+<div class="case-head">
+<h2>task-idempotency-race</h2>
+<span class="muted mono">evals/task-idempotency-race</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">9 turns · $0.14 · 21:29:19 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">atomic-claim</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">Neither side is safe on its own, and they fail in different ways. I only read the code and didn&apos;t run or edit anything, so the fixes below are untested.
+
+## What&apos;s wrong
+
+**Client (`app/api_client.js`)**
+1. **The key changes on every attempt.** `Idempotency-Key: charge-${Date.now()}` is built inside the retry loop, so each retry carries a new key and the server sees a new request. This is the main cause of your duplicates. A timeout where the first request actually succeeded is the usual trigger. Even with a stable key, `Date.now()` can collide across devices or taps.
+2. **Retry policy is unbounded and indiscriminate.** It retries every non-2xx response, including 400, 401 and 422, which can never succeed. It also retries 10 times at a fixed 1s with no jitter, so a fleet re-synchronizes after an outage. There is no overall deadline or per-attempt timeout, and the final error discards the cause.
+
+**Server (`handler.py`, `schema.sql`)**
+3. **Check-then-insert race.** Two concurrent retries both run `SELECT`, both see nothing, and both call `processor.charge`. `idempotency_keys` has no unique constraint, so even the later `INSERT` can&apos;t stop the duplicate. This is the race the eval is named for.
+4. **The key is recorded only after the charge.** If the process dies after `processor.charge` but before `commit`, the card is charged and nothing is stored. The retry charges again. There is also no in-flight state.
+5. **The key is global, not per account.** One account&apos;s key can replay another account&apos;s response.
+6. **No payload fingerprint.** The same key with a different amount silently replays the old response.
+7. **The replay is lossy and hardcoded.** It always returns 201 and doesn&apos;t store the status.
+8. **The processor call carries no idempotency key.** Even a correct server can&apos;t be crash-safe without one.
+9. **The key is optional.** A missing header silently disables all protection.
+
+## Corrected code
+
+**`schema.sql`**
+```sql
+CREATE TABLE charges (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id    TEXT NOT NULL,
+  amount_cents  INTEGER NOT NULL,
+  currency      TEXT NOT NULL,
+  processor_ref TEXT NOT NULL
+);
+
+CREATE TABLE idempotency_keys (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id          TEXT NOT NULL,
+  idempotency_key     TEXT NOT NULL CHECK (length(idempotency_key) &lt;= 255),
+  request_fingerprint TEXT NOT NULL,
+  locked_at           REAL,                      -- epoch seconds; set while in flight
+  lock_generation     INTEGER NOT NULL DEFAULT 0, -- fencing token, bumped on takeover
+  response_status     INTEGER,                   -- NULL until complete
+  response_body       TEXT,
+  created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (account_id, idempotency_key)
+);
+```
+
+**`processor.py`** (the processor must dedupe on a key we derive)
+```python
+def charge(account_id, amount_cents, currency, idempotency_key):
+    &quot;&quot;&quot;Calls the card processor and returns its charge reference.
+
+    The processor returns the original charge for a repeated idempotency_key,
+    so re-running this call after a crash cannot charge twice.
+    &quot;&quot;&quot;
+    raise NotImplementedError(&quot;network call, stubbed in this fixture&quot;)
+```
+
+**`handler.py`**
+```python
+&quot;&quot;&quot;POST /v1/charges, called by integrators and by our own mobile app.&quot;&quot;&quot;
+import hashlib
+import json
+import time
+
+import processor  # wrapper around the card processor&apos;s HTTP API
+
+# Must exceed the processor call&apos;s timeout, or a slow request gets taken over.
+LOCK_TIMEOUT_S = 60
+
+
+def _fingerprint(body):
+    canonical = json.dumps(body, sort_keys=True, separators=(&quot;,&quot;, &quot;:&quot;))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _error(status, code, message):
+    return status, {&quot;error&quot;: {&quot;code&quot;: code, &quot;message&quot;: message}}
+
+
+def create_charge(db, account_id, headers, body):
+    key = headers.get(&quot;Idempotency-Key&quot;)
+    if not key or len(key) &gt; 255:
+        return _error(400, &quot;idempotency_key_required&quot;,
+                      &quot;Idempotency-Key header is required (max 255 chars).&quot;)
+
+    fingerprint = _fingerprint(body)
+    now = time.time()
+
+    # Atomic claim: the unique constraint picks exactly one winner. Committed
+    # before the foreign call so concurrent retries see the in-flight row.
+    cur = db.execute(
+        &quot;INSERT INTO idempotency_keys&quot;
+        &quot; (account_id, idempotency_key, request_fingerprint, locked_at)&quot;
+        &quot; VALUES (?, ?, ?, ?)&quot;
+        &quot; ON CONFLICT (account_id, idempotency_key) DO NOTHING&quot;,
+        (account_id, key, fingerprint, now),
+    )
+    db.commit()
+
+    if cur.rowcount == 1:
+        row_id = db.execute(
+            &quot;SELECT id FROM idempotency_keys&quot;
+            &quot; WHERE account_id = ? AND idempotency_key = ?&quot;,
+            (account_id, key),
+        ).fetchone()[0]
+        generation = 0
+    else:
+        row_id, stored_fp, status, response, locked_at, generation = db.execute(
+            &quot;SELECT id, request_fingerprint, response_status, response_body,&quot;
+            &quot; locked_at, lock_generation FROM idempotency_keys&quot;
+            &quot; WHERE account_id = ? AND idempotency_key = ?&quot;,
+            (account_id, key),
+        ).fetchone()
+
+        if stored_fp != fingerprint:
+            return _error(422, &quot;idempotency_key_reused&quot;,
+                          &quot;This key was used with a different request. &quot;
+                          &quot;Use a new key or resend the original payload.&quot;)
+        if status is not None:
+            return status, json.loads(response)  # verbatim replay, no re-execution
+
+        in_flight = _error(409, &quot;idempotency_request_in_progress&quot;,
+                           &quot;Original request still running; retry with the same key.&quot;)
+        if locked_at is not None and now - locked_at &lt; LOCK_TIMEOUT_S:
+            return in_flight
+
+        # Original executor crashed or stalled: take over atomically and fence it.
+        taken = db.execute(
+            &quot;UPDATE idempotency_keys&quot;
+            &quot; SET locked_at = ?, lock_generation = lock_generation + 1&quot;
+            &quot; WHERE id = ? AND response_status IS NULL&quot;
+            &quot; AND (locked_at IS NULL OR locked_at &lt; ?)&quot;,
+            (now, row_id, now - LOCK_TIMEOUT_S),
+        )
+        db.commit()
+        if taken.rowcount == 0:
+            return in_flight
+        generation += 1
+
+    # Foreign call. The derived key makes a re-run after a crash return the
+    # original charge instead of creating a second one.
+    ref = processor.charge(
+        account_id=account_id,
+        amount_cents=body[&quot;amount_cents&quot;],
+        currency=body[&quot;currency&quot;],
+        idempotency_key=f&quot;{account_id}:{key}:charge&quot;,
+    )
+
+    response = {&quot;processor_ref&quot;: ref, &quot;amount_cents&quot;: body[&quot;amount_cents&quot;]}
+
+    # Local write and final response commit together, fenced by generation.
+    done = db.execute(
+        &quot;UPDATE idempotency_keys&quot;
+        &quot; SET response_status = 201, response_body = ?, locked_at = NULL&quot;
+        &quot; WHERE id = ? AND lock_generation = ? AND response_status IS NULL&quot;,
+        (json.dumps(response), row_id, generation),
+    )
+    if done.rowcount == 0:  # lost the lock to a takeover; commit nothing
+        db.rollback()
+        return _error(409, &quot;idempotency_request_in_progress&quot;,
+                      &quot;Request was taken over; retry with the same key.&quot;)
+    db.execute(
+        &quot;INSERT INTO charges (account_id, amount_cents, currency, processor_ref)&quot;
+        &quot; VALUES (?, ?, ?, ?)&quot;,
+        (account_id, body[&quot;amount_cents&quot;], body[&quot;currency&quot;], ref),
+    )
+    db.commit()
+    return 201, response
+```
+
+**`app/api_client.js`**
+```js
+// Mobile app client for POST /v1/charges.
+const BASE = &quot;https://api.example.com&quot;;
+const MAX_ATTEMPTS = 5;
+const BASE_MS = 500;
+const CAP_MS = 8000;
+const DEADLINE_MS = 30000;
+const ATTEMPT_TIMEOUT_MS = 8000;
+const RETRYABLE_STATUS = new Set([408, 429, 502, 503, 504]);
+
+const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const fullJitter = (attempt) =&gt;
+  Math.random() * Math.min(CAP_MS, BASE_MS * 2 ** attempt);
+
+// Mint the key once per user intent (e.g. when the Pay button is tapped) and
+// persist it with the pending charge, so a restart retries with the same key.
+export const newChargeKey = () =&gt; `charge-${crypto.randomUUID()}`;
+
+export async function createCharge(token, charge, idempotencyKey) {
+  const deadline = Date.now() + DEADLINE_MS;
+  let lastError;
+
+  for (let attempt = 0; attempt &lt; MAX_ATTEMPTS; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining &lt;= 0) break;
+
+    let wait = fullJitter(attempt);
+    try {
+      const res = await fetch(`${BASE}/v1/charges`, {
+        method: &quot;POST&quot;,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          &quot;Content-Type&quot;: &quot;application/json&quot;,
+          &quot;Idempotency-Key&quot;: idempotencyKey, // identical on every attempt
+        },
+        body: JSON.stringify(charge),
+        signal: AbortSignal.timeout(Math.min(ATTEMPT_TIMEOUT_MS, remaining)),
+      });
+      if (res.ok) return await res.json();
+
+      const err = await res.json().catch(() =&gt; ({}));
+      const inFlight = err?.error?.code === &quot;idempotency_request_in_progress&quot;;
+      if (!RETRYABLE_STATUS.has(res.status) &amp;&amp; !inFlight) {
+        // 400/401/402/422 etc. cannot succeed on retry (includes key reuse).
+        throw Object.assign(new Error(`charge rejected: ${res.status}`), {
+          fatal: true, status: res.status, body: err,
+        });
+      }
+      const retryAfter = Number(res.headers.get(&quot;Retry-After&quot;));
+      if (retryAfter &gt; 0) wait = Math.max(wait, retryAfter * 1000);
+      lastError = new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      if (e.fatal) throw e;
+      lastError = e; // timeout or network error: safe to retry because the key is stable
+    }
+    console.warn(`createCharge attempt ${attempt + 1} failed: ${lastError.message}; waiting ${Math.round(wait)}ms`);
+    await sleep(Math.min(wait, Math.max(0, deadline - Date.now())));
+  }
+  throw new Error(`charge failed after retries: ${lastError?.message}`);
+}
+```
+
+## Notes and decisions to confirm
+- **Existing integrators:** requiring the header returns 400 to any who omit it today. Roll it out with a deprecation notice, or keep it optional and accept that those callers stay unprotected.
+- **Transient failures:** I don&apos;t store processor errors. They leave the key in flight, so the retry re-attempts after the lock expires, which is safe because the processor dedupes on the derived key. If you&apos;d rather replay declines verbatim, store a 402 on a definitive decline.
+- **Retention:** nothing deletes `idempotency_keys` rows yet. Add a reaper (about 72h) and a replay window of at least your longest retry chain, about 24h by default.
+- **Database:** the code uses SQLite syntax. On Postgres, `INSERT ... ON CONFLICT` works as written, and `rowcount` behaves the same.
+- **Verification:** the next step is a concurrency test, with N parallel identical requests producing exactly one charge. Add a crash test that kills the process after `processor.charge` and then retries.</pre>
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires-skill</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">6 turns · $0.08 · 21:29:19 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">atomic-claim</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">## What&apos;s wrong
+
+Either side alone would still produce duplicates, and the two bugs compound each other.
+
+### Client (`app/api_client.js`)
+
+1. **The key changes on every retry.** `` `charge-${Date.now()}` `` is evaluated inside the loop, so each attempt sends a new key. The server never sees the same key twice, so its dedup never runs. This is the main cause of the duplicate charges you&apos;re seeing.
+2. **The key is weak.** Two devices, or two taps in the same millisecond, can collide, which would wrongly merge two different charges. The key should be a UUID. It should also be generated once per logical charge and ideally persisted, so it survives an app restart mid-retry.
+3. **Retry policy.**
+   - It retries every non-2xx response, including 4xx errors that can never succeed.
+   - There is no fetch timeout, so a hung request stalls the loop.
+   - The delay is a fixed 1s with no backoff or jitter.
+
+### Server (`schema.sql`, `handler.py`)
+
+1. **Check-then-act race.** The handler runs `SELECT`, then calls the processor, then `INSERT`s the key. When the app times out and retries while the first request is still in flight, both requests miss the lookup and both call `processor.charge`. This is the &quot;idempotency race&quot; in the fixture&apos;s name.
+2. **No uniqueness on the key.** `idempotency_keys.key` has no `PRIMARY KEY` or `UNIQUE` constraint, so the database can&apos;t stop duplicate rows. The key also isn&apos;t scoped to the account, so two accounts that send the same key would collide.
+3. **The processor call isn&apos;t covered by the key.** If the process crashes after `processor.charge` but before `commit`, the card is charged and nothing is recorded. The retry then charges again. The key must also be passed to the processor.
+4. **No request fingerprint.** Reusing a key with a different body silently returns the old response.
+
+## Corrected code
+
+**`schema.sql`**
+```sql
+CREATE TABLE charges (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id    TEXT NOT NULL,
+  amount_cents  INTEGER NOT NULL,
+  currency      TEXT NOT NULL,
+  processor_ref TEXT NOT NULL
+);
+
+CREATE TABLE idempotency_keys (
+  account_id   TEXT NOT NULL,
+  key          TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  status       TEXT NOT NULL DEFAULT &apos;in_progress&apos;,  -- in_progress | complete
+  response     TEXT,
+  created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (account_id, key)
+);
+```
+
+**`handler.py`**
+```python
+&quot;&quot;&quot;POST /v1/charges, called by integrators and by our own mobile app.&quot;&quot;&quot;
+import hashlib
+import json
+
+import processor  # wrapper around the card processor&apos;s HTTP API
+
+
+def create_charge(db, account_id, headers, body):
+    key = headers.get(&quot;Idempotency-Key&quot;)
+    if not key:
+        return 400, {&quot;error&quot;: &quot;Idempotency-Key header is required&quot;}
+
+    request_hash = hashlib.sha256(
+        json.dumps(body, sort_keys=True).encode()
+    ).hexdigest()
+
+    # Atomically claim the key. The PRIMARY KEY makes exactly one concurrent
+    # request win; everyone else sees rowcount == 0.
+    claim = db.execute(
+        &quot;INSERT OR IGNORE INTO idempotency_keys (account_id, key, request_hash)&quot;
+        &quot; VALUES (?, ?, ?)&quot;,
+        (account_id, key, request_hash),
+    )
+    db.commit()
+
+    if claim.rowcount == 0:
+        status, stored_hash, response = db.execute(
+            &quot;SELECT status, request_hash, response FROM idempotency_keys&quot;
+            &quot; WHERE account_id = ? AND key = ?&quot;,
+            (account_id, key),
+        ).fetchone()
+        if stored_hash != request_hash:
+            return 422, {&quot;error&quot;: &quot;Idempotency-Key reused with a different request&quot;}
+        if status == &quot;complete&quot;:
+            return 201, json.loads(response)
+        return 409, {&quot;error&quot;: &quot;original request still in progress, retry shortly&quot;}
+
+    try:
+        # The processor dedups on the same key, so a crash/retry after this
+        # call can&apos;t charge the card twice.
+        ref = processor.charge(
+            account_id=account_id,
+            amount_cents=body[&quot;amount_cents&quot;],
+            currency=body[&quot;currency&quot;],
+            idempotency_key=f&quot;{account_id}:{key}&quot;,
+        )
+    except Exception:
+        db.execute(
+            &quot;DELETE FROM idempotency_keys WHERE account_id = ? AND key = ?&quot;,
+            (account_id, key),
+        )
+        db.commit()
+        raise
+
+    response = {&quot;processor_ref&quot;: ref, &quot;amount_cents&quot;: body[&quot;amount_cents&quot;]}
+    # Record the charge and complete the key in a single transaction.
+    db.execute(
+        &quot;INSERT INTO charges (account_id, amount_cents, currency, processor_ref)&quot;
+        &quot; VALUES (?, ?, ?, ?)&quot;,
+        (account_id, body[&quot;amount_cents&quot;], body[&quot;currency&quot;], ref),
+    )
+    db.execute(
+        &quot;UPDATE idempotency_keys SET status = &apos;complete&apos;, response = ?&quot;
+        &quot; WHERE account_id = ? AND key = ?&quot;,
+        (json.dumps(response), account_id, key),
+    )
+    db.commit()
+    return 201, response
+```
+
+`processor.charge` needs to accept `idempotency_key` and forward it as the processor&apos;s own idempotency header. This assumes your card processor supports that, as Stripe and Adyen do. If it doesn&apos;t, the crash window in point 3 can&apos;t be fully closed. You&apos;d have to reconcile `in_progress` rows against the processor.
+
+If a process dies mid-request, the key stays `in_progress` and clients get 409 indefinitely. You&apos;ll want a stale-claim takeover, for example reclaiming rows older than N minutes. That is safe only because the processor dedups on the key.
+
+**`app/api_client.js`**
+```js
+// Mobile app client for POST /v1/charges.
+const BASE = &quot;https://api.example.com&quot;;
+const MAX_ATTEMPTS = 6;
+const TIMEOUT_MS = 15000;
+
+const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+
+// Retry network failures, timeouts, 408/409/429 and 5xx. Other 4xx can&apos;t succeed.
+const isRetryable = (status) =&gt;
+  status === 408 || status === 409 || status === 429 || status &gt;= 500;
+
+// `idempotencyKey` is generated ONCE per user intent (when the user taps &quot;Pay&quot;)
+// and persisted by the caller, so it survives retries and app restarts.
+export function newIdempotencyKey() {
+  return crypto.randomUUID();
+}
+
+export async function createCharge(token, charge, idempotencyKey) {
+  for (let attempt = 0; attempt &lt; MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${BASE}/v1/charges`, {
+        method: &quot;POST&quot;,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          &quot;Content-Type&quot;: &quot;application/json&quot;,
+          &quot;Idempotency-Key&quot;: idempotencyKey, // same key on every attempt
+        },
+        body: JSON.stringify(charge),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (res.ok) return await res.json();
+      if (!isRetryable(res.status)) {
+        throw new Error(`charge rejected: ${res.status}`);
+      }
+    } catch (e) {
+      if (e.message?.startsWith(&quot;charge rejected&quot;)) throw e;
+      // network error or timeout: fall through to retry with the same key
+    }
+    // exponential backoff with jitter, capped at 30s
+    await sleep(Math.min(30000, 1000 * 2 ** attempt) * (0.5 + Math.random() / 2));
+  }
+  throw new Error(&quot;charge failed&quot;);
+}
+```
+
+Callers should do `const key = newIdempotencyKey()` once when the user initiates payment, store it with the pending order, and pass it to every call to `createCharge`.
+
+I haven&apos;t run any of this. The fixture&apos;s `processor.charge` is stubbed, so neither the handler nor the client was exercised. I also haven&apos;t changed any files. Say so if you&apos;d like me to apply the changes and add a concurrent-request test.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>Support keeps finding duplicate charges when the mobile app retries on flaky networks, even though the app sends an Idempotency-Key header. The server handler and schema are in <code>/home/buck/Projects/adminhead/claude-plugins/plugins/api/evals/task-idempotency-race/fixture</code>, and the app client is in its <code>app/</code> directory. Review both sides, tell me what is wrong, and show the corrected code.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">atomic-claim</span><span class="badge">llm</span></div>
+<div class="md"><p>Rules for a correct idempotency design, on both sides.</p>
+<p>PASS only if the answer does ALL of these:</p>
+<ol>
+<li>Server: identifies the check-then-act race and fixes it with an atomic claim in the database (UNIQUE on <code>(account_id, key)</code>, claim inserted before the processor call, loser gets an in-progress conflict or the stored replay).</li>
+<li>Server: rejects a reused key with a different payload (stores and compares a fingerprint).</li>
+<li>Server: handles the crash window after <code>processor.charge</code> succeeds but before the local commit, by sending the processor its own idempotency key derived from the client key, or by recording intent before the call and checking the processor's state on resume.</li>
+<li>Client: identifies that <code>Date.now()</code> mints a fresh key per attempt, which defeats the mechanism, and fixes it by generating the key once per logical charge and reusing it for every retry.</li>
+<li>Client: fixes the retry loop to use jittered exponential backoff (not a fixed 1 s) and to retry only retryable outcomes (network errors, 408/429/5xx, in-flight conflict), not every non-ok response including 4xx such as the payload-mismatch rejection.
+FAIL if any of the five is missing. Do not reward length.</li>
+</ol>
+</div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires-skill</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:idempotency-retry\&quot;&quot;</code></div></div>
+</div>
+</details>
+</article>
+<footer>Generated by <code>claude plugin eval</code> · schema v1 · scores are not comparable across different suites</footer>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var bar=document.querySelector('.toolbar');
+  if(!bar)return;
+  bar.addEventListener('click',function(e){
+    var b=e.target&&e.target.closest('button');
+    if(!b)return;
+    var open=b.dataset.act==='expand';
+    document.querySelectorAll('details.section, details.grader').forEach(function(d){d.open=open});
+  });
+});
+// Collapsed details vanish from print/PDF; these pages are share artifacts.
+window.addEventListener('beforeprint',function(){
+  document.querySelectorAll('details').forEach(function(d){
+    if(!d.open){d.dataset.printOpened='1';d.open=true}
+  });
+});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('details[data-print-opened]').forEach(function(d){
+    d.open=false;delete d.dataset.printOpened;
+  });
+});
+</script>
+</body>
+</html>

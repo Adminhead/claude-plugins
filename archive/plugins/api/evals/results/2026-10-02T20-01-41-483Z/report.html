@@ -1,0 +1,1651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eval report — api v0.1.0</title>
+</head>
+<body>
+<style>
+:root{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}}
+:root[data-theme="dark"]{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}
+:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:880px;margin:0 auto;padding:40px 24px 64px;display:flex;flex-direction:column;gap:20px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+header h1{margin:2px 0 0;font-size:24px;font-weight:600;line-height:1.25;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;color:var(--ink-2);font-size:13px}
+.meta .num{font-variant-numeric:tabular-nums lining-nums}
+.banner{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;
+  border:1px solid var(--hairline);background:var(--surface);font-size:13px}
+.banner .chip-warn{color:var(--warning);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:4px}
+.tile .label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.tile .value{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums lining-nums;line-height:1.1}
+.tile.hero .value{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:48px}
+.tile .sub{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tile .value.delta-pos{color:var(--delta-good)}
+.tile .value.delta-neg{color:var(--critical)}
+.toolbar{display:flex;gap:8px;justify-content:flex-end}
+.toolbar button{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink-2);
+  background:var(--surface);border:1px solid var(--hairline);border-radius:6px;padding:4px 10px;cursor:pointer}
+.toolbar button:hover{color:var(--ink)}
+.toolbar button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.case{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:18px 20px;
+  display:flex;flex-direction:column;gap:10px}
+.case-regressed{border-left:3px solid var(--critical)}
+.verdict{margin:6px 0 0;font-size:15px}
+.verdict .delta{font-size:15px}
+.flag{font-size:11px;font-weight:600;color:var(--warning);white-space:nowrap}
+.star{color:var(--warning);font-size:.45em;vertical-align:super;line-height:0;cursor:help}
+.legend summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.legend-list{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--ink-2)}
+.case-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.case-head h2{margin:0;font-size:16px;font-weight:600}
+.case-head .spacer{flex:1}
+.case-score{font-size:15px;font-weight:600}
+.mono{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.muted{color:var(--ink-3);font-size:12px}
+.meter{display:inline-block;position:relative;width:120px;height:6px;border-radius:4px;background:var(--grid);
+  vertical-align:middle}
+.meter>span{display:block;height:100%;border-radius:4px;max-width:100%}
+.meter .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-3);border-radius:1px}
+.m-accent>span{background:var(--accent)}
+.m-base>span{background:var(--base-fill)}
+.delta{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.delta-pos{color:var(--delta-good)}
+.delta-neg{color:var(--critical)}
+.delta-zero{color:var(--ink-3)}
+details.section{border-top:1px solid var(--grid);padding-top:10px}
+details.section>summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-2);list-style-position:outside;margin-left:2px}
+details.section>summary:hover{color:var(--ink)}
+details.section[open]>summary{margin-bottom:8px}
+.md{display:flex;flex-direction:column;gap:8px;background:var(--inset);border-radius:8px;
+  padding:12px 14px;overflow-wrap:break-word}
+.md>:first-child{margin-top:0}
+.md h1,.md h2,.md h3,.md h4,.md h5,.md h6{margin:4px 0 0;font-size:1em;font-weight:600;line-height:1.3}
+.md p,.md ul,.md ol,.md blockquote,.md table,.md pre,.md hr{margin:0}
+.md ul,.md ol{display:flex;flex-direction:column;gap:4px;padding-left:20px}
+.md blockquote{border-left:2px solid var(--hairline);padding-left:10px;color:var(--ink-2)}
+.md :not(pre)>code{background:var(--inset);padding:1px 4px;border-radius:4px;
+  font:.92em "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre{background:var(--inset);border:1px solid var(--hairline);padding:10px 12px;border-radius:6px;
+  overflow-x:auto;font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre code{background:none;padding:0;font:inherit}
+.md table{width:100%;border-collapse:collapse}
+.md th,.md td{padding:5px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--grid)}
+.md th{font-weight:600;color:var(--ink-2)}
+.md a{color:var(--accent);text-decoration:none}
+.md a:hover{text-decoration:underline}
+.grader-def{display:flex;flex-direction:column;gap:6px;padding:8px 0}
+.grader-def+.grader-def{border-top:1px solid var(--grid)}
+.grader-def-head{display:flex;align-items:baseline;gap:8px}
+.grader-name{font:13px "SF Mono",ui-monospace,Menlo,Consolas,monospace;font-weight:600}
+.badge{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
+  border:1px solid var(--hairline);border-radius:999px;padding:1px 8px}
+.config{display:flex;flex-direction:column;gap:2px;background:var(--inset);border-radius:8px;padding:10px 14px}
+.config code{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.arm{display:flex;flex-direction:column;gap:8px;padding:6px 0}
+.arm+.arm{border-top:1px dashed var(--grid);margin-top:4px;padding-top:12px}
+.arm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.arm-label{font-size:13px;font-weight:600}
+.run{border:1px solid var(--grid);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.run-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.run-title{font-size:12px;font-weight:600;color:var(--ink-2)}
+.run-error .explanation{color:var(--ink-2)}
+.note{font-size:12px;color:var(--ink-2)}
+.graders{display:flex;flex-direction:column;gap:4px}
+details.grader{border-radius:6px}
+details.grader>summary{cursor:pointer;display:flex;align-items:baseline;gap:8px;padding:3px 4px;
+  border-radius:6px;list-style:none}
+details.grader>summary::-webkit-details-marker{display:none}
+details.grader>summary::before{content:'▸';font-size:10px;color:var(--ink-3);flex:none;
+  transition:transform .12s ease}
+details.grader[open]>summary::before{transform:rotate(90deg)}
+details.grader>summary:hover{background:var(--inset)}
+details.grader>summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.grader-body{padding:6px 8px 8px 24px;display:flex;flex-direction:column;gap:6px}
+.chip{font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.chip-pass{color:var(--good);border:1px solid currentColor}
+.chip-fail{color:var(--critical);border:1px solid currentColor}
+.chip.chip-warn{color:var(--warning);border:1px solid currentColor}
+.explanation{margin:0;font-size:13px;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:break-word}
+.kv{display:flex;gap:8px;font-size:12px;color:var(--ink-3)}
+.votes{font-variant-numeric:tabular-nums;letter-spacing:.1em}
+pre.evidence{margin:0;background:var(--inset);border:1px solid var(--hairline);border-radius:6px;
+  padding:8px 10px;overflow-x:auto;max-height:320px;
+  font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:break-word}
+footer{color:var(--ink-3);font-size:12px;text-align:center;padding-top:8px}
+@media (prefers-reduced-motion:no-preference){
+  details.grader>summary,.toolbar button{transition:background .12s ease,color .12s ease}
+}
+@media (prefers-reduced-motion:reduce){
+  details.grader>summary::before{transition:none}
+}
+@media print{
+  :root,:root[data-theme="dark"],:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+  body{background:#fff}
+  .toolbar{display:none}
+  .case,.run,.grader-def{break-inside:avoid}
+  pre.evidence{max-height:none}
+}
+</style>
+<div class="wrap">
+<header>
+<div class="eyebrow">Plugin eval report</div>
+<h1>api v0.1.0</h1>
+<p class="verdict">Plugin effect: <span class="delta delta-zero">· 0.0 pts</span> vs baseline — improved 0 · flat 9 · regressed 0 of 9 cases.</p>
+<div class="meta">
+<span class="mono">.</span>
+<span>Claude Code v2.1.286</span>
+<span class="num">2026-10-02 20:01 UTC</span>
+<span class="num">1m 51s</span>
+<span class="num">$1.12</span>
+<span class="num">18 runs</span>
+<span class="num">4 in flight</span>
+
+
+<span>judge default</span>
+<span class="num">threshold 100%</span>
+
+</div>
+</header>
+
+<section class="tiles">
+<div class="tile hero"><span class="label">Suite score · with plugin</span><span class="value">100%</span><span class="sub">mean of per-case scores</span></div>
+<div class="tile"><span class="label">Ablation Δ</span><span class="value num delta-zero">0.0</span><span class="sub">score points vs baseline, 9 of 9 cases</span></div>
+<div class="tile"><span class="label">Baseline score</span><span class="value num">100%</span><span class="sub">without the plugin</span></div>
+<div class="tile"><span class="label">Cases</span><span class="value num">9</span><span class="sub">9 of 9 ≥ 100% threshold</span></div>
+<div class="tile"><span class="label">Perfect runs</span><span class="value num">100%</span><span class="sub">runs where every grader passed</span></div>
+</section>
+<details class="section legend">
+<summary>How to read this report</summary>
+<ul class="legend-list">
+<li>A run's score is the weighted fraction of its graders that passed; a "perfect" run passed every grader.</li>
+<li>A case's score is the mean of its runs; a case passes when its score is at or above the 100% threshold (the tick on each case bar).</li>
+<li>The suite score is the mean of the per-case scores.</li>
+<li>Judge votes are independent samples of the LLM judge; the majority decides pass or fail.</li>
+<li>"With plugin" and "Baseline" runs are identical except for the plugin being loaded; Δ is the with-plugin score minus the baseline score.</li>
+
+</ul>
+</details>
+<div class="toolbar"><button type="button" data-act="expand">Expand all</button><button type="button" data-act="collapse">Collapse all</button></div>
+<article class="case" id="case-1">
+<div class="case-head">
+<h2>error-problem-json</h2>
+<span class="muted mono">evals/error-problem-json</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">4 turns · $0.08 · 20:01:41 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">envelope</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence"># Proposed error contract for the billing API
+
+I haven&apos;t looked at your routes. This is based on the three shapes you described and on RFC 9457 and RFC 9110. Checking the routes against it is the first audit step.
+
+## One envelope: RFC 9457 problem details
+
+Send `Content-Type: application/problem+json` on every error, with an HTTP status that matches the failure.
+
+```json
+{
+  &quot;type&quot;: &quot;https://api.example.com/errors/validation-error&quot;,
+  &quot;title&quot;: &quot;Validation error&quot;,
+  &quot;status&quot;: 422,
+  &quot;detail&quot;: &quot;Two fields failed validation.&quot;,
+  &quot;code&quot;: &quot;validation_error&quot;,
+  &quot;errors&quot;: [
+    {&quot;field&quot;: &quot;amount&quot;, &quot;code&quot;: &quot;out_of_range&quot;, &quot;message&quot;: &quot;amount must be &gt; 0; received -5.&quot;}
+  ],
+  &quot;retryable&quot;: false,
+  &quot;documentation_url&quot;: &quot;https://docs.example.com/errors#validation_error&quot;,
+  &quot;request_id&quot;: &quot;req_abc123&quot;
+}
+```
+
+- `title` stays the same for every occurrence of an error type. `detail` describes this specific occurrence.
+- `code` is the string clients branch on. It is stable and must be listed in a published catalog.
+- `errors[]` holds field-level detail. Each entry names the field, the value received, and the constraint violated.
+- `request_id` goes in the body and in an `X-Request-ID` header.
+- Never put stack traces, SQL or internal paths in a body.
+
+**Migrating without breaking clients:** keep the old fields as extension members during the transition.
+- Team A clients: also send `&quot;error&quot;`, with the same text as `title`.
+- Team B clients: also send `&quot;message&quot;`, with the same text as `detail`.
+- Team C clients: map `code: 1042` to `&quot;legacy_code&quot;: 1042`, plus a new string `code`.
+- Remove the legacy members only at a version boundary, with a deprecation notice.
+
+## Status code rules
+
+| Case | Status |
+|---|---|
+| Malformed JSON, wrong content type, bad query or path param syntax | **400** |
+| Well-formed body that fails validation (missing field, out of range, bad format) | **422** |
+| Business-rule violation (for example, refunding an already-refunded invoice) | **409** if it conflicts with current state, otherwise **422** |
+| Missing or invalid credentials | **401** |
+| Authenticated but not allowed | **403** |
+| Resource not found | **404** |
+| Idempotency key reused with a different payload | **422** (non-retryable) |
+| Idempotency request still in flight | **409**, with `retryable: true` |
+| Rate limited | **429**, with `Retry-After` |
+| Unexpected server fault | **500** |
+| Upstream or dependency failure, or overload | **502**, **503** or **504**, with `Retry-After` on 503 |
+
+**Your 400-versus-422 split:** use 400 for requests that can&apos;t be parsed and 422 for requests that parse but are invalid. Your current mix of 400 and 422 for the same validation failure should become 422 everywhere. 400 for validation is also defensible, but only if applied everywhere. I recommend 422 because it separates &quot;can&apos;t parse&quot; from &quot;parsed, but wrong&quot;.
+
+**Never return 200 with `success: false`.** Clients, proxies, monitoring and retry logic all treat a 200 as success. The only exception is a bulk endpoint, where per-item results may appear inside a 200. Each failed item should reuse the same problem shape.
+
+## Audit table: what to change first
+
+| Priority | Finding | Fix | Risk |
+|---|---|---|---|
+| 1 | `200` with `{&quot;success&quot;: false, ...}` on validation failures | Return 422 with the problem body. Keep `success: false` and `message` as legacy members for now. | **Breaking.** Clients checking `success` may also check `res.ok`. Notify them and use a version or opt-in header. |
+| 2 | 400 versus 422 for validation on a well-formed body | Standardize on 422. Keep 400 for unparseable input. | Behavior change on the 400 routes. Announce it. |
+| 3 | Three envelopes | Add one shared Express error-handling middleware that emits problem+json. Have all routes `next(err)` into it instead of calling `res.status().json()` directly. | Additive if the legacy members are kept. |
+| 4 | Numeric `code: 1042` with no catalog | Publish a catalog of string codes. Map each numeric code to one, keeping the number as `legacy_code`. | Additive. |
+| 5 | No request ID on errors | Add middleware that sets `X-Request-ID` and echoes it in the body. | Additive. |
+| 6 | Possible leaks in 500 bodies | Make the handler return a generic 500 body and log details server-side. | Safe. |
+| 7 | Unlisted 404, 401, 405 and body-parser errors that bypass your routes | Add a catch-all 404 handler. Have the final error middleware handle `express.json()` parse errors as 400. | Safe. |
+| 8 | OpenAPI `responses` missing errors | Add a shared `Problem` schema and reference it from every operation. Add a lint rule to CI. | Safe. |
+
+## Rollout order
+
+1. Build the shared error helper and middleware, with legacy members included. This is additive and safe.
+2. Move routes over one team at a time. Add contract tests that assert every non-2xx response is `application/problem+json` with `code` and `request_id`.
+3. Change the status codes (items 1 and 2) as a announced breaking change, because this API is public. Use a deprecation window or a version. For example, send the old behavior unless the client sends `API-Version: 2026-11`, then make the new behavior the default after the window.
+4. Remove the legacy members at the next version boundary.
+
+If you&apos;d like, I can look through the repo, list the routes by error shape and status, and draft the middleware.</pre>
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.05 · 20:01:41 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">envelope</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence"># Proposed error format: RFC 9457 Problem Details
+
+Use `Content-Type: application/problem+json` on every non-2xx response.
+
+```json
+{
+  &quot;type&quot;: &quot;https://api.example.com/errors/validation-failed&quot;,
+  &quot;title&quot;: &quot;Validation failed&quot;,
+  &quot;status&quot;: 422,
+  &quot;detail&quot;: &quot;2 fields are invalid.&quot;,
+  &quot;code&quot;: &quot;validation_failed&quot;,
+  &quot;request_id&quot;: &quot;req_8f3a...&quot;,
+  &quot;errors&quot;: [
+    { &quot;field&quot;: &quot;amount&quot;, &quot;code&quot;: &quot;must_be_positive&quot;, &quot;message&quot;: &quot;amount must be &gt; 0&quot; }
+  ]
+}
+```
+
+- **Required:** `type`, `title`, `status`, `code`, `request_id`.
+- **`code`:** a stable string, not an integer. Clients branch on it, and `type` is the same identifier as a URL.
+- **`detail`:** human-readable and safe to show. Never put stack traces or internals in it.
+- **`errors[]`:** only for field-level validation failures.
+- **No success flag:** the HTTP status is the success signal. Any `{&quot;success&quot;: false}` body is retired.
+- **Legacy `code` 1042:** keep a mapping table from old numeric codes to new string codes. During migration, optionally add `legacy_code: 1042`.
+
+# Status code per case
+
+| Case | Status | `code` |
+|---|---|---|
+| Malformed JSON, wrong content type, unparseable body | 400 | `malformed_request` |
+| Well-formed body that fails validation (missing field, bad value, bad format) | **422** | `validation_failed` |
+| Missing or invalid credentials | 401 | `unauthenticated` |
+| Authenticated but not allowed | 403 | `forbidden` |
+| Resource doesn&apos;t exist | 404 | `not_found` |
+| Method not allowed | 405 | `method_not_allowed` |
+| State conflict (duplicate, idempotency-key reuse with a different body, invoice already paid) | 409 | `conflict` |
+| Payload too large | 413 | `payload_too_large` |
+| Rate limited (include `Retry-After`) | 429 | `rate_limited` |
+| Unexpected server error (generic message, log details server-side) | 500 | `internal_error` |
+| Upstream (payment processor) failure | 502 or 503 | `upstream_unavailable` |
+
+**Why 422 for validation:** it cleanly separates &quot;I couldn&apos;t parse this&quot; (400) from &quot;I understood it but it&apos;s invalid&quot; (422). Both are already in use, so pick one rule and apply it everywhere. The alternative is to use 400 for everything, which is also defensible. What matters is that there is one rule. Business-rule rejections, such as refunding more than the charge, can also be 422 with a specific `code`, or 409 if they depend on current resource state.
+
+**Never return 200 for a failure.** Clients, proxies, retry logic, and monitoring all key off the status.
+
+# What to change first
+
+| Priority | Item | Why | Action |
+|---|---|---|---|
+| 1 | Endpoints returning 200 with `success: false` | Silent failures. Clients may treat them as paid or created, and your error-rate dashboards miss them. | Return the correct 4xx. This is a breaking change, so version it or announce it with a deprecation window. |
+| 2 | One central Express error handler plus an `ApiError` class | Fixes the format at the source. Each team stops hand-writing `res.status().json()`. | Routes `throw new ApiError(status, code, detail, errors)`. Add a final `app.use((err, req, res, next) =&gt; …)` that serializes to problem+json and maps unknown errors to a generic 500. Wrap async handlers (or use Express 5) so rejections reach it. |
+| 3 | Validation: 400 vs 422 split | Inconsistent behavior for the same failure. | Put validation in one shared middleware (zod, Joi, or ajv) that throws `validation_failed` with `errors[]`. Standardize on 422. |
+| 4 | `{&quot;code&quot;: 1042, &quot;detail&quot;: …}` endpoints | Closest to the target shape, so it&apos;s the cheapest migration. | Map numeric codes to string codes, then switch the serializer. |
+| 5 | `{&quot;error&quot;: &quot;bad request&quot;}` endpoints | Tells the client nothing actionable. | Move to the central handler and give each case a real `code`. |
+| 6 | 404 and 405 for unknown routes, and body-parser errors | Express defaults return HTML. | Add a catch-all 404 handler. Map `entity.parse.failed` to 400 and `entity.too.large` to 413. |
+| 7 | Contract tests | Prevents regression. | One test that hits every route with a bad input and asserts `application/problem+json` and the required fields. Publish the shape in your OpenAPI spec as a shared `Problem` schema. |
+
+# Rollout
+
+1. Ship the handler and `ApiError` first, with no behavior change for existing routes.
+2. Migrate routes team by team.
+3. For breaking changes (200 to 4xx, and 400 to 422 where clients depend on it), either put them behind a new API version or give a dated deprecation notice. Public billing clients will have code that parses the old shapes.
+4. Log old-shape responses during the transition so you know when it&apos;s safe to remove them.
+
+I can scan the repo to list which routes currently use each shape and which return 200 with `success: false`, and then draft the error handler. The working directory looks like it doesn&apos;t contain the API code, so tell me where it lives.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>Our public billing API (Node, Express) returns three different error shapes depending on which team wrote the endpoint: <code>{&quot;error&quot;: &quot;bad request&quot;}</code>, <code>{&quot;success&quot;: false, &quot;message&quot;: &quot;...&quot;}</code>, and <code>{&quot;code&quot;: 1042, &quot;detail&quot;: &quot;...&quot;}</code>. Some validation failures return HTTP 200 with <code>success: false</code>. Validation errors on a well-formed body currently come back as 400 on some routes and 422 on others. Propose one error format for all endpoints and tell us which status to use for each case. Give a short audit table of what to change first.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">envelope</span><span class="badge">llm</span></div>
+<div class="md"><p>Pass only if the answer does all of these:</p>
+<ul>
+<li>Picks one envelope based on RFC 9457 (Problem Details) served as application/problem+json, replacing the three shapes.</li>
+<li>Says an error must never be returned with HTTP 200; the HTTP status carries the outcome.</li>
+<li>Gives a single consistent rule for 400 versus 422 (for example 400 for malformed or unparseable requests, 422 for well-formed but semantically invalid), and applies it to every route.</li>
+<li>Puts field-level validation failures in a machine-readable structure inside the problem body.
+Fail if it keeps more than one envelope, or leaves 400 and 422 both in use for the same kind of failure.
+Judge on content, not length. A longer answer is not a better one.</li>
+</ul>
+</div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:rest-design\&quot;&quot;</code></div></div>
+</div>
+</details>
+</article>
+<article class="case" id="case-2">
+<div class="case-head">
+<h2>idempotency-retry-unsafe-methods</h2>
+<span class="muted mono">evals/idempotency-retry-unsafe-methods</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.07 · 20:01:41 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">audit</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">The plan has a flaw: RFC 9110 says PUT and DELETE *should* be idempotent, but the spec can&apos;t make your server behave that way. Both endpoints you checked break the rule, so &quot;retry every PUT and DELETE without a key&quot; would cause duplicate writes.
+
+## Endpoint audit
+
+| Endpoint | Idempotent? | Why | Retry without a key? |
+|---|---|---|---|
+| `PUT /v1/accounts/{id}/notes` | No | It appends a new note on every call. If the response is lost and the SDK retries, the log gets duplicate notes. | **No** |
+| `DELETE /v1/cart/items/{sku}` | No | It decrements the quantity by one. A retry after a lost response removes a second unit, or removes the line when the user wanted one fewer. | **No** |
+
+RFC 9110 idempotency means N identical requests leave the same server state as one request. Neither endpoint meets that.
+
+Both are the worst case for retries. A timeout or reset doesn&apos;t tell the client whether the first attempt ran, and a blind retry turns that uncertainty into silent data corruption. Nothing errors, so you&apos;d find out from customer reports.
+
+## Server changes
+
+Pick one fix per endpoint, and fix the contract rather than the SDK.
+
+**Notes (`PUT .../notes`)**
+- Best option: make it a real PUT. Use a client-chosen note ID (`PUT /v1/accounts/{id}/notes/{note_id}`). Repeating the call with the same ID rewrites the same note, so it is idempotent by construction.
+- Alternative: keep the append semantics but make it `POST /notes` with `Idempotency-Key` support. `POST` is the honest method for an append.
+- Changing the method or path is a breaking change. Keep the old route, mark it deprecated, and don&apos;t give it automatic retries.
+
+**Cart (`DELETE .../items/{sku}`)**
+- Decrement-by-one is not a delete. Model it as one of these:
+  - `PUT /v1/cart/items/{sku}` with `{&quot;quantity&quot;: N}`, which sets an absolute state and is idempotent.
+  - `POST /v1/cart/items/{sku}/decrement` with `Idempotency-Key`.
+- Keep `DELETE` for &quot;remove the line entirely&quot;, which is naturally idempotent. A repeat returns 204 or 404, and the SDK should treat both as success.
+
+**Idempotency-key support, for any endpoint that stays non-idempotent**
+- The client mints the key. The server never derives it from the payload.
+- Scope it per account with a unique constraint on `(account_id, idempotency_key)`.
+- Store a payload fingerprint with the key. The same key with a different body gets a distinct error (`422` or `409`), not a silent replay.
+- Claim the key atomically, in the same transaction as the mutation. Don&apos;t check then insert.
+- Track three states: absent, in-flight, and complete. For in-flight, return `409` with code `idempotency_request_in_progress`. For complete, replay the stored response verbatim.
+- Set the replay window from your longest retry chain. 24 hours is a common default. Keep records longer than that, for example 72 hours.
+- Decide whether a stored failure replays or can be re-attempted, and document the decision.
+- `Idempotency-Key` is not a standard. The IETF draft expired, so you own the semantics. Document them.
+
+## SDK retry policy
+
+**What to retry**
+- Retry automatically only on:
+  - methods that are idempotent in behavior: GET, HEAD, and PUT/DELETE endpoints that your server team has verified, via an explicit per-operation allowlist
+  - any operation that carries an idempotency key
+- Don&apos;t decide by HTTP verb alone. Make each operation in the SDK&apos;s generated spec carry an `idempotent: true` flag. Default it to false.
+- For unsafe operations, have the SDK generate a key once per logical call and reuse it on every attempt. A fresh key per attempt defeats the mechanism.
+
+**When to retry**
+- Retry on `408`, `429` (honor `Retry-After`), `502`, `503`, `504`, connection timeouts and resets, and `409 idempotency_request_in_progress` (same key).
+- Treat `500` carefully, since many are deterministic bugs.
+- Never retry other 4xx, auth failures, or the payload-mismatch error.
+
+**How to retry**
+- Use full-jitter exponential backoff: `sleep = random(0, min(cap, base * 2^attempt))`.
+- Cap attempts at about 3, and set one overall deadline for the whole call. Don&apos;t reset the timeout on each attempt.
+- Add a client-side retry budget. Stop retrying once retries exceed a share of traffic over a sliding window, so a fleet doesn&apos;t amplify an outage.
+- Log every retry with the attempt number, the error, and the next wait.
+- Default retries on, and document the defaults.
+
+## Verification before shipping
+1. **Concurrency test:** fire N identical requests with the same key at each state-changing endpoint. Exactly one side effect should happen, and the rest should get the in-flight conflict or the stored replay.
+2. **Kill test:** drop the connection after the server commits but before the client reads the response. Retry, and confirm exactly one note is appended and one unit is removed.
+3. **Audit the rest:** these two endpoints were the ones you happened to check. Check every other PUT and DELETE for the same append or decrement behavior before enabling the allowlist. Start with the allowlist empty and add endpoints as each is verified.
+
+I haven&apos;t looked at your server or SDK code, so this audit rests only on the endpoint behavior you described. I can go through the router or OpenAPI spec and flag every PUT and DELETE that isn&apos;t idempotent in practice, if you point me at it.</pre>
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.04 · 20:01:41 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">audit</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">The plan is flawed. HTTP says PUT and DELETE are *intended* to be idempotent, but the spec can&apos;t make your server behave that way. Retry safety depends on what each endpoint does, not on its verb.
+
+## Endpoint audit
+
+**`PUT /v1/accounts/{id}/notes`: not safe to retry.**
+- It appends a note on every call, so a retry after a timeout or lost response creates duplicate notes.
+- This is a POST-style operation sent as PUT. It violates the PUT contract, which says repeating the request leaves the same server state as sending it once.
+
+**`DELETE /v1/cart/items/{sku}`: not safe to retry.**
+- Each call decrements the quantity by one. A retry after a lost response removes a second unit, so the customer loses an item they didn&apos;t ask to remove.
+- Real DELETE semantics would remove the line, so repeating the call has the same effect as sending it once.
+
+Both failures show up in the cases that matter most: timeouts, connection resets, and 502/503/504 responses. In those cases the client can&apos;t tell whether the server already applied the request.
+
+## Server changes
+
+You have two options for each endpoint. Pick one per endpoint.
+
+1. **Make the endpoint match its verb.**
+   - Notes: use `POST /v1/accounts/{id}/notes` for appends. If you need PUT, make it `PUT /v1/accounts/{id}/notes/{note_id}` with a client-generated ID, so a repeat overwrites the same note.
+   - Cart: make `DELETE /v1/cart/items/{sku}` remove the whole line. Add `PATCH /v1/cart/items/{sku}` with an absolute `{&quot;quantity&quot;: n}`, or a separate decrement endpoint that takes an idempotency key.
+2. **Keep the behavior and support idempotency keys.**
+   - Accept an `Idempotency-Key` header on every non-idempotent endpoint, including these two if you keep their current behavior.
+   - Store the key, a hash of the request, and the response for a fixed window, such as 24 hours.
+   - Replay the stored response when the same key and request arrive again. Return 409 or 422 if the key is reused with a different request body.
+   - Make the key check and the write atomic, for example a unique constraint in the same transaction, so concurrent retries can&apos;t both apply.
+
+Changing the semantics of existing routes is a breaking change. Version them or deprecate them rather than editing them in place.
+
+Also audit every other PUT and DELETE before the SDK ships. These two were the only ones you checked, and they were both wrong.
+
+## SDK retry policy
+
+Don&apos;t key retries on the HTTP method. Key them on whether the request is known to be safe to repeat.
+
+- **Always retry (with backoff):**
+  - Failures that happen before the request is sent: connection refused and DNS failures.
+  - 429 and 503 responses that include `Retry-After`. The server is explicitly saying it didn&apos;t process the request.
+- **Retry only if safe:** timeouts, connection resets, and 500/502/504 responses. Retry these if either condition holds:
+  - the request carries an idempotency key (SDK-generated, reused across all attempts of one logical call), or
+  - the endpoint is explicitly marked idempotent in your API spec.
+- **Never auto-retry:** POST, and any endpoint not marked idempotent, when there&apos;s no idempotency key.
+- **Mechanics:**
+  - Use exponential backoff with jitter and honor `Retry-After`.
+  - Cap attempts and total elapsed time.
+  - Generate the idempotency key once per logical call, not once per attempt.
+  - Make retries configurable per call and per client.
+
+The &quot;marked idempotent&quot; flag should be an explicit allowlist in the SDK, generated from the API spec and set after each endpoint is audited. That way a verb alone never decides, and an endpoint like these two can&apos;t be retried by accident.
+
+## Rollout order
+
+1. Ship the SDK with the allowlist empty, plus key-based retries.
+2. Fix or key the two endpoints above.
+3. Audit the remaining PUT and DELETE endpoints and add the safe ones to the allowlist.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We are adding automatic retries to our SDK and want to retry every PUT and DELETE without an idempotency key, because the HTTP spec says those methods are idempotent. Here are two server endpoints we checked:</p>
+<ul>
+<li><code>PUT /v1/accounts/{id}/notes</code> appends the request body as a new note to the account's note log.</li>
+<li><code>DELETE /v1/cart/items/{sku}</code> decrements the item's quantity by one and removes the line only when it reaches zero.</li>
+</ul>
+<p>Audit the plan. Which endpoints are safe to retry, what should we change on the server, and what should the SDK retry policy be?</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">audit</span><span class="badge">llm</span></div>
+<div class="md"><p>Pass only if the answer does all of these:</p>
+<ul>
+<li>Says the PUT-that-appends is not idempotent in effect (a retry adds a duplicate note) despite the method's semantics.</li>
+<li>Says the DELETE-that-decrements is not idempotent in effect (a retry decrements twice) despite the method's semantics.</li>
+<li>Says method semantics alone do not make a retry safe; safety is verified from the handler's behavior.</li>
+<li>Proposes a fix: either make the endpoints truly idempotent (PUT replaces state, DELETE removes the line by identity), or require an idempotency key with server-side deduplication, and retry only endpoints that are safe or keyed.
+Fail if it approves blanket retry of PUT and DELETE.
+Judge on content, not length. A longer answer is not a better one.</li>
+</ul>
+</div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:idempotency-retry\&quot;&quot;</code></div></div>
+</div>
+</details>
+</article>
+<article class="case" id="case-3">
+<div class="case-head">
+<h2>idempotency-toctou</h2>
+<span class="muted mono">evals/idempotency-toctou</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.08 · 20:01:55 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">claim</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence"># Review of the Redis SETNX lock, and the fix for the race
+
+## Verdict on the SETNX proposal
+
+Don&apos;t use it as the fix. It narrows the window without closing it, and it adds a new failure mode.
+
+- **The lease can expire while the holder is still running.** If request A pauses (GC, slow DB, network stall) for more than 10 seconds, the lock expires and request B takes it. Both then create invoices. Without a fencing token, nothing stops A&apos;s late write.
+- **Redis failover or loss loses the lock.** A failover, restart, or eviction drops it, and two requests run concurrently again.
+- **Redis and Postgres can&apos;t commit together.** The lock and the invoice live in separate systems. Releasing the lock after a crash or timeout says nothing about whether the invoice exists.
+- **It&apos;s a second system on the critical path.** If Redis is down you either fail every write or fail open, and failing open brings the race back.
+
+The 30ms double-fire is a check-then-insert race, and Postgres can fix it on its own.
+
+## Root cause
+
+```
+A: SELECT key  → none
+B: SELECT key  → none
+A: INSERT key; create invoice
+B: INSERT key (no unique constraint, or error swallowed); create invoice
+```
+
+The SELECT can&apos;t pick a winner. Only an atomic operation in the storage layer can.
+
+## The fix
+
+**1. Add a unique constraint scoped per account.**
+
+```sql
+ALTER TABLE idempotency_keys
+  ADD COLUMN request_fingerprint text NOT NULL,
+  ADD COLUMN status text NOT NULL DEFAULT &apos;in_flight&apos;,  -- in_flight | complete
+  ADD COLUMN response_status int,
+  ADD COLUMN response_headers jsonb,
+  ADD COLUMN response_body jsonb,
+  ADD COLUMN locked_at timestamptz,
+  ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
+
+CREATE UNIQUE INDEX CONCURRENTLY idx_idem_account_key
+  ON idempotency_keys (account_id, key);
+```
+
+Before creating the index, dedupe any existing duplicates. If the current table has no unique index, that is the actual bug.
+
+**2. Replace SELECT-then-INSERT with an atomic claim, in the same transaction as the invoice.**
+
+```ruby
+def create
+  key  = request.headers[&quot;Idempotency-Key&quot;] or return render_error(400)
+  fp   = Digest::SHA256.hexdigest(request.raw_post)
+
+  IdempotencyKey.transaction do
+    claimed = IdempotencyKey.insert(
+      { account_id: current_account.id, key: key, request_fingerprint: fp,
+        status: &quot;in_flight&quot;, locked_at: Time.current },
+      unique_by: %i[account_id key]          # INSERT ... ON CONFLICT DO NOTHING RETURNING id
+    ).rows.any?
+
+    unless claimed
+      # Lock the existing row. If the winner is still mid-transaction,
+      # this blocks until it commits or rolls back.
+      rec = IdempotencyKey.lock.find_by!(account_id: current_account.id, key: key)
+
+      return render_error(422, &quot;idempotency_key_reused&quot;) if rec.request_fingerprint != fp
+      return replay(rec)                     if rec.status == &quot;complete&quot;
+      return render_error(409, &quot;idempotency_request_in_progress&quot;)
+    end
+
+    invoice = Invoice.create!(invoice_params.merge(account: current_account))
+    # store the full response so a replay is identical
+    IdempotencyKey.where(account_id: current_account.id, key: key).update_all(
+      status: &quot;complete&quot;, response_status: 201,
+      response_headers: { &quot;Location&quot; =&gt; invoice_path(invoice) },
+      response_body: InvoiceSerializer.new(invoice).as_json
+    )
+    render json: invoice, status: :created, location: invoice
+  end
+end
+```
+
+How it behaves under the 30ms double-fire:
+- Postgres lets exactly one `INSERT` through. The other sees a conflict.
+- The key row and the invoice commit together. If the invoice fails and the transaction rolls back, the key is released and the client can retry. This also fixes the inverse bug, where a key is recorded for an invoice that was never created.
+- The loser blocks on the row lock until the winner commits. It then reads `complete` and replays the stored response, so the integrator gets the same `201` and invoice ID from both calls.
+
+**3. Decisions to make and document**
+- **Payload mismatch:** the same key with a different body returns a distinct error (`422 idempotency_key_reused`). Keep it separate from the in-flight `409`.
+- **Stored failures:** decide whether a 4xx or 5xx replays verbatim or may be retried. With the transaction above, a rolled-back failure leaves no key, so it re-executes. If you want validation errors to replay, store them.
+- **Retention:** keep keys at least as long as your longest retry chain. 24h is the usual floor, and keeping rows about 72h is cheap. Add a reaper job to delete expired rows.
+- **Scope:** keys are unique on `(account_id, key)`, never globally.
+
+## If the invoice flow calls external systems
+
+If creating an invoice also does something that can&apos;t be rolled back (a payment call, an email), a single transaction isn&apos;t enough. Split the work into phases with a recovery point stored on the key row. Send the vendor its own idempotency key derived from `(key, phase)`. Add a completer job for abandoned `in_flight` rows. If you need lock takeover, add a `lock_generation` column and put `AND lock_generation = ?` in every update, so a stalled executor&apos;s late writes affect zero rows. That is the fencing the Redis approach lacks.
+
+## Verify before shipping
+
+1. **Concurrency test:** fire 20 identical concurrent requests with one key. Expect exactly one invoice row. The other 19 get the identical stored `201` or `409 idempotency_request_in_progress`.
+2. **Mismatch test:** the same key with a different body returns 422 and creates nothing.
+3. **Rollback test:** force `Invoice.create!` to raise. Confirm no key row remains and a retry succeeds.
+4. **Backfill check:** look for duplicate `(account_id, key)` rows before adding the index.
+5. **Client guidance:** tell the integrator to mint the key once per logical operation (for example `invoice-&lt;orderId&gt;`) and reuse it on every retry. If their client generates a fresh key per attempt, no server-side fix helps.
+
+I haven&apos;t looked at your controller or schema, since the working directory has no Orbitshelf code. If you point me at the repo, I can check the actual constraint, the transaction boundaries, and whether the INSERT&apos;s error is being swallowed.</pre>
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.05 · 20:01:59 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">claim</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">**Short answer:** don&apos;t use the Redis lock as the fix. The race comes from a missing database constraint, and the fix is to let Postgres arbitrate.
+
+## Why SELECT-then-INSERT fails
+
+Two requests 30ms apart both run the SELECT before either INSERT commits. Both see no row, both insert, and both create invoices. If the keys table has no unique index on the key, both inserts even succeed. If it does have one, the loser gets a constraint error that the controller probably doesn&apos;t handle, or the invoice is created outside the transaction. Check which case you&apos;re in, because it changes the migration.
+
+## Why the Redis SETNX lock is the wrong fix
+
+- **The TTL is a guess.** If a request outlives 10s (slow query, GC pause, deploy), the lock expires and a duplicate gets through. Redlock-style leases give no fencing guarantee.
+- **The lock and the commit are separate.** If the lock is released before the DB transaction commits, a second request can read stale state and still duplicate.
+- **Redis is a new failure mode.** On failover or an outage you must choose between failing open (duplicates return) and failing closed (the invoice endpoint goes down).
+- **The invariant stays unenforced.** Retries from jobs, other endpoints, or a console session bypass the lock. Postgres is already your source of truth, so the guarantee should live there.
+
+Redis can still serve as an optional optimization to reduce contention. It shouldn&apos;t be the thing that provides correctness.
+
+## The fix
+
+**1. Add a unique index.** Scope it to whatever the key&apos;s uniqueness scope is, typically the account.
+
+```ruby
+# dedupe existing rows first if any exist
+class AddUniqueIndexToIdempotencyKeys &lt; ActiveRecord::Migration[7.1]
+  disable_ddl_transaction!
+  def change
+    add_index :idempotency_keys, [:account_id, :key],
+              unique: true, algorithm: :concurrently,
+              name: :idx_idempotency_keys_account_key
+  end
+end
+```
+
+**2. Insert first, in the same transaction as the invoice.** Use `INSERT ... ON CONFLICT DO NOTHING` instead of SELECT-then-INSERT.
+
+```ruby
+def create
+  invoice = nil
+  existing = nil
+
+  ApplicationRecord.transaction do
+    res = IdempotencyKey.insert(
+      { account_id: current_account.id, key: idem_key, request_hash: request_hash },
+      unique_by: :idx_idempotency_keys_account_key,
+      returning: %w[id]
+    )
+
+    if res.rows.empty?
+      existing = IdempotencyKey.find_by!(account_id: current_account.id, key: idem_key)
+    else
+      invoice = Invoice.create!(invoice_params.merge(account: current_account))
+      IdempotencyKey.where(id: res.rows.first.first)
+                    .update_all(invoice_id: invoice.id)
+    end
+  end
+
+  if existing
+    return render json: { error: &quot;key reused with different payload&quot; }, status: 422 if existing.request_hash != request_hash
+    return render json: InvoiceSerializer.new(existing.invoice), status: :ok
+  end
+
+  render json: InvoiceSerializer.new(invoice), status: :created
+end
+```
+
+**Why this closes the race:** when two transactions insert the same key, the second blocks on the first one&apos;s uncommitted index entry.
+
+- If the first commits, the second&apos;s insert does nothing, and it returns the stored invoice.
+- If the first rolls back, the second&apos;s insert succeeds and it proceeds.
+
+Because the key and the invoice commit atomically, a crash can&apos;t leave a key with no invoice.
+
+## Details to get right
+
+- **Store a request fingerprint** (`request_hash`) so reusing a key with a different body returns 422 instead of silently returning the wrong invoice.
+- **Set `lock_timeout` or `statement_timeout`** (for example 5s) so a blocked duplicate doesn&apos;t hold a connection indefinitely.
+- **Keep slow external calls out of the transaction**, such as payment gateways or webhooks. If you need them, use a two-phase pattern instead: commit the key as `started` with a `locked_at`, do the work, then mark it `completed`. Concurrent duplicates get 409 while `started`.
+- **Add a backstop** with a unique index on `invoices (account_id, idempotency_key)` if invoices can be created through other paths.
+- **Expire old keys** with a periodic job, for example after 24-48h.
+
+## Test it
+
+Add a test that uses real concurrency and non-transactional fixtures (`use_transactional_tests = false`). Fire 5-10 threads, each with its own DB connection, at the same key, and assert that exactly one invoice exists and every response refers to it. Run it against the old code first to confirm it reproduces Tuesday&apos;s bug.
+
+I haven&apos;t looked at your codebase, since the working directory has no Orbitshelf code in it. If you point me at the controller and the schema, I can write the actual migration and patch.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>At Orbitshelf (inventory SaaS, Postgres + Rails) we already store idempotency keys. The controller SELECTs from the keys table, and if no row exists it INSERTs the key and then creates the invoice. Last Tuesday a customer's integration fired the same request twice within 30ms and both created invoices. A teammate wants to put a Redis SETNX lock with a 10-second TTL in front of the endpoint to serialize requests. Review that approach and tell us exactly how to fix the race.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">claim</span><span class="badge">llm</span></div>
+<div class="md"><p>Pass only if the answer does all of these:</p>
+<ul>
+<li>Names SELECT-then-INSERT as a check-then-insert race in which both requests see the key absent.</li>
+<li>Replaces it with an atomic claim: an INSERT arbitrated by a unique constraint (for example on account and idempotency key, ON CONFLICT DO NOTHING), where the loser learns it lost from the insert result rather than from a second existence check.</li>
+<li>Says the key claim and the invoice creation must be made safe together (same transaction, or a recorded state with recovery) so that at most one effective side effect occurs.</li>
+<li>Says a bare Redis SETNX with a TTL is not sufficient, because a client paused past lease expiry can still write; if a lock is kept at all it needs a fencing token, and the database constraint is preferred.
+Fail if any proposed path can create a second invoice, or if it endorses the SETNX lock as the fix.
+Judge on content, not length. A longer answer is not a better one.</li>
+</ul>
+</div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:idempotency-retry\&quot;&quot;</code></div></div>
+</div>
+</details>
+</article>
+<article class="case" id="case-4">
+<div class="case-head">
+<h2>keys-hash-storage</h2>
+<span class="muted mono">evals/keys-hash-storage</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.07 · 20:02:00 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">hash</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">**Don&apos;t use bcrypt. Store a SHA-256 hash of each key. Your reviewer&apos;s rule is right for passwords and wrong for this credential.**
+
+**Why bcrypt is the wrong tool**
+- Slow hashes exist to make guessing a low-entropy secret expensive. A random 32-byte key has 256 bits of entropy. No attacker can brute-force it at any hash speed, so a slow hash adds no security.
+- It does add cost. bcrypt at a sane work factor takes about 50–100 ms of CPU per check. At 3,000 req/s that is roughly 150–300 cores spent only on authentication. Attackers can also use that cost against you by sending garbage keys.
+- bcrypt truncates input at 72 bytes, and many implementations choke on NUL bytes. Both are bad properties for a binary-derived credential.
+- You can&apos;t look up by bcrypt hash, because each hash has its own salt. You would need a separate lookup ID anyway.
+
+**What the reviewer is actually protecting against**
+The goal is that a database leak doesn&apos;t hand over usable credentials. Hashing the key achieves that. For 256-bit random inputs, SHA-256 is preimage-resistant, so the stored hash can&apos;t be reversed. You can say this to the reviewer directly: the bcrypt guidance is for human-chosen passwords, and the OWASP Password Storage Cheat Sheet is about those.
+
+**Design**
+1. **Format:** use `sk_live_&lt;random body&gt;&lt;checksum&gt;`. Put the environment (live or test) in the prefix from the start. The body comes from a CSPRNG with at least 120 bits of entropy. Your 32 bytes is well above that. Show the key once at creation.
+2. **Table:**
+   ```sql
+   CREATE TABLE api_keys (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     owner_id uuid NOT NULL,
+     key_prefix text NOT NULL,   -- indexed lookup handle
+     key_hash bytea NOT NULL,    -- SHA-256 of the full key
+     name text NOT NULL,
+     scopes text[] NOT NULL,     -- empty means no access
+     created_at timestamptz NOT NULL DEFAULT now(),
+     last_used_at timestamptz,
+     expires_at timestamptz,
+     revoked_at timestamptz
+   );
+   CREATE INDEX ON api_keys (key_prefix);
+   ```
+3. **Per request:**
+   - Check the prefix, length and checksum. Reject malformed keys with no database call.
+   - Fetch candidate rows by indexed `key_prefix`. Use the type and environment prefix plus a few body characters, or a separate random lookup ID embedded in the key. Count only the unstored part of the body toward the entropy floor. 32 random bytes leaves plenty.
+   - Compute SHA-256 of the full key and compare with `key_hash` in constant time.
+   - Check `expires_at` and `revoked_at`, then enforce scopes.
+   - Update `last_used_at` asynchronously so it never blocks the request.
+4. **At 3,000 req/s:** SHA-256 costs microseconds. Put a short-TTL in-process cache in front of the lookup, keyed by the hash, so the database is not hit on every request. Keep the TTL to seconds so revocation propagates quickly, or add explicit invalidation.
+
+**Conditions that make this safe**
+- Enforce the entropy floor at generation. If anyone can later choose their own key, SHA-256 is no longer enough.
+- Fail closed. A missing secret, such as a KMS key, should stop the service at startup and never fall back to a default.
+- Rate-limit validation failures and key creation like login endpoints.
+- Return 401 for a bad key and 403 for a valid key without the scope.
+
+**Operational items to add**
+- Support rotation with two valid keys at once and a scheduled end for the old one.
+- Track `last_used_at` so you can see when old keys go quiet.
+- Give keys service-account or org owners, not individuals.
+- Consider registering the key format with GitHub secret scanning.
+
+**If the reviewer pushes back**
+An HMAC-SHA-256 with a server-side pepper held in a KMS is a reasonable extra layer. It means a database-only leak can&apos;t even be checked against guesses. It&apos;s optional here because the keys are already unguessable. It also adds a secret to manage, so fail startup if it is missing.</pre>
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.04 · 20:02:00 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">hash</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">**Don&apos;t use bcrypt for these keys. Store a fast, keyed or unkeyed SHA-256 hash and look up by it.**
+
+**Why bcrypt is wrong here**
+
+Password hashing is deliberately slow because passwords are low-entropy. An attacker who steals the database can guess candidates, and the cost factor makes each guess expensive. Your keys are 256 bits of CSPRNG output. Brute force is infeasible whatever the hash speed, so the slowness protects nothing. It does cost you:
+
+- **CPU:** bcrypt at cost 10–12 takes about 50–250 ms per verification. At 3,000 req/s that is 150–750 CPU-cores of hashing, just to authenticate.
+- **DoS surface:** anyone can send garbage keys and force an expensive hash each time.
+- **No direct lookup:** bcrypt is salted, so you can&apos;t compute a hash and query by it. You would need a key ID and a second lookup, or a scan of every row.
+
+The reviewer&apos;s rule is right for passwords. It doesn&apos;t carry over to high-entropy machine credentials. GitHub, Stripe and others hash tokens this way.
+
+**Recommended design**
+
+1. **Key format:** `prefix_&lt;id&gt;_&lt;secret&gt;`, or just a prefix plus 32 random bytes encoded in base62 or base64url. The prefix (e.g. `sk_live_`) helps secret scanners find leaked keys.
+2. **Storage:** store `HMAC-SHA256(server_pepper, key)`, or plain `SHA-256(key)`, in a column with a unique index. Never store the raw key. Show it once at creation, as you do now.
+3. **Pepper (recommended):** keep the HMAC key in a KMS or secrets manager, not in the database. A database-only leak then yields nothing verifiable. If you skip it, plain SHA-256 is still sound for 256-bit random input.
+4. **Lookup:** hash the presented key and do an indexed equality query, or a cache hit. Because the hash is unique and the comparison happens inside the database index, timing attacks on the secret aren&apos;t practical. If you compare in application code, use a constant-time compare.
+5. **Cache:** at 3k req/s, keep an in-process or Redis cache keyed by the hash, with a short TTL (30–60 s). Add explicit invalidation on revoke, or accept that TTL as the revocation delay.
+6. **Operations:** store metadata beside the hash (key ID, customer, created/last-used, scopes, revoked-at). Store a short non-secret display suffix, such as the last 4 characters, so customers can identify keys. Support rotation with overlapping keys.
+
+**What to tell the reviewer**
+
+The control they want is &quot;a database leak doesn&apos;t expose usable credentials.&quot; One-way hashing gives you that. Bcrypt&apos;s work factor only matters when the input can be guessed. For 256-bit random secrets, SHA-256 gives the same protection without the cost. This is the same guidance as OWASP&apos;s, which says to use slow hashes for user-chosen passwords and not for random API tokens. If they still want a slow hash, offer the HMAC pepper as the extra layer instead.
+
+**Caveat:** this holds only because the keys are truly random and at least 128 bits. If any keys are ever human-chosen or derived from something guessable, they need a different scheme.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We issue API keys to our customers' servers (random 32-byte values, shown once at creation). Our security reviewer says to store them like passwords with bcrypt. Our API handles about 3,000 requests per second and every request carries the key. How should we store and look up keys? Settle the bcrypt question.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:keys\&quot;&quot;</code></div></div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">hash</span><span class="badge">llm</span></div>
+<div class="md"><p>Pass only if the answer does all of these:</p>
+<ul>
+<li>Recommends a fast hash (SHA-256 or equivalent) of the key, stored hash-only, rather than bcrypt or argon2 for these machine-generated high-entropy keys.</li>
+<li>Explains why: a random 256-bit key cannot be brute-forced at any hash speed, so a slow hash adds CPU to every request (3,000 rps) with no security gain; password hashes are for low-entropy human secrets.</li>
+<li>Handles lookup without scanning: an indexed non-secret prefix or lookup ID column fetches the candidate row, then compares hashes in constant time.
+Fail if it recommends bcrypt or argon2id for these keys.
+Judge on content, not length. A longer answer is not a better one.</li>
+</ul>
+</div>
+</div>
+</details>
+</article>
+<article class="case" id="case-5">
+<div class="case-head">
+<h2>oauth-refresh-rotation</h2>
+<span class="muted mono">evals/oauth-refresh-rotation</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.06 · 20:02:13 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">rotation</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">## Refresh token policy
+
+**Public clients (mobile and SPA): rotate on every use and detect reuse.** RFC 9700 requires public-client refresh tokens to be either sender-constrained or rotated. An unconstrained, reusable, never-expiring refresh token is the case the review flagged, and it isn&apos;t allowed.
+
+- **Rotation:** Each refresh request returns a new access token and a new refresh token. The old refresh token is marked consumed.
+- **Families:** Every refresh token belongs to a family that traces back to the original authorization grant. Store the family ID and the consumed or active state.
+- **Lifetimes:**
+  - Use an idle timeout, such as 30 days for mobile and shorter for SPAs. The timeout slides forward with each rotation.
+  - Also use an absolute cap on the family, such as 90 days for mobile and days to a couple of weeks for SPAs. After the cap the user re-authenticates.
+  - Browser storage is the most exposed, so SPAs get the tightest limits.
+  - These numbers are starting points. Choose them from your own usage patterns.
+- **Access tokens:** Keep them at about an hour or less. If they are JWTs, they can&apos;t be revoked mid-life, so keep them short.
+- **Sender-constraining:** Offer DPoP (RFC 9449) or mTLS as an option, and make it the default where tokens guard financial or health data or long-lived agent access. Many client libraries don&apos;t support DPoP yet, so don&apos;t make it a baseline until you know your clients.
+- **Revocation:** Keep user revocation of an app, which revokes the whole family. Add RFC 7009 `/revoke` so apps can revoke their own tokens on logout.
+
+**Confidential clients:** Client authentication already constrains these. Non-rotating tokens with a per-client lifetime cap are defensible, but rotation is still the simpler default to apply everywhere.
+
+## When a refresh token is presented a second time
+
+**Revoke the whole family: every refresh token and the access tokens issued from them.** The server can&apos;t tell whether the attacker or the legitimate client presented the stale token. It only knows that the token was used twice, so it is safest to kill the active token too. RFC 9700 §4.14 describes this as a tripwire, not proof of theft. Log the event, and require re-authentication, since the user must sign in again.
+
+**Add a short grace window, on the order of seconds, to avoid false positives.** Multi-tab SPAs, network retries, and a mobile app killed mid-response all re-present a token that was just consumed. Without a window these look like attacks and log out real users.
+
+- Inside the window, return the **successor already issued** for that token. Make the refresh idempotent.
+- Do **not** mint a second sibling token. A second child would let a replayed stolen token start a branch that reuse detection never sees.
+- If you must re-issue, allow it once, then revoke the family on the next presentation.
+- Outside the window, treat the presentation as reuse and revoke the family.
+- Choose the window length from your own client behavior.
+
+**Implementation notes**
+
+- If you hash refresh tokens at rest, keep the predecessor&apos;s hash with a &quot;consumed at&quot; timestamp. Without it you can&apos;t recognize the just-consumed token during the grace window, or detect reuse after it.
+- Make rotation atomic. Two concurrent refreshes must not both succeed. Use a conditional update on the token&apos;s state, or a transaction.
+- Apply the same family revocation to authorization-code reuse. A code presented twice should revoke the tokens already issued from it.
+
+## Rollout for existing tokens
+
+Existing refresh tokens are long-lived and not in families. A reasonable migration is:
+
+1. Ship rotation and family tracking. On an old token&apos;s next use, start a family and rotate it.
+2. Apply the idle and absolute caps to migrated tokens, measured from migration time or from the original issue date, whichever you prefer.
+3. For public clients, put a deadline on tokens that haven&apos;t been migrated, and force re-authorization after it.
+4. Tell developers about the new `invalid_grant` behavior. Clients must store the new refresh token on every refresh and handle `invalid_grant` by sending the user back through sign-in.
+
+## What to test
+
+I haven&apos;t verified any of this against your code. Before you ship, test at least these cases:
+
+- A replayed, consumed refresh token revokes its family.
+- Two concurrent refreshes don&apos;t log a legitimate user out.
+- A refresh inside the grace window returns the existing successor and doesn&apos;t mint a sibling.
+- The idle and absolute caps are enforced.
+
+I can look at your token endpoint and storage code for how refresh tokens are issued and stored today, and sketch the schema and migration. Do you want me to do that?</pre>
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.04 · 20:02:15 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">rotation</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">## Recommended policy
+
+**Public clients (mobile, SPA): rotate on every use, and revoke the whole grant if a token is reused.** This is what RFC 9700 (the OAuth Security BCP) and OAuth 2.1 require when refresh tokens aren&apos;t sender-constrained.
+
+**Confidential clients:** these are authenticated with a client secret or key, so they have less exposure. You can use longer lifetimes and make rotation optional. Rotation is still a good default.
+
+### Token lifetimes
+- **Access tokens:** 5–15 minutes.
+- **Refresh tokens, idle timeout:** 7–30 days for public clients. Each rotation resets it.
+- **Refresh tokens, absolute lifetime:** 30–90 days from the original authorization, after which the user must re-authenticate. Pick the value based on your app&apos;s risk. A &quot;valid until revoked&quot; token should no longer exist for public clients.
+- **Scope:** a refresh can keep or narrow the scope, never widen it.
+
+### Rotation
+- Every refresh request returns a new access token and a new refresh token. The old refresh token is immediately marked used.
+- Keep all tokens from one authorization in a **token family** (a `family_id`, or a grant ID on every token). The family is the unit you revoke.
+- Store only hashes of refresh tokens. Keep them opaque and high-entropy (at least 128 bits).
+
+### When a used refresh token is presented again
+A used token appearing again means either an attacker has a copy or the legitimate client lost the response. You can&apos;t tell which. The BCP-recommended response is:
+
+1. **Reject the request** with `invalid_grant`.
+2. **Revoke the entire family**: the current refresh token and the access tokens issued from it, where you can.
+3. **Log and alert** with the client ID, user, IP and user agent of both the original and the replayed use, and the time gap.
+4. **Force re-authentication.** The user logs in again, and the client gets a new family.
+
+Without step 2, an attacker who steals a token and uses it first can keep refreshing, and the real user would simply be logged out. Revoking the family ends the attacker&apos;s session whichever of them replays first.
+
+### Handling legitimate retries
+Strict reuse detection will log out users whose network dropped the refresh response. There are two ways to reduce that:
+
+- **Grace window:** allow the just-rotated token to be replayed for about 10–30 seconds. Return the same successor token, or a new one in the same family. Keep the window short and tied to the same client. Many providers do this, but it is a deliberate weakening, so make it configurable.
+- **Client guidance:** tell client developers to serialize refresh calls. In an SPA, a single in-flight promise or a cross-tab lock prevents the most common cause of self-inflicted reuse, which is two tabs refreshing at once.
+
+### Stronger option: sender-constrained tokens
+Rotation detects theft after the fact. **DPoP (RFC 9449)** prevents a stolen token from being usable. The client holds a non-exportable key (WebCrypto in a SPA, Keystore or Secure Enclave on mobile) and binds the refresh token to it. If you can, support DPoP for public clients and require it for high-risk scopes. Rotation and DPoP work well together.
+
+### Other controls
+- Bind the refresh token to the `client_id`. Reject it from any other client.
+- Require PKCE for all authorization code flows. It protects the initial grant, not the refresh.
+- Let users see and revoke individual grants, and let admins revoke by user or client.
+- Revoke families on password reset, on a security event, and on explicit logout.
+- For SPAs, recommend a backend-for-frontend (BFF) where the refresh token never reaches browser JavaScript. That is stronger than anything done at the token layer.
+
+### Migration
+You already have long-lived tokens in the field.
+1. Add the family model and rotation. Treat each existing token as the head of a new family.
+2. Roll out rotation for public clients first, with metrics on reuse-detection hits before you enforce revocation.
+3. Add the absolute lifetime and idle timeout. Apply them to existing tokens by capping their expiry at issuance date plus the absolute lifetime, with a deprecation notice period.
+
+If you want, I can look through the codebase for the token issuance and storage code and sketch the schema and endpoint changes.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We run an OAuth authorization server for third-party apps. Refresh tokens are currently long-lived opaque strings that stay valid until the user revokes the app. A security review flagged this. Public clients (mobile and SPA) are the main concern. What should the refresh token policy be, and what should the server do when it sees a refresh token presented a second time?</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:oauth-provider\&quot;&quot;</code></div></div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">rotation</span><span class="badge">llm</span></div>
+<div class="md"><p>Pass only if the answer does all of these:</p>
+<ul>
+<li>Recommends rotating refresh tokens for public clients: each refresh issues a new token and invalidates the old one (sender-constrained tokens such as DPoP may be named as an alternative).</li>
+<li>Describes reuse detection: presenting an already-consumed refresh token revokes the whole token family descended from the original grant, and forces re-authentication.</li>
+<li>Adds a bound on lifetime, such as an absolute or idle expiry, rather than keeping tokens valid until manual revocation.
+Fail if it only suggests shortening the lifetime without rotation, or treats a replayed token as a plain error with no revocation.
+Judge on content, not length. A longer answer is not a better one.</li>
+</ul>
+</div>
+</div>
+</details>
+</article>
+<article class="case" id="case-6">
+<div class="case-head">
+<h2>route-keys-vs-auth</h2>
+<span class="muted mono">evals/route-keys-vs-auth</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.07 · 20:02:16 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.05 · 20:02:21 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We are building API-key issuance for our public API so customers can call it from their servers. Design the key format, how we store and look up keys, scopes, and how customers rotate and revoke them.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:keys\&quot;&quot;</code></div></div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">not-neighbour</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;efficient:auth\&quot;&quot;</code></div><div class="kv"><span>min</span><code>0</code></div><div class="kv"><span>max</span><code>0</code></div><div class="kv"><span>arm</span><code>&quot;both&quot;</code></div></div>
+</div>
+</details>
+</article>
+<article class="case" id="case-7">
+<div class="case-head">
+<h2>route-oauth-vs-auth</h2>
+<span class="muted mono">evals/route-oauth-vs-auth</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.08 · 20:02:28 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.07 · 20:02:31 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>Third-party apps want to access our users' data. We need to build our own OAuth authorization server so users can grant those apps scoped access. Design the grants, PKCE, token lifetimes, refresh tokens, scopes, and consent screen.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:oauth-provider\&quot;&quot;</code></div></div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">not-neighbour</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;efficient:auth\&quot;&quot;</code></div><div class="kv"><span>min</span><code>0</code></div><div class="kv"><span>max</span><code>0</code></div><div class="kv"><span>arm</span><code>&quot;both&quot;</code></div></div>
+</div>
+</details>
+</article>
+<article class="case" id="case-8">
+<div class="case-head">
+<h2>route-rest-vs-web</h2>
+<span class="muted mono">evals/route-rest-vs-web</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">5 turns · $0.09 · 20:02:36 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.05 · 20:02:46 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We are about to open our product to third-party developers with a public REST API. Before we write code, help us design the contract: resources and URLs, methods and status codes, pagination, one error format, and how we will keep it compatible as it evolves.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:rest-design\&quot;&quot;</code></div></div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">not-neighbour</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;efficient:web-development\&quot;&quot;</code></div><div class="kv"><span>min</span><code>0</code></div><div class="kv"><span>max</span><code>0</code></div><div class="kv"><span>arm</span><code>&quot;both&quot;</code></div></div>
+</div>
+</details>
+</article>
+<article class="case" id="case-9">
+<div class="case-head">
+<h2>route-webhooks-vs-idempotency</h2>
+<span class="muted mono">evals/route-webhooks-vs-idempotency</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.08 · 20:02:54 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">2 turns · $0.06 · 20:03:04 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">not-neighbour</span>  </summary>
+<div class="grader-body">
+<p class="explanation">Skill called 0x (expected 0..0)</p>
+
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We want to notify customers' servers when an invoice is paid or a subscription changes. Design our outbound webhooks: the event catalog, payloads, signing, retries, and what customers can see in a delivery log.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:webhooks\&quot;&quot;</code></div></div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">not-neighbour</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:idempotency-retry\&quot;&quot;</code></div><div class="kv"><span>min</span><code>0</code></div><div class="kv"><span>max</span><code>0</code></div><div class="kv"><span>arm</span><code>&quot;both&quot;</code></div></div>
+</div>
+</details>
+</article>
+<footer>Generated by <code>claude plugin eval</code> · schema v1 · scores are not comparable across different suites</footer>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var bar=document.querySelector('.toolbar');
+  if(!bar)return;
+  bar.addEventListener('click',function(e){
+    var b=e.target&&e.target.closest('button');
+    if(!b)return;
+    var open=b.dataset.act==='expand';
+    document.querySelectorAll('details.section, details.grader').forEach(function(d){d.open=open});
+  });
+});
+// Collapsed details vanish from print/PDF; these pages are share artifacts.
+window.addEventListener('beforeprint',function(){
+  document.querySelectorAll('details').forEach(function(d){
+    if(!d.open){d.dataset.printOpened='1';d.open=true}
+  });
+});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('details[data-print-opened]').forEach(function(d){
+    d.open=false;delete d.dataset.printOpened;
+  });
+});
+</script>
+</body>
+</html>

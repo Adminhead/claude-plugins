@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:29:58.908Z",
+  "durationSeconds": 36,
+  "costUsd": 0.3228702,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/infra",
+    "ablation": "with-without",
+    "caseFilter": "task-*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "infra",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/infra"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "task-dockerfile-secrets",
+      "dir": "evals/task-dockerfile-secrets",
+      "source": "mixed",
+      "promptMarkdown": "We are about to publish the image for the project in `/home/buck/Projects/adminhead/claude-plugins/plugins/infra/evals/task-dockerfile-secrets/fixture` to a public registry. Review the Dockerfile, the Compose file, and the surrounding project files before we do, and give me the corrected files.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 12,
+      "graders": [
+        {
+          "name": "context-secrets",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rules: keep secret files out of the build context with a `.dockerignore`; never pass secrets through ARG or write them into a layer; run as non-root; copy dependency manifests before source for caching; pin the base image tag.\n\nPASS only if the answer and corrected files do ALL of these:\n1. Notes that `COPY . .` with no `.dockerignore` copies `.env` and `secrets/` into the published image, and provides a `.dockerignore` excluding `.env` (or `.env*`) and `secrets/`.\n2. Replaces the `NPM_TOKEN` ARG/.npmrc-in-a-layer pattern (in the Dockerfile and the Compose `args:`) with a BuildKit secret mount or a multi-stage build whose final stage never receives the token.\n3. Adds a non-root `USER` before `CMD`.\n4. Copies `package.json` and the lockfile and installs before `COPY . .` for layer caching, using `npm ci` since a lockfile exists.\n5. Replaces `node:latest` with a specific version tag (slim or similar).\nFAIL if any of the five is missing. Do not reward length.",
+          "config": {
+            "criteria": "Rules: keep secret files out of the build context with a `.dockerignore`; never pass secrets through ARG or write them into a layer; run as non-root; copy dependency manifests before source for caching; pin the base image tag.\n\nPASS only if the answer and corrected files do ALL of these:\n1. Notes that `COPY . .` with no `.dockerignore` copies `.env` and `secrets/` into the published image, and provides a `.dockerignore` excluding `.env` (or `.env*`) and `secrets/`.\n2. Replaces the `NPM_TOKEN` ARG/.npmrc-in-a-layer pattern (in the Dockerfile and the Compose `args:`) with a BuildKit secret mount or a multi-stage build whose final stage never receives the token.\n3. Adds a non-root `USER` before `CMD`.\n4. Copies `package.json` and the lockfile and installs before `COPY . .` for layer caching, using `npm ci` since a lockfile exists.\n5. Replaces `node:latest` with a specific version tag (slim or similar).\nFAIL if any of the five is missing. Do not reward length.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"infra:docker\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 15,
+            "costUsd": 0.1244628,
+            "judgeCostUsd": 0.007343999999999998,
+            "durationSeconds": 36,
+            "startedAt": "2026-10-02T21:29:58.918Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-gqExgJ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "context-secrets",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL PASS FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  true,
+                  false
+                ],
+                "evidence": "I couldn't write the files because the Write tool is disabled in this session. The corrected files are below, and I haven't touched the fixture. I didn't open `.env` or `secrets/signing.key`, so I haven't seen their contents.\n\n## Blockers before publishing\n\n1. **`COPY . .` with no `.dockerignore` puts `.env` and `secrets/signing.key` into the image.** Anyone who pulls the public image can extract them. Neither file is in `.gitignore`, so they may also be committed. Check with `git log --all -- .env secrets/`. If the signing key was ever in an image or in git history, **rotate it and anything in `.env`**. Adding the ignore files doesn't undo past exposure.\n2. **The npm token is baked into the image.** `ARG NPM_TOKEN` and the `.npmrc` written inside the `RUN` step leave the token in the image. Compose also passes it as a build arg. The `.npmrc` also sits in `/app` and is copied into the final layer. If this token was ever published, revoke it.\n3. **Compose has inline database passwords.** They are placeholders now, but the pattern invites real values being committed.\n\n## Other fixes\n\n- `node:latest` is unpinned and large. It runs as root, ships build tools, and has `devDependencies` in the runtime image.\n- The Dockerfile has a single stage, `npm install` instead of `npm ci`, and the source is copied before the dependency install.\n- The `db` service has no healthcheck, no volume, and no `depends_on`. The database is also reachable from the host network paths you don't need.\n\n## Corrected files\n\n**Dockerfile**\n```dockerfile\nFROM node:22.11.0-bookworm-slim AS deps\nWORKDIR /app\nCOPY package.json package-lock.json ./\n# The npm token is mounted for this step only and never lands in a layer.\nRUN --mount=type=secret,id=npmrc,target=/root/.npmrc \\\n    npm ci\n\nFROM deps AS build\nCOPY . .\nRUN npm run build\n\nFROM node:22.11.0-bookworm-slim AS prod-deps\nWORKDIR /app\nENV NODE_ENV=production\nCOPY package.json package-lock.json ./\nRUN --mount=type=secret,id=npmrc,target=/root/.npmrc \\\n    npm ci --omit=dev\n\nFROM node:22.11.0-bookworm-slim AS runtime\nENV NODE_ENV=production\nWORKDIR /app\nCOPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules\nCOPY --from=build --chown=node:node /app/dist ./dist\nCOPY --chown=node:node package.json ./\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"dist/server.js\"]\n```\n\n**.dockerignore** (new)\n```\n.git\n.env\n.env.*\nsecrets/\n*.pem\n*.key\n.npmrc\nnode_modules\ndist\ncoverage\n*.log\nDockerfile\ncompose*.yaml\n```\n\n**.gitignore**\n```\nnode_modules\ndist\n.env\n.env.*\nsecrets/\n*.pem\n*.key\n.npmrc\n```\n\n**compose.yaml**\n```yaml\nservices:\n  api:\n    build:\n      context: .\n      target: runtime\n      secrets:\n        - npmrc\n    ports:\n      - \"3000:3000\"\n    environment:\n      DB_HOST: db\n    env_file:\n      - .env\n    secrets:\n      - db_password\n    depends_on:\n      db:\n        condition: service_healthy\n    read_only: true\n    tmpfs: [/tmp]\n    cap_drop: [ALL]\n    security_opt: [\"no-new-privileges:true\"]\n    networks: [default, backend]\n  db:\n    image: postgres:16.4\n    environment:\n      POSTGRES_USER: app\n      POSTGRES_DB: billing\n      POSTGRES_PASSWORD_FILE: /run/secrets/db_password\n    secrets:\n      - db_password\n    volumes:\n      - db-data:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app -d billing\"]\n      interval: 5s\n      timeout: 3s\n      retries: 10\n    networks: [backend]\n\nnetworks:\n  backend:\n    internal: true\n\nvolumes:\n  db-data:\n\nsecrets:\n  # Create these locally (both gitignored); never commit them.\n  npmrc:\n    file: ./secrets/npmrc\n  db_password:\n    file: ./secrets/db_password\n```\n\n## Things to know\n\n- **The app must read the database password from `/run/secrets/db_password`.** It currently ignores `DATABASE_URL` anyway: `server.ts` is only a `console.log`. Build the URL at startup from `DB_HOST` and the secret file.\n- **The build will likely fail as the project stands.**\n  - `package.json` has no `typescript` devDependency.\n  - There is no `tsconfig.json`.\n  - `package-lock.json` lists no packages.\n  - Add `typescript` and a `tsconfig.json`, then run `npm install` to regenerate the lockfile. `npm ci` needs that.\n- **Create the secret files before building.** `secrets/npmrc` should contain `//registry.npmjs.org/:_authToken=<token>`, and `secrets/db_password` the password. If no private packages are installed, you can drop the `npmrc` secret entirely.\n- **The `internal: true` backend network blocks outbound traffic from `db`.** The `api` service stays on the default network, so it can still publish port 3000.\n- **I pinned tags but not digests.** For the release build, pin `node` and `postgres` by digest too. I also haven't added a `HEALTHCHECK`, because the app has no health endpoint yet.\n- **I haven't run `docker compose config --quiet` or `docker build`.** Run both before publishing.\n- **Scan the built image before pushing.** For example, `docker run --rm <image> ls -a /app` should show no `.env`, `secrets`, or `.npmrc`."
+              },
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 8,
+            "costUsd": 0.0734116,
+            "judgeCostUsd": 0.005993999999999999,
+            "durationSeconds": 25,
+            "startedAt": "2026-10-02T21:29:58.918Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-dO5xkL/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "context-secrets",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I couldn't write the files because this session has no file-editing or shell tools. The corrected versions are below for you to apply. I also didn't open `.env` or `secrets/signing.key`, because I only needed to know they exist.\n\n## What's wrong\n\n**Blockers (these leak secrets into a public image):**\n1. **`COPY . .` with no `.dockerignore`.** `.env` and `secrets/signing.key` go into the image layer. Anyone who pulls the image can read them.\n2. **The `.npmrc` write.** The token is written to `/app/.npmrc` in the same layer as the install, so it stays in the final image.\n3. **`ARG NPM_TOKEN`.** Build args are recorded in `docker history` and the image metadata. Compose passes the token this way too.\n4. **`.gitignore` only lists `node_modules` and `dist`.** `.env`, `secrets/` and `.npmrc` are not ignored, so they may be committed. I couldn't check git history from here.\n\n**Should fix:**\n- `node:latest` isn't reproducible and is a large image. Pin a version, and use slim or alpine.\n- The container runs as root.\n- `npm install` should be `npm ci`. The final image also ships dev dependencies and source, so a multi-stage build is better.\n- The build is probably broken. `package.json` has `tsc` as the build script but no `typescript` dependency, and there's no `tsconfig.json`. `dist/server.js` therefore won't be produced as written.\n- `compose.yaml` hardcodes DB credentials. The `POSTGRES_PASSWORD` and `DATABASE_URL` values are placeholders now, but this is the pattern that gets real values pasted in.\n- There's no healthcheck, and no `restart` or `depends_on`.\n\n**Do this before publishing:** if `.env` or `signing.key` were ever committed or built into an image that was pushed, treat them as compromised. Rotate the signing key and the NPM token. Also rotate any other credentials in `.env`, and purge them from git history.\n\n## Corrected files\n\n**`.dockerignore`** (new)\n```\n.git\n.gitignore\nnode_modules\ndist\n.env\n.env.*\n!.env.example\nsecrets/\n*.key\n*.pem\n.npmrc\nDockerfile\ncompose.yaml\n```\n\n**`.gitignore`**\n```\nnode_modules\ndist\n.env\n.env.*\n!.env.example\nsecrets/\n.npmrc\n```\n\n**`Dockerfile`**\n```dockerfile\n# syntax=docker/dockerfile:1\nFROM node:22-alpine AS build\nWORKDIR /app\n\nCOPY package.json package-lock.json ./\n# The token is mounted only for this command and never written to a layer.\n# Pass it with: --secret id=npmrc,src=$HOME/.npmrc  (or env=NPM_TOKEN)\nRUN --mount=type=secret,id=npmrc,target=/root/.npmrc \\\n    npm ci\n\nCOPY tsconfig.json ./\nCOPY src ./src\nRUN npm run build\n\nFROM node:22-alpine AS prod-deps\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN --mount=type=secret,id=npmrc,target=/root/.npmrc \\\n    npm ci --omit=dev\n\nFROM node:22-alpine\nENV NODE_ENV=production\nWORKDIR /app\nCOPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules\nCOPY --from=build --chown=node:node /app/dist ./dist\nCOPY --chown=node:node package.json ./\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"dist/server.js\"]\n```\nPin the base image by digest (`node:22-alpine@sha256:...`) for fully reproducible builds. If the project has no private packages, drop the secret mounts entirely.\n\n**`compose.yaml`**\n```yaml\nservices:\n  api:\n    build:\n      context: .\n      secrets:\n        - npmrc\n    ports:\n      - \"3000:3000\"\n    environment:\n      DATABASE_URL: postgres://app:${DB_PASSWORD:?set DB_PASSWORD}@db:5432/billing\n    depends_on:\n      db:\n        condition: service_healthy\n    restart: unless-stopped\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_USER: app\n      POSTGRES_DB: billing\n      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app -d billing\"]\n      interval: 5s\n      retries: 5\n    volumes:\n      - dbdata:/var/lib/postgresql/data\n\nsecrets:\n  npmrc:\n    file: ${NPMRC_FILE:-~/.npmrc}\n\nvolumes:\n  dbdata:\n```\nThe database port is deliberately not published. Compose reads `DB_PASSWORD` from your untracked `.env`.\n\n**`.env.example`** (new, safe to commit)\n```\nDB_PASSWORD=change-me\nNPMRC_FILE=~/.npmrc\n```\n\n**`package.json`**\n```json\n{\n  \"name\": \"billing-api\",\n  \"version\": \"1.0.0\",\n  \"scripts\": { \"build\": \"tsc\" },\n  \"dependencies\": {},\n  \"devDependencies\": { \"typescript\": \"^5.6.0\", \"@types/node\": \"^22.0.0\" }\n}\n```\nAfter editing, run `npm install` to regenerate `package-lock.json`, since `npm ci` needs it to match.\n\n**`tsconfig.json`** (new)\n```json\n{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"commonjs\",\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\",\n    \"strict\": true\n  },\n  \"include\": [\"src\"]\n}\n```\n\n## Verify before pushing\n```sh\ndocker build --secret id=npmrc,src=$HOME/.npmrc -t billing-api:test .\ndocker run --rm billing-api:test sh -c 'ls -la /app; find / -name \"*.key\" -o -name \".env\" -o -name \".npmrc\" 2>/dev/null'\ndocker history --no-trunc billing-api:test\n```\nThe `find` and `ls` output should show no secrets, and `docker history` should show no token. I haven't built or run any of this.\n\nI can also check `package-lock.json` for private-registry URLs or integrity problems if you want."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": -1
+      }
+    },
+    {
+      "name": "task-terraform-replace-db",
+      "dir": "evals/task-terraform-replace-db",
+      "source": "mixed",
+      "promptMarkdown": "Someone flattened our Terraform modules in a PR. The saved `terraform plan` output is `/home/buck/Projects/adminhead/claude-plugins/plugins/infra/evals/task-terraform-replace-db/fixture/plan.txt` and the config is beside it. Is it safe to apply? I want a go or no-go and, if no-go, exactly what the PR should change.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"infra:terraform\""
+          }
+        },
+        {
+          "name": "stop-on-replace",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rules: a destroy or replace of a stateful resource (database) is a stop sign; an address change shows as destroy plus create and needs a `moved` block, not a new resource; never run state surgery without instruction; changes the author did not make need drift analysis.\n\nPASS only if the answer does ALL of these:\n1. Gives a no-go for applying the plan as-is.\n2. Identifies that `module.database.aws_db_instance.this` (destroyed) and `aws_db_instance.orders` (created) are the same database, so this is a move that would destroy the production data and create an empty instance, not a harmless refactor.\n3. Prescribes a `moved { from = module.database.aws_db_instance.this  to = aws_db_instance.orders }` block in the config (a `terraform state mv` command alone, or an `apply`, does not satisfy this) and says to re-run the plan and expect no destroy for the database.\n4. Notes that `skip_final_snapshot = true` would mean no backup on destroy, or recommends deletion protection or a snapshot before any risky apply.\nFAIL if it approves the apply, treats it as routine, or only suggests `terraform state mv` without a `moved` block. Do not reward length.",
+          "config": {
+            "criteria": "Rules: a destroy or replace of a stateful resource (database) is a stop sign; an address change shows as destroy plus create and needs a `moved` block, not a new resource; never run state surgery without instruction; changes the author did not make need drift analysis.\n\nPASS only if the answer does ALL of these:\n1. Gives a no-go for applying the plan as-is.\n2. Identifies that `module.database.aws_db_instance.this` (destroyed) and `aws_db_instance.orders` (created) are the same database, so this is a move that would destroy the production data and create an empty instance, not a harmless refactor.\n3. Prescribes a `moved { from = module.database.aws_db_instance.this  to = aws_db_instance.orders }` block in the config (a `terraform state mv` command alone, or an `apply`, does not satisfy this) and says to re-run the plan and expect no destroy for the database.\n4. Notes that `skip_final_snapshot = true` would mean no backup on destroy, or recommends deletion protection or a snapshot before any risky apply.\nFAIL if it approves the apply, treats it as routine, or only suggests `terraform state mv` without a `moved` block. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.07448400000000001,
+            "judgeCostUsd": 0.00336,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T21:29:58.918Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-c5Zoly/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "stop-on-replace",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**No-go. Do not apply this plan.**\n\n**What the plan does:** it destroys `module.database.aws_db_instance.this` (`orders-prod`, 500 GB Postgres 16.4) and creates a new `aws_db_instance.orders` with the same identifier. The flatten PR moved the resource out of `module.database` but didn't tell Terraform it's the same object. Terraform sees an old address that is gone and a new one, so it plans a destroy and a create.\n\n**Why it's dangerous:**\n- The new resource has `skip_final_snapshot = true`, and so does the one being destroyed. The destroy takes no final snapshot, so the production data is gone.\n- Both resources use the identifier `orders-prod`. Apply order is not guaranteed, and the create would likely fail with a name collision. The destroy could still go ahead, which would leave you with no database.\n- Even in the best case you'd end up with an empty database.\n\nThe S3 tag and the security group ingress changes are harmless. The security group change adds `10.20.0.0/16` to the DB ingress. Confirm that's intended, but it isn't the blocker.\n\n**What the PR should change** (in `main.tf` or wherever the flattened resource lives):\n\n1. **Add a `moved` block** so state is renamed instead of recreated:\n   ```hcl\n   moved {\n     from = module.database.aws_db_instance.this\n     to   = aws_db_instance.orders\n   }\n   ```\n2. **Re-plan.** It should show `module.database.aws_db_instance.this has moved to aws_db_instance.orders`, with zero destroys and zero creates for the DB. The plan should then read about \"0 to add, 2 to change, 0 to destroy\". Any remaining DB diff has to be explained before apply.\n3. **Re-check the module's other arguments.** The old module may have set things the inlined resource doesn't, such as `vpc_security_group_ids`, subnet group, `storage_encrypted`, `deletion_protection`, or parameter groups. The plan hides 20 attributes on both sides. After the `moved` block, any in-place diff or forced replacement on the DB points to a dropped argument. Restore it.\n4. **Add safety to the database resource:**\n   ```hcl\n   lifecycle { prevent_destroy = true }\n   ```\n   Set `skip_final_snapshot = false` and add a `final_snapshot_identifier`. This guards against the next accidental destroy.\n5. **Check every environment.** Each has its own state, so run the plan against all of them. Keep the `moved` block until all of them have applied.\n\nBefore any apply, take a manual RDS snapshot of `orders-prod`. Then apply only the re-reviewed saved plan.\n\nI didn't run any Terraform commands. This verdict comes from reading `plan.txt` and `main.tf`. The fixture has no module or provider config for the old module, so step 3 is a check for you to do, not something I verified."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.05051180000000001,
+            "judgeCostUsd": 0.003321000000000001,
+            "durationSeconds": 14,
+            "startedAt": "2026-10-02T21:30:11.107Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-3w7Dgi/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "stop-on-replace",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**No-go.** Don't apply this plan.\n\n**Why**\n- The plan destroys `module.database.aws_db_instance.this` (`orders-prod`, 500 GB Postgres 16.4) and creates a new `aws_db_instance.orders` with the same identifier.\n- Terraform treats the inlined resource as a new address, so it plans a delete and a recreate rather than a rename. The plan says so: `because module.database is not in configuration`.\n- The destroy would run with `skip_final_snapshot = true`, so no final snapshot is taken. The production data would be gone, and the new instance would start empty. The create would also likely collide with the old identifier.\n- The S3 tag change and the security group CIDR addition are in-place updates and low risk. Confirm that the `10.20.0.0/16` ingress is intended, since it looks unrelated to a flattening PR.\n\n**What the PR should change** (in `main.tf`)\n\n1. Add a `moved` block so state is remapped instead of destroyed:\n   ```hcl\n   moved {\n     from = module.database.aws_db_instance.this\n     to   = aws_db_instance.orders\n   }\n   ```\n   If your Terraform version predates 1.1, run `terraform state mv module.database.aws_db_instance.this aws_db_instance.orders` instead.\n\n2. Add protection against a repeat of this:\n   ```hcl\n   deletion_protection = true\n   lifecycle { prevent_destroy = true }\n   ```\n   Also set `skip_final_snapshot = false` and a `final_snapshot_identifier`. Do this in a separate apply, or make sure the first plan shows no replacement. Changing `skip_final_snapshot` is an in-place update.\n\n3. Make the inlined attributes match the old module's real values. The plan hides 20 unchanged attributes, such as parameter group, subnet group, security groups, backup retention, multi-AZ, and encryption. If the flattened resource omits or changes any of them, you'll get in-place changes or a forced replacement. `main.tf` only sets 7 attributes, so compare it against the module's source.\n\n**Before applying**\n- Take a manual RDS snapshot of `orders-prod` now. It's cheap insurance.\n- Re-run `terraform plan`. The database should show no create or destroy, and at most harmless in-place updates. The plan line should read something like `0 to add, 2 to change, 0 to destroy`. If any `aws_db_instance` still shows `must be replaced` or `destroyed`, stop.\n- Apply the saved plan only after that re-plan looks right.\n\n`main.tf` in the fixture contains only the DB resource. I couldn't see the rest of the config, such as the network module, S3 bucket and security group. I also couldn't see the old `module.database` source, so the attribute comparison in step 3 is still yours to do."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 2,
+    "casesPassed": 1,
+    "overallScore": 0.5,
+    "overallPassRate": 0.5,
+    "meanDelta": -0.5
+  }
+}

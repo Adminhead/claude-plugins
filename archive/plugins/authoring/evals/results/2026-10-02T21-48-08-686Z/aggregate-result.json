@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:48:08.686Z",
+  "durationSeconds": 467,
+  "costUsd": 2.0113068,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/authoring",
+    "ablation": "none",
+    "caseFilter": "create-skill-trigger",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "authoring",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/authoring"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "create-skill-trigger",
+      "dir": "evals/create-skill-trigger",
+      "source": "prose",
+      "promptMarkdown": "Write a new Claude Code skill that helps with rotating API keys safely: it should trigger when someone asks to rotate, revoke, or audit credentials, and keep the SKILL.md lean with details in references/. Set it up for me.",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "fires-create-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"authoring:create-skill\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 10,
+            "costUsd": 0.5741006,
+            "judgeCostUsd": 0,
+            "durationSeconds": 123,
+            "startedAt": "2026-10-02T21:48:08.695Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-YzuBTp/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 11,
+            "costUsd": 0.6992966,
+            "judgeCostUsd": 0,
+            "durationSeconds": 170,
+            "startedAt": "2026-10-02T21:50:11.991Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-9ln2ub/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.7379096,
+            "judgeCostUsd": 0,
+            "durationSeconds": 174,
+            "startedAt": "2026-10-02T21:53:01.583Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-BubNUW/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-create-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T20:05:14.498Z",
+  "durationSeconds": 43,
+  "costUsd": 0.12169579999999999,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/api",
+    "ablation": "with-without",
+    "caseFilter": "webhooks-signing",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "api",
+        "version": "0.1.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/api"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "webhooks-signing",
+      "dir": "evals/webhooks-signing",
+      "source": "prose",
+      "promptMarkdown": "We are designing signature verification for our outbound webhooks. The first draft is `signature = HMAC-SHA256(secret, request_body)` in an `X-Signature` header, one secret per endpoint. Review it and give the signing scheme we should ship, including how customers rotate secrets without downtime and what the docs must tell receivers to watch for.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"api:webhooks\""
+          }
+        },
+        {
+          "name": "signing",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the answer does all of these:\n- Says a body-only signature is replayable forever, and signs a timestamp (and message ID) together with the body, for example id.timestamp.body, with receivers rejecting timestamps outside a tolerance window.\n- Supports rotation with overlap, such as sending more than one signature during rotation or accepting two active secrets, so no deploy-before-revoke gap is required.\n- Tells receivers to verify against the raw request body before JSON parsing (re-serialized JSON breaks the HMAC) and to use a constant-time comparison.\nFail if it keeps the body-only signature or requires a hard cutover for rotation.\nJudge on content, not length. A longer answer is not a better one.",
+          "config": {
+            "criteria": "Pass only if the answer does all of these:\n- Says a body-only signature is replayable forever, and signs a timestamp (and message ID) together with the body, for example id.timestamp.body, with receivers rejecting timestamps outside a tolerance window.\n- Supports rotation with overlap, such as sending more than one signature during rotation or accepting two active secrets, so no deploy-before-revoke gap is required.\n- Tells receivers to verify against the raw request body before JSON parsing (re-serialized JSON breaks the HMAC) and to use a constant-time comparison.\nFail if it keeps the body-only signature or requires a hard cutover for rotation.\nJudge on content, not length. A longer answer is not a better one.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0691112,
+            "judgeCostUsd": 0.004875000000000001,
+            "durationSeconds": 18,
+            "startedAt": "2026-10-02T20:05:14.509Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-CcijdD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "signing",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# Review of the first draft\n\n`HMAC-SHA256(secret, body)` in `X-Signature`, with one secret per endpoint, has a sound core. Per-endpoint secrets and HMAC are the right choices. It has four gaps:\n\n1. **No replay protection.** The signature covers only the body, so a captured request stays valid forever. An attacker who sees one delivery can resend it indefinitely.\n2. **No stable event ID.** Receivers have nothing reliable to deduplicate on. Delivery is at-least-once, so retries will produce duplicates. If receivers build without an ID, you can't fix that later.\n3. **A single secret forces revoke-then-deploy rotation.** Either the customer's endpoint rejects valid deliveries for a while, or they skip rotating.\n4. **Verification advice is missing.** Most real-world failures are receiver bugs, not crypto weaknesses.\n\n# Scheme to ship: Standard Webhooks 1.0.0\n\nUse the open spec rather than a bespoke format. Customers get existing libraries, and you avoid designing the edge cases yourself.\n\n**Headers on every delivery**\n- `webhook-id`: one stable ID per event, identical across retries.\n- `webhook-timestamp`: integer Unix seconds, set when the attempt is sent.\n- `webhook-signature`: `v1,<base64>`, with several space-separated entries during rotation.\n\n**Signed content**\n```\nsigned_content = \"{webhook-id}.{webhook-timestamp}.{raw_body}\"\nsignature      = \"v1,\" + base64(HMAC-SHA256(secret, signed_content))\n```\nSigning the timestamp is what gives replay protection. Signing the ID stops an attacker from swapping the ID header to defeat deduplication.\n\n**Secrets**\n- One secret per endpoint, generated by you with at least 192 bits of entropy.\n- Use a `whsec_` prefix so secret scanners can find leaks.\n- Store the secret so you can sign with it. This is different from API keys, where you store only a hash.\n- Optional later: ed25519 signing (`v1a`) for enterprise customers who don't want to hold a shared secret.\n\n**Payload**\nInclude `type`, an ISO 8601 `timestamp` of when the event occurred, and `data`. Put the event name in one place only.\n\n# Zero-downtime rotation\n\n1. The customer clicks \"Roll secret\" in the dashboard or calls the API. You generate a new secret and keep the old one active with an expiry. The customer chooses the overlap, with a default of 24 hours and a maximum of about 7 days.\n2. During the overlap, sign every delivery with both secrets. The header becomes `webhook-signature: v1,<sig_new> v1,<sig_old>`.\n3. The customer deploys the new secret on their own schedule. Verifiers accept a request if any listed signature matches a secret they hold, so it works whether they have deployed or not.\n4. The old secret expires automatically at the deadline. An \"expire now\" action covers a suspected leak.\n5. Show the old secret's expiry and a last-used indicator in the dashboard. Also surface a rotation-in-progress state, so nobody forgets to finish.\n\nRules:\n- Never auto-rotate without the customer's action.\n- Emergency rotation is the same flow with the overlap set to zero. Warn that deliveries will fail until the new secret is deployed.\n- Rotate per endpoint, not per account.\n\n# What the docs must tell receivers\n\nThe docs need runnable verification snippets in your supported languages. They should also state each of these:\n\n1. **Verify every request, and reject failures with a 4xx.** Treat unsigned requests as hostile.\n2. **Verify against the raw body bytes before any JSON parsing.** Re-serializing parsed JSON changes whitespace and key order, which breaks the signature. This is the most common integration bug. Frameworks with body-parsing middleware need a raw-body capture.\n3. **Use a constant-time comparison** for signatures.\n4. **Check the timestamp.** Reject anything more than about 5 minutes from the current time, in either direction. Keep clocks in sync with NTP.\n5. **Accept any matching signature in the header,** because there can be several during rotation. Ignore unknown version prefixes rather than failing.\n6. **Exempt the webhook route from session auth and CSRF middleware.** Otherwise the endpoint will reject all deliveries.\n7. **Deduplicate on `webhook-id`.** Delivery is at-least-once. Never claim exactly-once.\n8. **Don't rely on ordering or timestamps for ordering.** Retries and parallel workers reorder events.\n9. **Acknowledge fast.** Return 2xx quickly and process asynchronously. State your timeout, for example 15–30 seconds, and the response-code behavior: 2xx is success, 3xx is a failure, and 410 disables the endpoint.\n10. **Keep the secret out of logs, source control, and client code.** Load it from a secrets manager or environment variable.\n11. **Reconcile high-stakes events** against your API periodically. A webhook is a notification, not a ledger.\n12. **Test with the example-event tool and the delivery log** before going live.\n\n# Related decisions to lock before launch\n\nThese aren't signing, but they are part of the contract:\n- **Retries:** exponential backoff with jitter over about 3 days, with the exact schedule published. Dead-letter and replay should exist before launch.\n- **SSRF:** validate endpoint URLs and resolved IPs against private ranges at delivery time, not just at registration.\n- **Delivery log:** store headers as well as body for every attempt. Signature debugging needs the headers.\n\nI can draft the receiver verification snippets (Node, Python, Go) or the rotation API shape if you want either."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.052584599999999995,
+            "judgeCostUsd": 0.004731000000000001,
+            "durationSeconds": 25,
+            "startedAt": "2026-10-02T20:05:32.895Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-oQFooE/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "signing",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Review of the first draft\n\n`HMAC-SHA256(secret, body)` in `X-Signature` is sound as a primitive, but as a scheme it has these gaps:\n\n1. **No replay protection.** A captured request with a valid signature stays valid forever. The timestamp has to be inside the signed payload.\n2. **No event identity.** Receivers have nothing authenticated to dedupe on. Retries and replays look the same.\n3. **No rotation path.** One secret per endpoint means a hard cutover, so either the sender or the receiver fails during the switch.\n4. **No versioning.** If you ever change algorithm or format, you can't signal it.\n5. **Underspecified format.** It doesn't say hex or base64, or how the receiver should compare.\n\n## Scheme to ship\n\nThis follows the Standard Webhooks / Stripe pattern, so customers can use existing libraries.\n\n**Headers on every delivery**\n\n```\nwebhook-id:        evt_2Zk9...            # stable across retries of the same event\nwebhook-timestamp: 1759406400             # unix seconds, regenerated on every attempt\nwebhook-signature: v1,<base64> v1,<base64>  # space-delimited, one entry per active secret\n```\n\n**Signed content**\n\n```\nsigned_payload = webhook-id + \".\" + webhook-timestamp + \".\" + raw_body\nsignature      = base64( HMAC-SHA256(secret_bytes, signed_payload) )\n```\n\n- `id` and `timestamp` are inside the MAC, so neither can be altered or stripped.\n- `raw_body` is the exact bytes sent. Don't canonicalize JSON.\n- Re-sign on each retry with a fresh timestamp and the same `id`. Otherwise retries after the tolerance window would always fail.\n- The `v1,` prefix is the version. A future `v2` or an asymmetric `v1a` (Ed25519) can ride alongside it in the same header. Receivers ignore versions they don't know.\n\n**Secrets**\n\n- Generate them server-side from a CSPRNG, 32 bytes or more. Use a recognizable format such as `whsec_<base64>` so secret scanners can detect leaks.\n- Keep one per endpoint, never shared across endpoints or customers.\n- Store them encrypted at rest. They have to be recoverable because you need them to sign.\n- Use separate secrets for test and live mode.\n\n## Zero-downtime rotation\n\nAn endpoint can hold up to two active secrets.\n\n1. The customer clicks **Rotate** (or calls the API). You generate secret B, and A stays active.\n2. While both are active, you sign every delivery with both. The header carries two `v1,` entries.\n3. The receiver accepts the request if any entry matches any secret it holds. Old code with A and new code with B both pass.\n4. The customer deploys B everywhere, then clicks **Expire old secret**.\n5. If they don't, A expires automatically after a grace period. Make the default 24 hours, configurable up to 7 days.\n6. Add an **expire immediately** option for suspected compromise. It accepts the downtime in exchange for cutting off the leaked secret.\n\nAlso ship a \"send test event\" button, so customers can confirm B verifies before they expire A. Limit it to two active secrets so the header stays small and the state machine stays simple.\n\n## What the docs must tell receivers\n\n1. **Verify the raw body bytes, before parsing.** This is the most common failure. JSON middleware that re-serializes the body changes whitespace and key order, and the signature then fails. Give per-framework examples (Express `raw`, Flask `get_data()`, and so on).\n2. **Use a constant-time comparison** (`hmac.compare_digest`, `crypto.timingSafeEqual`). Never use `==`.\n3. **Enforce a timestamp tolerance**, 5 minutes by default, in both directions. Tell them to keep server clocks on NTP.\n4. **Dedupe on `webhook-id`.** The timestamp check only narrows the replay window, and your own retries will also deliver the same event more than once. Handlers must be idempotent. Store seen IDs for at least the tolerance window, and ideally for your whole retry horizon.\n5. **Accept multiple signatures** in the header, and ignore unknown version prefixes. This is what makes rotation work. A receiver that only reads the first entry will break during rotation.\n6. **Reject on failure.** Missing headers, a bad signature, or a stale timestamp should return 4xx and process nothing. Don't log the secret or the full signature in error messages.\n7. **Treat the secret like a password.** Keep it in a secrets manager, not in source control or client-side code. Rotate it on staff turnover or leaks.\n8. **Use HTTPS only.** Signatures prove authenticity and integrity, not confidentiality.\n9. **Ack fast.** Return 2xx quickly and process asynchronously, otherwise timeouts trigger retries.\n10. **Don't rely on ordering.** Events can arrive out of order, so use the event's own data or timestamps.\n11. **Prefer the official libraries.** Hand-rolled verification is where most bugs come from.\n\nPublish test vectors too: a fixed secret, id, timestamp, body, and expected signature. This lets customers validate their implementation offline.\n\n## Optional later\n\nOffer Ed25519 asymmetric signing as `v1a,...` for customers who don't want a shared secret you must store, or who need to verify through untrusted intermediaries. The versioned header already leaves room for it."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

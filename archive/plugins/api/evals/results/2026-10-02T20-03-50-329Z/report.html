@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eval report — api v0.1.0</title>
+</head>
+<body>
+<style>
+:root{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}}
+:root[data-theme="dark"]{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}
+:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:880px;margin:0 auto;padding:40px 24px 64px;display:flex;flex-direction:column;gap:20px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+header h1{margin:2px 0 0;font-size:24px;font-weight:600;line-height:1.25;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;color:var(--ink-2);font-size:13px}
+.meta .num{font-variant-numeric:tabular-nums lining-nums}
+.banner{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;
+  border:1px solid var(--hairline);background:var(--surface);font-size:13px}
+.banner .chip-warn{color:var(--warning);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:4px}
+.tile .label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.tile .value{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums lining-nums;line-height:1.1}
+.tile.hero .value{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:48px}
+.tile .sub{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tile .value.delta-pos{color:var(--delta-good)}
+.tile .value.delta-neg{color:var(--critical)}
+.toolbar{display:flex;gap:8px;justify-content:flex-end}
+.toolbar button{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink-2);
+  background:var(--surface);border:1px solid var(--hairline);border-radius:6px;padding:4px 10px;cursor:pointer}
+.toolbar button:hover{color:var(--ink)}
+.toolbar button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.case{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:18px 20px;
+  display:flex;flex-direction:column;gap:10px}
+.case-regressed{border-left:3px solid var(--critical)}
+.verdict{margin:6px 0 0;font-size:15px}
+.verdict .delta{font-size:15px}
+.flag{font-size:11px;font-weight:600;color:var(--warning);white-space:nowrap}
+.star{color:var(--warning);font-size:.45em;vertical-align:super;line-height:0;cursor:help}
+.legend summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.legend-list{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--ink-2)}
+.case-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.case-head h2{margin:0;font-size:16px;font-weight:600}
+.case-head .spacer{flex:1}
+.case-score{font-size:15px;font-weight:600}
+.mono{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.muted{color:var(--ink-3);font-size:12px}
+.meter{display:inline-block;position:relative;width:120px;height:6px;border-radius:4px;background:var(--grid);
+  vertical-align:middle}
+.meter>span{display:block;height:100%;border-radius:4px;max-width:100%}
+.meter .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-3);border-radius:1px}
+.m-accent>span{background:var(--accent)}
+.m-base>span{background:var(--base-fill)}
+.delta{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.delta-pos{color:var(--delta-good)}
+.delta-neg{color:var(--critical)}
+.delta-zero{color:var(--ink-3)}
+details.section{border-top:1px solid var(--grid);padding-top:10px}
+details.section>summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-2);list-style-position:outside;margin-left:2px}
+details.section>summary:hover{color:var(--ink)}
+details.section[open]>summary{margin-bottom:8px}
+.md{display:flex;flex-direction:column;gap:8px;background:var(--inset);border-radius:8px;
+  padding:12px 14px;overflow-wrap:break-word}
+.md>:first-child{margin-top:0}
+.md h1,.md h2,.md h3,.md h4,.md h5,.md h6{margin:4px 0 0;font-size:1em;font-weight:600;line-height:1.3}
+.md p,.md ul,.md ol,.md blockquote,.md table,.md pre,.md hr{margin:0}
+.md ul,.md ol{display:flex;flex-direction:column;gap:4px;padding-left:20px}
+.md blockquote{border-left:2px solid var(--hairline);padding-left:10px;color:var(--ink-2)}
+.md :not(pre)>code{background:var(--inset);padding:1px 4px;border-radius:4px;
+  font:.92em "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre{background:var(--inset);border:1px solid var(--hairline);padding:10px 12px;border-radius:6px;
+  overflow-x:auto;font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre code{background:none;padding:0;font:inherit}
+.md table{width:100%;border-collapse:collapse}
+.md th,.md td{padding:5px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--grid)}
+.md th{font-weight:600;color:var(--ink-2)}
+.md a{color:var(--accent);text-decoration:none}
+.md a:hover{text-decoration:underline}
+.grader-def{display:flex;flex-direction:column;gap:6px;padding:8px 0}
+.grader-def+.grader-def{border-top:1px solid var(--grid)}
+.grader-def-head{display:flex;align-items:baseline;gap:8px}
+.grader-name{font:13px "SF Mono",ui-monospace,Menlo,Consolas,monospace;font-weight:600}
+.badge{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
+  border:1px solid var(--hairline);border-radius:999px;padding:1px 8px}
+.config{display:flex;flex-direction:column;gap:2px;background:var(--inset);border-radius:8px;padding:10px 14px}
+.config code{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.arm{display:flex;flex-direction:column;gap:8px;padding:6px 0}
+.arm+.arm{border-top:1px dashed var(--grid);margin-top:4px;padding-top:12px}
+.arm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.arm-label{font-size:13px;font-weight:600}
+.run{border:1px solid var(--grid);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.run-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.run-title{font-size:12px;font-weight:600;color:var(--ink-2)}
+.run-error .explanation{color:var(--ink-2)}
+.note{font-size:12px;color:var(--ink-2)}
+.graders{display:flex;flex-direction:column;gap:4px}
+details.grader{border-radius:6px}
+details.grader>summary{cursor:pointer;display:flex;align-items:baseline;gap:8px;padding:3px 4px;
+  border-radius:6px;list-style:none}
+details.grader>summary::-webkit-details-marker{display:none}
+details.grader>summary::before{content:'▸';font-size:10px;color:var(--ink-3);flex:none;
+  transition:transform .12s ease}
+details.grader[open]>summary::before{transform:rotate(90deg)}
+details.grader>summary:hover{background:var(--inset)}
+details.grader>summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.grader-body{padding:6px 8px 8px 24px;display:flex;flex-direction:column;gap:6px}
+.chip{font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.chip-pass{color:var(--good);border:1px solid currentColor}
+.chip-fail{color:var(--critical);border:1px solid currentColor}
+.chip.chip-warn{color:var(--warning);border:1px solid currentColor}
+.explanation{margin:0;font-size:13px;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:break-word}
+.kv{display:flex;gap:8px;font-size:12px;color:var(--ink-3)}
+.votes{font-variant-numeric:tabular-nums;letter-spacing:.1em}
+pre.evidence{margin:0;background:var(--inset);border:1px solid var(--hairline);border-radius:6px;
+  padding:8px 10px;overflow-x:auto;max-height:320px;
+  font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:break-word}
+footer{color:var(--ink-3);font-size:12px;text-align:center;padding-top:8px}
+@media (prefers-reduced-motion:no-preference){
+  details.grader>summary,.toolbar button{transition:background .12s ease,color .12s ease}
+}
+@media (prefers-reduced-motion:reduce){
+  details.grader>summary::before{transition:none}
+}
+@media print{
+  :root,:root[data-theme="dark"],:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+  body{background:#fff}
+  .toolbar{display:none}
+  .case,.run,.grader-def{break-inside:avoid}
+  pre.evidence{max-height:none}
+}
+</style>
+<div class="wrap">
+<header>
+<div class="eyebrow">Plugin eval report</div>
+<h1>api v0.1.0</h1>
+<p class="verdict">Plugin effect: <span class="delta delta-zero">· 0.0 pts</span> vs baseline — improved 0 · flat 1 · regressed 0 of 1 case.</p>
+<div class="meta">
+<span class="mono">.</span>
+<span>Claude Code v2.1.286</span>
+<span class="num">2026-10-02 20:03 UTC</span>
+<span class="num">52s</span>
+<span class="num">$0.13</span>
+<span class="num">2 runs</span>
+
+
+
+<span>judge default</span>
+<span class="num">threshold 100%</span>
+<span>filtered: --case versioning-breaking-definition</span>
+</div>
+</header>
+
+<section class="tiles">
+<div class="tile hero"><span class="label">Suite score · with plugin</span><span class="value">100%</span><span class="sub">mean of per-case scores</span></div>
+<div class="tile"><span class="label">Ablation Δ</span><span class="value num delta-zero">0.0</span><span class="sub">score points vs baseline, 1 of 1 case</span></div>
+<div class="tile"><span class="label">Baseline score</span><span class="value num">100%</span><span class="sub">without the plugin</span></div>
+<div class="tile"><span class="label">Cases</span><span class="value num">1</span><span class="sub">1 of 1 ≥ 100% threshold</span></div>
+<div class="tile"><span class="label">Perfect runs</span><span class="value num">100%</span><span class="sub">runs where every grader passed</span></div>
+</section>
+<details class="section legend">
+<summary>How to read this report</summary>
+<ul class="legend-list">
+<li>A run's score is the weighted fraction of its graders that passed; a "perfect" run passed every grader.</li>
+<li>A case's score is the mean of its runs; a case passes when its score is at or above the 100% threshold (the tick on each case bar).</li>
+<li>The suite score is the mean of the per-case scores.</li>
+<li>Judge votes are independent samples of the LLM judge; the majority decides pass or fail.</li>
+<li>"With plugin" and "Baseline" runs are identical except for the plugin being loaded; Δ is the with-plugin score minus the baseline score.</li>
+
+</ul>
+</details>
+<div class="toolbar"><button type="button" data-act="expand">Expand all</button><button type="button" data-act="collapse">Collapse all</button></div>
+<article class="case" id="case-1">
+<div class="case-head">
+<h2>versioning-breaking-definition</h2>
+<span class="muted mono">evals/versioning-breaking-definition</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.08 · 20:03:50 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">definition</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence"># Breaking-change policy
+
+## Principle
+
+A change is **breaking** if a client written correctly against our documentation could stop working after it. A change is **non-breaking** if it can&apos;t do that. Breaking changes ship only in a new major version (`/v2`). Non-breaking changes ship into the current version at any time. If a PR is breaking, it needs a new version, and it needs sign-off from the API governance owner (see Governance).
+
+&quot;Correctly written&quot; means the client follows the rules in *Client obligations* below. Behavior we haven&apos;t documented is not contract, and we will say so explicitly rather than leave it to be inferred.
+
+## Client obligations
+
+Clients of the v1 API must:
+
+- Ignore response properties they don&apos;t recognize.
+- Treat every enum value in a response as potentially unknown, and handle unknown values gracefully. They must not crash or silently misroute.
+- Not depend on the length, format, or structure of opaque strings (IDs, cursors, tokens).
+- Not depend on the order of items unless the documentation specifies one.
+- Not parse error messages. They branch on the HTTP status and the error `type` or `code`.
+
+Our docs and OpenAPI spec state these rules. They are what make the non-breaking list below safe.
+
+## Breaking changes (require a new version)
+
+- Removing or renaming an endpoint, HTTP method, response field, or request parameter.
+- Changing the type, format, or meaning of an existing field, including narrowing the range of values we return or widening what we reject.
+- Removing an enum value, or changing what an existing value means.
+- Adding a required request parameter, or making an optional one required.
+- Making validation stricter for input that was previously accepted.
+- Changing the HTTP status code, content type, or error `type`/`code` for an existing scenario.
+- Changing a documented default, a documented sort order, pagination semantics, or authentication or authorization requirements.
+- Making a previously always-present response field sometimes absent or `null`.
+- Removing an event type, or removing or renaming a field from a webhook payload.
+- Tightening rate limits below the documented limit.
+
+## Non-breaking changes (ship in the current version)
+
+- Adding a new endpoint, resource, or optional request parameter.
+- Adding a new response field.
+- Adding a new value to a response enum. All enums are **open** unless the spec marks them `closed`. We expect to mark very few as closed, and a closed enum can never gain values within a version.
+- Adding a new webhook event type or a new field in a webhook payload.
+- Adding a new error `code` for a scenario that previously had none. Existing scenarios keep their existing codes.
+- Changing the order of properties in a JSON object.
+- Changing the length or format of opaque strings.
+- Loosening validation, or making a required parameter optional.
+- Improving performance, or changing latency within normal bounds.
+
+## Decisions on the disputed cases
+
+| Change | Verdict | Why |
+| --- | --- | --- |
+| New value in a status enum | **Non-breaking** | Enums are open and clients must tolerate unknown values. Removing or redefining a value is breaking. |
+| Rename a field, keep the old one for a while | **Adding the new name is non-breaking. Removing the old name is breaking.** | During the overlap, both names work, so nothing fails. Within v1, the old field is marked deprecated and keeps working for the life of v1. It is removed only in v2. |
+| Change error message wording | **Non-breaking** | The `message`/`detail` text is for humans and is not contract. The HTTP status and `type`/`code` are contract. |
+| Change item order in a list | **Non-breaking, unless the order is documented** | If an endpoint documents a default sort or accepts a `sort` parameter, that order is contract. Otherwise we make no ordering promise. |
+
+Two clarifications apply to these rules:
+
+- **Renames are a deprecation, not a free change.** A rename is two steps: add the new field (non-breaking), then remove the old one at the version boundary (breaking). Marking the old field deprecated doesn&apos;t permit removing it early.
+- **Unordered really means unordered.** Where order is unspecified, we may change it without notice. If a customer needs a stable order, the fix is to document and support a `sort` parameter, and the fix is not to freeze undefined behavior.
+
+## Not contractual (may change without notice)
+
+- Text of error messages and other human-readable strings.
+- Order of items where no order is documented.
+- Order of properties in JSON objects.
+- Exact timing, latency, and the number of internal requests behind an operation.
+- Length and format of opaque IDs, cursors, and tokens.
+- Undocumented endpoints, fields, headers, and behaviors, even ones that happen to work.
+
+Hyrum&apos;s Law applies: if enough customers use us, someone will depend on anything observable. When we learn that a customer depends on something in this list, the right response is to document it (making it contract) or to tell them it&apos;s unsupported. Silently keeping it frozen isn&apos;t an option. We don&apos;t treat an observed dependency as contract.
+
+## Security exception
+
+We may change the behavior of any version, without a version bump, when needed to fix a critical security or privacy issue. We will give as much notice as the situation allows and record the change in the changelog.
+
+## Applying this in review
+
+When a PR touches the API contract (the OpenAPI spec, response serializers, validation, error codes, or webhook payloads):
+
+1. The CI OpenAPI diff (e.g. oasdiff) runs and flags anything on the breaking list.
+2. A flagged PR can&apos;t merge into v1. It either gets reworked into an additive form (for example, add the new field and deprecate the old one) or moves to the next version.
+3. If a reviewer believes a flagged change is safe, the API governance owner decides and records the reason in the PR. The reviewer doesn&apos;t decide alone.
+4. If the change isn&apos;t on either list, the default is to treat it as breaking until the owner rules, and then to add it to the list so the question stays settled.
+
+## Open points for you to confirm
+
+- **Closed enums:** I made open the default. If any v1 enums are truly closed (for example, ones customers use in exhaustive `switch` statements in generated SDKs), tell me and I&apos;ll list them.
+- **Stricter validation:** I classed this as breaking, since it rejects previously accepted input. Some teams carve out bug fixes. I&apos;d keep it strict.
+- **Governance owner:** I referred to a named owner without naming one. That belongs in the governance section, which I haven&apos;t drafted.
+- **Notice windows, scheme, and sunset enforcement:** these are separate sections of the policy. I can draft them next if you want.
+
+I haven&apos;t written this to a file because I don&apos;t know where your docs live. Give me a path and I&apos;ll put it there.</pre>
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.06 · 20:04:15 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">definition</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence"># API Compatibility Policy
+
+## Principle
+
+A change is **breaking** if a client written correctly against our documented contract could stop working after it ships. A change is **non-breaking** if such a client keeps working unchanged.
+
+The **contract** is what the OpenAPI spec and published docs state: endpoints, methods, parameters, field names, types, nullability, documented enum values, status codes, error `code` values, documented ordering, and documented limits. Anything not in the contract (message prose, unspecified ordering, undocumented fields) is not covered, even if some client happens to depend on it.
+
+Breaking changes ship only in a new major version (`/v2`). Non-breaking changes ship in `v1` at any time.
+
+## Rules clients must follow
+
+These are published in the public docs. The non-breaking rules below depend on them.
+
+1. **Ignore unknown fields** in responses.
+2. **Treat all response enums as open.** Handle unknown values gracefully, for example by falling back to a default.
+3. **Don&apos;t parse error `message` text.** Branch on the HTTP status and the error `code`.
+4. **Don&apos;t rely on ordering** unless the docs specify it.
+
+If a PR needs a rule that isn&apos;t published, publish it first. Otherwise we can&apos;t treat the change as non-breaking.
+
+## Breaking changes (require a new version)
+
+- Removing or renaming an endpoint, method, parameter, or response field.
+- Changing a field&apos;s type, format, or units. This includes widening `int` to `string` and changing the ID format.
+- Making a response field nullable or optional when it was guaranteed present.
+- Making an optional request field required, or adding a new required request field or parameter.
+- Tightening request validation: narrower accepted values, lower max length, new constraints.
+- Removing a value from a request enum, or removing a documented response enum value.
+- Changing the meaning of an existing field, enum value, or endpoint behavior.
+- Changing HTTP status codes for existing outcomes, or changing or removing an error `code`.
+- Changing documented ordering, a documented default (page size, sort, filter), or the pagination mechanism.
+- Adding authentication or authorization requirements to an existing endpoint, or requiring a new scope.
+- Lowering documented rate limits or size limits.
+- Removing a deprecated field, endpoint, or value (see &quot;Renames and deprecation&quot;).
+
+## Non-breaking changes (allowed in v1)
+
+- Adding a new endpoint, resource, or HTTP method.
+- Adding a new response field, response header, or optional request parameter. The default must preserve the old behavior.
+- Adding a new value to a **response enum**.
+- Adding a new value to a **request enum**, since existing clients never send it.
+- Loosening request validation, or making a required request field optional.
+- Making a response field non-nullable or guaranteed present, when it was previously optional or nullable.
+- Changing error `message` text, or adding fields to the error body.
+- Changing the order of items where the docs don&apos;t specify one.
+- Raising rate limits or size limits.
+- Performance changes and bug fixes that bring behavior in line with the documentation.
+- Marking something deprecated, as long as it keeps working.
+
+## Specific cases
+
+**New value in a status enum.** This is non-breaking for responses, because clients must treat enums as open (rule 2). It becomes breaking if the new value changes the meaning of existing ones, for example splitting `active` so that some records no longer match it. If a PR adds a response enum value, call it out in the changelog so integrators aren&apos;t surprised.
+
+**Renaming a field and keeping the old one.** Adding the new name is non-breaking. The rename is only finished when the old name is removed, and *removal is breaking regardless of any deprecation period*. The period is the migration path. It doesn&apos;t change the classification. So:
+- Ship both fields with identical values, and mark the old one deprecated in the spec and docs.
+- Remove the old field only in the next major version.
+
+**Changing error message wording.** This is non-breaking. Messages are for humans and may change at any time. Changing the HTTP status or the `code` is breaking.
+
+**Changing item order in a list.** If the docs specify an order (such as `created_at desc`), changing it is breaking. If they don&apos;t, it&apos;s non-breaking. List endpoints should either document a default order or state explicitly that order is unspecified. Pagination must stay stable and complete either way.
+
+## Grey areas: default to breaking
+
+If a change doesn&apos;t clearly fit above, treat it as breaking until the API owner decides otherwise. Common cases:
+- Behavior changes that don&apos;t alter the schema, such as a different default filter, a different side effect, or changed idempotency.
+- Latency changes large enough to hit client timeouts.
+- Changing the format of opaque values (cursors, tokens) that we&apos;ve documented as opaque. This is non-breaking, but only if they really were documented as opaque.
+
+**Security exception:** a fix for a vulnerability may ship in `v1` even if it&apos;s technically breaking. It needs sign-off from the API owner and security, plus advance customer notice where possible.
+
+## Process
+
+- Every PR that touches the API spec or response and request shapes states in its description: **breaking / non-breaking / unsure**, with a one-line reason referencing this policy.
+- Run an OpenAPI diff in CI (for example `oasdiff`) and fail the build on breaking findings. Overriding it requires API-owner approval.
+- Breaking changes go on the `v2` branch. Don&apos;t merge them into `v1`.
+- Deprecations are announced in the changelog and via `Deprecation`/`Sunset` headers. State the earliest removal date, and give at least [6/12] months&apos; notice before a major version is retired.
+
+---
+
+**Assumptions to confirm before publishing:**
+- I assumed URL-based major versioning (`/v1`, `/v2`), so adjust that if you use header or date versioning.
+- I took the &quot;open enums&quot; stance, which is the standard one and the one that makes your enum question answerable. If you&apos;ve told early partners enums are closed, the enum rule changes.
+- The deprecation notice window is left as a placeholder for you to fill in.
+
+I haven&apos;t saved this to a file. Tell me where it should go (for example `docs/api-versioning.md`) and I&apos;ll add it.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We are about to publish v1 of our public REST API and need a written definition of what counts as a breaking change, so engineers know when a PR needs a new version. Today people argue case by case: is adding a new value to a status enum breaking? Is renaming a response field and keeping the old one for a while breaking? What about changing the wording of error messages or the order of items in a list? Write the policy section.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">definition</span><span class="badge">llm</span></div>
+<div class="md"><p>Pass only if the answer does all of these:</p>
+<ul>
+<li>Lists as breaking any change that makes a previously working client fail, including removing or renaming a field or endpoint, changing a type, and adding a required request parameter.</li>
+<li>Treats a rename as breaking (the old name disappearing breaks callers), and handles the 'keep the old field for a while' case as a deprecation with a notice window rather than as non-breaking.</li>
+<li>Addresses enums explicitly: adding a value is breaking unless the enum was declared open (tolerant-reader) in the contract, and recommends declaring which enums are open up front.</li>
+<li>Has an explicit not-contractual list (such as error message text, list ordering unless documented, timing) and cites or reasons from Hyrum's Law or similar that undeclared behavior gets depended on.
+Fail if it calls enum additions always safe, or leaves ordering and message text unaddressed.
+Judge on content, not length. A longer answer is not a better one.</li>
+</ul>
+</div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:versioning\&quot;&quot;</code></div></div>
+</div>
+</details>
+</article>
+<footer>Generated by <code>claude plugin eval</code> · schema v1 · scores are not comparable across different suites</footer>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var bar=document.querySelector('.toolbar');
+  if(!bar)return;
+  bar.addEventListener('click',function(e){
+    var b=e.target&&e.target.closest('button');
+    if(!b)return;
+    var open=b.dataset.act==='expand';
+    document.querySelectorAll('details.section, details.grader').forEach(function(d){d.open=open});
+  });
+});
+// Collapsed details vanish from print/PDF; these pages are share artifacts.
+window.addEventListener('beforeprint',function(){
+  document.querySelectorAll('details').forEach(function(d){
+    if(!d.open){d.dataset.printOpened='1';d.open=true}
+  });
+});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('details[data-print-opened]').forEach(function(d){
+    d.open=false;delete d.dataset.printOpened;
+  });
+});
+</script>
+</body>
+</html>

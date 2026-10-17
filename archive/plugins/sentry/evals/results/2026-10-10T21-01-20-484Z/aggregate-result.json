@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.296",
+  "startedAt": "2026-10-10T21:01:20.484Z",
+  "durationSeconds": 22,
+  "costUsd": 0.0645257,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/sentry",
+    "ablation": "none",
+    "caseFilter": "profile-changes-output",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "sentry",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/sentry"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "profile-changes-output",
+      "dir": "evals/profile-changes-output",
+      "source": "mixed",
+      "promptMarkdown": "Wire Sentry into this Flask service. Put the initialization in a new `sentry_setup.py` that `app.py` imports at the top. Do not install packages or send any events.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 14,
+      "graders": [
+        {
+          "name": "fires-sentry",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"sentry:sentry\""
+          }
+        },
+        {
+          "name": "follows-profile",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule from the skill: read the project's `## Sentry` section in CLAUDE.md and follow it over the generic defaults. The fixture profile says: errors and traces only (no Logs, no metrics); client-side scrubbing that strips `email` in a `before_send` hook; trace sample rate 1.0 in development and 0.07 in production; DSN read from the `BILLING_SENTRY_DSN` environment variable.\n\nPASS only if the code written to `sentry_setup.py` (or shown in the answer) meets ALL of these:\n1. It reads the DSN from `BILLING_SENTRY_DSN`, not from a literal and not from `SENTRY_DSN`.\n2. It registers a `before_send` hook that removes or masks `email`.\n3. It sets a trace sample rate that is 0.07 for production and 1.0 for development (a `traces_sampler` or an environment-keyed value both count).\n4. It enables no Logs and no metrics.\n5. `app.py` imports the new module.\nJudge the code, not the commentary. FAIL otherwise. Do not reward length.",
+          "config": {
+            "criteria": "Rule from the skill: read the project's `## Sentry` section in CLAUDE.md and follow it over the generic defaults. The fixture profile says: errors and traces only (no Logs, no metrics); client-side scrubbing that strips `email` in a `before_send` hook; trace sample rate 1.0 in development and 0.07 in production; DSN read from the `BILLING_SENTRY_DSN` environment variable.\n\nPASS only if the code written to `sentry_setup.py` (or shown in the answer) meets ALL of these:\n1. It reads the DSN from `BILLING_SENTRY_DSN`, not from a literal and not from `SENTRY_DSN`.\n2. It registers a `before_send` hook that removes or masks `email`.\n3. It sets a trace sample rate that is 0.07 for production and 1.0 for development (a `traces_sampler` or an environment-keyed value both count).\n4. It enables no Logs and no metrics.\n5. `app.py` imports the new module.\nJudge the code, not the commentary. FAIL otherwise. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 10,
+            "costUsd": 0.0645257,
+            "judgeCostUsd": 0.0009569000000000001,
+            "durationSeconds": 22,
+            "startedAt": "2026-10-10T21:01:20.491Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-pnKvnk/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-sentry",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follows-profile",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "Sentry is wired in. I didn't run the app, install anything, or send any events.\n\n- **`sentry_setup.py` (new):** it calls `sentry_sdk.init` with the settings from the `## Sentry` section of `CLAUDE.md`.\n  - **DSN:** it comes from `BILLING_SENTRY_DSN`. If that variable is unset, the SDK stays disabled and the app still starts.\n  - **Sample rates:** errors are 1.0. Traces are 0.07 in production and 1.0 otherwise.\n  - **Email scrubbing:** `before_send` and `before_send_transaction` recursively drop every `email` key, so transactions are covered as well as errors.\n  - **Not enabled:** logs and metrics, as the profile specifies.\n- **`app.py`:** `import sentry_setup` is now the first line, ahead of the Flask import. The SDK's Flask integration turns on by itself when Flask is installed.\n- **Environment name:** the profile doesn't say how to tell production from development, so I read `SENTRY_ENVIRONMENT` and default to `development`. Set it to `production` in prod, or you'll get 1.0 trace sampling there. Say so if you'd rather key off something else.\n- **Dependency:** `sentry-sdk==2.20.0` is already in `requirements.txt`, so there was nothing to add."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.5,
+    "overallPassRate": 0
+  }
+}

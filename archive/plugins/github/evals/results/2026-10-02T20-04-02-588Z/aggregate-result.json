@@ -1,0 +1,763 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T20:04:02.588Z",
+  "durationSeconds": 44,
+  "costUsd": 0.6580444999999999,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/github",
+    "ablation": "with-without",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "github",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/github"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "actions-follow-pin-convention",
+      "dir": "evals/actions-follow-pin-convention",
+      "source": "prose",
+      "promptMarkdown": "Review this GitHub Actions step list and tell me about any issues. Our repo's CONTRIBUTING.md says third-party actions must be pinned to a full commit SHA with a version comment.\n\n```yaml\nsteps:\n  - uses: actions/checkout@master\n  - uses: actions/setup-go@main\n    with:\n      go-version: stable\n```",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-actions",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:actions\""
+          }
+        },
+        {
+          "name": "flags-and-follows",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if the answer (1) flags @master and @main as moving branch refs that can change or be compromised, (2) recommends pinning to a full commit SHA with a version comment, as the repo convention says, and (3) does not invent a SHA and present it as verified; it either tells the user to look up the release commit or marks the SHA as a placeholder. FAIL if it recommends only @v4-style tags against the stated convention, or fabricates SHAs as real.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if the answer (1) flags @master and @main as moving branch refs that can change or be compromised, (2) recommends pinning to a full commit SHA with a version comment, as the repo convention says, and (3) does not invent a SHA and present it as verified; it either tells the user to look up the release commit or marks the SHA as a placeholder. FAIL if it recommends only @v4-style tags against the stated convention, or fabricates SHAs as real.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.041143599999999995,
+            "judgeCostUsd": 0.003909999999999999,
+            "durationSeconds": 10,
+            "startedAt": "2026-10-02T20:04:02.601Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-pfFgJ6/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-actions",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "flags-and-follows",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**Pinning**\n\n- Both steps use mutable branch refs (`@master`, `@main`). Every run pulls whatever is on the branch at that moment, so a breaking change or a compromised push reaches your CI immediately. They also make builds non-reproducible.\n- Strictly, your CONTRIBUTING.md rule covers *third-party* actions, and `actions/*` are GitHub-owned. Even so, branch refs are worse than either a tag or a SHA. Pinning these to a SHA is the safest reading of the policy, and it keeps the workflow consistent if you later add a real third-party action.\n- `actions/checkout@master` may not resolve at all, because that repo's default branch is `main`. Check this against the repo before relying on it.\n\n**Suggested form**\n\n```yaml\nsteps:\n  - uses: actions/checkout@<full-40-char-sha> # v<x.y.z>\n  - uses: actions/setup-go@<full-40-char-sha> # v<x.y.z>\n    with:\n      go-version-file: go.mod\n```\n\nI haven't filled in the SHAs, because I can't verify them from here. Look up the commit behind the release tag you want, for example with `gh api repos/actions/checkout/git/ref/tags/<tag>`. If the tag is annotated, dereference it to the commit. Dependabot's `github-actions` ecosystem can then keep the SHAs and version comments updated.\n\n**Other issues**\n\n- `go-version: stable` floats to the newest Go release, so a new Go version can break CI without any change in your repo. Prefer `go-version-file: go.mod`, or pin an explicit version.\n- There's no `permissions:` block visible. Set `permissions: contents: read` at the workflow or job level so the token is least-privilege.\n- `actions/checkout` persists the token in `.git/config` by default. If no later step needs to push, add `with: persist-credentials: false`.\n- `setup-go` caches by default, which is fine. If you build with multiple `go.sum` files, set `cache-dependency-path`."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.0323686,
+            "judgeCostUsd": 0.003261,
+            "durationSeconds": 9,
+            "startedAt": "2026-10-02T20:04:02.601Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-1d8fHo/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "flags-and-follows",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Issues, most serious first:\n\n1. **Unpinned refs, which violates CONTRIBUTING.md.** Both actions point at moving branches (`@master`, `@main`) instead of a full 40-character commit SHA with a version comment. Whatever lands on those branches runs in your workflow with access to the job's `GITHUB_TOKEN` and any secrets. A compromised or buggy upstream commit would flow straight into your CI.\n\n2. **Branch refs are unstable.** Builds aren't reproducible. A push to either branch can change or break your pipeline with no change in your repo. Both `actions/checkout` and `actions/setup-go` publish version tags, and branch heads can contain unreleased work.\n\n3. **`go-version: stable` floats.** Every run uses whatever Go release is current. A new Go release can break your build or tests unexpectedly. Prefer one of these:\n   - `go-version-file: go.mod`, so CI matches what the project declares.\n   - An explicit version such as `'1.23'`, if you want to control upgrades.\n\n4. **No `permissions:` block (not visible in this snippet).** If the workflow doesn't set a restrictive `permissions:` (for example `contents: read`), it may get broader token scopes than it needs.\n\n5. **Checkout persists credentials (minor).** `actions/checkout` leaves the token in the local git config by default. If no later step needs to push, add `persist-credentials: false`.\n\nA fixed version looks like this. Replace the placeholder SHAs with the real commit SHAs for the release tags you choose. Look them up on each action's releases page, or run `git ls-remote https://github.com/actions/checkout 'refs/tags/v*'`.\n\n```yaml\npermissions:\n  contents: read\n\nsteps:\n  - uses: actions/checkout@<full-40-char-sha> # v4.x.y\n    with:\n      persist-credentials: false\n  - uses: actions/setup-go@<full-40-char-sha> # v5.x.y\n    with:\n      go-version-file: go.mod\n```\n\nNote that `actions/*` are first-party GitHub actions. Your CONTRIBUTING.md says \"third-party\", so strictly they might be exempt. Pinning them is still good practice, and it's safer to follow the rule consistently unless the doc explicitly carves out `actions/*`.\n\nI also didn't verify the SHAs myself, so look them up before committing. Tools like Dependabot or Renovate can keep SHA pins and their version comments up to date automatically."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "dependabot-automerge-safe",
+      "dir": "evals/dependabot-automerge-safe",
+      "source": "prose",
+      "promptMarkdown": "I want Dependabot PRs to auto-merge once CI passes, but only for minor and patch updates. Write the GitHub Actions workflow and tell me the security concerns. Reply in the chat; do not run any commands.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-github-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:(dependabot|actions)\""
+          }
+        },
+        {
+          "name": "no-prt",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(?m)^\\s*(on:\\s*)?pull_request_target\\s*:?\\s*$|on:\\s*\\[?[^\\n]*pull_request_target",
+            "flags": "",
+            "match": "not_contains"
+          }
+        },
+        {
+          "name": "safe-workflow",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS only if ALL hold: (1) the workflow triggers on \"pull_request\", not \"pull_request_target\"; (2) it declares explicit job or workflow permissions rather than relying on defaults; (3) it guards the job on the PR author being dependabot[bot]; (4) it reads the update type with dependabot/fetch-metadata (or equivalent) and skips major updates; (5) the answer says branch protection with required status checks is what actually gates the merge. FAIL if any is missing.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+          "config": {
+            "criteria": "PASS only if ALL hold: (1) the workflow triggers on \"pull_request\", not \"pull_request_target\"; (2) it declares explicit job or workflow permissions rather than relying on defaults; (3) it guards the job on the PR author being dependabot[bot]; (4) it reads the update type with dependabot/fetch-metadata (or equivalent) and skips major updates; (5) the answer says branch protection with required status checks is what actually gates the merge. FAIL if any is missing.\n\nJudge only whether each criterion is met. Do not reward length or extra detail.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.05732859999999999,
+            "judgeCostUsd": 0.004509000000000003,
+            "durationSeconds": 22,
+            "startedAt": "2026-10-02T20:04:02.601Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-1DPBOP/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-github-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "no-prt",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: Invalid regular expression: unrecognized character after (?",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "safe-workflow",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: PASS FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  false,
+                  false
+                ],
+                "evidence": "## Workflow\n\nSave this as `.github/workflows/dependabot-auto-merge.yml`:\n\n```yaml\nname: Dependabot auto-merge\n\non: pull_request\n\npermissions: {}\n\njobs:\n  auto-merge:\n    runs-on: ubuntu-latest\n    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'OWNER/REPO'\n    permissions:\n      contents: write        # needed to enable auto-merge\n      pull-requests: write\n    steps:\n      - name: Fetch Dependabot metadata\n        id: meta\n        uses: dependabot/fetch-metadata@v2   # pin to a full commit SHA in practice\n        with:\n          github-token: ${{ secrets.GITHUB_TOKEN }}\n\n      - name: Enable auto-merge for minor and patch updates\n        if: >-\n          steps.meta.outputs.update-type == 'version-update:semver-minor' ||\n          steps.meta.outputs.update-type == 'version-update:semver-patch'\n        run: gh pr merge --auto --squash \"$PR_URL\"\n        env:\n          PR_URL: ${{ github.event.pull_request.html_url }}\n          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n```\n\nReplace `OWNER/REPO` with your repository. The repository check stops the job from running on forks.\n\n**Required repo settings.** The workflow does nothing useful without these:\n1. Go to Settings → General and enable **Allow auto-merge**.\n2. Add a branch protection rule or ruleset on `main` with **required status checks**. This is what makes \"once CI passes\" true.\n\n## Security concerns\n\n1. **Without required checks, auto-merge merges immediately.** `gh pr merge --auto` only waits for checks that branch protection requires. If none are required, the PR merges at once. This is the most common mistake.\n\n2. **Don't use `pull_request_target`.** It runs with a write token and secrets in the base repo context. Combined with a checkout of PR code, it is a well-known way to take over a repo. The plain `pull_request` event is enough here. Dependabot-triggered runs get a restricted token and only Dependabot-scoped secrets. The workflow never checks out or executes PR code.\n\n3. **Check the PR author, not just `github.actor`.** The `user.login` condition is the safer gate. `github.actor` changes to whoever last pushed or re-ran the PR, and the `dependabot[bot]` identity is the only thing that should unlock the merge step. Don't use name-based checks like `startsWith(head_ref, 'dependabot/')`, because anyone can create a branch with that name.\n\n4. **Semver labels are only as trustworthy as the maintainer.** A compromised maintainer account or a malicious patch release (typosquat takeovers, `event-stream`-style incidents) still looks like a patch bump. Auto-merging means unreviewed third-party code lands in `main` and may ship. Ways to reduce the risk:\n   - Add a `cooldown` (e.g. `default-days: 3–7`) in `dependabot.yml`. Most malicious releases are caught and yanked within days.\n   - Limit auto-merge to dev dependencies or low-risk ecosystems with `steps.meta.outputs.dependency-type` or `package-ecosystem`.\n   - Exclude `0.x` packages. Semver doesn't hold there, and minor bumps often break things.\n\n5. **Your tests are the only safety net.** If coverage is thin, a breaking minor or patch release will merge cleanly. Be especially careful with lifecycle scripts (`postinstall`), which run in CI before tests do.\n\n6. **GitHub Actions updates are higher risk.** If the `github-actions` ecosystem is in your `dependabot.yml`, auto-merging action bumps lets third-party code run with your workflow tokens and secrets. Either exclude that ecosystem from auto-merge or pin actions by SHA and review those PRs manually.\n\n7. **Grouped updates.** If you use Dependabot `groups`, check how `update-type` is reported for a group that mixes bump levels. Confirm that a major bump can't slip through inside a group. The safe approach is to group only minor and patch updates in `dependabot.yml`.\n\n8. **Least privilege and pinning.** Keep `permissions: {}` at the top level and grant write only to this job. Pin `dependabot/fetch-metadata` to a commit SHA. Pass `html_url` through `env` rather than interpolating it into the script, which avoids injection from untrusted context values.\n\n9. **Review requirements.** If branch protection requires an approving review, auto-merge will wait forever. Don't \"fix\" that by having the workflow approve its own PRs. That defeats the review control. Use a ruleset that exempts the Dependabot bypass actor only if you accept the risk.\n\n10. **Merge visibility.** Auto-merged changes bypass human eyes, so enable Dependabot alerts and a periodic audit (`npm audit`, `pip-audit`, etc.) in CI. Also consider notifications on merges to `main` so you notice unexpected changes.\n\nI can also help tighten `dependabot.yml` (cooldown, grouping, ecosystem limits) to pair with this workflow."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.042494599999999993,
+            "judgeCostUsd": 0.004442999999999999,
+            "durationSeconds": 16,
+            "startedAt": "2026-10-02T20:04:02.601Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-73iNke/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "no-prt",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: Invalid regular expression: unrecognized character after (?",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "safe-workflow",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Save this as `.github/workflows/dependabot-auto-merge.yml`:\n\n```yaml\nname: Dependabot auto-merge\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n\npermissions: {}\n\njobs:\n  auto-merge:\n    runs-on: ubuntu-latest\n    # Check the PR author, not github.actor, so a human pushing to the branch doesn't qualify.\n    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'YOUR_ORG/YOUR_REPO'\n    permissions:\n      contents: write        # needed to enable auto-merge\n      pull-requests: write\n    steps:\n      - name: Fetch Dependabot metadata\n        id: metadata\n        uses: dependabot/fetch-metadata@v2   # pin to a commit SHA in practice\n        with:\n          github-token: ${{ secrets.GITHUB_TOKEN }}\n\n      - name: Enable auto-merge for minor and patch updates\n        if: >-\n          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||\n          steps.metadata.outputs.update-type == 'version-update:semver-patch'\n        run: gh pr merge --auto --squash \"$PR_URL\"\n        env:\n          PR_URL: ${{ github.event.pull_request.html_url }}\n          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n```\n\n**Setup this depends on (otherwise it won't wait for CI)**\n1. Settings → General → enable **Allow auto-merge**.\n2. Add a **branch protection rule or ruleset** on `main` that requires your CI status checks to pass. `gh pr merge --auto` only waits for *required* checks. If none are required, the PR merges immediately.\n3. Consider requiring one approval. The workflow doesn't approve anything. If you want that, add a `gh pr review --approve` step, but see the concerns below.\n\n**Security concerns**\n\n1. **Auto-merge is only as safe as your required checks.** If CI is thin, a malicious or broken update ships. Minor and patch updates are not guaranteed safe, because semver is a convention and not enforced.\n2. **Supply chain risk.** A compromised maintainer or a hijacked package can publish a \"patch\" release containing malware. Auto-merge puts it into `main` with no human review. Mitigations:\n   - Set a Dependabot `cooldown` (for example 3–7 days) in `dependabot.yml`, so freshly published versions have time to be caught and yanked.\n   - Pin lockfiles and use `npm ci` or the equivalent.\n   - Restrict auto-merge to dev dependencies or to specific ecosystems if you want to be more conservative. `dependency-type` from the metadata action lets you do this.\n3. **Don't use `pull_request_target`.** It runs with write permissions and secrets in the base repo context. Combined with checking out PR code, that's a well-known privilege escalation. `pull_request` is correct here. Dependabot-triggered `pull_request` runs get a read-only token by default and no repo secrets, and the job's `permissions` block is what grants write.\n4. **Gate on the PR author, not `github.actor`.** The `actor` can be whoever last pushed or re-ran the workflow. A human could push to a Dependabot branch and inherit the bot's trust. Checking `pull_request.user.login` is stricter. Combined with the `update-type` check, it keeps this narrow. Be aware that the `update-type` output is computed from the commit and PR metadata.\n5. **Least privilege.** The top-level `permissions: {}` plus job-level grants keeps the token narrow. Note that `contents: write` is broad. The auto-merge feature requires it, so rely on branch protection to constrain what actually lands.\n6. **Pin third-party actions to a full commit SHA.** Tags like `@v2` are mutable. Dependabot can also keep the SHA pins updated for `github-actions`.\n7. **Auto-merging GitHub Actions updates is itself risky.** Updating a workflow action changes code that runs with your tokens. Consider excluding the `github-actions` ecosystem from auto-merge, for example by checking `steps.metadata.outputs.package-ecosystem != 'github-actions'`.\n8. **Bypass settings.** If admins or bots can bypass branch protection, auto-merge can bypass your checks too. Review who is in the bypass list.\n9. **Approval caveat.** If you add an auto-approve step and also require one approval, the bot satisfies the review rule on its own. That makes the \"required review\" rule meaningless for these PRs. Be deliberate about that.\n10. **Major updates and security advisories.** Major updates are excluded by the condition. Group updates can mix update types, so check how `fetch-metadata` reports grouped PRs. If you use groups, test it first or split minor and patch groups from major ones.\n\nI haven't run or tested this. Replace `YOUR_ORG/YOUR_REPO`, or drop that clause if you don't need it. Then try it on a throwaway Dependabot PR before relying on it."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0,
+        "scoreWithout": 0.5,
+        "passRateWithout": 0,
+        "delta": -0.5
+      }
+    },
+    {
+      "name": "issue-breakdown-routing",
+      "dir": "evals/issue-breakdown-routing",
+      "source": "prose",
+      "promptMarkdown": "Here is our spec for CSV export: users pick columns, the server streams the file, large exports run as background jobs, and admins get an audit log. Turn it into a set of linked GitHub issues cut as vertical slices, with blocking edges. Show me the plan before creating anything.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-issue-breakdown",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:issue-breakdown\""
+          }
+        },
+        {
+          "name": "not-issues",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:issues\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.06280079999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 18,
+            "startedAt": "2026-10-02T20:04:11.505Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-vgo4TV/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-issue-breakdown",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-issues",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0357962,
+            "judgeCostUsd": 0,
+            "durationSeconds": 11,
+            "startedAt": "2026-10-02T20:04:12.581Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-LpwvyM/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-issues",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "issues-routing",
+      "dir": "evals/issues-routing",
+      "source": "prose",
+      "promptMarkdown": "File a GitHub issue in this repo titled \"Login button misaligned on Safari\", labelled bug, and assign it to the v2.1 milestone.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-issues",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:issues\""
+          }
+        },
+        {
+          "name": "not-issue-breakdown",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:issue-breakdown\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.047316199999999996,
+            "judgeCostUsd": 0,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T20:04:18.241Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-xGjB41/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-issues",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-issue-breakdown",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.0635772,
+            "judgeCostUsd": 0,
+            "durationSeconds": 10,
+            "startedAt": "2026-10-02T20:04:23.813Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-V2ScA8/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-issue-breakdown",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "pr-comments-routing",
+      "dir": "evals/pr-comments-routing",
+      "source": "prose",
+      "promptMarkdown": "PR #214 has review comments from two people. Pull the unresolved threads, summarise what they want, and let me pick which ones to fix.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-pr-comments",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:pr-comments\""
+          }
+        },
+        {
+          "name": "not-pr",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:pr\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.0322238,
+            "judgeCostUsd": 0,
+            "durationSeconds": 3,
+            "startedAt": "2026-10-02T20:04:24.574Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-QROL3w/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-pr-comments",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-pr",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.057978100000000005,
+            "judgeCostUsd": 0,
+            "durationSeconds": 17,
+            "startedAt": "2026-10-02T20:04:24.613Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-PFpvp3/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-pr",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "pr-routing",
+      "dir": "evals/pr-routing",
+      "source": "prose",
+      "promptMarkdown": "My branch feature/rate-limit is ready. Open a pull request for it with a reviewer-ready description.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-pr",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:pr\""
+          }
+        },
+        {
+          "name": "not-pr-comments",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:pr-comments\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.0542402,
+            "judgeCostUsd": 0,
+            "durationSeconds": 11,
+            "startedAt": "2026-10-02T20:04:28.002Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-PZcVMJ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-pr",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-pr-comments",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.0284174,
+            "judgeCostUsd": 0,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T20:04:29.726Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-C2Icb2/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-pr-comments",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "triage-routing",
+      "dir": "evals/triage-routing",
+      "source": "prose",
+      "promptMarkdown": "We have 40 open issues and a few external PRs nobody has looked at. Go through them: categorise each, find duplicates, and tell me which to close, which need more info, and which are ready to work on.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "fires-triage",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:triage\""
+          }
+        },
+        {
+          "name": "not-issues",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:issues\"",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.057024399999999996,
+            "judgeCostUsd": 0,
+            "durationSeconds": 9,
+            "startedAt": "2026-10-02T20:04:33.548Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-oLaNvD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-triage",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "not-issues",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.04533480000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-02T20:04:35.455Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-q0lzeD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "not-issues",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 7,
+    "casesPassed": 6,
+    "overallScore": 0.8571428571428571,
+    "overallPassRate": 0.8571428571428571,
+    "meanDelta": -0.07142857142857142
+  }
+}

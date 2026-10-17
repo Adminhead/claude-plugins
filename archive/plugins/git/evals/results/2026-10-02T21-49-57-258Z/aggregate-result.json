@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.286",
+  "startedAt": "2026-10-02T21:49:57.258Z",
+  "durationSeconds": 13,
+  "costUsd": 0.0742812,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/git",
+    "ablation": "with-without",
+    "caseFilter": "stance-commit-convention",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "git",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/git"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "stance-commit-convention",
+      "dir": "evals/stance-commit-convention",
+      "source": "mixed",
+      "promptMarkdown": "Write the commit message for the staged change in `staged.diff` and save it to `COMMIT_MSG.txt` (message only). The recent history is in `history.txt`. Do not run git.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 12,
+      "graders": [
+        {
+          "name": "conventional-header",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": {
+              "source": "file",
+              "path": "COMMIT_MSG.txt"
+            },
+            "pattern": "^(feat|fix|refactor|perf|docs|test|chore|build|ci)(\\([^)]+\\))?!?: \\S",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "fires-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"git:commit\""
+          }
+        },
+        {
+          "name": "follow-contract",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule from the skill: \"When release-please is configured, its Conventional Commit contract beats stylistic patterns in history... Don't copy isolated historical exceptions.\" The repo has `release-please-config.json`, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message in `COMMIT_MSG.txt` ALL of these:\n1. Starts with a Conventional Commit header, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The subject is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line, explains why (stale discount on an empty cart), and contains no second Conventional Commit header.\n4. The answer notes that release-please's contract, not the history, set the format.\nFAIL otherwise. Do not reward length.",
+          "config": {
+            "criteria": "Rule from the skill: \"When release-please is configured, its Conventional Commit contract beats stylistic patterns in history... Don't copy isolated historical exceptions.\" The repo has `release-please-config.json`, while `history.txt` is untidy (capitalized, past tense, trailing period, \"wip\").\n\nPASS only if the message in `COMMIT_MSG.txt` ALL of these:\n1. Starts with a Conventional Commit header, here `fix` (optionally scoped, e.g. `fix(cart):`), not `feat` and not copied history style.\n2. The subject is lowercase imperative, under about 72 characters, with no trailing period.\n3. Any body is separated by one blank line, explains why (stale discount on an empty cart), and contains no second Conventional Commit header.\n4. The answer notes that release-please's contract, not the history, set the format.\nFAIL otherwise. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.039028600000000004,
+            "judgeCostUsd": 0.001437,
+            "durationSeconds": 7,
+            "startedAt": "2026-10-02T21:49:57.271Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-WwejCt/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fires-skill",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`. I didn't run git.\n\n```\nReset discount when removing the last cart item\n\nremoveItem left a stale discount applied to an empty cart. Clear the\ndiscount when no items remain.\n\nremoveItem now returns the updated cart object (items and discount)\ninstead of just the filtered items array, so callers that expected an\narray need to read `.items`.\n```\n\nThe history has no consistent convention, so I used a plain imperative subject line. The diff changes `removeItem`'s return value from an array to the cart object, so the body flags that for callers. I didn't check whether any callers in the repo still expect an array."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 4,
+            "costUsd": 0.0352526,
+            "judgeCostUsd": 0.0013109999999999997,
+            "durationSeconds": 6,
+            "startedAt": "2026-10-02T21:50:04.230Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-OTv8v9/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "conventional-header",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in file COMMIT_MSG.txt",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "follow-contract",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I saved the commit message to `COMMIT_MSG.txt`:\n\n```\nFix stale discount after removing last cart item\n\nremoveItem now returns the updated cart instead of just the filtered\nitems array, and resets the discount to 0 when the cart becomes empty.\nPreviously the discount stayed applied to an empty cart.\n```\n\nThe diff also changes `removeItem`'s return value from an array to a cart object. Any existing caller that expects an array will break, so I put that in the body of the message."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0,
+    "overallPassRate": 0,
+    "meanDelta": 0
+  }
+}

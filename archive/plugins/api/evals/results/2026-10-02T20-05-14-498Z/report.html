@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eval report — api v0.1.0</title>
+</head>
+<body>
+<style>
+:root{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}}
+:root[data-theme="dark"]{--plane:#0d0d0d;--surface:#1a1a19;--ink:#ffffff;--ink-2:#c3c2b7;--ink-3:#898781;--hairline:rgba(255,255,255,.10);--grid:#2c2c2a;--inset:rgba(255,255,255,.05);--accent:#3987e5;--base-fill:#898781;--delta-good:#0ca30c;--good:#0ca30c;--warning:#fab219;--critical:#e06c6c;color-scheme:dark}
+:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:880px;margin:0 auto;padding:40px 24px 64px;display:flex;flex-direction:column;gap:20px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+header h1{margin:2px 0 0;font-size:24px;font-weight:600;line-height:1.25;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;color:var(--ink-2);font-size:13px}
+.meta .num{font-variant-numeric:tabular-nums lining-nums}
+.banner{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;
+  border:1px solid var(--hairline);background:var(--surface);font-size:13px}
+.banner .chip-warn{color:var(--warning);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:4px}
+.tile .label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.tile .value{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums lining-nums;line-height:1.1}
+.tile.hero .value{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:48px}
+.tile .sub{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tile .value.delta-pos{color:var(--delta-good)}
+.tile .value.delta-neg{color:var(--critical)}
+.toolbar{display:flex;gap:8px;justify-content:flex-end}
+.toolbar button{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink-2);
+  background:var(--surface);border:1px solid var(--hairline);border-radius:6px;padding:4px 10px;cursor:pointer}
+.toolbar button:hover{color:var(--ink)}
+.toolbar button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.case{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:18px 20px;
+  display:flex;flex-direction:column;gap:10px}
+.case-regressed{border-left:3px solid var(--critical)}
+.verdict{margin:6px 0 0;font-size:15px}
+.verdict .delta{font-size:15px}
+.flag{font-size:11px;font-weight:600;color:var(--warning);white-space:nowrap}
+.star{color:var(--warning);font-size:.45em;vertical-align:super;line-height:0;cursor:help}
+.legend summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.legend-list{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--ink-2)}
+.case-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.case-head h2{margin:0;font-size:16px;font-weight:600}
+.case-head .spacer{flex:1}
+.case-score{font-size:15px;font-weight:600}
+.mono{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.muted{color:var(--ink-3);font-size:12px}
+.meter{display:inline-block;position:relative;width:120px;height:6px;border-radius:4px;background:var(--grid);
+  vertical-align:middle}
+.meter>span{display:block;height:100%;border-radius:4px;max-width:100%}
+.meter .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-3);border-radius:1px}
+.m-accent>span{background:var(--accent)}
+.m-base>span{background:var(--base-fill)}
+.delta{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.delta-pos{color:var(--delta-good)}
+.delta-neg{color:var(--critical)}
+.delta-zero{color:var(--ink-3)}
+details.section{border-top:1px solid var(--grid);padding-top:10px}
+details.section>summary{cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-2);list-style-position:outside;margin-left:2px}
+details.section>summary:hover{color:var(--ink)}
+details.section[open]>summary{margin-bottom:8px}
+.md{display:flex;flex-direction:column;gap:8px;background:var(--inset);border-radius:8px;
+  padding:12px 14px;overflow-wrap:break-word}
+.md>:first-child{margin-top:0}
+.md h1,.md h2,.md h3,.md h4,.md h5,.md h6{margin:4px 0 0;font-size:1em;font-weight:600;line-height:1.3}
+.md p,.md ul,.md ol,.md blockquote,.md table,.md pre,.md hr{margin:0}
+.md ul,.md ol{display:flex;flex-direction:column;gap:4px;padding-left:20px}
+.md blockquote{border-left:2px solid var(--hairline);padding-left:10px;color:var(--ink-2)}
+.md :not(pre)>code{background:var(--inset);padding:1px 4px;border-radius:4px;
+  font:.92em "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre{background:var(--inset);border:1px solid var(--hairline);padding:10px 12px;border-radius:6px;
+  overflow-x:auto;font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.md pre code{background:none;padding:0;font:inherit}
+.md table{width:100%;border-collapse:collapse}
+.md th,.md td{padding:5px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--grid)}
+.md th{font-weight:600;color:var(--ink-2)}
+.md a{color:var(--accent);text-decoration:none}
+.md a:hover{text-decoration:underline}
+.grader-def{display:flex;flex-direction:column;gap:6px;padding:8px 0}
+.grader-def+.grader-def{border-top:1px solid var(--grid)}
+.grader-def-head{display:flex;align-items:baseline;gap:8px}
+.grader-name{font:13px "SF Mono",ui-monospace,Menlo,Consolas,monospace;font-weight:600}
+.badge{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
+  border:1px solid var(--hairline);border-radius:999px;padding:1px 8px}
+.config{display:flex;flex-direction:column;gap:2px;background:var(--inset);border-radius:8px;padding:10px 14px}
+.config code{font:12px "SF Mono",ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.arm{display:flex;flex-direction:column;gap:8px;padding:6px 0}
+.arm+.arm{border-top:1px dashed var(--grid);margin-top:4px;padding-top:12px}
+.arm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.arm-label{font-size:13px;font-weight:600}
+.run{border:1px solid var(--grid);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.run-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.run-title{font-size:12px;font-weight:600;color:var(--ink-2)}
+.run-error .explanation{color:var(--ink-2)}
+.note{font-size:12px;color:var(--ink-2)}
+.graders{display:flex;flex-direction:column;gap:4px}
+details.grader{border-radius:6px}
+details.grader>summary{cursor:pointer;display:flex;align-items:baseline;gap:8px;padding:3px 4px;
+  border-radius:6px;list-style:none}
+details.grader>summary::-webkit-details-marker{display:none}
+details.grader>summary::before{content:'▸';font-size:10px;color:var(--ink-3);flex:none;
+  transition:transform .12s ease}
+details.grader[open]>summary::before{transform:rotate(90deg)}
+details.grader>summary:hover{background:var(--inset)}
+details.grader>summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.grader-body{padding:6px 8px 8px 24px;display:flex;flex-direction:column;gap:6px}
+.chip{font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.chip-pass{color:var(--good);border:1px solid currentColor}
+.chip-fail{color:var(--critical);border:1px solid currentColor}
+.chip.chip-warn{color:var(--warning);border:1px solid currentColor}
+.explanation{margin:0;font-size:13px;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:break-word}
+.kv{display:flex;gap:8px;font-size:12px;color:var(--ink-3)}
+.votes{font-variant-numeric:tabular-nums;letter-spacing:.1em}
+pre.evidence{margin:0;background:var(--inset);border:1px solid var(--hairline);border-radius:6px;
+  padding:8px 10px;overflow-x:auto;max-height:320px;
+  font:12px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:break-word}
+footer{color:var(--ink-3);font-size:12px;text-align:center;padding-top:8px}
+@media (prefers-reduced-motion:no-preference){
+  details.grader>summary,.toolbar button{transition:background .12s ease,color .12s ease}
+}
+@media (prefers-reduced-motion:reduce){
+  details.grader>summary::before{transition:none}
+}
+@media print{
+  :root,:root[data-theme="dark"],:root[data-theme="light"]{--plane:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--ink-3:#6b6a64;--hairline:rgba(11,11,11,.10);--grid:#e1e0d9;--inset:rgba(11,11,11,.04);--accent:#2a78d6;--base-fill:#6b6a64;--delta-good:#006300;--good:#067d06;--warning:#8a6100;--critical:#d03b3b;color-scheme:light}
+  body{background:#fff}
+  .toolbar{display:none}
+  .case,.run,.grader-def{break-inside:avoid}
+  pre.evidence{max-height:none}
+}
+</style>
+<div class="wrap">
+<header>
+<div class="eyebrow">Plugin eval report</div>
+<h1>api v0.1.0</h1>
+<p class="verdict">Plugin effect: <span class="delta delta-zero">· 0.0 pts</span> vs baseline — improved 0 · flat 1 · regressed 0 of 1 case.</p>
+<div class="meta">
+<span class="mono">.</span>
+<span>Claude Code v2.1.286</span>
+<span class="num">2026-10-02 20:05 UTC</span>
+<span class="num">43s</span>
+<span class="num">$0.12</span>
+<span class="num">2 runs</span>
+
+
+
+<span>judge default</span>
+<span class="num">threshold 100%</span>
+<span>filtered: --case webhooks-signing</span>
+</div>
+</header>
+
+<section class="tiles">
+<div class="tile hero"><span class="label">Suite score · with plugin</span><span class="value">100%</span><span class="sub">mean of per-case scores</span></div>
+<div class="tile"><span class="label">Ablation Δ</span><span class="value num delta-zero">0.0</span><span class="sub">score points vs baseline, 1 of 1 case</span></div>
+<div class="tile"><span class="label">Baseline score</span><span class="value num">100%</span><span class="sub">without the plugin</span></div>
+<div class="tile"><span class="label">Cases</span><span class="value num">1</span><span class="sub">1 of 1 ≥ 100% threshold</span></div>
+<div class="tile"><span class="label">Perfect runs</span><span class="value num">100%</span><span class="sub">runs where every grader passed</span></div>
+</section>
+<details class="section legend">
+<summary>How to read this report</summary>
+<ul class="legend-list">
+<li>A run's score is the weighted fraction of its graders that passed; a "perfect" run passed every grader.</li>
+<li>A case's score is the mean of its runs; a case passes when its score is at or above the 100% threshold (the tick on each case bar).</li>
+<li>The suite score is the mean of the per-case scores.</li>
+<li>Judge votes are independent samples of the LLM judge; the majority decides pass or fail.</li>
+<li>"With plugin" and "Baseline" runs are identical except for the plugin being loaded; Δ is the with-plugin score minus the baseline score.</li>
+
+</ul>
+</details>
+<div class="toolbar"><button type="button" data-act="expand">Expand all</button><button type="button" data-act="collapse">Collapse all</button></div>
+<article class="case" id="case-1">
+<div class="case-head">
+<h2>webhooks-signing</h2>
+<span class="muted mono">evals/webhooks-signing</span>
+<span class="spacer"></span>
+
+<span class="delta delta-zero">· 0.0 pts</span>
+<span class="muted">with plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span><i class="tick" style="left:100.0%"></i></span>
+<span class="num case-score">100%</span>
+</div>
+
+<details class="section" open>
+<summary>Results</summary>
+<section class="arm">
+<div class="arm-head">
+<span class="arm-label">With plugin</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-accent" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">3 turns · $0.07 · 20:05:14 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">fires</span>  <span class="badge">plugin-fired indicator</span></summary>
+<div class="grader-body">
+<p class="explanation">Skill called 1x (expected 1..∞)</p>
+
+</div>
+</details>
+<details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">signing</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence"># Review of the first draft
+
+`HMAC-SHA256(secret, body)` in `X-Signature`, with one secret per endpoint, has a sound core. Per-endpoint secrets and HMAC are the right choices. It has four gaps:
+
+1. **No replay protection.** The signature covers only the body, so a captured request stays valid forever. An attacker who sees one delivery can resend it indefinitely.
+2. **No stable event ID.** Receivers have nothing reliable to deduplicate on. Delivery is at-least-once, so retries will produce duplicates. If receivers build without an ID, you can&apos;t fix that later.
+3. **A single secret forces revoke-then-deploy rotation.** Either the customer&apos;s endpoint rejects valid deliveries for a while, or they skip rotating.
+4. **Verification advice is missing.** Most real-world failures are receiver bugs, not crypto weaknesses.
+
+# Scheme to ship: Standard Webhooks 1.0.0
+
+Use the open spec rather than a bespoke format. Customers get existing libraries, and you avoid designing the edge cases yourself.
+
+**Headers on every delivery**
+- `webhook-id`: one stable ID per event, identical across retries.
+- `webhook-timestamp`: integer Unix seconds, set when the attempt is sent.
+- `webhook-signature`: `v1,&lt;base64&gt;`, with several space-separated entries during rotation.
+
+**Signed content**
+```
+signed_content = &quot;{webhook-id}.{webhook-timestamp}.{raw_body}&quot;
+signature      = &quot;v1,&quot; + base64(HMAC-SHA256(secret, signed_content))
+```
+Signing the timestamp is what gives replay protection. Signing the ID stops an attacker from swapping the ID header to defeat deduplication.
+
+**Secrets**
+- One secret per endpoint, generated by you with at least 192 bits of entropy.
+- Use a `whsec_` prefix so secret scanners can find leaks.
+- Store the secret so you can sign with it. This is different from API keys, where you store only a hash.
+- Optional later: ed25519 signing (`v1a`) for enterprise customers who don&apos;t want to hold a shared secret.
+
+**Payload**
+Include `type`, an ISO 8601 `timestamp` of when the event occurred, and `data`. Put the event name in one place only.
+
+# Zero-downtime rotation
+
+1. The customer clicks &quot;Roll secret&quot; in the dashboard or calls the API. You generate a new secret and keep the old one active with an expiry. The customer chooses the overlap, with a default of 24 hours and a maximum of about 7 days.
+2. During the overlap, sign every delivery with both secrets. The header becomes `webhook-signature: v1,&lt;sig_new&gt; v1,&lt;sig_old&gt;`.
+3. The customer deploys the new secret on their own schedule. Verifiers accept a request if any listed signature matches a secret they hold, so it works whether they have deployed or not.
+4. The old secret expires automatically at the deadline. An &quot;expire now&quot; action covers a suspected leak.
+5. Show the old secret&apos;s expiry and a last-used indicator in the dashboard. Also surface a rotation-in-progress state, so nobody forgets to finish.
+
+Rules:
+- Never auto-rotate without the customer&apos;s action.
+- Emergency rotation is the same flow with the overlap set to zero. Warn that deliveries will fail until the new secret is deployed.
+- Rotate per endpoint, not per account.
+
+# What the docs must tell receivers
+
+The docs need runnable verification snippets in your supported languages. They should also state each of these:
+
+1. **Verify every request, and reject failures with a 4xx.** Treat unsigned requests as hostile.
+2. **Verify against the raw body bytes before any JSON parsing.** Re-serializing parsed JSON changes whitespace and key order, which breaks the signature. This is the most common integration bug. Frameworks with body-parsing middleware need a raw-body capture.
+3. **Use a constant-time comparison** for signatures.
+4. **Check the timestamp.** Reject anything more than about 5 minutes from the current time, in either direction. Keep clocks in sync with NTP.
+5. **Accept any matching signature in the header,** because there can be several during rotation. Ignore unknown version prefixes rather than failing.
+6. **Exempt the webhook route from session auth and CSRF middleware.** Otherwise the endpoint will reject all deliveries.
+7. **Deduplicate on `webhook-id`.** Delivery is at-least-once. Never claim exactly-once.
+8. **Don&apos;t rely on ordering or timestamps for ordering.** Retries and parallel workers reorder events.
+9. **Acknowledge fast.** Return 2xx quickly and process asynchronously. State your timeout, for example 15–30 seconds, and the response-code behavior: 2xx is success, 3xx is a failure, and 410 disables the endpoint.
+10. **Keep the secret out of logs, source control, and client code.** Load it from a secrets manager or environment variable.
+11. **Reconcile high-stakes events** against your API periodically. A webhook is a notification, not a ledger.
+12. **Test with the example-event tool and the delivery log** before going live.
+
+# Related decisions to lock before launch
+
+These aren&apos;t signing, but they are part of the contract:
+- **Retries:** exponential backoff with jitter over about 3 days, with the exact schedule published. Dead-letter and replay should exist before launch.
+- **SSRF:** validate endpoint URLs and resolved IPs against private ranges at delivery time, not just at registration.
+- **Delivery log:** store headers as well as body for every attempt. Signature debugging needs the headers.
+
+I can draft the receiver verification snippets (Node, Python, Go) or the rotation API shape if you want either.</pre>
+</div>
+</details></div>
+</div>
+</section><section class="arm">
+<div class="arm-head">
+<span class="arm-label">Baseline (no plugin)</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">100% of runs perfect</span>
+</div>
+<div class="run">
+<div class="run-head">
+<span class="run-title">Run 1</span>
+<span class="meter m-base" aria-hidden="true"><span style="width:100.0%"></span></span>
+<span class="num">100%</span>
+<span class="muted num">1 turns · $0.05 · 20:05:32 UTC</span>
+</div>
+
+<div class="graders"><details class="grader">
+<summary><span class="chip chip-pass">✓ pass</span> <span class="grader-name">signing</span>  </summary>
+<div class="grader-body">
+<p class="explanation">judge votes: PASS PASS PASS</p>
+<div class="kv"><span>Judge votes</span><span class="votes">✓ ✓ ✓</span></div><div class="kv"><span>Evidence (what the judge was shown; for an image, a description of what was sent)</span></div><pre class="evidence">## Review of the first draft
+
+`HMAC-SHA256(secret, body)` in `X-Signature` is sound as a primitive, but as a scheme it has these gaps:
+
+1. **No replay protection.** A captured request with a valid signature stays valid forever. The timestamp has to be inside the signed payload.
+2. **No event identity.** Receivers have nothing authenticated to dedupe on. Retries and replays look the same.
+3. **No rotation path.** One secret per endpoint means a hard cutover, so either the sender or the receiver fails during the switch.
+4. **No versioning.** If you ever change algorithm or format, you can&apos;t signal it.
+5. **Underspecified format.** It doesn&apos;t say hex or base64, or how the receiver should compare.
+
+## Scheme to ship
+
+This follows the Standard Webhooks / Stripe pattern, so customers can use existing libraries.
+
+**Headers on every delivery**
+
+```
+webhook-id:        evt_2Zk9...            # stable across retries of the same event
+webhook-timestamp: 1759406400             # unix seconds, regenerated on every attempt
+webhook-signature: v1,&lt;base64&gt; v1,&lt;base64&gt;  # space-delimited, one entry per active secret
+```
+
+**Signed content**
+
+```
+signed_payload = webhook-id + &quot;.&quot; + webhook-timestamp + &quot;.&quot; + raw_body
+signature      = base64( HMAC-SHA256(secret_bytes, signed_payload) )
+```
+
+- `id` and `timestamp` are inside the MAC, so neither can be altered or stripped.
+- `raw_body` is the exact bytes sent. Don&apos;t canonicalize JSON.
+- Re-sign on each retry with a fresh timestamp and the same `id`. Otherwise retries after the tolerance window would always fail.
+- The `v1,` prefix is the version. A future `v2` or an asymmetric `v1a` (Ed25519) can ride alongside it in the same header. Receivers ignore versions they don&apos;t know.
+
+**Secrets**
+
+- Generate them server-side from a CSPRNG, 32 bytes or more. Use a recognizable format such as `whsec_&lt;base64&gt;` so secret scanners can detect leaks.
+- Keep one per endpoint, never shared across endpoints or customers.
+- Store them encrypted at rest. They have to be recoverable because you need them to sign.
+- Use separate secrets for test and live mode.
+
+## Zero-downtime rotation
+
+An endpoint can hold up to two active secrets.
+
+1. The customer clicks **Rotate** (or calls the API). You generate secret B, and A stays active.
+2. While both are active, you sign every delivery with both. The header carries two `v1,` entries.
+3. The receiver accepts the request if any entry matches any secret it holds. Old code with A and new code with B both pass.
+4. The customer deploys B everywhere, then clicks **Expire old secret**.
+5. If they don&apos;t, A expires automatically after a grace period. Make the default 24 hours, configurable up to 7 days.
+6. Add an **expire immediately** option for suspected compromise. It accepts the downtime in exchange for cutting off the leaked secret.
+
+Also ship a &quot;send test event&quot; button, so customers can confirm B verifies before they expire A. Limit it to two active secrets so the header stays small and the state machine stays simple.
+
+## What the docs must tell receivers
+
+1. **Verify the raw body bytes, before parsing.** This is the most common failure. JSON middleware that re-serializes the body changes whitespace and key order, and the signature then fails. Give per-framework examples (Express `raw`, Flask `get_data()`, and so on).
+2. **Use a constant-time comparison** (`hmac.compare_digest`, `crypto.timingSafeEqual`). Never use `==`.
+3. **Enforce a timestamp tolerance**, 5 minutes by default, in both directions. Tell them to keep server clocks on NTP.
+4. **Dedupe on `webhook-id`.** The timestamp check only narrows the replay window, and your own retries will also deliver the same event more than once. Handlers must be idempotent. Store seen IDs for at least the tolerance window, and ideally for your whole retry horizon.
+5. **Accept multiple signatures** in the header, and ignore unknown version prefixes. This is what makes rotation work. A receiver that only reads the first entry will break during rotation.
+6. **Reject on failure.** Missing headers, a bad signature, or a stale timestamp should return 4xx and process nothing. Don&apos;t log the secret or the full signature in error messages.
+7. **Treat the secret like a password.** Keep it in a secrets manager, not in source control or client-side code. Rotate it on staff turnover or leaks.
+8. **Use HTTPS only.** Signatures prove authenticity and integrity, not confidentiality.
+9. **Ack fast.** Return 2xx quickly and process asynchronously, otherwise timeouts trigger retries.
+10. **Don&apos;t rely on ordering.** Events can arrive out of order, so use the event&apos;s own data or timestamps.
+11. **Prefer the official libraries.** Hand-rolled verification is where most bugs come from.
+
+Publish test vectors too: a fixed secret, id, timestamp, body, and expected signature. This lets customers validate their implementation offline.
+
+## Optional later
+
+Offer Ed25519 asymmetric signing as `v1a,...` for customers who don&apos;t want a shared secret you must store, or who need to verify through untrusted intermediaries. The versioned header already leaves room for it.</pre>
+</div>
+</details></div>
+</div>
+</section>
+</details>
+<details class="section" open>
+<summary>Prompt</summary>
+<div class="md"><p>We are designing signature verification for our outbound webhooks. The first draft is <code>signature = HMAC-SHA256(secret, request_body)</code> in an <code>X-Signature</code> header, one secret per endpoint. Review it and give the signing scheme we should ship, including how customers rotate secrets without downtime and what the docs must tell receivers to watch for.</p>
+</div>
+</details>
+<details class="section" open>
+<summary>Graders — what "good" means for this case</summary>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">fires</span><span class="badge">tool_used</span></div>
+<div class="config"><div class="kv"><span>tool</span><code>&quot;Skill&quot;</code></div><div class="kv"><span>input_match</span><code>&quot;\&quot;skill\&quot;\\s*:\\s*\&quot;api:webhooks\&quot;&quot;</code></div></div>
+</div>
+<div class="grader-def">
+<div class="grader-def-head"><span class="grader-name">signing</span><span class="badge">llm</span></div>
+<div class="md"><p>Pass only if the answer does all of these:</p>
+<ul>
+<li>Says a body-only signature is replayable forever, and signs a timestamp (and message ID) together with the body, for example id.timestamp.body, with receivers rejecting timestamps outside a tolerance window.</li>
+<li>Supports rotation with overlap, such as sending more than one signature during rotation or accepting two active secrets, so no deploy-before-revoke gap is required.</li>
+<li>Tells receivers to verify against the raw request body before JSON parsing (re-serialized JSON breaks the HMAC) and to use a constant-time comparison.
+Fail if it keeps the body-only signature or requires a hard cutover for rotation.
+Judge on content, not length. A longer answer is not a better one.</li>
+</ul>
+</div>
+</div>
+</details>
+</article>
+<footer>Generated by <code>claude plugin eval</code> · schema v1 · scores are not comparable across different suites</footer>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var bar=document.querySelector('.toolbar');
+  if(!bar)return;
+  bar.addEventListener('click',function(e){
+    var b=e.target&&e.target.closest('button');
+    if(!b)return;
+    var open=b.dataset.act==='expand';
+    document.querySelectorAll('details.section, details.grader').forEach(function(d){d.open=open});
+  });
+});
+// Collapsed details vanish from print/PDF; these pages are share artifacts.
+window.addEventListener('beforeprint',function(){
+  document.querySelectorAll('details').forEach(function(d){
+    if(!d.open){d.dataset.printOpened='1';d.open=true}
+  });
+});
+window.addEventListener('afterprint',function(){
+  document.querySelectorAll('details[data-print-opened]').forEach(function(d){
+    d.open=false;delete d.dataset.printOpened;
+  });
+});
+</script>
+</body>
+</html>

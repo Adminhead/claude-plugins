@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.296",
+  "startedAt": "2026-10-10T20:57:57.392Z",
+  "durationSeconds": 15,
+  "costUsd": 0.10343930000000001,
+  "partial": false,
+  "suite": {
+    "root": "/home/buck/Projects/adminhead/claude-plugins/plugins/sentry",
+    "ablation": "with-without",
+    "caseFilter": "profile-changes-output",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "sentry",
+        "version": "0.2.0",
+        "path": "/home/buck/Projects/adminhead/claude-plugins/plugins/sentry"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "profile-changes-output",
+      "dir": "evals/profile-changes-output",
+      "source": "mixed",
+      "promptMarkdown": "Wire Sentry into this Flask service. Put the initialization in a new `sentry_setup.py` that `app.py` imports at the top. Do not install packages or send any events.",
+      "model": "claude-sonnet-5-5",
+      "runsPerCase": 1,
+      "timeoutSeconds": 300,
+      "maxTurns": 14,
+      "graders": [
+        {
+          "name": "fires-sentry",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"sentry:sentry\""
+          }
+        },
+        {
+          "name": "follows-profile",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Rule from the skill: read the project's `## Sentry` section in CLAUDE.md and follow it over the generic defaults. The fixture profile says: errors and traces only (no Logs, no metrics); client-side scrubbing that strips `email` in a `before_send` hook; trace sample rate 1.0 in development and 0.07 in production; DSN read from the `BILLING_SENTRY_DSN` environment variable.\n\nPASS only if the code written to `sentry_setup.py` (or shown in the answer) meets ALL of these:\n1. It reads the DSN from `BILLING_SENTRY_DSN`, not from a literal and not from `SENTRY_DSN`.\n2. It registers a `before_send` hook that removes or masks `email`.\n3. It sets a trace sample rate that is 0.07 for production and 1.0 for development (a `traces_sampler` or an environment-keyed value both count).\n4. It enables no Logs and no metrics.\n5. `app.py` imports the new module.\nJudge the code, not the commentary. FAIL otherwise. Do not reward length.",
+          "config": {
+            "criteria": "Rule from the skill: read the project's `## Sentry` section in CLAUDE.md and follow it over the generic defaults. The fixture profile says: errors and traces only (no Logs, no metrics); client-side scrubbing that strips `email` in a `before_send` hook; trace sample rate 1.0 in development and 0.07 in production; DSN read from the `BILLING_SENTRY_DSN` environment variable.\n\nPASS only if the code written to `sentry_setup.py` (or shown in the answer) meets ALL of these:\n1. It reads the DSN from `BILLING_SENTRY_DSN`, not from a literal and not from `SENTRY_DSN`.\n2. It registers a `before_send` hook that removes or masks `email`.\n3. It sets a trace sample rate that is 0.07 for production and 1.0 for development (a `traces_sampler` or an environment-keyed value both count).\n4. It enables no Logs and no metrics.\n5. `app.py` imports the new module.\nJudge the code, not the commentary. FAIL otherwise. Do not reward length.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 9,
+            "costUsd": 0.062699,
+            "judgeCostUsd": 0.00032369999999999995,
+            "durationSeconds": 15,
+            "startedAt": "2026-10-10T20:57:57.401Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-rLM9nU/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "fires-sentry",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              },
+              {
+                "name": "follows-profile",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I couldn't wire Sentry in because the Write and Edit tools are disabled in this session. I haven't changed any files, installed anything, or sent any events.\n\n`sentry-sdk==2.20.0` is already in `requirements.txt`, so nothing needs installing. Here are the two changes to apply, or I can apply them if you enable edits.\n\n**New file `sentry_setup.py`:**\n```python\nimport os\n\nimport sentry_sdk\n\n# Without SENTRY_DSN the SDK stays disabled, so local runs and tests send nothing.\n# The Flask integration is enabled automatically when Flask is installed.\nsentry_sdk.init(\n    dsn=os.environ.get(\"SENTRY_DSN\"),\n    environment=os.environ.get(\"SENTRY_ENVIRONMENT\"),\n    release=os.environ.get(\"SENTRY_RELEASE\"),\n    traces_sample_rate=float(os.environ.get(\"SENTRY_TRACES_SAMPLE_RATE\", \"0\")),\n    send_default_pii=False,\n)\n```\n\n**Top of `app.py`:**\n```python\nimport sentry_setup  # noqa: F401  (must run before the Flask app is created)\n\nimport os\n\nfrom flask import Flask\n```\n\n- **No DSN, no events:** if `SENTRY_DSN` isn't set, the SDK stays disabled and does nothing.\n- **Tracing is off by default:** `SENTRY_TRACES_SAMPLE_RATE` defaults to 0, so set it if you want performance traces.\n- **No personal data:** `send_default_pii=False` keeps request user data out of events.\n- **Import order:** `sentry_setup` is imported before `app = Flask(...)` so the Flask integration hooks in."
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 6,
+            "costUsd": 0.0407403,
+            "judgeCostUsd": 0.0002817,
+            "durationSeconds": 12,
+            "startedAt": "2026-10-10T20:57:57.401Z",
+            "error": null,
+            "tracePath": "/tmp/claude-eval-6NZcnT/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "follows-profile",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I couldn't make the change. The Write and Edit tools are disabled in this session, and I have no other way to modify files, so nothing has been written.\n\nHere are the two changes to apply:\n\n**New file `sentry_setup.py`**\n```python\nimport os\n\nimport sentry_sdk\nfrom sentry_sdk.integrations.flask import FlaskIntegration\n\n# Without a DSN the SDK is a no-op, so nothing is sent in local/dev runs.\nsentry_sdk.init(\n    dsn=os.environ.get(\"SENTRY_DSN\"),\n    environment=os.environ.get(\"SENTRY_ENVIRONMENT\", \"development\"),\n    traces_sample_rate=float(os.environ.get(\"SENTRY_TRACES_SAMPLE_RATE\", \"0.0\")),\n    integrations=[FlaskIntegration()],\n)\n```\n\n**Top of `app.py`**\n```python\nimport sentry_setup  # noqa: F401  (must be imported before Flask app is created)\n\nimport os\n\nfrom flask import Flask\n```\n\n`sentry-sdk==2.20.0` is already in `requirements.txt`, so nothing needs installing. With no `SENTRY_DSN` set, the SDK does nothing, so no events are sent.\n\nIf you enable Write/Edit, or tell me another way to change files, I'll apply these."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0,
+    "overallPassRate": 0,
+    "meanDelta": 0
+  }
+}
