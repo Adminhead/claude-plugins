@@ -1,0 +1,9 @@
+{
+  "name": "api-idempotency",
+  "version": "0.1.0",
+  "description": "Idempotency keys and safe retries for HTTP APIs: per-account client keys, atomic claim, in-flight and replay states with recovery jobs, and client retry policy with full-jitter backoff, retry budgets and deadlines.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

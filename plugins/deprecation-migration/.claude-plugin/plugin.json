@@ -1,0 +1,9 @@
+{
+  "name": "deprecation-migration",
+  "version": "0.1.0",
+  "description": "Deprecation and migration skill: Hyrum's law, a sunset-or-keep decision tree, incremental consumer migration (strangler, adapter, flags), and expand/contract for zero-downtime schema changes.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

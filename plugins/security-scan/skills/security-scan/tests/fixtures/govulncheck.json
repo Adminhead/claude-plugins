@@ -1,0 +1,91 @@
+{
+  "config": {
+    "protocol_version": "v1.0.0",
+    "scanner_name": "govulncheck",
+    "scanner_version": "v1.8.0",
+    "scan_level": "symbol"
+  }
+}
+{
+  "osv": {
+    "id": "GO-2022-1059",
+    "aliases": [
+      "CVE-2022-32149",
+      "GHSA-69ch-w2m2-3vjp"
+    ],
+    "summary": "Denial of service via crafted Accept-Language header in golang.org/x/text/language"
+  }
+}
+{
+  "osv": {
+    "id": "GO-2021-0113",
+    "aliases": [
+      "CVE-2021-38561"
+    ],
+    "summary": "Out-of-bounds read in golang.org/x/text/language"
+  }
+}
+{
+  "finding": {
+    "osv": "GO-2022-1059",
+    "fixed_version": "v0.3.8",
+    "trace": [
+      {
+        "module": "golang.org/x/text",
+        "version": "v0.3.5"
+      }
+    ]
+  }
+}
+{
+  "finding": {
+    "osv": "GO-2022-1059",
+    "fixed_version": "v0.3.8",
+    "trace": [
+      {
+        "module": "golang.org/x/text",
+        "version": "v0.3.5",
+        "package": "golang.org/x/text/language",
+        "function": "ParseAcceptLanguage",
+        "position": {
+          "filename": "language/parse.go",
+          "line": 144
+        }
+      },
+      {
+        "module": "example.com/gosvc",
+        "package": "example.com/gosvc",
+        "function": "main",
+        "position": {
+          "filename": "main.go",
+          "line": 10
+        }
+      }
+    ]
+  }
+}
+{
+  "finding": {
+    "osv": "GO-2022-1059",
+    "fixed_version": "v0.3.8",
+    "trace": [
+      {
+        "module": "golang.org/x/text",
+        "version": "v0.3.5",
+        "package": "golang.org/x/text/language"
+      }
+    ]
+  }
+}
+{
+  "finding": {
+    "osv": "GO-2021-0113",
+    "fixed_version": "v0.3.7",
+    "trace": [
+      {
+        "module": "golang.org/x/text",
+        "version": "v0.3.5"
+      }
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+# 16 MB flash, two OTA slots, no factory app (compatible with anti-rollback).
+# Offsets are empty for the small data partitions so the build places them
+# after the partition table; raising CONFIG_PARTITION_TABLE_OFFSET for a larger
+# bootloader (Secure Boot, flash encryption) then needs no edits. App offsets
+# stay 64 KB-aligned. Size slots from `idf.py size` plus headroom, and fit the
+# table to the real flash size.
+# nvs_keys holds NVS encryption keys and must be encrypted. Drop it if NVS
+# encryption is not used. SPIFFS partitions cannot be flash-encrypted.
+# Name,    Type, SubType,  Offset,   Size,     Flags
+nvs,       data, nvs,      ,         0x8000,
+nvs_keys,  data, nvs_keys, ,         0x1000,   encrypted
+otadata,   data, ota,      ,         0x2000,
+phy_init,  data, phy,      ,         0x1000,
+ota_0,     app,  ota_0,    0x20000,  0x380000,
+ota_1,     app,  ota_1,    0x3A0000, 0x380000,
+storage,   data, spiffs,   0x720000, 0x8E0000,

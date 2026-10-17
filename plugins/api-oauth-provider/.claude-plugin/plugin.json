@@ -1,0 +1,9 @@
+{
+  "name": "api-oauth-provider",
+  "version": "0.1.0",
+  "description": "OAuth 2.1 authorization-server design and review: grants and PKCE, redirect matching, token lifetimes, refresh rotation with reuse detection, scopes, consent, client registration and MCP auth.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "agent-status",
+  "version": "0.1.0",
+  "description": "A mod that adds a live-agent count by status and task done/total above the prompt, with an `agents` pane giving each agent's model, time in status and time since spawn, which the built-in agent panel lacks.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

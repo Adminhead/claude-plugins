@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "aws-access-token",
+  "Description": "AWS key",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 22,
+  "EndColumn": 41,
+  "Match": "AWS_ACCESS_KEY_ID = \"AKIAZZZZTESTFAKE1234\"",
+  "Secret": "AKIAZZZZTESTFAKE1234",
+  "File": "config.py",
+  "SymlinkFile": "",
+  "Commit": "4f94e689e6499213c52c1c5b22b998fbbc7fbf42",
+  "Entropy": 3.9,
+  "Author": "T",
+  "Email": "t@e.x",
+  "Date": "2026-09-30T11:34:36Z",
+  "Message": "feature",
+  "Tags": [],
+  "Fingerprint": "4f94e689:config.py:aws-access-token:1"
+ }
+]

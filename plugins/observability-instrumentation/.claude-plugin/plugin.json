@@ -1,0 +1,9 @@
+{
+  "name": "observability-instrumentation",
+  "version": "0.1.0",
+  "description": "Observability instrumentation skill: structured logs with correlation IDs, metrics with bounded labels, OpenTelemetry traces, profiling, symptom alerts, and SLOs with burn-rate alerts, starting from the questions on-call will ask.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

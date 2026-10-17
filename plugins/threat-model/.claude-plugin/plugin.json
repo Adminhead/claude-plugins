@@ -1,0 +1,9 @@
+{
+  "name": "threat-model",
+  "version": "0.1.0",
+  "description": "STRIDE threat modeling from the code: trust boundaries, data-flow diagram, verified findings tiered by exploitability, attack trees, testable security requirements and mapped controls.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "esp-idf",
+  "version": "0.1.0",
+  "description": "ESP-IDF firmware skill for ESP32-family chips: write, review, debug and bring-up, with build/flash/monitor wrappers, templates, and confirmation gates before flashing, eFuse burns or partition changes.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

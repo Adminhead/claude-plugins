@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["--no-env-file", "--config=/dev/null", "${CLAUDE_PLUGIN_ROOT}/scripts/docs-sync-nudge.ts", "start"]
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["--no-env-file", "--config=/dev/null", "${CLAUDE_PLUGIN_ROOT}/scripts/docs-sync-nudge.ts", "edit"]
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun",
+            "args": ["--no-env-file", "--config=/dev/null", "${CLAUDE_PLUGIN_ROOT}/scripts/docs-sync-nudge.ts", "stop"]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "modernize",
+  "version": "0.1.0",
+  "description": "Plans the modernization of a legacy system (runtime, framework or dependency upgrade, migration or rewrite) with a feasibility spike, testability milestone, safety ladder, hazard red-team and phased exit criteria. Use for \"modernize this\", \"plan the migration\", \"how do we get off this stack\", or a major version upgrade plan.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

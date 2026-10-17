@@ -1,0 +1,9 @@
+{
+  "name": "db-schema-design",
+  "version": "0.1.0",
+  "description": "Portable relational schema design and review: keys, constraints and FK delete actions, normalization, access paths, expand-contract migrations with backfills, and shared-database safety rules.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

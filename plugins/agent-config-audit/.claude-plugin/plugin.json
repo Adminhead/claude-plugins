@@ -1,0 +1,9 @@
+{
+  "name": "agent-config-audit",
+  "version": "0.1.0",
+  "description": "Read-only security review of your own Claude Code configuration: CLAUDE.md, settings permissions, hooks, subagents and .mcp.json, including static classification of unpinned npx, uvx, pipx and docker MCP selectors.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

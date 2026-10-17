@@ -1,0 +1,9 @@
+{
+  "name": "config-audit",
+  "version": "0.1.0",
+  "description": "Audits an installed Claude Code setup for bloat and rot, measures each item's context cost, and proposes keep, improve, retire or merge verdicts with soft-delete cleanup approved one item at a time.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

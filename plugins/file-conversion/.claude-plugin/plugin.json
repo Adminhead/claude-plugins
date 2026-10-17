@@ -1,0 +1,9 @@
+{
+  "name": "file-conversion",
+  "version": "0.1.0",
+  "description": "Local-only file conversion skill: image, audio, video, document and CSV/JSON conversions with ffmpeg, ImageMagick, pandoc, LibreOffice and the Python stdlib, inspecting inputs first, preserving originals and verifying outputs.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

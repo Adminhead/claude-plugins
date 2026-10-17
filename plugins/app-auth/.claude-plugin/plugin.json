@@ -1,0 +1,9 @@
+{
+  "name": "app-auth",
+  "version": "0.1.0",
+  "description": "Application-side authentication and authorization: sessions, password and recovery flows, OAuth/OIDC callbacks, JWT validation, tenant and ownership checks, cookies, CSRF and rate limits.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

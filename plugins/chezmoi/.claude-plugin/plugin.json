@@ -1,0 +1,9 @@
+{
+  "name": "chezmoi",
+  "version": "0.1.0",
+  "description": "chezmoi dotfiles skill: source-state attributes, templates and machine data, age and password-manager secrets, externals and run_ scripts, behind a preview-first apply gate.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

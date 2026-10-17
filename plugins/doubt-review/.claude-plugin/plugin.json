@@ -1,0 +1,9 @@
+{
+  "name": "doubt-review",
+  "version": "0.1.0",
+  "description": "Fresh-context adversarial review of non-trivial in-flight decisions: state the claim, hand the artifact and contract to a subagent told to disprove it, reconcile findings, stop after three cycles.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

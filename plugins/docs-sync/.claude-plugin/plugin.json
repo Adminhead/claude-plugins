@@ -1,0 +1,9 @@
+{
+  "name": "docs-sync",
+  "version": "0.1.0",
+  "description": "Hook that, once per change set at Stop, nudges Claude with docs that mention a file this session edited or a name its edits removed. Skips plans, research, ADRs and changelogs; fails open. Needs git and bun.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

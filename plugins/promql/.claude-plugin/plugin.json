@@ -1,0 +1,9 @@
+{
+  "name": "promql",
+  "version": "0.1.0",
+  "description": "PromQL and Prometheus skill: correct counter and histogram queries, query cost limits, RED and USE investigations, data gaps, scrape and rule config, Alertmanager routing, and promtool checks, with credentials kept out of commands.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

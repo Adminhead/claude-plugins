@@ -1,0 +1,14 @@
+mcp-server-audit plugin (AdminHead)
+
+skills/mcp-server-audit/ is adapted from the
+"auditing-mcp-servers-for-tool-poisoning" skill in
+https://github.com/mukul975/Anthropic-Cybersecurity-Skills
+(author: mahipal), licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The files were modified: Invariant Labs' mcp-scan was replaced with its
+successor Snyk Agent Scan (snyk-agent-scan), with its data-upload and token
+requirements stated; the proxy mode was dropped; tool pinning moved to a new
+offline script (scripts/mcp_audit.py, which replaces the upstream
+scripts/agent.py); Claude Code config locations were added; SSRF and auth
+probes were limited to owned local test instances; and the text was condensed
+and reorganized into SKILL.md and references/.

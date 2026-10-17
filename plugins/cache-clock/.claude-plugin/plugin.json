@@ -1,0 +1,25 @@
+{
+  "name": "cache-clock",
+  "version": "0.1.0",
+  "description": "A mod that shows when the prompt cache likely expires (`cache warm → ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "ttl": {
+      "type": "string",
+      "title": "Cache TTL",
+      "description": "How long the prompt cache is assumed to live after the last main-loop turn: 5m (the API default) or 1h (extended cache).",
+      "options": ["5m", "1h"],
+      "default": "5m"
+    },
+    "display": {
+      "type": "string",
+      "title": "Where to show it",
+      "description": "hint stacks a coloured segment under the prompt hint; status pins a plain status line under the prompt.",
+      "options": ["hint", "status"],
+      "default": "hint"
+    }
+  }
+}

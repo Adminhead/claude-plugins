@@ -1,0 +1,9 @@
+{
+  "name": "review-loop",
+  "version": "0.1.0",
+  "description": "Review, fix and re-review loop: built-in /code-review finds issues, a fixer subagent fixes the flagged IDs, and a fresh re-reviewer checks only those IDs from a shared findings file, for up to three rounds.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

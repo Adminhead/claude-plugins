@@ -1,0 +1,9 @@
+{
+  "name": "mysql",
+  "version": "0.1.0",
+  "description": "MySQL and MariaDB skill: EXPLAIN risk signals, composite indexes, upsert syntax differences, keyset pagination, InnoDB deadlocks, SKIP LOCKED queues, online DDL, replica lag, pools and grants.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

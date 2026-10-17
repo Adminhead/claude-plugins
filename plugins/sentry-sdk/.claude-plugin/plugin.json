@@ -1,0 +1,9 @@
+{
+  "name": "sentry-sdk",
+  "version": "0.1.0",
+  "description": "Sentry SDK skill: init, errors, tracing, structured logs, metrics and crons across platforms, driven by the project's ## Sentry profile, with current-docs lookups and notes for self-hosted Sentry.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

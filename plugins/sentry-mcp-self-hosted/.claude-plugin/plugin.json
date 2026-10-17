@@ -1,0 +1,31 @@
+{
+  "name": "sentry-mcp-self-hosted",
+  "version": "0.1.0",
+  "description": "Sentry's MCP server (@sentry/mcp-server 0.42.0, pinned) over stdio for self-hosted Sentry, read-only by default. Off until enabled; prompts for the host and a user auth token kept in secure storage.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "defaultEnabled": false,
+  "userConfig": {
+    "sentry_host": {
+      "type": "string",
+      "title": "Sentry host",
+      "description": "Hostname of your self-hosted Sentry, without scheme or path, for example sentry.example.com",
+      "required": true
+    },
+    "sentry_access_token": {
+      "type": "string",
+      "title": "Sentry user auth token",
+      "description": "User auth token from User Settings > Personal Tokens. Read-only use needs org:read, project:read, team:read, event:read. Add event:write for triage, project:write and team:write for project-management.",
+      "sensitive": true,
+      "required": true
+    },
+    "sentry_skills": {
+      "type": "string",
+      "title": "Granted tool groups",
+      "description": "Comma-separated MCP skills to grant: inspect (read-only), triage (resolve, assign, update issues), project-management (projects, teams, DSNs, monitors, alert rules), seer (needs Seer on your instance).",
+      "default": "inspect"
+    }
+  }
+}

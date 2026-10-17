@@ -1,0 +1,9 @@
+{
+  "name": "poka-yoke",
+  "version": "0.1.0",
+  "description": "Poka-yoke skill: design or audit code so mistakes cannot be expressed, ranking hazards on a control, warning, detection and docs-only ladder, and sweeping for the hazard class after an incident.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

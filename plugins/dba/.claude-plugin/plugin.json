@@ -1,0 +1,9 @@
+{
+  "name": "dba",
+  "version": "0.1.0",
+  "description": "A database subagent: designs and reviews schemas and migrations, writes migration, schema and query changes in the repo when asked, and diagnoses slow queries with EXPLAIN. Never writes to shared databases.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

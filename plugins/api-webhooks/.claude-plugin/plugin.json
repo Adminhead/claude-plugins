@@ -1,0 +1,9 @@
+{
+  "name": "api-webhooks",
+  "version": "0.1.0",
+  "description": "Provider-side outbound webhooks skill: event catalog and payloads, Standard Webhooks signing and rotation, at-least-once delivery with backoff and dead-lettering, SSRF defenses, and the delivery log and replay surface.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

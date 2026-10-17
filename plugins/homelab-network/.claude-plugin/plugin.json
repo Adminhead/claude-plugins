@@ -1,0 +1,9 @@
+{
+  "name": "homelab-network",
+  "version": "0.1.0",
+  "description": "Home and homelab network planning, read-only first: inventory, VLANs and trust zones, default-deny firewall rules, Pi-hole DNS cutover, WireGuard remote access and interface error diagnosis.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

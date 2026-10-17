@@ -1,0 +1,9 @@
+{
+  "name": "setup-wizard",
+  "version": "0.1.0",
+  "description": "Manual skill that generates a bash wizard for human-only setup steps: opens each dashboard, captures secrets with hidden input, writes a gitignored .env and sets GitHub secrets.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "domain-modeling",
+  "version": "0.1.0",
+  "description": "Domain modeling skill: challenge and sharpen project terms in conversation and keep GLOSSARY.md (and GLOSSARY-MAP.md for multi-context repos) current as terms settle.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

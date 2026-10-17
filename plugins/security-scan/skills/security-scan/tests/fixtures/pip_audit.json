@@ -1,0 +1,46 @@
+{
+ "dependencies": [
+  {
+   "name": "Requests",
+   "version": "2.19.0",
+   "vulns": [
+    {
+     "id": "PYSEC-2018-28",
+     "fix_versions": [
+      "2.20.0"
+     ],
+     "aliases": [
+      "CVE-2018-18074",
+      "GHSA-x84v-xcm2-53pg"
+     ]
+    },
+    {
+     "id": "PYSEC-2018-28",
+     "fix_versions": [
+      "2.20.0"
+     ],
+     "aliases": [
+      "CVE-2018-18074",
+      "GHSA-x84v-xcm2-53pg"
+     ]
+    },
+    {
+     "id": "PYSEC-2023-74",
+     "fix_versions": [
+      "2.31.0"
+     ],
+     "aliases": [
+      "GHSA-j8r2-6x86-q33q",
+      "CVE-2023-32681"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "certifi",
+   "version": "2026.7.22",
+   "vulns": []
+  }
+ ],
+ "fixes": []
+}

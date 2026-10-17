@@ -1,0 +1,9 @@
+{
+  "name": "docs-audit",
+  "version": "0.1.0",
+  "description": "Docs audit skill: compare README, setup, API, config and CLI docs against the code, rank drift P0 to P3 with cited evidence, check commands, links and env vars with a script, and fix on request.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

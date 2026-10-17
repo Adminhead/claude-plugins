@@ -1,0 +1,25 @@
+{
+  "name": "turn-stats",
+  "version": "0.1.0",
+  "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s · 41k out · cache 92%`).",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "thresholdSeconds": {
+      "type": "number",
+      "title": "Toast after (seconds)",
+      "description": "Show the toast only for turns at least this long. 0 toasts after every turn.",
+      "default": 60,
+      "min": 0,
+      "max": 86400
+    },
+    "includeAborted": {
+      "type": "boolean",
+      "title": "Include interrupted turns",
+      "description": "Also toast after a long turn you interrupted.",
+      "default": false
+    }
+  }
+}

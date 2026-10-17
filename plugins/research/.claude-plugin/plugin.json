@@ -1,0 +1,9 @@
+{
+  "name": "research",
+  "version": "0.1.0",
+  "description": "Answers an external, decision-relevant question with sourced, cited evidence at quick, standard or deep depth. Use for \"compare X vs Y\", \"is it true that...\", \"what's the current state of...\", choosing a library or tool, or explaining a topic from authoritative sources.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

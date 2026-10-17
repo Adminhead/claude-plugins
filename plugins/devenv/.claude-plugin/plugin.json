@@ -1,0 +1,9 @@
+{
+  "name": "devenv",
+  "version": "0.1.0",
+  "description": "devenv.sh skill: configure, migrate, debug and verify developer environments in devenv.nix and devenv.yaml, with option shapes checked against the installed version and secrets kept out of Nix evaluation.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

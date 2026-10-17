@@ -1,0 +1,9 @@
+{
+  "name": "redis",
+  "version": "0.1.0",
+  "description": "Redis and Valkey skill: data structures, caching patterns, TTL and key design, eviction policy, stampede control, rate limits, token-checked locks, Streams vs Pub/Sub, and connection handling.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

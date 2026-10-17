@@ -1,0 +1,9 @@
+{
+  "name": "codebase-design",
+  "version": "0.1.0",
+  "description": "Deep-module design skill: module, interface, seam and adapter vocabulary, deepening by dependency category, design-it-twice, and a user-invoked architecture review that finds deepening candidates with codebase-memory.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

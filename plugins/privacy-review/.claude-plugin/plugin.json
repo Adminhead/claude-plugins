@@ -1,0 +1,9 @@
+{
+  "name": "privacy-review",
+  "version": "0.1.0",
+  "description": "Privacy and data-handling review: inventories personal data, traces where it flows and rests, and checks minimization, retention, erasure, export, and PII in URLs and logs.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

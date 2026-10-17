@@ -1,0 +1,9 @@
+{
+  "name": "postgres",
+  "version": "0.1.0",
+  "description": "PostgreSQL skill: EXPLAIN reading and pg_stat_statements, index choice, statistics, locks, vacuum, isolation retries, online DDL, partitioning, RLS cost, Postgres types and table-design gotchas, and pgvector.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "api-rest-design",
+  "version": "0.1.0",
+  "description": "REST/HTTP API contract design and review skill: resources and methods, status codes, RFC 9457 errors, pagination, rate-limit headers, contract-first OpenAPI with drift checks, and versioning and deprecation policy.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

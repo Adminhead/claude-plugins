@@ -1,0 +1,9 @@
+{
+  "name": "api-graphql",
+  "version": "0.1.0",
+  "description": "Public GraphQL API design and review: when GraphQL fits, schema conventions, Relay pagination, result-union errors, query ceilings, federation boundary, persisted queries and field deprecation.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "devcontainer",
+  "version": "0.1.0",
+  "description": "Dev container skill: review and write devcontainer.json, Dev Container Features and Codespaces config against sourced spec rules, plus Codespaces startup and cost tuning.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

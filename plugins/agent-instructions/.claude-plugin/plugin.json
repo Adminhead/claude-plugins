@@ -1,0 +1,9 @@
+{
+  "name": "agent-instructions",
+  "version": "0.1.0",
+  "description": "Builds and maintains a repo's CLAUDE.md, .claude/rules and AGENTS.md from verified evidence, and turns repeated agent mistakes into checks, hooks and failure notes.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

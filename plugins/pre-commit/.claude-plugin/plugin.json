@@ -1,0 +1,9 @@
+{
+  "name": "pre-commit",
+  "version": "0.1.0",
+  "description": "Commit-time hooks with prek or pre-commit (and Husky for Node): pinned config, installs, all-files runs, rev updates, CI parity, and repairing a failing hook without bypassing it.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

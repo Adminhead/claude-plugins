@@ -1,0 +1,9 @@
+{
+  "name": "postmortem",
+  "version": "0.1.0",
+  "description": "Blameless postmortem skill: gap-flagged UTC timeline, 5 Whys to a fixable system gap, impact and detection gaps, owned and dated actions, plus a quick template for minor incidents and runbook rules.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

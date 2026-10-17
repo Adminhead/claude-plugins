@@ -1,0 +1,9 @@
+{
+  "name": "pass-cli",
+  "version": "0.1.0",
+  "description": "Proton Pass CLI skill: find vaults and items by ID, build pass:// references, and inject secrets into a process or file without ever printing them.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

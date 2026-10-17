@@ -1,0 +1,9 @@
+{
+  "name": "consult",
+  "version": "0.1.0",
+  "description": "A mod that registers the mcp__consult__consult tool: a read-only diff or plan review by the codex (OpenAI) or agy (Google Gemini) CLI, with a repo opt-out marker, a secret-file block, timeouts and a read-only agy hook gate.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

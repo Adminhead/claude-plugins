@@ -1,0 +1,9 @@
+{
+  "name": "mcp-server-audit",
+  "version": "0.1.0",
+  "description": "MCP server audit skill: checks configured or third-party MCP servers for tool poisoning, shadowing, rug pulls, SSRF and unauthenticated exposure, with offline description scanning and hash pinning.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "aws-cloudwatch",
+  "version": "0.1.0",
+  "description": "AWS incident investigation from CloudWatch alarms, metrics, Logs Insights and CloudTrail: blast radius, change correlation, timeline and per-resource health, with mutating fixes only after approval.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

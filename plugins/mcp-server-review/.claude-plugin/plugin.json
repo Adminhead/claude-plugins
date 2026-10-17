@@ -1,0 +1,9 @@
+{
+  "name": "mcp-server-review",
+  "version": "0.1.0",
+  "description": "MCP server review skill: static security review of server or client source and a release QA pass over one real local protocol session, with OWASP MCP Top 10 checks.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

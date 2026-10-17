@@ -1,0 +1,9 @@
+{
+  "name": "mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server skill: design the tool surface (workflow tools, descriptions, write-tool safeguards, auth) and build it with the official TypeScript, Python, Go or Rust SDK over stdio or Streamable HTTP, tested with the Inspector.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

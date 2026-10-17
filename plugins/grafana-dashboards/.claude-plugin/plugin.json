@@ -1,0 +1,9 @@
+{
+  "name": "grafana-dashboards",
+  "version": "0.1.0",
+  "description": "Grafana dashboards skill: dashboards built from operator questions with RED and USE panel sets, a quality checklist, current panel types and JSON models, and dashboards as code via provisioning, Terraform or the Foundation SDK.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

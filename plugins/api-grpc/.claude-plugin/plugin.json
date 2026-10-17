@@ -1,0 +1,9 @@
+{
+  "name": "api-grpc",
+  "version": "0.1.0",
+  "description": "gRPC and protobuf contract design and review: AIP conventions, buf lint and breaking gates, proto diff compatibility, streaming, google.rpc.Status errors and gateway mapping.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

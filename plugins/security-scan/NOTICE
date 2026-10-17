@@ -1,0 +1,19 @@
+security-scan plugin (AdminHead)
+
+skills/security-scan/references/sbom.md is adapted from the
+"generating-and-analyzing-sboms" skill in
+https://github.com/mukul975/Anthropic-Cybersecurity-Skills
+(author: mahipal; Copyright 2026 mukul975), licensed under the Apache License,
+Version 2.0 (see LICENSE).
+
+The file was modified: the text was condensed and reorganized, install
+commands and the bundled agent.py were dropped, keyless Cosign signing was
+updated (COSIGN_EXPERIMENTAL removed, attest by digest, referrers-based
+bundles noted), keyless verification flags and a review checklist were added.
+
+The anti-pattern list in skills/security-scan/references/vuln-categories.md
+and the Next.js, Angular and postMessage lines in language-patterns.md are
+adapted from instructions/security-and-owasp.instructions.md in
+https://github.com/github/awesome-copilot, Copyright GitHub, Inc., licensed
+under the MIT License (text at the end of LICENSE). They were condensed and
+rewritten; detection regexes and code samples were not copied.

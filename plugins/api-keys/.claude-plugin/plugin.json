@@ -1,0 +1,9 @@
+{
+  "name": "api-keys",
+  "version": "0.1.0",
+  "description": "API keys a platform issues to its consumers: prefixed checksummed key format, hash-only storage and lookup, scopes, dual-key rotation with last-used telemetry, service-account ownership and offboarding, keys versus OAuth.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

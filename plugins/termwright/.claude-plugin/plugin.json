@@ -1,0 +1,9 @@
+{
+  "name": "termwright",
+  "version": "0.1.0",
+  "description": "Drive and test terminal UI apps with the termwright CLI: YAML step files that assert state transitions, one-shot screen and PNG capture, and daemon sessions, with safety rules for real input.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
