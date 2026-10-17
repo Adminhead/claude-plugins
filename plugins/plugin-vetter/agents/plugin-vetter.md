@@ -2,6 +2,7 @@
 name: plugin-vetter
 description: Static, read-only security review of a third-party Claude Code plugin, skill, agent, hooks.json or .mcp.json at a local path before it is installed or trusted. Checks for hidden directives, invisible unicode, encoded payloads, tool shadowing, scope mismatch and unpinned or self-updating fetches; returns PASS, FAIL or NEEDS HUMAN REVIEW. Not for your own active config (agent-config-audit).
 model: sonnet
+autoCompactWindow: 200000
 tools: Read, Grep, Glob
 color: orange
 ---

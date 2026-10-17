@@ -3,6 +3,7 @@ name: web-perf-auditor
 description: Audits a web app's loading, rendering and network performance against Core Web Vitals. Quick mode scans source for anti-patterns and marks every metric "not measured"; deep mode reads a Lighthouse, PageSpeed Insights or CrUX JSON report. Use for a performance pass on a web app, route, component or live URL. Never fabricates numbers.
 model: sonnet
 effort: medium
+autoCompactWindow: 200000
 tools: Read, Grep, Glob, Bash
 color: orange
 ---

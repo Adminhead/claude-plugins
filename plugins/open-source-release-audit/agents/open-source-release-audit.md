@@ -3,6 +3,7 @@ name: open-source-release-audit
 description: Read-only PASS/FAIL audit of a repository before it goes public. It checks for secrets (gitleaks or trufflehog first, regex fallback), PII, internal hostnames and paths, dangerous files, .env.example gaps, git history and files that can't be read as text. Use before open-sourcing a repo, making it public or publishing a fork. Report-only, never edits.
 model: sonnet
 effort: high
+autoCompactWindow: 300000
 maxTurns: 80
 tools: Read, Grep, Glob, Bash
 color: yellow

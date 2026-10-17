@@ -3,6 +3,7 @@ name: coder
 description: Implements one bounded code change end to end (a feature, fix, refactor, or mechanical multi-file edit such as a rename or config update) when the approach is known, and returns a diff summary with the checks it ran. The caller picks the model per call (haiku for mechanical edits, sonnet by default, opus for hard work). Not for unclear-approach planning (architect), unknown-cause failures (debugger), or docs (scribe).
 model: sonnet
 effort: medium
+autoCompactWindow: 300000
 disallowedTools: Agent, mcp__claude-in-chrome
 skills:
   - coding:coding

@@ -3,6 +3,7 @@ name: dba
 description: Database specialist for schema design and review, migrations, index choices and slow-query diagnosis on PostgreSQL, MySQL or SQLite. Use before a schema or migration change, or when a query is slow or a lock stalls. Reviews by default and writes migration, schema and query changes in the repo when the brief asks; never writes to shared databases. Not for general application code (coder) or infrastructure (devops).
 model: opus
 effort: medium
+autoCompactWindow: 300000
 tools: Read, Glob, Grep, Bash, Edit, Write, Skill, WebFetch, WebSearch, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
 skills:
   - db-schema-design:db-schema-design
