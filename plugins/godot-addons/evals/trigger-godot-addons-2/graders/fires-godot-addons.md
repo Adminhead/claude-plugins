@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"godot-addons:godot-addons"'
+input_match: '"skill"\s*:\s*"(godot-addons:)?godot-addons"'
 ---

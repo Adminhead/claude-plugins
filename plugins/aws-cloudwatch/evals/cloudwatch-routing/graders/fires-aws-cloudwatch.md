@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"aws-cloudwatch:aws-cloudwatch"'
+input_match: '"skill"\s*:\s*"(aws-cloudwatch:)?aws-cloudwatch"'
 ---

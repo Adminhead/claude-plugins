@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"api-webhooks:api-webhooks"'
+input_match: '"skill"\s*:\s*"(api-webhooks:)?api-webhooks"'
 min: 0
 max: 0
 arm: both

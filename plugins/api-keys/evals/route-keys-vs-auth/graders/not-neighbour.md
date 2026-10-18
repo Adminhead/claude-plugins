@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"app-auth:app-auth"'
+input_match: '"skill"\s*:\s*"(app-auth:)?app-auth"'
 min: 0
 max: 0
 arm: both

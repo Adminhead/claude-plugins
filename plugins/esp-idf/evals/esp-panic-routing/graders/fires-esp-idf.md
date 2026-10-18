@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"esp-idf:esp-idf"'
+input_match: '"skill"\s*:\s*"(esp-idf:)?esp-idf"'
 ---

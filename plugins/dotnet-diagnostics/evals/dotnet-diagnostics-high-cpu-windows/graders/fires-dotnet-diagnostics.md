@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"dotnet-diagnostics:dotnet-diagnostics"'
+input_match: '"skill"\s*:\s*"(dotnet-diagnostics:)?dotnet-diagnostics"'
 ---

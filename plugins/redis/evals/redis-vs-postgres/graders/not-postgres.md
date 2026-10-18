@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"postgres:postgres"'
+input_match: '"skill"\s*:\s*"(postgres:)?postgres"'
 min: 0
 max: 0
 arm: both

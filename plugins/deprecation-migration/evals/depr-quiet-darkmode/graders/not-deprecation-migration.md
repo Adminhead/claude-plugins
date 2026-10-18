@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"deprecation-migration:deprecation-migration"'
+input_match: '"skill"\s*:\s*"(deprecation-migration:)?deprecation-migration"'
 min: 0
 max: 0
 arm: both

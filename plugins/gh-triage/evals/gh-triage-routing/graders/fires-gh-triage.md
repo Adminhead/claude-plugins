@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"gh-triage:gh-triage"'
+input_match: '"skill"\s*:\s*"(gh-triage:)?gh-triage"'
 ---

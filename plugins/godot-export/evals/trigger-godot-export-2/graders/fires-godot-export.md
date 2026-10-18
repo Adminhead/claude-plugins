@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"godot-export:godot-export"'
+input_match: '"skill"\s*:\s*"(godot-export:)?godot-export"'
 ---

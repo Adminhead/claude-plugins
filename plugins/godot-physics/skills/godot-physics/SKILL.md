@@ -1,6 +1,6 @@
 ---
 name: godot-physics
-description: Godot 4 movement and collision in 2D and 3D. CharacterBody controllers and move_and_slide, Rigid/Static/Animatable/Area bodies, collision layers vs masks, raycasts and space queries, physics interpolation, Jolt. Use for "falls through the floor", "jitters", "is_on_floor always false", or a platformer or FPS controller.
+description: Godot 4 movement and collision in 2D and 3D. CharacterBody controllers and move_and_slide, Rigid/Static/Animatable/Area bodies, collision layers vs masks, raycasts and space queries, physics interpolation, Jolt. Use for "falls through the floor", "slides down slopes", "jitters", "is_on_floor always false", or a platformer or FPS controller.
 license: Apache-2.0 AND MIT
 ---
 

@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"mcp-server-audit:mcp-server-audit"'
+input_match: '"skill"\s*:\s*"(mcp-server-audit:)?mcp-server-audit"'
 ---

@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"game-genres:game-genres"'
+input_match: '"skill"\s*:\s*"(game-genres:)?game-genres"'
 ---

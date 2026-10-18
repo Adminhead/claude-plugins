@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"kubernetes:kubernetes"'
+input_match: '"skill"\s*:\s*"(kubernetes:)?kubernetes"'
 min: 0
 max: 0
 arm: both

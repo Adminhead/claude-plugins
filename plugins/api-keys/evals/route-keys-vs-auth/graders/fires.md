@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"api-keys:api-keys"'
+input_match: '"skill"\s*:\s*"(api-keys:)?api-keys"'
 ---

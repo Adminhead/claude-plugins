@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"godot-shaders:godot-shaders"'
+input_match: '"skill"\s*:\s*"(godot-shaders:)?godot-shaders"'
 min: 0
 max: 0
 arm: both

@@ -1,6 +1,6 @@
 ---
 name: godot
-description: Writes, reviews and debugs Godot 4 projects (GDScript, nodes and scenes, signals, Resources, autoloads, .tscn/.tres files with uid:// and .uid sidecars). Use for any work in .gd, .tscn, .tres or project.godot, "add X to my Godot game", porting Godot 3 code or a Godot error, before routing to physics, shader, export, test, C# or networking skills.
+description: Writes, reviews and debugs Godot 4 projects (GDScript, nodes and scenes, signals, Resources, autoloads, .tscn/.tres files with uid:// and .uid sidecars). Use for any work in .gd, .tscn, .tres or project.godot, "add X to my Godot game", Control-node UI layout (anchors, containers), porting Godot 3 code or a Godot error, before routing to physics, shader, export, test, C# or networking skills.
 ---
 
 # Godot

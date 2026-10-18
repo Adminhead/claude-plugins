@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"doubt-review:doubt-review"'
+input_match: '"skill"\s*:\s*"(doubt-review:)?doubt-review"'
 min: 0
 max: 0
 arm: both

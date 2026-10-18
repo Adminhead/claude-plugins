@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"planning:planning"'
+input_match: '"skill"\s*:\s*"(planning:)?planning"'
 min: 0
 max: 0
 arm: both

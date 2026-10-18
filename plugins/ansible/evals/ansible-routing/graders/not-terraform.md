@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"terraform:terraform"'
+input_match: '"skill"\s*:\s*"(terraform:)?terraform"'
 min: 0
 max: 0
 arm: both

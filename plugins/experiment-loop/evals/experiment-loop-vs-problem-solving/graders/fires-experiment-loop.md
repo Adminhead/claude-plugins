@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"experiment-loop:experiment-loop"'
+input_match: '"skill"\s*:\s*"(experiment-loop:)?experiment-loop"'
 ---
