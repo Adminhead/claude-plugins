@@ -4,7 +4,7 @@
 
 ## Plugins
 
-- `baseline` (user scope) and `*-meta` (project scope) are meta plugins: only a `plugin.json` whose `dependencies` list focused plugins or `*-core` bundles. A core bundle (marketplace category `bundle`, named `*-core` by convention, such as `programming-core`; `ef-core` is an ordinary plugin) has the same shape, lists only focused plugins, and is shared by several metas. Every other plugin ships exactly one component.
+- `baseline` (user scope) and `*-meta` (project scope) are meta plugins: only a `plugin.json` whose `dependencies` list focused plugins or `*-core` bundles. A core bundle (marketplace category `bundle`, named `*-core` by convention, such as `programming-core`; `ef-core` is an ordinary plugin) has the same shape, lists only focused plugins, and is shared by several metas. Every other plugin ships exactly one component; the exceptions are listed in `MULTI_COMPONENT` in `scripts/plugins.py` (orchestration's agent plus the SessionStart hook that links its launcher).
 - Every subagent sets `autoCompactWindow` (plain integer): `100000` for haiku agents, `200000` for light focused agents, `300000` for long-running or reading-heavy ones. It only lowers the inherited window.
 - Scaffold with `scripts/plugins.py new`, and run `python3 scripts/plugins.py check` after any plugin change. Never hand-edit the README catalog; run `scripts/plugins.py catalog`.
 - The Bash parser (`shell/walk.ts`, `vendor/unbash.*`) is vendored into several guard plugins. Edit only `scripts/shared/`, then run `scripts/plugins.py sync-shared`; `check` fails on a drifted copy.

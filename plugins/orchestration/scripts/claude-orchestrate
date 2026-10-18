@@ -1,31 +1,60 @@
 #!/usr/bin/env bash
-# claude-orchestrate: start Claude Code as the orchestration agent with the plugin's
-# core system prompt appended. With --agent, an agent's prompt replaces Claude Code's
-# default system prompt, so prompts/system_override.md restores the base guidance.
+# claude-orchestrate: start Claude Code as the orchestration agent with the plugin's core
+# system prompt appended, its Bash tool running bash with agent.bashrc, optionally inside
+# herdr. With --agent, an agent's prompt replaces Claude Code's default system prompt, so
+# prompts/system_override.md restores the base guidance.
 set -euo pipefail
 
 usage() {
-  cat <<'USAGE'
-Usage: claude-orchestrate [DIR] [CLAUDE_ARGS...]
-       claude-orchestrate -h
+  cat <<'EOF'
+Usage: claude-orchestrate [OPTIONS] [DIR] [CLAUDE_ARGS...]
 
-Runs Claude Code in DIR (default: $PWD) as orchestration:orchestration, with this
-plugin's prompts/system_override.md appended to the system prompt. Install the
-orchestration plugin (or orchestration-meta) first.
+Runs Claude Code in DIR (default: $PWD) as AGENT, with this plugin's
+prompts/system_override.md appended to the system prompt. The agent's Bash tool runs
+bash with ~/.config/claude-orchestrate/agent.bashrc sourced before each command; the
+first run copies templates/agent.bashrc there for you to edit.
 
-Arguments after DIR, or starting with "-", go to claude:
+herdr: inside a herdr pane (HERDR_ENV=1), Claude runs in this pane and keeps herdr's
+variables, so herdr can track and resume the session. With --herdr outside herdr, it
+starts the herdr server if needed, opens a workspace for DIR running Claude, and attaches.
+HERDR_SESSION=NAME picks a named herdr session.
+
+  -a, --agent AGENT   agent to run (default: $CLAUDE_ORCHESTRATE_AGENT or orchestration:orchestration)
+  -p, --prompt FILE   append FILE instead of prompts/system_override.md
+      --no-prompt     append nothing
+  -H, --herdr         launch in a new herdr workspace (default when CLAUDE_ORCHESTRATE_HERDR=1)
+      --no-herdr      run here even when CLAUDE_ORCHESTRATE_HERDR=1
+  -t, --tab           inside herdr, open a new tab instead of using this pane
+  -d, --detach        with --herdr, don't attach afterwards
+  -n, --dry-run       print the commands instead of running them
+  -h, --help          show this help
+
+Arguments after DIR, or starting with "-" after the options above, go to claude:
   claude-orchestrate ~/code/api --resume
-USAGE
+  claude-orchestrate -H ~/code/api -- --model opus
+EOF
 }
 
 die() { echo "claude-orchestrate: $*" >&2; exit 1; }
 
 root=$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")
+agent=${CLAUDE_ORCHESTRATE_AGENT:-orchestration:orchestration}
 prompt=$root/prompts/system_override.md
-
+herdr_mode=${CLAUDE_ORCHESTRATE_HERDR:-0}
+tab=0
+attach=1
+dry=0
 while (($#)); do
   case $1 in
     -h|--help) usage; exit 0 ;;
+    -a|--agent) (($# > 1)) || die "$1 needs an agent"; agent=$2; shift 2 ;;
+    -p|--prompt) (($# > 1)) || die "$1 needs a file"; prompt=$(realpath -e -- "$2" 2>/dev/null) || die "no such prompt file: $2"; shift 2 ;;
+    --no-prompt) prompt=; shift ;;
+    -H|--herdr) herdr_mode=1; shift ;;
+    --no-herdr) herdr_mode=0; shift ;;
+    -t|--tab) tab=1; shift ;;
+    -d|--detach) attach=0; shift ;;
+    -n|--dry-run) dry=1; shift ;;
     --) shift; break ;;
     *) break ;;
   esac
@@ -37,7 +66,106 @@ if (($#)) && [[ $1 != -* ]]; then
   dir=$1
   shift
 fi
+[[ ${1:-} != -- ]] || shift
+dir=$(cd "$dir" && pwd)
 
 command -v claude >/dev/null || die "claude not found"
-[[ -f $prompt ]] || die "missing $prompt"
-cd "$dir" && exec claude --agent orchestration:orchestration --append-system-prompt-file "$prompt" "$@"
+[[ -z $prompt || -f $prompt ]] || die "missing $prompt"
+
+claude_args=(--agent "$agent")
+[[ -z $prompt ]] || claude_args+=(--append-system-prompt-file "$prompt")
+claude_args+=("$@")
+
+# CLAUDE_CODE_SHELL points the Bash tool at bash, so the user's zsh or fish config never runs;
+# CLAUDE_ENV_FILE is sourced before every Bash command.
+bash_path=$(command -v bash) || die "bash not found"
+launch_env=("CLAUDE_CODE_SHELL=$bash_path")
+bashrc=${XDG_CONFIG_HOME:-$HOME/.config}/claude-orchestrate/agent.bashrc
+if [[ ! -e $bashrc && -f $root/templates/agent.bashrc ]] && ((!dry)); then
+  mkdir -p "$(dirname "$bashrc")"
+  cp "$root/templates/agent.bashrc" "$bashrc"
+  echo "claude-orchestrate: created $bashrc; edit it to change the agents' Bash environment" >&2
+fi
+[[ ! -f $bashrc ]] || launch_env+=("CLAUDE_ENV_FILE=$bashrc")
+
+run() {
+  if ((dry)); then printf '%q ' "$@"; echo; return; fi
+  "$@"
+}
+
+# Agent names: lowercase, start with a letter, at most 32 characters, unique among live agents.
+herdr_agent_name() {
+  local base n=1 name taken
+  base=$(basename "$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || echo "$dir")")
+  base=${base,,}
+  base=${base//[^a-z0-9_-]/-}
+  [[ $base =~ ^[a-z] ]] || base=claude-$base
+  base=${base:0:28}
+  taken=$(herdr agent list 2>/dev/null | jq -r '.result.agents[]?.name // empty' || true)
+  name=$base
+  while grep -qx -- "$name" <<<"$taken"; do n=$((n + 1)); name=$base-$n; done
+  echo "$name"
+}
+
+# Opens a pane with `herdr <kind> create ...`, then starts Claude in it with `herdr agent start`.
+herdr_start() {
+  local create=("$@") reply pane name kv
+  for kv in "${launch_env[@]}"; do create+=(--env "$kv"); done
+  name=$(herdr_agent_name)
+  if ((dry)); then
+    run herdr "${create[@]}"
+    run herdr agent start "$name" --kind claude --pane '<new pane>' -- "${claude_args[@]}"
+    return
+  fi
+  reply=$(herdr "${create[@]}") || die "herdr ${create[0]} create failed"
+  pane=$(jq -r '.result.root_pane.pane_id // .result.pane.pane_id // empty' <<<"$reply")
+  [[ -n $pane ]] || die "herdr returned no pane: $reply"
+  # agent_not_ready means Claude is up but waiting on a dialog, such as the folder trust
+  # check, which the user answers after attaching.
+  if ! reply=$(herdr agent start "$name" --kind claude --pane "$pane" -- "${claude_args[@]}" 2>&1 >/dev/null); then
+    [[ $reply == *'"agent_not_ready"'* ]] || die "herdr agent start failed in pane $pane: $reply"
+    echo "claude-orchestrate: $name is waiting on a prompt in pane $pane" >&2
+  fi
+}
+
+herdr_hint() {
+  if herdr integration status 2>/dev/null | grep -q '^claude: not installed'; then
+    echo "claude-orchestrate: herdr's Claude integration is off, so herdr can't resume sessions; run: herdr integration install claude" >&2
+  fi
+}
+
+if [[ ${HERDR_ENV:-} == 1 ]]; then
+  command -v herdr >/dev/null && herdr_hint
+  if ((tab)); then
+    command -v herdr >/dev/null || die "HERDR_ENV=1 but herdr is not on PATH"
+    command -v jq >/dev/null || die "jq not found"
+    herdr_start tab create --cwd "$dir" --label "$(basename "$dir")" --focus
+    exit 0
+  fi
+  # This pane: exec keeps HERDR_ENV, HERDR_SOCKET_PATH and HERDR_PANE_ID, which herdr's
+  # Claude hook needs.
+elif [[ $herdr_mode == 1 ]]; then
+  command -v herdr >/dev/null || die "herdr not found; drop --herdr or install it"
+  command -v jq >/dev/null || die "jq not found"
+  herdr_hint
+  if ! herdr status server 2>/dev/null | grep -q 'status: running'; then
+    if ((dry)); then
+      run herdr server
+    else
+      setsid herdr server </dev/null >/dev/null 2>&1 &
+      for _ in $(seq 50); do
+        herdr status server 2>/dev/null | grep -q 'status: running' && break
+        sleep 0.1
+      done
+      herdr status server 2>/dev/null | grep -q 'status: running' || die "herdr server did not start"
+    fi
+  fi
+  herdr_start workspace create --cwd "$dir" --label "$(basename "$dir")" --focus
+  ((attach)) || exit 0
+  if ((dry)); then run herdr; exit 0; fi
+  exec herdr
+fi
+
+cd "$dir"
+if ((dry)); then run env "${launch_env[@]}" claude "${claude_args[@]}"; exit 0; fi
+exec env "${launch_env[@]}" claude "${claude_args[@]}"

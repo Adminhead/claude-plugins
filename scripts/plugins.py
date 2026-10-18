@@ -33,6 +33,9 @@ SHARED = Path("scripts/shared")
 SHARED_FILES = ("shell/walk.ts", "vendor/unbash.js", "vendor/unbash.d.ts")
 SCOPES = {"baseline": "user", "orchestration-meta": "user or project"}
 KINDS = ("skill", "agent", "hook", "mcp")
+# Leaves allowed more than one component, with the exact components they may ship.
+# orchestration's SessionStart hook keeps ~/.local/bin/claude-orchestrate linked to the live install.
+MULTI_COMPONENT = {"orchestration": {("agent", "orchestration"), ("hook", "hooks/hooks.json")}}
 
 
 def is_meta(name):
@@ -162,7 +165,13 @@ def check(root):
                 errors.append(f"{name}: a {kind} ships only plugin.json, found {', '.join(extra)}")
         else:
             found = components(plugin_dir, manifest)
-            if len(found) != 1:
+            multi = MULTI_COMPONENT.get(name)
+            if multi is not None:
+                if set(found) != multi:
+                    listed = ", ".join(f"{k} {l}" for k, l in found) or "none"
+                    want = ", ".join(f"{k} {l}" for k, l in sorted(multi))
+                    errors.append(f"{name}: ships {listed}; MULTI_COMPONENT allows exactly {want}")
+            elif len(found) != 1:
                 listed = ", ".join(f"{k} {l}" for k, l in found) or "none"
                 errors.append(f"{name}: a plugin ships exactly one component, found {len(found)} ({listed})")
 
@@ -386,7 +395,12 @@ def catalog_section(root, entries, manifests):
             bundles.append(f"| {link} | {', '.join(dep_labels(manifest)) or 'none yet'} | {used_by} | {desc} |")
         else:
             found = components(root / "plugins" / name, manifest)
-            kind = found[0][0] if len(found) == 1 else "invalid"
+            if len(found) == 1:
+                kind = found[0][0]
+            elif name in MULTI_COMPONENT and set(found) == MULTI_COMPONENT[name]:
+                kind = " + ".join(dict.fromkeys(k for k, _ in found))
+            else:
+                kind = "invalid"
             leaves.append(f"| {link} | {kind} | {desc} | {', '.join(included_in.get(name, [])) or '-'} |")
 
     lines = [CATALOG_START, "", "### Meta plugins", ""]

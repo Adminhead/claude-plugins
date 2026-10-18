@@ -58,6 +58,17 @@ def test_leaf_with_two_components_fails(root):
     assert any("exactly one component, found 2" in e for e in plugins.check(root))
 
 
+def test_multi_component_allowlist(root, monkeypatch):
+    run(root, "new", "uv-lock", "--kind", "skill", "--description", "Locks deps.")
+    hooks = root / "plugins/uv-lock/hooks/hooks.json"
+    hooks.parent.mkdir()
+    hooks.write_text('{"hooks": {}}\n')
+    monkeypatch.setitem(plugins.MULTI_COMPONENT, "uv-lock", {("skill", "uv-lock"), ("hook", "hooks/hooks.json")})
+    assert not [e for e in plugins.check(root) if e.startswith("uv-lock:")]
+    hooks.unlink()
+    assert any("MULTI_COMPONENT allows exactly" in e for e in plugins.check(root))
+
+
 def test_supporting_files_do_not_count(root):
     run(root, "new", "uv-lock", "--kind", "hook", "--description", "Locks deps.")
     script = root / "plugins/uv-lock/scripts/run.sh"
