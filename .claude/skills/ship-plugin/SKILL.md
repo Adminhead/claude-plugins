@@ -1,6 +1,6 @@
 ---
 name: ship-plugin
-description: Releases one plugin from this marketplace after a change. It validates the plugin, runs the structure and catalog check, runs the plugin's own tests, commits to local main, and updates the installed copy. Use when a plugin change in this repo is done and should go live locally, or when the user says "ship <plugin>". Not for pushing (`github:ship`, only when the user asks) or for other repos.
+description: Releases one plugin from this marketplace after a change. It validates the plugin, runs the structure and catalog check, runs the plugin's own tests, commits to local main, and updates the installed copy, asking to push first when the marketplace is installed from GitHub. Use when a plugin change in this repo is done and should go live locally, or when the user says "ship <plugin>". Not for pushing on its own (`github:ship`, only when the user asks) or for other repos.
 argument-hint: "<plugin-name>"
 ---
 
@@ -37,14 +37,20 @@ Commit the plugin's changes to local `main` following `git:commit` (if installed
 
 ## 5. Update the installed copy
 
-The `adminhead` marketplace is a folder source pointing at this repo, so the local commit is enough. A push isn't needed.
+First check where the `adminhead` marketplace reads from: `jq '.adminhead.source' ~/.claude/plugins/known_marketplaces.json`.
+
+- **A folder source** (a local path to this repo): the local commit is enough.
+- **A GitHub or git source** (`"source": "github"`, `"repo": "Adminhead/claude-plugins"`): the update reads the pushed `main`, so the commit must be on `origin/main` first. If `git log --oneline origin/main..main` lists commits, stop here. Report that the update needs a push and ask whether to push. Push only on a yes, then continue. Without the push, `claude plugin update` reports the old version as the latest.
+
+Then:
 
 1. `claude plugin marketplace update adminhead`
 2. Find every install of the plugin in `~/.claude/plugins/installed_plugins.json`. One plugin can be installed at user scope and in several project or local scopes, and `claude plugin update` changes one scope per run.
 3. For each install, run `claude plugin update <name>@adminhead --scope <scope>` from its project directory (any directory for user scope). Use `claude plugin install <name>@adminhead` when it isn't installed anywhere yet.
+4. Confirm each install's `version` in `installed_plugins.json` is the version from step 2. "Already at the latest version" with the old number means the marketplace didn't see the commit.
 
 Then tell the user to run `/reload-plugins`.
 
 ## 6. Report
 
-List the version shipped, the checks and their results, the commit, and whether the update succeeded. Push only when the user asks, through `github:ship` at push level.
+List the version shipped, the checks and their results, the commit, whether it was pushed, and the installed version per scope. Push only when the user asks: for a GitHub source that is the question in step 5; otherwise use `github:ship` at push level.
