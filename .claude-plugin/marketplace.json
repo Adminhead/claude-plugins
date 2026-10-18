@@ -22,7 +22,7 @@
       "name": "programming-core",
       "source": "./plugins/programming-core",
       "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "bundle"
     },
     {
@@ -103,10 +103,17 @@
       "category": "meta"
     },
     {
+      "name": "aws-meta",
+      "source": "./plugins/aws-meta",
+      "description": "Plugin set for AWS projects (credentials and IAM, CLI, the AWS MCP Server, inspection, incidents, reviews), installed at project or local scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
       "name": "kubernetes-meta",
       "source": "./plugins/kubernetes-meta",
       "description": "Plugin set for Kubernetes projects (manifests, Helm, GitOps), installed at project scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "meta"
     },
     {
@@ -498,7 +505,7 @@
       "name": "recommend-plugins",
       "source": "./plugins/recommend-plugins",
       "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -757,21 +764,21 @@
       "name": "aws-cloudwatch",
       "source": "./plugins/aws-cloudwatch",
       "description": "AWS incident investigation from CloudWatch alarms, metrics, Logs Insights and CloudTrail: blast radius, change correlation, timeline and per-resource health, with mutating fixes only after approval.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "aws-resource-query",
       "source": "./plugins/aws-resource-query",
       "description": "Read-only AWS CLI resource inspection: what exists in an account or region and how it is configured, with a deny-list for secret and data reads, --query projections, and changes only on request.",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "aws-well-architected",
       "source": "./plugins/aws-well-architected",
       "description": "AWS Well-Architected and cost review of a workload from its IaC and read-only live calls: per-pillar findings rated High, Medium or Low, plus right-sizing candidates backed by CloudWatch and Cost Explorer.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -904,7 +911,7 @@
       "name": "grep-app",
       "source": "./plugins/grep-app",
       "description": "grep.app MCP server (remote HTTP, no API key): literal and regex code search across about a million public GitHub repositories.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1478,6 +1485,48 @@
       "name": "usage-log",
       "source": "./plugins/usage-log",
       "description": "Mod that logs skill use and the skill listing per prompt to local JSONL, for finding skills that should have fired and didn't. Ships usage-report, which summarizes this log and the bash-rules log.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "tilt",
+      "source": "./plugins/tilt",
+      "description": "Tilt skill: write and debug Tiltfiles (docker_build, k8s_yaml, live_update, local_resource) for local Kubernetes dev loops, and run tilt non-interactively.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "mise",
+      "source": "./plugins/mise",
+      "description": "mise skill: configure mise.toml tools, env and tasks, migrate .tool-versions, and run commands under mise in non-interactive shells.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "aws",
+      "source": "./plugins/aws",
+      "description": "General AWS skill: resolve account, region and identity first, sign-in with SSO or aws login, IAM policy and trust traps, AccessDenied debugging and cost-query habits.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "aws-cli",
+      "source": "./plugins/aws-cli",
+      "description": "AWS CLI v2 mechanics for scripts and write commands: pagination, --query and output, timeouts, waiters, skeletons, dry runs and client tokens. Not for read-only inspection (aws-resource-query) or profiles, SSO and IAM (aws).",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "aws-mcp",
+      "source": "./plugins/aws-mcp",
+      "description": "The managed AWS MCP Server (us-east-1) through the pinned mcp-proxy-for-aws SigV4 proxy over stdio: AWS docs search, regional availability, and run_script calls signed with your local profile. Optional profile name; blank uses the default credential chain.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "aws-knowledge",
+      "source": "./plugins/aws-knowledge",
+      "description": "AWS Knowledge MCP server (remote HTTP, no auth): AWS documentation search and reading, regional availability of services and APIs. Docs-only; use aws-mcp instead when you have credentials.",
       "version": "0.1.0",
       "category": "development"
     }
