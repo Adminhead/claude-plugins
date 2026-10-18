@@ -61,8 +61,8 @@ Markers are hints; the catalog descriptions decide which plugin fits.
 | Sentry, Prometheus, Grafana, OpenTelemetry | observability |
 | MCP SDK dependency | MCP servers |
 | Auth libraries, secrets handling, crypto | auth or security |
-| CDK, SAM, AWS SDK | AWS |
-| `.pre-commit-config.yaml`, `devenv.nix`, `.chezmoi*` | repo tooling |
+| AWS SDK, CDK, SAM or AWS-heavy Terraform providers | AWS (the named aws-meta rules below apply first) |
+| `.pre-commit-config.yaml`, `devenv.nix`, `mise.toml`, `.tool-versions`, `.chezmoi*` | repo tooling |
 
 Some stacks have named rules. Propose a named plugin only if it is in the catalog you read in this run; otherwise fall back to the area hint.
 
@@ -78,6 +78,13 @@ Some stacks have named rules. Propose a named plugin only if it is in the catalo
 | `@rpc` in `*.gd`, `[Rpc` in `*.cs`, or `MultiplayerSpawner`/`MultiplayerSynchronizer` in `*.tscn` | also `godot-multiplayer` |
 | `addons/beehave`, `addons/limboai`, `addons/phantom_camera` or `addons/dialogue_manager` | also `godot-addons` |
 | `openxr/enabled=true` under `[xr]` in `project.godot` | also `godot-xr` |
+| `devenv.nix` or `devenv.yaml` | `devenv` |
+| `mise.toml`, `.mise.toml` or `.tool-versions` | `mise` |
+| `Tiltfile` | `tilt` |
+| `cdk.json` | `aws-meta` |
+| `samconfig.toml`, or `template.yaml` with `Transform: AWS::Serverless` | `aws-meta` |
+| AWS SDK dependencies: `boto3`, `@aws-sdk/*`, `github.com/aws/aws-sdk-go*`, or `software.amazon.awssdk` in a build file | `aws-meta` |
+| `hashicorp/aws` in `required_providers` of `*.tf` files, where AWS is the main provider | `aws-meta` |
 
 Package names come from `<PackageReference Include=...>` in csproj files and `<PackageVersion Include=...>` in `Directory.Packages.props`; the SDK from the `<Project Sdk=...>` attribute. A `.csproj` that only sits beside `project.godot` is the Godot game itself: it means `godot-csharp`, not `dotnet-meta`, unless the repo also has other .NET projects.
 
