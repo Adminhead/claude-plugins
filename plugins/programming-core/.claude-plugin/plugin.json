@@ -1,6 +1,6 @@
 {
   "name": "programming-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -11,6 +11,11 @@
     "problem-solving",
     "planning",
     "unit-testing",
-    "test-run"
+    "test-run",
+    "grep-app",
+    {
+      "name": "context7",
+      "marketplace": "claude-plugins-official"
+    }
   ]
 }

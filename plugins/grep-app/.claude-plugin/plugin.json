@@ -1,6 +1,6 @@
 {
   "name": "grep-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "grep.app MCP server (remote HTTP, no API key): literal and regex code search across about a million public GitHub repositories.",
   "author": {
     "name": "AdminHead",

@@ -23,7 +23,7 @@ Adds [grep.app](https://grep.app)'s hosted MCP server, which searches code acros
 
 Good uses: how an unfamiliar API is called in practice, how others hit or fix an exact error string, real config patterns (Actions YAML, Dockerfiles, tsconfig keys), and checking that a flag is used in the wild. The server's own tool description carries usage guidance, so there is no companion skill. Check what you find against current docs, since old code may use removed APIs.
 
-Not for: private code, issues or PRs (`gh search code`), your own repository (codebase-memory or ripgrep), or library reference docs (Context7).
+Not for: private code, issues or PRs (`gh search code`), your own repository (codebase-memory or ripgrep), or library reference docs (the `context7` plugin, which `programming-core` installs).
 
 ## Privacy and trust
 
