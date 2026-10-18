@@ -1,6 +1,6 @@
 {
   "name": "plugin-vetter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A read-only subagent that statically vets a third-party plugin, skill, agent, hooks.json or .mcp.json before install for hidden directives, invisible unicode, encoded payloads, tool shadowing and scope mismatch, with a PASS, FAIL or NEEDS HUMAN REVIEW verdict.",
   "author": {
     "name": "AdminHead",

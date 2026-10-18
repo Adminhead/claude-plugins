@@ -1,6 +1,6 @@
 {
   "name": "browser-tester",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent that verifies a running web app in a real browser against acceptance criteria with playwright-cli, returning pass, fail or blocked per criterion with evidence.",
   "author": {
     "name": "AdminHead",

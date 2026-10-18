@@ -3,7 +3,7 @@ name: scribe
 description: Writes and updates docs (READMEs, guides, docstrings, changelogs, CLAUDE.md or AGENTS.md) and resyncs them after a code change, verifying every claim against the code. Use when a change leaves docs stale or a doc needs writing. Not for code changes (coder). Returns the files changed and claims marked UNVERIFIED.
 model: haiku
 effort: medium
-autoCompactWindow: 100000
+autoCompactWindow: 300000
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 color: cyan
 ---

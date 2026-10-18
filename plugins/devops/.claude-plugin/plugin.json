@@ -1,6 +1,6 @@
 {
   "name": "devops",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read-only-by-default infrastructure agent that reviews, validates and plans Terraform, Ansible, Docker, Kubernetes, Helm and GitOps changes using the matching skills.",
   "author": {
     "name": "AdminHead",

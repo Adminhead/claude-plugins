@@ -3,7 +3,7 @@ name: architect
 description: Read-only planner that returns a sliced plan with risks, rejected alternatives and open questions. Use before multi-slice, cross-cutting, risky or unclear-approach work, or when choosing between designs. Not for bounded changes with an obvious approach (coder) or failures with an unknown cause (debugger).
 model: opus
 effort: high
-autoCompactWindow: 300000
+autoCompactWindow: 500000
 tools: Read, Glob, Grep, LSP, Bash, WebFetch, WebSearch, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__consult__consult
 skills:
   - planning:planning

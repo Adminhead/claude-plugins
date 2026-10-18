@@ -3,7 +3,7 @@ name: reviewer
 description: Read-only reviewer that checks a plan, design or diff against its brief and acceptance criteria and returns verified findings by severity. Use after a slice lands or before a risky plan runs; the caller asks for a quick or thorough pass. Not for an open-ended bug hunt (/code-review) or attack paths (security-auditor).
 model: sonnet
 effort: high
-autoCompactWindow: 300000
+autoCompactWindow: 400000
 tools: Read, Glob, Grep, LSP, Bash, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__consult__consult
 color: orange
 ---

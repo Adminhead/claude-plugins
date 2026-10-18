@@ -3,7 +3,7 @@ name: coder-high
 description: Coder tier for deeper judgment (sonnet): a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.
 model: sonnet
 effort: medium
-autoCompactWindow: 300000
+autoCompactWindow: 400000
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding

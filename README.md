@@ -311,24 +311,24 @@ Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and e
 
 | Agent | Plugin | Model | Effort | Context | Edit/Write tools | In |
 | --- | --- | --- | --- | --- | --- | --- |
-| `architect:architect` | [`architect`](plugins/architect) | opus | high | 300k | no | `orchestration-meta` |
-| `browser-tester:browser-tester` | [`browser-tester`](plugins/browser-tester) | sonnet | medium | 200k | no | `web-meta` |
-| `coder:coder` | [`coder`](plugins/coder) | haiku | medium | 100k | yes | `orchestration-meta` |
-| `coder-critical:coder-critical` | [`coder-critical`](plugins/coder-critical) | opus | high | 300k | yes | `orchestration-meta` |
-| `coder-high:coder-high` | [`coder-high`](plugins/coder-high) | sonnet | medium | 300k | yes | `orchestration-meta` |
+| `architect:architect` | [`architect`](plugins/architect) | opus | high | 500k | no | `orchestration-meta` |
+| `browser-tester:browser-tester` | [`browser-tester`](plugins/browser-tester) | sonnet | medium | 400k | no | `web-meta` |
+| `coder:coder` | [`coder`](plugins/coder) | haiku | medium | 300k | yes | `orchestration-meta` |
+| `coder-critical:coder-critical` | [`coder-critical`](plugins/coder-critical) | opus | high | 500k | yes | `orchestration-meta` |
+| `coder-high:coder-high` | [`coder-high`](plugins/coder-high) | sonnet | medium | 400k | yes | `orchestration-meta` |
 | `coder-max:coder-max` | [`coder-max`](plugins/coder-max) | fable | high | 300k | yes | - |
-| `dba:dba` | [`dba`](plugins/dba) | opus | medium | 300k | yes | - |
-| `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | 300k | no | `orchestration-meta` |
-| `devops:devops` | [`devops`](plugins/devops) | opus | medium | 300k | yes | `iac-meta` |
-| `open-source-release-audit:open-source-release-audit` | [`open-source-release-audit`](plugins/open-source-release-audit) | sonnet | high | 300k | no | - |
+| `dba:dba` | [`dba`](plugins/dba) | opus | medium | 500k | yes | - |
+| `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | 400k | no | `orchestration-meta` |
+| `devops:devops` | [`devops`](plugins/devops) | opus | medium | 500k | yes | `iac-meta` |
+| `open-source-release-audit:open-source-release-audit` | [`open-source-release-audit`](plugins/open-source-release-audit) | sonnet | high | 400k | no | - |
 | `orchestration:orchestration` | [`orchestration`](plugins/orchestration) | inherit | - | - | yes | `orchestration-meta` |
-| `plugin-vetter:plugin-vetter` | [`plugin-vetter`](plugins/plugin-vetter) | sonnet | medium | 200k | no | - |
-| `reviewer:reviewer` | [`reviewer`](plugins/reviewer) | sonnet | high | 300k | no | `orchestration-meta` |
-| `scribe:scribe` | [`scribe`](plugins/scribe) | haiku | medium | 100k | yes | `orchestration-meta` |
-| `security-auditor:security-auditor` | [`security-auditor`](plugins/security-auditor) | opus | high | 300k | no | - |
-| `shipper:shipper` | [`shipper`](plugins/shipper) | haiku | medium | 100k | no | `github-meta` |
+| `plugin-vetter:plugin-vetter` | [`plugin-vetter`](plugins/plugin-vetter) | sonnet | medium | 400k | no | - |
+| `reviewer:reviewer` | [`reviewer`](plugins/reviewer) | sonnet | high | 400k | no | `orchestration-meta` |
+| `scribe:scribe` | [`scribe`](plugins/scribe) | haiku | medium | 300k | yes | `orchestration-meta` |
+| `security-auditor:security-auditor` | [`security-auditor`](plugins/security-auditor) | opus | high | 500k | no | - |
+| `shipper:shipper` | [`shipper`](plugins/shipper) | haiku | medium | 300k | no | `github-meta` |
 | `ui-critic:ui-critic` | [`ui-critic`](plugins/ui-critic) | inherit | medium | 200k | no | `design-core` |
-| `web-perf-auditor:web-perf-auditor` | [`web-perf-auditor`](plugins/web-perf-auditor) | sonnet | medium | 200k | no | `web-meta` |
+| `web-perf-auditor:web-perf-auditor` | [`web-perf-auditor`](plugins/web-perf-auditor) | sonnet | medium | 400k | no | `web-meta` |
 
 <!-- catalog:end -->
 

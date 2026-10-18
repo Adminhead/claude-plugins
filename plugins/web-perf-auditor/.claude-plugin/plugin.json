@@ -1,6 +1,6 @@
 {
   "name": "web-perf-auditor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent that audits a web app's performance: a static source scan marked not measured, or a deep audit from Lighthouse, PageSpeed or CrUX data, with no fabricated numbers.",
   "author": {
     "name": "AdminHead",

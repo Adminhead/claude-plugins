@@ -1,6 +1,6 @@
 {
   "name": "security-auditor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A read-only security review subagent for diffs and code areas: taint tracing, auth, injection, secrets, supply chain, CI and IaC trust, returning severity-ranked findings with attack paths.",
   "author": {
     "name": "AdminHead",

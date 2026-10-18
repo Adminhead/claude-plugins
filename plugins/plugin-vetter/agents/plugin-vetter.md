@@ -3,7 +3,7 @@ name: plugin-vetter
 description: Read-only security review of a third-party plugin, skill, agent, hooks.json or .mcp.json before it is installed or trusted. Not for your own active config (agent-config-audit). Checks hidden directives, invisible unicode, encoded payloads, tool shadowing and unpinned fetches; returns PASS, FAIL or NEEDS HUMAN REVIEW.
 model: sonnet
 effort: medium
-autoCompactWindow: 200000
+autoCompactWindow: 400000
 tools: Read, Grep, Glob
 color: orange
 ---

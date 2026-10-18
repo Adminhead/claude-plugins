@@ -1,6 +1,6 @@
 {
   "name": "debugger",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation.",
   "author": {
     "name": "AdminHead",

@@ -1,6 +1,6 @@
 {
   "name": "open-source-release-audit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A read-only subagent that audits a repo before it goes public: secrets (gitleaks or trufflehog, regex fallback), PII, internal references, dangerous files, .env.example gaps, git history and unreadable binaries, returning PASS, PASS WITH WARNINGS or FAIL.",
   "author": {
     "name": "AdminHead",

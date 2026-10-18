@@ -155,7 +155,7 @@
       "name": "architect",
       "source": "./plugins/architect",
       "description": "A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -169,7 +169,7 @@
       "name": "browser-tester",
       "source": "./plugins/browser-tester",
       "description": "Agent that verifies a running web app in a real browser against acceptance criteria with playwright-cli, returning pass, fail or blocked per criterion with evidence.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -197,7 +197,7 @@
       "name": "coder",
       "source": "./plugins/coder",
       "description": "Coder agent, haiku tier. most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -211,7 +211,7 @@
       "name": "debugger",
       "source": "./plugins/debugger",
       "description": "A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -253,7 +253,7 @@
       "name": "devops",
       "source": "./plugins/devops",
       "description": "Read-only-by-default infrastructure agent that reviews, validates and plans Terraform, Ansible, Docker, Kubernetes, Helm and GitOps changes using the matching skills.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -512,7 +512,7 @@
       "name": "reviewer",
       "source": "./plugins/reviewer",
       "description": "A read-only review subagent for implementation plans, designs and diffs, checked against the brief and its acceptance criteria, returning verified findings ranked by severity. The caller picks quick or thorough depth.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -540,7 +540,7 @@
       "name": "scribe",
       "source": "./plugins/scribe",
       "description": "A documentation subagent that writes and updates READMEs, guides, docstrings, changelogs and Outline wiki documents, checking every claim against the code and marking anything it could not verify.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -554,7 +554,7 @@
       "name": "shipper",
       "source": "./plugins/shipper",
       "description": "Agent that commits finished work, pushes it, and optionally opens a PR, watches checks and merges, on a cheap model. Used by the ship skill.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -673,7 +673,7 @@
       "name": "web-perf-auditor",
       "source": "./plugins/web-perf-auditor",
       "description": "Agent that audits a web app's performance: a static source scan marked not measured, or a deep audit from Lighthouse, PageSpeed or CrUX data, with no fabricated numbers.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -834,7 +834,7 @@
       "name": "dba",
       "source": "./plugins/dba",
       "description": "A database subagent: designs and reviews schemas and migrations, writes migration, schema and query changes in the repo when asked, and diagnoses slow queries with EXPLAIN. Never writes to shared databases.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -967,7 +967,7 @@
       "name": "open-source-release-audit",
       "source": "./plugins/open-source-release-audit",
       "description": "A read-only subagent that audits a repo before it goes public: secrets (gitleaks or trufflehog, regex fallback), PII, internal references, dangerous files, .env.example gaps, git history and unreadable binaries, returning PASS, PASS WITH WARNINGS or FAIL.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -981,7 +981,7 @@
       "name": "plugin-vetter",
       "source": "./plugins/plugin-vetter",
       "description": "A read-only subagent that statically vets a third-party plugin, skill, agent, hooks.json or .mcp.json before install for hidden directives, invisible unicode, encoded payloads, tool shadowing and scope mismatch, with a PASS, FAIL or NEEDS HUMAN REVIEW verdict.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1065,7 +1065,7 @@
       "name": "security-auditor",
       "source": "./plugins/security-auditor",
       "description": "A read-only security review subagent for diffs and code areas: taint tracing, auth, injection, secrets, supply chain, CI and IaC trust, returning severity-ranked findings with attack paths.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1429,14 +1429,14 @@
       "name": "coder-critical",
       "source": "./plugins/coder-critical",
       "description": "Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "coder-high",
       "source": "./plugins/coder-high",
       "description": "Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
