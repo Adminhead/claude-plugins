@@ -8,7 +8,7 @@ Starting points for the three settings scopes. They are checked against the [set
 | `settings.project.json` | `<repo>/.claude/settings.json` | Marketplaces and plugins the team shares, committed |
 | `settings.local.json` | `<repo>/.claude/settings.local.json` | Your overrides for one checkout, gitignored |
 
-Merge the global example into `~/.claude/settings.json`. Do not overwrite that file. The codebase-memory-mcp installer writes its hooks there (`PreToolUse`, `PostToolUse`, `SessionStart`, `SubagentStart`), and this example leaves them out on purpose.
+Merge the global example into `~/.claude/settings.json`, or let `node scripts/install.mjs` do it (it backs the file up first). Do not overwrite that file. The codebase-memory-mcp installer writes its hooks there (`PreToolUse`, `PostToolUse`, `SessionStart`, `SubagentStart`), and this example leaves them out on purpose.
 
 Placeholders in angle brackets (`<plugin>`, `<option>`) need real values. Settings files are plain JSON, so the notes live here, not in the files. Keep secrets such as tokens out of settings files.
 

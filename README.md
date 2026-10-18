@@ -19,7 +19,16 @@ The plugins do not ship it. Install it yourself. Its installer sets up its own h
 
 ## Quick start
 
-Add the marketplace once. Use a local clone, the GitHub repo, or a git URL.
+From a clone, one script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs `baseline` at user scope.
+
+```
+node scripts/install.mjs --dry-run   # show what would change
+node scripts/install.mjs
+```
+
+The merge keeps every key the example doesn't set, such as hooks from other installers. Example values win, arrays gain the example's missing entries, and the old file is saved beside it as `settings.json.bak-<time>`. `--no-settings` and `--no-plugins` skip a step; `--settings PATH` targets another file. A rerun updates what is already installed.
+
+To do it by hand, add the marketplace once. Use a local clone, the GitHub repo, or a git URL.
 
 | Task | Command |
 | --- | --- |
