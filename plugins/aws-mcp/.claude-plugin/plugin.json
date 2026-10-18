@@ -1,0 +1,17 @@
+{
+  "name": "aws-mcp",
+  "version": "0.1.0",
+  "description": "The managed AWS MCP Server (us-east-1) through the pinned mcp-proxy-for-aws SigV4 proxy over stdio: AWS docs search, regional availability, and run_script calls signed with your local profile. Optional profile name; blank uses the default credential chain.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "aws_profile": {
+      "type": "string",
+      "title": "AWS profile",
+      "description": "Name of the AWS CLI profile used to sign requests; it must exist in your AWS config or the server fails to start. Blank uses the default credential chain. Use a read-only profile. The documentation tools work with no credentials.",
+      "default": ""
+    }
+  }
+}
