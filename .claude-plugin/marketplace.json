@@ -1417,6 +1417,13 @@
       "description": "Roslyn analyzer skill: DiagnosticAnalyzer, CodeFixProvider and IIncrementalGenerator design and tests, Microsoft.CodeAnalysis host-compatibility pinning, and analyzer NuGet packaging.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "gh-readme",
+      "source": "./plugins/gh-readme",
+      "description": "README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

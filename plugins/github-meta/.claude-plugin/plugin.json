@@ -13,6 +13,7 @@
     "ship",
     "shipper",
     "gh-actions",
-    "dependabot"
+    "dependabot",
+    "gh-readme"
   ]
 }

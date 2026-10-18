@@ -1,0 +1,52 @@
+gh-readme
+Copyright AdminHead
+
+This plugin contains material adapted from four sources, all licensed under
+the MIT License. Their copyright lines are kept in LICENSE.
+
+developer-relations-skills (readme-optimization), Copyright (c) 2026 Samuel
+Berthe, licensed under the MIT License.
+
+Upstream: https://github.com/samber/developer-relations-skills @ ee798ba0376756f03a4f7b3062c92d45d7b9a74b
+Paths: skills/readme-optimization/SKILL.md, skills/readme-optimization/references/audit-scorecard.md, skills/readme-optimization/references/readme-skeletons.md, skills/readme-optimization/references/published-findings.md, skills/readme-optimization/references/before-after-examples.md, skills/readme-optimization/scripts/readme-audit.sh
+
+agent-toolkit (crafting-effective-readmes), Copyright (c) 2026 Leonardo
+Flores, licensed under the MIT License.
+
+Upstream: https://github.com/softaworks/agent-toolkit @ 3027f20f3181758385a1bb8c022d4041dfb4de84
+Paths: skills/crafting-effective-readmes/SKILL.md, skills/crafting-effective-readmes/section-checklist.md, skills/crafting-effective-readmes/style-guide.md, skills/crafting-effective-readmes/templates/oss.md, skills/crafting-effective-readmes/templates/internal.md, skills/crafting-effective-readmes/templates/personal.md, skills/crafting-effective-readmes/templates/xdg-config.md
+
+beautify-github-readme, Copyright (c) 2026 oil-oil, licensed under the MIT
+License.
+
+Upstream: https://github.com/oil-oil/beautify-github-readme @ d6562a5f5c484d069f8560b39c215c9cda4b5a55
+Paths: skills/beautify-github-readme/SKILL.md, skills/beautify-github-readme/references/github-readme-canvas.md, skills/beautify-github-readme/references/content-architecture.md, skills/beautify-github-readme/references/visual-direction.md, skills/beautify-github-readme/references/svg-production.md, skills/beautify-github-readme/scripts/audit_readme.py
+
+awesome-copilot (create-readme), Copyright GitHub, Inc., licensed under the
+MIT License.
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+Paths: skills/create-readme/SKILL.md
+
+Modifications: the files were modified. SKILL.md was written fresh in the
+house style as one skill with four modes (write, audit, restructure,
+beautify) and a facts-from-the-repo rule. references/templates.md merges
+samber's skeletons by project type with softaworks' internal, personal and
+config-directory templates, adds a monorepo-root router, and condenses the
+section patterns. references/audit-checklist.md condenses samber's scorecard,
+fix order, cold-reader test and sourced-statistics policy (enterprise steps,
+interview, and traffic tracking dropped). references/badges-and-visuals.md
+combines samber's badge evidence with oil-oil's hero, SVG and visual-direction
+rules (ImageGen hybrid composition, GIF rendering script, showcase and
+attribution offers dropped) and adds a shields.io table whose endpoints were
+checked against img.shields.io. references/github-rendering.md is new, written
+from the GitHub docs (README precedence, 500 KiB truncation, Outline, relative
+links, <picture>, alerts, details, anchors, Mermaid, sanitised HTML).
+scripts/readme_audit.sh ports samber's readme-audit.sh with fixes (links
+starting with / resolve from the repo root when the README lives in .github/
+or docs/; angle-bracket and HTML src/srcset/href targets are checked; only a
+root README shadowed by .github/README.md is reported) and adds oil-oil's
+image alt-text and SVG checks in bash. awesome-copilot's create-readme
+contributed the rules on emoji restraint, GFM alerts, using an existing logo
+in the header and keeping LICENSE/CONTRIBUTING/CHANGELOG content in their own
+files.

@@ -66,7 +66,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`godot-meta`](plugins/godot-meta) | project | `programming-core`, `gamedev-core`, `godot`, `godot-physics`, `godot-shaders`, `godot-export`, `godot-testing`, `godot-mcp-setup` | Plugin set for Godot 4 game projects, installed at project scope. Ships no components of its own. |
 | [`iac-meta`](plugins/iac-meta) | project | `terraform`, `ansible`, `docker`, `bash`, `cloud-ops-guard`, `devops`, `bash-language-server@claude-code-lsps` | Plugin set for infrastructure-as-code projects, installed at project scope. Ships no components of its own. |
 | [`kubernetes-meta`](plugins/kubernetes-meta) | project | `kubernetes`, `helm`, `gitops` | Plugin set for Kubernetes projects (manifests, Helm, GitOps), installed at project scope. Ships no components of its own. |
-| [`github-meta`](plugins/github-meta) | project | `gh-issues`, `gh-pr`, `pr-comments`, `ship`, `shipper`, `gh-actions`, `dependabot` | Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own. |
+| [`github-meta`](plugins/github-meta) | project | `gh-issues`, `gh-pr`, `pr-comments`, `ship`, `shipper`, `gh-actions`, `dependabot`, `gh-readme` | Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own. |
 | [`orchestration-meta`](plugins/orchestration-meta) | user or project | `orchestration`, `agent-router`, `coder`, `architect`, `reviewer`, `debugger`, `scribe`, `readonly-agent-gate` | Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own. |
 
 ### Core bundles
@@ -266,6 +266,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`msbuild`](plugins/msbuild) | skill | Diagnoses MSBuild failures and slow builds and reviews .NET build XML. Use for a failing dotnet build, restore, pack or publish, .csproj/.props/.targets conditions and custom targets, binlog capture and replay, "it rebuilds when nothing changed", slow evaluation or builds, bin/obj clashes, or Directory.Build.* layering. | `dotnet-meta` |
 | [`nuget`](plugins/nuget) | skill | Manages NuGet dependencies and packages in .NET repos. Use for Directory.Packages.props and Central Package Management, bumping or aligning package versions, NU1xxx restore warnings, nuget.config sources and source mapping, vulnerable-package audits, lock files, dotnet pack metadata, or publishing to nuget.org with trusted publishing. | `dotnet-meta` |
 | [`roslyn-analyzers`](plugins/roslyn-analyzers) | skill | Roslyn analyzer skill: DiagnosticAnalyzer, CodeFixProvider and IIncrementalGenerator design and tests, Microsoft.CodeAnalysis host-compatibility pinning, and analyzer NuGet packaging. | - |
+| [`gh-readme`](plugins/gh-readme) | skill | README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules. | `github-meta` |
 
 <!-- catalog:end -->
 

@@ -9,7 +9,7 @@ allowed-tools:
 
 Compare what the docs claim with what the code does, and report the gaps with evidence. Stay read-only until the person asks for fixes, because an audit that edits mid-way destroys the evidence it is reporting.
 
-Not for CLAUDE.md or AGENTS.md files (`agent-instructions`, if installed), architecture decisions (`adr-writing`), or project vocabulary (`domain-modeling`). It does cover assigning doc roles so each fact has one owner, and choosing a doc type.
+Not for CLAUDE.md or AGENTS.md files (`agent-instructions`, if installed), architecture decisions (`adr-writing`), project vocabulary (`domain-modeling`), or a README's structure, badges and visuals (`gh-readme`, if installed); stale facts in a README are still in scope. It does cover assigning doc roles so each fact has one owner, and choosing a doc type.
 
 ## Workflow
 
