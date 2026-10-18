@@ -7,6 +7,8 @@ description: Godot 4 XR with OpenXR for VR, AR and passthrough on Meta Quest, Pi
 
 Build VR and mixed-reality games in Godot 4 with the core OpenXR interface. Examples are GDScript; C# idioms belong to `godot-csharp`. Godot version notes and the facts that change between releases are in [references/platform-features.md](references/platform-features.md).
 
+Start by reading the project's Godot version from `config/features` in `project.godot` and follow that version, not the newest; per-version changes are in the `godot` plugin's `references/version-notes.md`, if installed.
+
 ## Setup checklist
 
 1. **Enable OpenXR in Project Settings, not Plugins.** OpenXR is built into the engine. Turn on **XR → OpenXR → Enabled** and **XR → Shaders → Enabled**, then Save & Restart. OpenXR must be on at startup; it cannot be switched on at runtime.

@@ -169,6 +169,7 @@ def check(root):
     if catalog_section(root, entries, manifests) not in (root / README).read_text():
         errors.append("README.md: plugin catalog is stale; run scripts/plugins.py catalog")
     errors += eval_frontmatter_errors(root)
+    errors += godot_version_errors(root, entries, manifests)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
@@ -182,6 +183,26 @@ def dep_labels(manifest):
         dep_name, dep_market = parse_dep(dep)
         labels.append(f"`{dep_name}`" if not dep_market else f"`{dep_name}@{dep_market}`")
     return labels
+
+
+GODOT_MINOR = re.compile(r"\b4\.\d+")
+
+
+def godot_version_errors(root, entries, manifests):
+    """Godot plugin descriptions say only "Godot 4"; minor versions live in bodies and version-notes.md."""
+    errors = []
+    for name, manifest in manifests.items():
+        if not (name == "godot" or name.startswith("godot-")) or manifest is None or is_group(name):
+            continue
+        texts = {"plugin.json": manifest.get("description", "")}
+        for skill in (root / "plugins" / name).glob("skills/*/SKILL.md"):
+            m = re.search(r"^description:\s*(.+)$", skill.read_text(errors="replace"), re.M)
+            if m:
+                texts[skill.relative_to(root / "plugins" / name).as_posix()] = m.group(1)
+        for where, text in texts.items():
+            if GODOT_MINOR.search(text):
+                errors.append(f"{name}: {where} description names a Godot minor version; say \"Godot 4\"")
+    return errors
 
 
 EVAL_FM_KEY = re.compile(r"^(name|description): (.*)$")

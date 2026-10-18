@@ -7,6 +7,8 @@ description: Godot addon APIs for Beehave and LimboAI behavior trees, Phantom Ca
 
 Covers four widely used MIT addons for Godot 4. Each has its own reference; read only the one the task needs.
 
+Start by reading the project's Godot version from `config/features` in `project.godot` and follow that version, not the newest; per-version changes are in the `godot` plugin's `references/version-notes.md`, if installed.
+
 | Addon | Folder | Read | Use it for |
 |---|---|---|---|
 | Beehave | `addons/beehave/` | [references/beehave.md](references/beehave.md) | Behavior trees built from scene-tree nodes, pure GDScript |

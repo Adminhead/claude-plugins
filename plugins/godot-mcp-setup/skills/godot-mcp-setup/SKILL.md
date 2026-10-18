@@ -1,6 +1,6 @@
 ---
 name: godot-mcp-setup
-description: Installs or updates the voidrot/godot-mcp editor addon in a Godot 4.7+ project, enables it, and connects Claude Code to the editor through a project `.mcp.json` `godot-editor` entry. Run as /godot-mcp-setup [godot-project-dir].
+description: Installs or updates the voidrot/godot-mcp editor addon in a Godot 4 project, enables it, and connects Claude Code to the editor through a project `.mcp.json` `godot-editor` entry. Run as /godot-mcp-setup [godot-project-dir].
 argument-hint: "[godot-project-dir]"
 disable-model-invocation: true
 allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/install-addon.sh --dry-run *)

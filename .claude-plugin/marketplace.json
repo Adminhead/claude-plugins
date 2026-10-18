@@ -1351,7 +1351,7 @@
     {
       "name": "godot-mcp-setup",
       "source": "./plugins/godot-mcp-setup",
-      "description": "Manual /godot-mcp-setup: installs the voidrot/godot-mcp editor addon into a Godot 4.7+ project, enables it, reads its port and writes the project .mcp.json godot-editor entry after you approve the diff.",
+      "description": "Manual /godot-mcp-setup: installs the voidrot/godot-mcp editor addon into a Godot 4 project, enables it, reads its port and writes the project .mcp.json godot-editor entry after you approve the diff.",
       "version": "0.1.0",
       "category": "development"
     },

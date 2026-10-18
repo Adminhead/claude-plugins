@@ -7,6 +7,8 @@ description: Godot 4 editor plugins and addons. Use when writing or fixing an Ed
 
 An editor plugin is an addon folder `addons/<name>/` with a `plugin.cfg` and a `@tool` script extending `EditorPlugin`. It runs inside the editor process, so a bug in it can freeze or crash the editor; build it in small steps and keep every registration reversible. Examples are GDScript; C#-specific rules are marked.
 
+Start by reading the project's Godot version from `config/features` in `project.godot` and follow that version, not the newest; per-version changes are in the `godot` plugin's `references/version-notes.md`, if installed.
+
 ## Layout and plugin.cfg
 
 ```

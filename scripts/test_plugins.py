@@ -239,5 +239,10 @@ def test_unquoted_colon_in_eval_frontmatter_fails(root):
     assert plugins.check(root) == []
 
 
+def test_godot_descriptions_name_no_minor_version(root):
+    run(root, "new", "godot-foo", "--kind", "skill", "--description", "Foo for Godot 4.7 projects.")
+    assert any("names a Godot minor version" in e for e in plugins.check(root))
+
+
 def test_repo_passes_check():
     assert plugins.check(REPO) == []

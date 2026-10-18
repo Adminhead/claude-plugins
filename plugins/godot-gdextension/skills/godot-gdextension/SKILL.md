@@ -7,6 +7,8 @@ description: Native Godot 4 extensions with GDExtension, in C++ (godot-cpp) or R
 
 GDExtension loads a shared library into a stock Godot build, so no custom engine is needed. Its classes look like built-in ones to GDScript and the editor. Version-specific details are in the references; this file holds the decisions and the rules that don't change.
 
+Start by reading the project's Godot version from `config/features` in `project.godot` and follow that version, not the newest; per-version changes are in the `godot` plugin's `references/version-notes.md`, if installed.
+
 ## When to go native
 
 Use GDScript or C# first. Profile before deciding (see `godot`'s performance guidance). GDExtension earns its cost when:
