@@ -1,6 +1,6 @@
 ---
 name: coder-high
-description: Default coder tier (sonnet): a bounded feature, fix or refactor that needs judgment, like a new code path, an API change or non-trivial tests. Use coder for mechanical edits, coder-critical for risky logic.
+description: Coder tier for deeper judgment (sonnet): a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.
 model: sonnet
 effort: medium
 autoCompactWindow: 300000

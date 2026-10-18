@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Fastest, cheapest coder tier (haiku): a low-risk change with a known approach, like a mechanical multi-file edit, rename, config bump or small fix. Escalate to coder-high when the change needs judgment.
+description: Default coder tier (haiku): most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.
 model: haiku
 effort: medium
 autoCompactWindow: 100000

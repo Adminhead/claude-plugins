@@ -196,7 +196,7 @@
     {
       "name": "coder",
       "source": "./plugins/coder",
-      "description": "Coder agent, haiku tier. a low-risk change with a known approach, like a mechanical multi-file edit, rename, config bump or small fix. Escalate to coder-high when the change needs judgment.",
+      "description": "Coder agent, haiku tier. most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1435,7 +1435,7 @@
     {
       "name": "coder-high",
       "source": "./plugins/coder-high",
-      "description": "Coder agent, sonnet tier. a bounded feature, fix or refactor that needs judgment, like a new code path, an API change or non-trivial tests. Use coder for mechanical edits, coder-critical for risky logic.",
+      "description": "Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.",
       "version": "0.1.0",
       "category": "development"
     },

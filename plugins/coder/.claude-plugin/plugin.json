@@ -1,7 +1,7 @@
 {
   "name": "coder",
   "version": "0.1.0",
-  "description": "Coder agent, haiku tier. a low-risk change with a known approach, like a mechanical multi-file edit, rename, config bump or small fix. Escalate to coder-high when the change needs judgment.",
+  "description": "Coder agent, haiku tier. most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
