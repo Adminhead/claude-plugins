@@ -7,7 +7,7 @@ description: Reviews an AWS workload against the six Well-Architected pillars an
 
 Assess a workload's design against the Well-Architected Framework (operational excellence, security, reliability, performance efficiency, cost optimization, sustainability) and find where it spends more than it needs to. The review is a conversation about trade-offs, not a compliance audit, so report evidence and cost of each finding and let the owner decide.
 
-Not for general release readiness (`production-readiness`, if installed), listing resources (`aws-resource-query`, if installed), or incident investigation (`aws-cloudwatch`, if installed).
+Not for general release readiness (`production-readiness`, if installed), listing resources (`aws-resource-query`, if installed), or incident investigation (`aws-cloudwatch`, if installed). Profile, IAM and sign-in questions go to `aws`.
 
 Adapted from awesome-copilot `aws-well-architected-review` and `aws-cost-optimize` (MIT, Copyright GitHub, Inc.). See `LICENSE` in the plugin root.
 
@@ -46,7 +46,7 @@ Create GitHub issues only when the user asks. Use `gh issue create` from the rep
 
 ## Checking against current AWS guidance
 
-The pillar items and the cost patterns are stable. When a finding depends on a recent service feature, price, or limit, confirm it in current AWS documentation through Context7 or Exa if available, and otherwise label it unconfirmed. The framework itself is at docs.aws.amazon.com/wellarchitected/latest/framework/.
+The pillar items and the cost patterns are stable. When a finding depends on a recent service feature, price, or limit, confirm it in current AWS documentation through the `aws-mcp` docs search if installed, or Context7 or Exa if available, and otherwise label it unconfirmed. The framework itself is at docs.aws.amazon.com/wellarchitected/latest/framework/.
 
 ## References
 
