@@ -1,0 +1,9 @@
+{
+  "name": "tilt",
+  "version": "0.1.0",
+  "description": "Tilt skill: write and debug Tiltfiles (docker_build, k8s_yaml, live_update, local_resource) for local Kubernetes dev loops, and run tilt non-interactively.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
