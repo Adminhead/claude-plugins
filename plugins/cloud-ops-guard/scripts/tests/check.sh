@@ -13,16 +13,16 @@ bad() { fail=$((fail + 1)); echo "FAIL $1 (expected $2, got $3)"; }
 
 guard() { bun --no-env-file --config=/dev/null "$script"; }
 
-# The walker copies must match the canonical copy in bash-danger-guard byte for byte, when that
-# plugin sits beside this one (in the marketplace checkout). Installed alone, the check is skipped.
-canon=$scripts/../../bash-danger-guard/hooks
+# The walker copies must match the canonical copy in scripts/shared byte for byte, when this
+# plugin sits in the marketplace checkout. Installed alone, the check is skipped.
+canon=$scripts/../../../scripts/shared
 for f in shell/walk.ts vendor/unbash.js vendor/unbash.d.ts; do
   if [ ! -f "$canon/$f" ]; then
-    echo "skip scripts/$f (no bash-danger-guard copy beside this plugin)"
+    echo "skip scripts/$f (no scripts/shared copy in this checkout)"
   elif cmp -s "$scripts/$f" "$canon/$f"; then
-    ok "scripts/$f matches bash-danger-guard"
+    ok "scripts/$f matches scripts/shared"
   else
-    bad "scripts/$f matches bash-danger-guard" "identical" "differs"
+    bad "scripts/$f matches scripts/shared" "identical" "differs"
   fi
 done
 
