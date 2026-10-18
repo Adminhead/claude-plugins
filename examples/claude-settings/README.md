@@ -89,6 +89,7 @@ Per-checkout overrides only: turn a shared plugin off for this checkout or give 
 | `avoid-ai-writing@conorbronsdon-skills` | Writing-style skill |
 | `baseline@adminhead`, `orchestration-meta@adminhead` | The user-scope meta plugins: the default set, and the orchestration agent with its general-purpose agents. Each installs the plugins it lists |
 | `agent-status@adminhead`, `cache-clock@adminhead`, `turn-stats@adminhead` | Status mods that no meta plugin installs |
+| `exa@claude-plugins-official: false` | Exa web search (an MCP server and the `search` and `exa-agent` skills), installed but off. The example does not declare `claude-plugins-official`; Claude Code usually registers it, and the installer adds it when it is missing. Turn Exa on with `/plugin` or by setting this key to `true` when the built-in `WebSearch` is unavailable: Bedrock, Vertex with older models, or a `WebSearch` deny rule. With `WebSearch` available, leave it off. The skills may overlap the `research` plugin. The installer installs and disables it only when it is installed at no scope and your settings don't enable it. A rerun does not update or re-disable it, so your choice stands |
 | `usage-log@adminhead` | Logs skill use and the skill listing per prompt locally, for `usage-report`. See its README for what it records and how to turn prompt text off |
 
 ### Skills

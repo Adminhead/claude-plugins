@@ -85,6 +85,7 @@
     "cc-plugin-agents-md@builtin": true,
     "cc-plugin-diff@builtin": true,
     "design@synced": false,
+    "exa@claude-plugins-official": false,
     "avoid-ai-writing@conorbronsdon-skills": true,
     "baseline@adminhead": true,
     "orchestration-meta@adminhead": true,
