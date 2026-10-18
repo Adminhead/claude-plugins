@@ -1,0 +1,9 @@
+{
+  "name": "mise",
+  "version": "0.1.0",
+  "description": "mise skill: configure mise.toml tools, env and tasks, migrate .tool-versions, and run commands under mise in non-interactive shells.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
