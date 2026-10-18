@@ -308,6 +308,32 @@ def upstream(root, names, fetch):
         print("no NOTICE with an Upstream line" + (f" for {', '.join(names)}" if names else ""))
 
 
+def agent_rows(root, entries, manifests, included_in):
+    """One catalog row per agent file: invoke name, plugin, model, effort, window, read-only, metas."""
+    rows = []
+    for f in sorted((root / "plugins").glob("*/agents/*.md")):
+        plugin = f.parent.parent.name
+        if plugin not in entries:
+            continue
+        text = f.read_text(errors="replace")
+        if not text.startswith("---\n") or "\n---" not in text[4:]:
+            continue
+        fm = {}
+        for line in text[4:text.index("\n---", 4)].splitlines():
+            m = re.match(r"^([A-Za-z]+):\s*(.*)$", line)
+            if m:
+                fm[m.group(1)] = m.group(2).strip()
+        name = fm.get("name", f.stem)
+        tools = fm.get("tools", "")
+        edits = "no" if tools and not re.search(r"\b(Edit|Write|MultiEdit|NotebookEdit)\b", tools) else "yes"
+        window = fm.get("autoCompactWindow", "")
+        window = f"{int(window) // 1000}k" if window.isdigit() else "-"
+        metas = ", ".join(included_in.get(plugin, [])) or "-"
+        rows.append(f"| `{plugin}:{name}` | [`{plugin}`](plugins/{plugin}) | {fm.get('model', 'inherit')} | "
+                    f"{fm.get('effort', '-')} | {window} | {edits} | {metas} |")
+    return rows
+
+
 def catalog_section(root, entries, manifests):
     metas, bundles, leaves = [], [], []
     included_in = {}
@@ -338,6 +364,14 @@ def catalog_section(root, entries, manifests):
         lines += ["| Plugin | Installs | Used by | Description |", "| --- | --- | --- | --- |", *bundles]
     lines += ["", "### Plugins", ""]
     lines += ["| Plugin | Type | Description | In |", "| --- | --- | --- | --- |", *leaves] if leaves else ["None yet."]
+    agents = agent_rows(root, entries, manifests, included_in)
+    if agents:
+        lines += ["", "### Agents", "",
+                  "Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and effort are defaults; "
+                  "a caller can pass another model per call. An agent without Edit/Write tools can still change state "
+                  "through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash.", "",
+                  "| Agent | Plugin | Model | Effort | Context | Edit/Write tools | In |",
+                  "| --- | --- | --- | --- | --- | --- | --- |", *agents]
     lines += ["", CATALOG_END]
     return "\n".join(lines)
 
