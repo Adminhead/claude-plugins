@@ -1,6 +1,6 @@
 {
   "name": "kubernetes-meta",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plugin set for Kubernetes projects (manifests, Helm, GitOps), installed at project scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -9,6 +9,7 @@
   "dependencies": [
     "kubernetes",
     "helm",
-    "gitops"
+    "gitops",
+    "tilt"
   ]
 }
