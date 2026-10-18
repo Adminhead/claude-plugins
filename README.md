@@ -19,7 +19,7 @@ The plugins do not ship it. Install it yourself. Its installer sets up its own h
 
 ## Quick start
 
-One script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs `baseline` at user scope. It needs Node 18+ and `claude` on `PATH`.
+One script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs at user scope every plugin that file enables: the `baseline` and `orchestration-meta` meta plugins and the `agent-status`, `cache-clock` and `turn-stats` mods. It needs Node 18+ and `claude` on `PATH`.
 
 Without a clone, in one line. The repo is private, so the request carries your GitHub CLI token:
 

@@ -87,3 +87,5 @@ Per-checkout overrides only: turn a shared plugin off for this checkout or give 
 | `cc-plugin-diff@builtin` | Diff viewer |
 | `design@synced: false` | Turns off Anthropic's design plugin synced from claude.ai. The adminhead `design-core` and `design-meta` plugins port its skills, so leaving both on doubles the triggers |
 | `avoid-ai-writing@conorbronsdon-skills` | Writing-style skill |
+| `baseline@adminhead`, `orchestration-meta@adminhead` | The user-scope meta plugins: the default set, and the orchestration agent with its general-purpose agents. Each installs the plugins it lists |
+| `agent-status@adminhead`, `cache-clock@adminhead`, `turn-stats@adminhead` | Status mods that no meta plugin installs |

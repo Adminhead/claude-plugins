@@ -85,7 +85,12 @@
     "cc-plugin-agents-md@builtin": true,
     "cc-plugin-diff@builtin": true,
     "design@synced": false,
-    "avoid-ai-writing@conorbronsdon-skills": true
+    "avoid-ai-writing@conorbronsdon-skills": true,
+    "baseline@adminhead": true,
+    "orchestration-meta@adminhead": true,
+    "agent-status@adminhead": true,
+    "cache-clock@adminhead": true,
+    "turn-stats@adminhead": true
   },
   "pluginConfigs": {
     "cc-plugin-agents-md@builtin": {
