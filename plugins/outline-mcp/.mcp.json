@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "outline": {
+      "type": "http",
+      "url": "https://${user_config.outline_host}/mcp",
+      "headersHelper": "${CLAUDE_PLUGIN_ROOT}/scripts/outline-auth.sh"
+    }
+  }
+}

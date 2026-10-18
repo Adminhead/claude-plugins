@@ -279,6 +279,10 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`coder-high`](plugins/coder-high) | agent | Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic. | `orchestration-meta` |
 | [`coder-max`](plugins/coder-max) | agent | Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. | `orchestration-meta` |
 | [`bash-rules`](plugins/bash-rules/README.md) | hook | Mod that denies Bash used to read files (use Read/Grep/Glob), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, or destroy systems, infra and data. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku. | `baseline` |
+| [`outline-mcp`](plugins/outline-mcp/README.md) | mcp | Outline's built-in MCP server (remote HTTP) for a self-hosted Outline wiki, signing in with OAuth through /mcp or with an API key from ~/.config/outline/api-key. Prompts for the hostname. | - |
+| [`outline-docs`](plugins/outline-docs/README.md) | hook | SessionStart hook that tells Claude to record decisions, runbooks and other knowledge worth keeping in Outline as well as the repo. Installs outline-mcp. | - |
+| [`atlassian-mcp`](plugins/atlassian-mcp/README.md) | mcp | Atlassian Rovo MCP server for Atlassian Cloud (remote HTTP at mcp.atlassian.com/v2/mcp, OAuth 2.1): Confluence, Jira and Compass. Sign in with /mcp. | - |
+| [`atlassian-docs`](plugins/atlassian-docs/README.md) | hook | SessionStart hook that tells Claude to record knowledge worth keeping in Confluence and track follow-up work as Jira issues, as well as in the repo. Installs atlassian-mcp. | - |
 
 ### Agents
 

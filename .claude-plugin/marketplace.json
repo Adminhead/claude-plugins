@@ -1445,6 +1445,34 @@
       "description": "Mod that denies Bash used to read files (use Read/Grep/Glob), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, or destroy systems, infra and data. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "outline-mcp",
+      "source": "./plugins/outline-mcp",
+      "description": "Outline's built-in MCP server (remote HTTP) for a self-hosted Outline wiki, signing in with OAuth through /mcp or with an API key from ~/.config/outline/api-key. Prompts for the hostname.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "outline-docs",
+      "source": "./plugins/outline-docs",
+      "description": "SessionStart hook that tells Claude to record decisions, runbooks and other knowledge worth keeping in Outline as well as the repo. Installs outline-mcp.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "atlassian-mcp",
+      "source": "./plugins/atlassian-mcp",
+      "description": "Atlassian Rovo MCP server for Atlassian Cloud (remote HTTP at mcp.atlassian.com/v2/mcp, OAuth 2.1): Confluence, Jira and Compass. Sign in with /mcp.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "atlassian-docs",
+      "source": "./plugins/atlassian-docs",
+      "description": "SessionStart hook that tells Claude to record knowledge worth keeping in Confluence and track follow-up work as Jira issues, as well as in the repo. Installs atlassian-mcp.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

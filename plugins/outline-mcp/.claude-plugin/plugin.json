@@ -1,0 +1,17 @@
+{
+  "name": "outline-mcp",
+  "version": "0.1.0",
+  "description": "Outline's built-in MCP server (remote HTTP) for a self-hosted Outline wiki, signing in with OAuth through /mcp or with an API key from ~/.config/outline/api-key. Prompts for the hostname.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "outline_host": {
+      "type": "string",
+      "title": "Outline host",
+      "description": "Hostname of your self-hosted Outline, without scheme or path, for example wiki.example.com",
+      "required": true
+    }
+  }
+}

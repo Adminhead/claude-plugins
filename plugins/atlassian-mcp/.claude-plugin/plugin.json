@@ -1,0 +1,9 @@
+{
+  "name": "atlassian-mcp",
+  "version": "0.1.0",
+  "description": "Atlassian Rovo MCP server for Atlassian Cloud (remote HTTP at mcp.atlassian.com/v2/mcp, OAuth 2.1): Confluence, Jira and Compass. Sign in with /mcp.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

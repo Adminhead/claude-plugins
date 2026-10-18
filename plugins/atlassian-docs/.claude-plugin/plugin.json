@@ -1,0 +1,12 @@
+{
+  "name": "atlassian-docs",
+  "version": "0.1.0",
+  "description": "SessionStart hook that tells Claude to record knowledge worth keeping in Confluence and track follow-up work as Jira issues, as well as in the repo. Installs atlassian-mcp.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "atlassian-mcp"
+  ]
+}

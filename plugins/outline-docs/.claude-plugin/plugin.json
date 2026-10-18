@@ -1,0 +1,12 @@
+{
+  "name": "outline-docs",
+  "version": "0.1.0",
+  "description": "SessionStart hook that tells Claude to record decisions, runbooks and other knowledge worth keeping in Outline as well as the repo. Installs outline-mcp.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "outline-mcp"
+  ]
+}
