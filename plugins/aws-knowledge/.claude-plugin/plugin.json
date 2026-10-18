@@ -1,0 +1,9 @@
+{
+  "name": "aws-knowledge",
+  "version": "0.1.0",
+  "description": "AWS Knowledge MCP server (remote HTTP, no auth): AWS documentation search and reading, regional availability of services and APIs. Docs-only; use aws-mcp instead when you have credentials.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
