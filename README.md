@@ -3,7 +3,7 @@
 Claude Code plugin marketplace `adminhead`. It has three kinds of plugin:
 
 - `baseline`, a meta plugin you install once at user scope. It pulls in the plugins every session should have.
-- Project meta plugins (`python-meta`, `golang-meta`, `rust-meta`, `node-typescript-meta`, `dotnet-meta`, `web-meta`, `design-meta`, `godot-meta`, `iac-meta`, `kubernetes-meta`, `github-meta`) that you install at project scope. Each pulls in the plugins for one kind of project. `orchestration-meta` adds a main orchestration agent and a set of general-purpose agents.
+- Project meta plugins (`python-meta`, `golang-meta`, `rust-meta`, `node-typescript-meta`, `dotnet-meta`, `web-meta`, `design-meta`, `godot-meta`, `iac-meta`, `kubernetes-meta`, `github-meta`) that you install at project scope. Each pulls in the plugins for one kind of project. `orchestration-meta` adds a main orchestration agent and a set of general-purpose agents. It leaves out the costly `coder-max` tier, which you install per repo at local scope.
 - Core bundles shared by several metas: `programming-core` (general programming, installed by the language, web and game metas), `design-core` (UI and UX design, installed by `web-meta` and `design-meta`) and `gamedev-core` (engine-agnostic game development, installed by `godot-meta`). A project with two such metas gets one copy.
 - Focused plugins. Each ships exactly one component: one skill, agent, hook config, or MCP server. Install them through a meta plugin or on their own.
 
@@ -50,6 +50,7 @@ To do it by hand, add the marketplace once. Use a local clone, the GitHub repo, 
 | Install the default set | `claude plugin install baseline@adminhead --scope user` |
 | Install a stack set for a project | `claude plugin install python-meta@adminhead --scope project` |
 | Install one plugin | `claude plugin install <plugin>@adminhead --scope <scope>` |
+| Add the coder-max tier to one repo | `claude plugin install coder-max@adminhead --scope local` |
 | Refresh the catalog | `claude plugin marketplace update adminhead` |
 | Update a plugin | `claude plugin update <plugin>@adminhead --scope <scope>` |
 | Remove dependencies nothing needs | `claude plugin prune` |
@@ -89,7 +90,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`aws-meta`](plugins/aws-meta) | project | `aws-resource-query`, `aws-cloudwatch`, `aws-well-architected`, `cloud-ops-guard`, `aws`, `aws-cli`, `aws-mcp` | Plugin set for AWS projects (credentials and IAM, CLI, the AWS MCP Server, inspection, incidents, reviews), installed at project or local scope. Ships no components of its own. |
 | [`kubernetes-meta`](plugins/kubernetes-meta) | project | `kubernetes`, `helm`, `gitops`, `tilt` | Plugin set for Kubernetes projects (manifests, Helm, GitOps), installed at project scope. Ships no components of its own. |
 | [`github-meta`](plugins/github-meta) | project | `gh-issues`, `gh-pr`, `pr-comments`, `ship`, `shipper`, `gh-actions`, `dependabot`, `gh-readme` | Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own. |
-| [`orchestration-meta`](plugins/orchestration-meta) | user or project | `orchestration`, `agent-router`, `coder`, `architect`, `reviewer`, `debugger`, `scribe`, `readonly-agent-gate`, `coder-high`, `coder-critical`, `coder-max` | Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own. |
+| [`orchestration-meta`](plugins/orchestration-meta) | user or project | `orchestration`, `agent-router`, `coder`, `architect`, `reviewer`, `debugger`, `scribe`, `readonly-agent-gate`, `coder-high`, `coder-critical` | Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. coder-max is not included; install it per repo at local scope. Ships no components of its own. |
 
 ### Core bundles
 
@@ -290,7 +291,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`gh-readme`](plugins/gh-readme) | skill | README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules. | `github-meta` |
 | [`coder-critical`](plugins/coder-critical) | agent | Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails. | `orchestration-meta` |
 | [`coder-high`](plugins/coder-high) | agent | Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic. | `orchestration-meta` |
-| [`coder-max`](plugins/coder-max) | agent | Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. | `orchestration-meta` |
+| [`coder-max`](plugins/coder-max) | agent | Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. Not in orchestration-meta: install it per repo at local scope. | - |
 | [`bash-rules`](plugins/bash-rules/README.md) | hook | Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, or destroy systems, infra and data. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku. | `baseline` |
 | [`outline-mcp`](plugins/outline-mcp/README.md) | mcp | Outline's built-in MCP server (remote HTTP) for a self-hosted Outline wiki, signing in with OAuth through /mcp or with an API key from ~/.config/outline/api-key. Prompts for the hostname. | - |
 | [`outline-docs`](plugins/outline-docs/README.md) | hook | SessionStart hook that tells Claude to record decisions, runbooks and other knowledge worth keeping in Outline as well as the repo. Installs outline-mcp. | - |
@@ -315,7 +316,7 @@ Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and e
 | `coder:coder` | [`coder`](plugins/coder) | haiku | medium | 100k | yes | `orchestration-meta` |
 | `coder-critical:coder-critical` | [`coder-critical`](plugins/coder-critical) | opus | high | 300k | yes | `orchestration-meta` |
 | `coder-high:coder-high` | [`coder-high`](plugins/coder-high) | sonnet | medium | 300k | yes | `orchestration-meta` |
-| `coder-max:coder-max` | [`coder-max`](plugins/coder-max) | fable | high | 300k | yes | `orchestration-meta` |
+| `coder-max:coder-max` | [`coder-max`](plugins/coder-max) | fable | high | 300k | yes | - |
 | `dba:dba` | [`dba`](plugins/dba) | opus | medium | 300k | yes | - |
 | `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | 300k | no | `orchestration-meta` |
 | `devops:devops` | [`devops`](plugins/devops) | opus | medium | 300k | yes | `iac-meta` |

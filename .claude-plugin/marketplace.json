@@ -126,8 +126,8 @@
     {
       "name": "orchestration-meta",
       "source": "./plugins/orchestration-meta",
-      "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own.",
-      "version": "0.1.0",
+      "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. coder-max is not included; install it per repo at local scope. Ships no components of its own.",
+      "version": "0.2.0",
       "category": "meta"
     },
     {
@@ -428,7 +428,7 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the core Claude Code system prompt that --agent would otherwise replace and can start Claude inside herdr.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1442,8 +1442,8 @@
     {
       "name": "coder-max",
       "source": "./plugins/coder-max",
-      "description": "Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations.",
-      "version": "0.1.0",
+      "description": "Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. Not in orchestration-meta: install it per repo at local scope.",
+      "version": "0.2.0",
       "category": "development"
     },
     {

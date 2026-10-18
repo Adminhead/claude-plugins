@@ -37,7 +37,7 @@ Escalation rules, keyed on an agent's closing `escalate:` line:
 - debugger `deeper diagnosis`: re-spawn the debugger with `model: opus` and pass its hypotheses table.
 - dba `apply — <what to run>`: applying touches shared state, so confirm with the user before anyone runs it.
 - reviewer `thorough review`: continue the same reviewer with `SendMessage` and ask for a thorough pass.
-- `<agent> — <reason>` (a coder tier, security-auditor and others): route the work to that agent. When `coder-max` fails, send the failing check to a deeper diagnosis or report to the user.
+- `<agent> — <reason>` (a coder tier, security-auditor and others): route the work to that agent. When `coder-max` fails, or isn't in the routing table (it is installed per repo), send the failing check to a deeper diagnosis or report to the user.
 - `user`: stop and ask the user. `caller` or `main` means you.
 - A terminal audit may end with `next:` instead; relay it.
 
