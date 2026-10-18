@@ -14,6 +14,9 @@
     "reviewer",
     "debugger",
     "scribe",
-    "readonly-agent-gate"
+    "readonly-agent-gate",
+    "coder-high",
+    "coder-critical",
+    "coder-max"
   ]
 }

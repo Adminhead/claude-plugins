@@ -1,0 +1,9 @@
+{
+  "name": "coder-critical",
+  "version": "0.1.0",
+  "description": "Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

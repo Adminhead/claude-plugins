@@ -196,7 +196,7 @@
     {
       "name": "coder",
       "source": "./plugins/coder",
-      "description": "A general implementer subagent for one bounded code change, end to end: smallest correct edit, a real check that exercises it, and a diff report. The caller picks the model per call.",
+      "description": "Coder agent, haiku tier. a low-risk change with a known approach, like a mechanical multi-file edit, rename, config bump or small fix. Escalate to coder-high when the change needs judgment.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1422,6 +1422,27 @@
       "name": "gh-readme",
       "source": "./plugins/gh-readme",
       "description": "README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coder-critical",
+      "source": "./plugins/coder-critical",
+      "description": "Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coder-high",
+      "source": "./plugins/coder-high",
+      "description": "Coder agent, sonnet tier. a bounded feature, fix or refactor that needs judgment, like a new code path, an API change or non-trivial tests. Use coder for mechanical edits, coder-critical for risky logic.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "coder-max",
+      "source": "./plugins/coder-max",
+      "description": "Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations.",
       "version": "0.1.0",
       "category": "development"
     }

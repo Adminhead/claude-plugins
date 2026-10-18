@@ -1,0 +1,9 @@
+{
+  "name": "coder-high",
+  "version": "0.1.0",
+  "description": "Coder agent, sonnet tier. a bounded feature, fix or refactor that needs judgment, like a new code path, an API change or non-trivial tests. Use coder for mechanical edits, coder-critical for risky logic.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

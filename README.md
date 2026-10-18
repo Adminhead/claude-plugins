@@ -67,7 +67,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`iac-meta`](plugins/iac-meta) | project | `terraform`, `ansible`, `docker`, `bash`, `cloud-ops-guard`, `devops`, `bash-language-server@claude-code-lsps` | Plugin set for infrastructure-as-code projects, installed at project scope. Ships no components of its own. |
 | [`kubernetes-meta`](plugins/kubernetes-meta) | project | `kubernetes`, `helm`, `gitops` | Plugin set for Kubernetes projects (manifests, Helm, GitOps), installed at project scope. Ships no components of its own. |
 | [`github-meta`](plugins/github-meta) | project | `gh-issues`, `gh-pr`, `pr-comments`, `ship`, `shipper`, `gh-actions`, `dependabot`, `gh-readme` | Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own. |
-| [`orchestration-meta`](plugins/orchestration-meta) | user or project | `orchestration`, `agent-router`, `coder`, `architect`, `reviewer`, `debugger`, `scribe`, `readonly-agent-gate` | Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own. |
+| [`orchestration-meta`](plugins/orchestration-meta) | user or project | `orchestration`, `agent-router`, `coder`, `architect`, `reviewer`, `debugger`, `scribe`, `readonly-agent-gate`, `coder-high`, `coder-critical`, `coder-max` | Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own. |
 
 ### Core bundles
 
@@ -91,7 +91,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`check-bypass-guard`](plugins/check-bypass-guard) | hook | Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files. Needs bun. | `baseline` |
 | [`click-path-audit`](plugins/click-path-audit) | skill | Audits UI event handlers for behavior bugs. It maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths and effects that reset what a click just set. Use when a button does nothing or leaves the wrong state though each function works alone, or after a shared-state refactor. | - |
 | [`cloud-ops-guard`](plugins/cloud-ops-guard) | hook | PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, and gates subagent plan and aws calls. | `iac-meta` |
-| [`coder`](plugins/coder) | agent | A general implementer subagent for one bounded code change, end to end: smallest correct edit, a real check that exercises it, and a diff report. The caller picks the model per call. | `orchestration-meta` |
+| [`coder`](plugins/coder) | agent | Coder agent, haiku tier. a low-risk change with a known approach, like a mechanical multi-file edit, rename, config bump or small fix. Escalate to coder-high when the change needs judgment. | `orchestration-meta` |
 | [`coding`](plugins/coding) | skill | Makes the smallest complete, maintainable code change for a bounded feature, fix, integration, or behavior-preserving refactor. Use when implementing or modifying code whose approach is already clear ("add X to Y", "fix this function", "refactor this without changing behavior", "simplest solution", "this is over-engineered"). | `programming-core` |
 | [`debugger`](plugins/debugger) | agent | A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation. | `orchestration-meta` |
 | [`dependabot`](plugins/dependabot) | skill | Configure and troubleshoot GitHub Dependabot (dependabot.yml ecosystems, groups, cooldown, ignore rules, private registries) and sweep open Dependabot PRs, merging only green ones. | `github-meta` |
@@ -267,6 +267,9 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`nuget`](plugins/nuget) | skill | Manages NuGet dependencies and packages in .NET repos. Use for Directory.Packages.props and Central Package Management, bumping or aligning package versions, NU1xxx restore warnings, nuget.config sources and source mapping, vulnerable-package audits, lock files, dotnet pack metadata, or publishing to nuget.org with trusted publishing. | `dotnet-meta` |
 | [`roslyn-analyzers`](plugins/roslyn-analyzers) | skill | Roslyn analyzer skill: DiagnosticAnalyzer, CodeFixProvider and IIncrementalGenerator design and tests, Microsoft.CodeAnalysis host-compatibility pinning, and analyzer NuGet packaging. | - |
 | [`gh-readme`](plugins/gh-readme) | skill | README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules. | `github-meta` |
+| [`coder-critical`](plugins/coder-critical) | agent | Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails. | `orchestration-meta` |
+| [`coder-high`](plugins/coder-high) | agent | Coder agent, sonnet tier. a bounded feature, fix or refactor that needs judgment, like a new code path, an API change or non-trivial tests. Use coder for mechanical edits, coder-critical for risky logic. | `orchestration-meta` |
+| [`coder-max`](plugins/coder-max) | agent | Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. | `orchestration-meta` |
 
 ### Agents
 
@@ -277,6 +280,9 @@ Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and e
 | `architect:architect` | [`architect`](plugins/architect) | opus | high | 300k | no | `orchestration-meta` |
 | `browser-tester:browser-tester` | [`browser-tester`](plugins/browser-tester) | sonnet | medium | 200k | no | `web-meta` |
 | `coder:coder` | [`coder`](plugins/coder) | haiku | medium | 100k | yes | `orchestration-meta` |
+| `coder-critical:coder-critical` | [`coder-critical`](plugins/coder-critical) | opus | high | 300k | yes | `orchestration-meta` |
+| `coder-high:coder-high` | [`coder-high`](plugins/coder-high) | sonnet | medium | 300k | yes | `orchestration-meta` |
+| `coder-max:coder-max` | [`coder-max`](plugins/coder-max) | fable | high | 300k | yes | `orchestration-meta` |
 | `dba:dba` | [`dba`](plugins/dba) | opus | medium | 300k | yes | - |
 | `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | 300k | no | `orchestration-meta` |
 | `devops:devops` | [`devops`](plugins/devops) | opus | medium | 300k | yes | `iac-meta` |
