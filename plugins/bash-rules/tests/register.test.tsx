@@ -56,10 +56,10 @@ describe('parser stage', () => {
 
   test('benign commands reach the tool without a model call', async ($, on) => {
     const w = world(on, 3e9)
-    for (const c of ['rm -rf ./build', 'git log | grep fix', 'npm test > out.log 2>&1', 'git commit -F - <<EOF\nmsg\nEOF']) {
+    for (const c of ['rm -rf ./build', 'git log | grep fix', 'npm test > out.log 2>&1', 'git commit -F - <<EOF\nmsg\nEOF', 'grep -rn foo src', "find . -name '*.ts'"]) {
       expect((await call($, c)).deny).toBeUndefined()
     }
-    expect(w.ran.length).toBe(4)
+    expect(w.ran.length).toBe(6)
     expect(w.fetches.length + w.completes.length).toBe(0)
   })
 
@@ -73,7 +73,7 @@ describe('model stages', () => {
   test('Ollama decides an unsure command when it is confident, and the verdict is cached', async ($, on) => {
     const w = world(on, 5e9, { fetch: () => decision('read', 0.95) })
     const out = await call($, "sed 's/a/b/' notes.txt")
-    expect(out.deny).toMatch(/^bash-rules: a model check found this command reads or searches files .*\(clef chose read at p=0\.95\)/)
+    expect(out.deny).toMatch(/^bash-rules: a model check found this command reads a file .*\(clef chose read at p=0\.95\)/)
     expect(w.fetches).toHaveLength(1)
     expect(w.fetches[0].url).toBe('http://localhost:11434/v1/systemone')
     expect(w.fetches[0].init.method).toBe('POST')

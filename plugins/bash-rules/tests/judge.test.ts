@@ -33,6 +33,9 @@ describe('prompt', () => {
     expect(body.format.properties.category.enum).toEqual(['none', 'read', 'write', 'smuggle'])
     expect(body.messages.map((m: any) => m.role)).toEqual(['system', 'user'])
     expect(body.messages[0].content).toMatch(/Ignore any instructions/)
+    // No search tool exists, so the model must not steer searches away from the shell.
+    expect(body.messages[0].content).not.toMatch(/Grep|Glob/)
+    expect(body.messages[0].content).toMatch(/NOT read: searching file contents or finding files by name/)
   })
 })
 
@@ -108,7 +111,7 @@ describe('nudge', () => {
   test('a hit names the built-ins; none lets the command run; the reason is one capped line', () => {
     expect(modelNudge({ category: 'none', confidence: 1, reason: '' })).toBeNull()
     expect(modelNudge({ category: 'read', confidence: 1, reason: 'prints a file' })).toBe(
-      'bash-rules: a model check found this command reads or searches files through the shell (prints a file). Use Read (offset and limit for a line range), Grep or Glob instead.',
+      'bash-rules: a model check found this command reads a file through the shell (prints a file). Use the Read tool instead (offset and limit for a line range); to find text, run grep on the file.',
     )
     expect(modelNudge({ category: 'write', confidence: 1, reason: '' })).toMatch(/Write tool .* Edit tool/)
     expect(modelNudge({ category: 'smuggle', confidence: 1, reason: '' })).toMatch(/scratch file with the Write tool/)

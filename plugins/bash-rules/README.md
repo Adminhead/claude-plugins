@@ -2,6 +2,8 @@
 
 A mod that checks every Bash call before it runs. It denies destructive commands, and it denies Bash used for work the built-in tools do, with a deny message that names the tool to use instead. It supersedes `bash-danger-guard`.
 
+Searching is left to the shell. Claude Code no longer has Grep or Glob tools: its Bash `grep` and `find` are shell functions that run the search tools bundled in the `claude` binary, so `grep`, `rg`, `find`, `fd` and `ls` all run.
+
 ## Install
 
 ```
@@ -14,15 +16,14 @@ A mod that checks every Bash call before it runs. It denies destructive commands
 
 | Category | Examples | Instead |
 | --- | --- | --- |
-| read | `sed -n 1,5p f`, `cat f`, `head`/`tail` of a file, `awk '{print}' f`, `cat f \| grep x` | Read (offset/limit), Grep |
-| search | `grep -r x .`, `rg x`, `find . -name '*.ts'`, `fd x`, `ls src/*.ts` | Grep, Glob |
+| read | `sed -n 1,5p f`, `cat f`, `head`/`tail` of a file, `awk '{print}' f` | Read (offset/limit) |
 | write | `cat > f <<EOF`, `echo x >> f`, `echo x \| tee f`, `sed -i`, `perl -pi`, `python -c "open(...,'w')"` | Write, Edit |
 | smuggle | `echo … \| base64 -d \| sh`, `X='…'; bash -c "$X"`, `python -c "exec(b64decode(…))"` | a scratch script written with Write |
 | destructive | `rm -rf /`, `rm` of system files, `~/.ssh` or shell rc files, disk wipes, `sudo`, `terraform destroy`, `kubectl delete ns`, `helm uninstall`, `docker system prune -a`, `docker compose down -v`, `dropdb`, `DROP TABLE` via a client or in a `psql -f`/`mysql <` script file | hand it to the user |
 
 It asks before `curl … | sh`, force-pushes and hard resets, and `git clean -fdx` outside a linked worktree.
 
-It does not count as a read: filtering another command's output (`git log | grep x`), `wc`, `diff`, `git show`, `jq`, `tail -f`, or a file read only to feed a command (`$(cat .nvmrc)`). It does not count as a write: saving a real command's output (`npm test > out.log`, `cmd | tee build.log`), `> /dev/null`, or a heredoc fed to a program (`git commit -F - <<EOF`, `kubectl apply -f -`, `psql <<EOF`).
+It does not count as a read: searching (`grep -rn x src`, `cat f | grep x`, `find . -name '*.ts'`), filtering another command's output (`git log | grep x`), `wc`, `diff`, `git show`, `jq`, `tail -f`, or a file read only to feed a command (`$(cat .nvmrc)`). It does not count as a write: saving a real command's output (`npm test > out.log`, `cmd | tee build.log`), `> /dev/null`, or a heredoc fed to a program (`git commit -F - <<EOF`, `kubectl apply -f -`, `psql <<EOF`).
 
 ## How it decides
 

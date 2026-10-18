@@ -1,5 +1,6 @@
-// Tool-hygiene verdicts for bash-rules: Bash that reads files (Read, Grep, Glob do that), authors or edits files (Write,
-// Edit do that), or hides a payload (encoded text or a variable run as a script). Each command gets `deny` (a clear hit),
+// Tool-hygiene verdicts for bash-rules: Bash that shows file contents (Read does that), authors or edits files (Write,
+// Edit do that), or hides a payload (encoded text or a variable run as a script). Searching stays in the shell: Claude
+// Code has no Grep or Glob tool, and its Bash `grep` and `find` are the bundled search tools. Each command gets `deny` (a clear hit),
 // `pass` (no read, write or smuggle shape at all) or `unsure` (a shape the parser cannot settle, which the caller hands
 // to a model). Like the danger rules these target model habits, not a determined adversary. Nothing here touches `$`.
 
@@ -8,7 +9,7 @@ import { fedBodies, prevStage } from '../danger/rules'
 import type { ShellCommand } from '../shell/walk'
 
 export type Category = 'read' | 'write' | 'smuggle'
-export type Tool = 'Read' | 'Grep' | 'Glob' | 'Write' | 'Edit' | 'script'
+export type Tool = 'Read' | 'Write' | 'Edit' | 'script'
 export type Verdict =
   | { kind: 'deny'; category: Category; tool: Tool; message: string }
   | { kind: 'pass' }
@@ -19,9 +20,7 @@ type Finding = { category: Category; tool: Tool; what: string }
 
 // What to use instead, per tool. Model verdicts reuse these (judge.ts).
 export const INSTEAD: Record<Tool, string> = {
-  Read: 'Use the Read tool instead (offset and limit for a line range).',
-  Grep: 'Use the Grep tool instead (glob or type to pick files, -n and -A/-B/-C for context, output_mode for counts or file lists).',
-  Glob: 'Use the Glob tool instead (a pattern such as "**/*.ts").',
+  Read: 'Use the Read tool instead (offset and limit for a line range); to find text, run grep on the file.',
   Write: 'Use the Write tool to create or overwrite the file.',
   Edit: 'Use the Edit tool instead (replace_all for every occurrence).',
   script: 'Write the script as plain text to a scratch file with the Write tool and run that, or use a built-in tool.',
@@ -29,8 +28,6 @@ export const INSTEAD: Record<Tool, string> = {
 
 const LEAD: Record<Tool, string> = {
   Read: 'reads a file through the shell',
-  Grep: 'searches file contents through the shell',
-  Glob: 'searches for files by name through the shell',
   Write: 'writes file content through the shell',
   Edit: 'edits a file in place through the shell',
   script: 'hides what it runs',
@@ -174,35 +171,11 @@ function awkRawPrint(prog: string): boolean {
 }
 
 const SHOW = new Set(['cat', 'tac', 'nl', 'bat', 'batcat', 'less', 'more', 'most'])
+// Search programs: never a read themselves, and a file read piped into one is a search.
 const GREPS = new Set(['grep', 'egrep', 'fgrep', 'rg', 'ag', 'ack', 'ugrep'])
-const FIND_GLOBBABLE = new Set(['-name', '-iname', '-path', '-ipath', '-wholename', '-iwholename', '-regex', '-iregex', '-type', '-maxdepth', '-mindepth', '-not', '!', '-o', '-or', '-a', '-and', '(', ')', '-print', '-print0', '-follow', '-regextype', '-xtype'])
-const FIND_VALUED = new Set(['-name', '-iname', '-path', '-ipath', '-wholename', '-iwholename', '-regex', '-iregex', '-type', '-maxdepth', '-mindepth', '-regextype', '-xtype'])
-const FIND_NAMES = new Set(['-name', '-iname', '-path', '-ipath', '-wholename', '-iwholename', '-regex', '-iregex'])
 
-function findSearch(v: Argv): boolean {
-  let i = 1
-  for (; i < v.length; i++) {
-    const a = v[i]
-    if (a === null) continue
-    if (a === '-D') i++
-    else if (!/^-[HLPO]/.test(a)) break
-  }
-  while (i < v.length && v[i] !== null && !/^[-(!]/.test(v[i]!)) i++
-  let named = false
-  for (; i < v.length; i++) {
-    const a = v[i]
-    if (a === null || !FIND_GLOBBABLE.has(a)) return false
-    if (FIND_NAMES.has(a)) named = true
-    if (a === '-type' || a === '-xtype') {
-      if (v[i + 1] !== 'f') return false
-      named = true
-    }
-    if (FIND_VALUED.has(a)) i++
-  }
-  return named
-}
-
-// Whether a viewer program reads a file for display, and which built-in does that. `xargs` hands it file operands.
+// Whether a viewer program reads a file for display. `xargs` hands it file operands. Searches (grep, rg, find, fd, ls)
+// return null: they are the shell's job.
 function readOf(v: Argv, c: ShellCommand, viaXargs: boolean): ReadHit {
   const name = baseName(v[0])
   const fromFile = viaXargs || fileStdin(c)
@@ -237,32 +210,6 @@ function readOf(v: Argv, c: ShellCommand, viaXargs: boolean): ReadHit {
     if (files(ops).length === 0 && !fromFile) return null
     if (prog !== null && awkRawPrint(prog)) return { category: 'read', tool: 'Read', what: 'awk printing lines of a file' }
     return { unsure: 'awk program run over a file' }
-  }
-  if (GREPS.has(name)) {
-    const rg = name !== 'grep' && name !== 'egrep' && name !== 'fgrep'
-    const s = rg
-      ? split(v, 'efgtTmABCjMrE', ['--regexp', '--file', '--glob', '--iglob', '--type', '--type-not', '--max-count', '--context', '--after-context', '--before-context', '--threads', '--max-columns', '--replace', '--encoding', '--max-depth', '--ignore-file', '--sort', '--sortr', '--color', '--colors'])
-      : split(v, 'efmABCdD', ['--regexp', '--file', '--max-count', '--after-context', '--before-context', '--context', '--include', '--exclude', '--exclude-dir', '--exclude-from', '--label', '--devices', '--directories', '--binary-files', '--group-separator'])
-    if (has(s, '-q', '--quiet', '--silent')) return null
-    if (rg && has(s, '--files')) return { category: 'read', tool: 'Glob', what: `${name} --files` }
-    const patterned = has(s, '-e', '-f', '--regexp', '--file')
-    const ops = files(patterned ? s.operands : s.operands.slice(1))
-    const recursive = rg ? !c.pipeline?.stage && !textStdin(c) && !fileStdin(c) : has(s, '-r', '-R', '--recursive', '--dereference-recursive')
-    if (ops.length > 0 || fromFile || recursive) return { category: 'read', tool: 'Grep', what: `${name} over files` }
-    return null
-  }
-  if (name === 'find') return findSearch(v) ? { category: 'read', tool: 'Glob', what: 'find by name' } : null
-  if (name === 'fd' || name === 'fdfind') {
-    const s = split(v, 'tedxXEcjS', ['--type', '--extension', '--exec', '--exec-batch', '--exclude', '--max-depth', '--changed-within', '--size'])
-    if (has(s, '-x', '-X', '--exec', '--exec-batch')) return null
-    if ([...(s.values.get('-t') ?? []), ...(s.values.get('--type') ?? [])].some(t => t !== null && /^d/.test(t))) return null
-    return { category: 'read', tool: 'Glob', what: `${name} by name` }
-  }
-  if (name === 'ls') {
-    const s = split(v, 'IwT', ['--ignore', '--hide', '--width', '--format', '--sort', '--time', '--color', '--time-style', '--block-size'])
-    if (has(s, '-d', '--directory')) return null
-    if (has(s, '-R', '--recursive') || s.operands.some(a => a !== null && /[*?[]/.test(a))) return { category: 'read', tool: 'Glob', what: 'ls searching for files' }
-    return null
   }
   return null
 }
@@ -420,9 +367,8 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
           if ('unsure' in r) {
             if (out !== 'consumed') unsure.push(r.unsure)
           } else if (out === 'shown') {
-            // `cat f | grep x` is a search.
-            const grepped = r.tool === 'Read' && downstream(c, commands).some(d => GREPS.has(baseName(d.argv[0] ?? null)))
-            hits.push(grepped ? { ...r, tool: 'Grep' } : r)
+            // `cat f | grep x` is a search, which the shell does.
+            if (!downstream(c, commands).some(d => GREPS.has(baseName(d.argv[0] ?? null)))) hits.push(r)
           }
           else if (out !== 'consumed') unsure.push(`${r.what} piped into ${out.unknown}`)
         }

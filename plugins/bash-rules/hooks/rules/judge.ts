@@ -61,10 +61,10 @@ export function parseOptions(raw: Readonly<Record<string, unknown>> | undefined)
 export const MAX_PROMPT_COMMAND = 4096
 
 export const SYSTEM = `You review one Bash command that an AI coding agent wants to run, and decide whether it misuses the shell for work the agent's built-in tools do.
-The built-in tools: Read (show a file, with offset and limit for a line range), Grep (search file contents), Glob (find files by name pattern), Write (create or overwrite a file), Edit (change part of a file).
+The built-in tools: Read (show a file, with offset and limit for a line range), Write (create or overwrite a file), Edit (change part of a file). There is no search tool: searching file contents (grep, rg) and finding files (find, fd, ls) belong in the shell.
 
 Categories:
-- read: the main purpose is to show the agent file contents, search file contents, or find files by name. NOT read: filtering or paging another program's output (git log | grep x, cmd | head), counting (wc), diff, git show or git diff, jq or yq queries, running programs, builds or tests, inspecting binaries, following logs (tail -f), reading a file only to feed another command.
+- read: the main purpose is to show the agent a file's contents as they are. NOT read: searching file contents or finding files by name (grep, rg, find, fd, ls, cat f | grep x), filtering or paging another program's output (git log | grep x, cmd | head), counting (wc), diff, git show or git diff, jq or yq queries, running programs, builds or tests, inspecting binaries, following logs (tail -f), reading a file only to feed another command.
 - write: the command creates or edits file content the agent wrote itself (heredoc, echo or printf into a file, sed -i or perl -i edits, interpreter one-liners or scripts that write files with content they carry). NOT write: saving a real program's output to a file (npm test > out.log, cmd 2>&1 | tee build.log), copying or moving files, > /dev/null, heredocs fed to a program's stdin (git commit -F -, kubectl apply -f -, psql), package managers, build tools, git.
 - smuggle: the command hides what it runs: base64, hex or compressed text decoded into a shell, an interpreter or a file; code kept in a variable and then run; eval or exec of encoded or obfuscated strings.
 - none: anything else, including ordinary development commands.
@@ -115,8 +115,8 @@ export const apiFor = (model: string): OllamaApi => (/^clef\b/i.test(model) ? 's
 export const wantsSystemone = (status: number, body: string) => status === 400 && /\/v1\/systemone/.test(body)
 
 export const CRITERIA: Record<ModelCategory, string> = {
-  none: "An ordinary development command: builds, tests, git, package managers, running programs, filtering or paging another program's output, counting, diffing, or saving a real program's output to a file.",
-  read: 'Shows the agent file contents, searches file contents or finds files by name: work the Read, Grep and Glob tools do.',
+  none: "An ordinary development command: builds, tests, git, package managers, running programs, searching file contents or finding files (grep, rg, find, fd), filtering or paging another program's output, counting, diffing, or saving a real program's output to a file.",
+  read: "Shows the agent a file's contents as they are: work the Read tool does.",
   write: 'Creates or edits file content the agent wrote itself (heredoc, echo or printf into a file, sed -i, interpreter one-liners that write files): work the Write and Edit tools do.',
   smuggle: 'Hides what it runs: base64, hex or compressed text decoded into a shell, an interpreter or a file; code kept in a variable and then run; eval of encoded strings.',
 }
@@ -129,7 +129,7 @@ export function systemoneRequest(model: string, command: string, notes: readonly
     questions: {
       category: {
         type: 'choice',
-        instructions: 'Does this command misuse the shell for work the built-in Read, Grep, Glob, Write and Edit tools do, or hide what it runs?',
+        instructions: 'Does this command misuse the shell for work the built-in Read, Write and Edit tools do, or hide what it runs? Searching with grep, rg, find or fd is not misuse.',
         criteria: CRITERIA,
       },
     },
@@ -219,13 +219,13 @@ export function completionText(reply: unknown): { text: string } | { error: stri
 export const ollamaStands = (v: ModelVerdict, threshold: number) => v.confidence >= threshold
 
 const MODEL_INSTEAD: Record<Exclude<ModelCategory, 'none'>, string> = {
-  read: 'Use Read (offset and limit for a line range), Grep or Glob instead.',
+  read: INSTEAD.Read,
   write: 'Use the Write tool to create a file or the Edit tool to change one.',
   smuggle: INSTEAD.script,
 }
 
 const MODEL_LEAD: Record<Exclude<ModelCategory, 'none'>, string> = {
-  read: 'reads or searches files through the shell',
+  read: 'reads a file through the shell',
   write: 'writes file content through the shell',
   smuggle: 'hides what it runs',
 }

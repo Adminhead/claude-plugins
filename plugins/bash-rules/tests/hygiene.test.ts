@@ -53,7 +53,8 @@ describe('read', () => {
     )
   })
 
-  test('searching contents goes to Grep', () => {
+  // Claude Code has no Grep or Glob tool; its Bash grep and find are the bundled search tools.
+  test('searching contents and finding files stay in the shell', () => {
     expectAll(
       [
         'grep foo file',
@@ -69,17 +70,10 @@ describe('read', () => {
         'ag foo',
         'grep foo < f',
         'cat foo | grep x',
+        'head -50 f | grep x',
         'grep -rn foo src | head',
         "find . -name '*.ts' | xargs grep foo",
         "find . -name '*.ts' -exec grep -l foo {} +",
-      ],
-      'read/Grep',
-    )
-  })
-
-  test('finding files by name goes to Glob', () => {
-    expectAll(
-      [
         "find . -name '*.ts'",
         "find src -type f -name '*.tsx'",
         "find . -iname 'readme*' -maxdepth 2",
@@ -92,7 +86,7 @@ describe('read', () => {
         'ls -R',
         "find . -name '*.ts' | head",
       ],
-      'read/Glob',
+      'pass',
     )
   })
 
@@ -293,8 +287,9 @@ describe('smuggle', () => {
 describe('verdict shape', () => {
   test('a deny names the built-in to use, and the strongest category wins', () => {
     expect(verdict('sed -n 1,5p f')).toMatchObject({ message: expect.stringMatching(/^bash-rules: this reads a file .*Read tool .*offset and limit/) })
-    expect(verdict('grep -r x .')).toMatchObject({ message: expect.stringMatching(/Grep tool/) })
-    expect(verdict("find . -name '*.ts'")).toMatchObject({ message: expect.stringMatching(/Glob tool/) })
+    const cat = verdict('cat f')
+    expect(cat.kind === 'deny' ? cat.message : '').toMatch(/run grep on the file/)
+    expect(cat.kind === 'deny' ? cat.message : '').not.toMatch(/Grep|Glob/)
     expect(verdict('echo x > f')).toMatchObject({ message: expect.stringMatching(/Write tool/) })
     expect(verdict("sed -i s/a/b/ f")).toMatchObject({ message: expect.stringMatching(/Edit tool/) })
     expect(kind('cat f; echo aGk= | base64 -d | sh')).toBe('smuggle/script')
