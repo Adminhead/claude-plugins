@@ -1,13 +1,13 @@
 ---
 name: aws-resource-query
-description: Answers questions about live AWS resources with read-only AWS CLI calls (describe, list, safe get) using the user's profile or SSO session, and never prints secret values. Use when asked what exists in an AWS account or region, how a resource is configured, or what state it is in now (EC2, Lambda, ECS/EKS, S3, RDS, DynamoDB, IAM, VPC).
+description: Answers questions about live AWS resources with read-only AWS CLI calls (describe, list, safe get) using the user's profile or SSO session, and never prints secret values. Use when asked what exists in an AWS account or region, how a resource is configured, or what state it is in now (EC2, Lambda, ECS/EKS, S3, RDS, DynamoDB, IAM, VPC), or before calling the aws-mcp `run_script` or `get_presigned_url` tools. Not for credentials, IAM policy or sign-in (use `aws`).
 ---
 
 # AWS resource query
 
 Translate a question about an AWS account into AWS CLI commands, run them, and report what exists. Reads by default; changes a resource only when the user asks (see Changes). Never prints a secret value.
 
-Not for incident triage from logs and metrics (`aws-cloudwatch`, if installed), Well-Architected or cost review (`aws-well-architected`, if installed), or writing infrastructure as code (`terraform`, if installed).
+Not for incident triage from logs and metrics (`aws-cloudwatch`, if installed), Well-Architected or cost review (`aws-well-architected`, if installed), or writing infrastructure as code (`terraform`, if installed). For credentials, IAM policy or sign-in, use `aws`; for CLI mechanics and write commands, use `aws-cli`.
 
 Adapted from awesome-copilot `aws-resource-query` (MIT, Copyright GitHub, Inc.). See `LICENSE` in the plugin root.
 
@@ -21,8 +21,8 @@ Adapted from awesome-copilot `aws-resource-query` (MIT, Copyright GitHub, Inc.).
    aws sts get-caller-identity --profile <profile> --query '{Account:Account,Arn:Arn}' --output table
    ```
 
-4. **Handle expired sessions by asking.** If the call reports an expired or missing SSO session, ask the user to run `aws sso login --profile <profile>`. The login is interactive and belongs to the user.
-5. **Leave credentials alone.** Do not read `~/.aws/credentials`, `~/.aws/config`, `~/.aws/sso/cache/`, or `~/.aws/cli/cache/` directly, and do not run `aws configure list` or `aws configure export-credentials`, which can print key material. `aws configure get` is for `region` and `output` only.
+4. **Handle expired sessions by asking.** If the call reports an expired or missing SSO session, ask the user to run `aws sso login --profile <profile>`. The login is interactive and belongs to the user (profile and SSO setup is in `aws`).
+5. **Leave credentials alone.** Never read `~/.aws/credentials`, `~/.aws/config`, `~/.aws/sso/cache/` or `~/.aws/cli/cache/`. Never run `aws configure list` or `aws configure export-credentials`, and never print keys. The `aws` skill, if installed, has the full rule.
 
 ## What may run
 
@@ -96,6 +96,7 @@ Read the one that matches the question. Each lists intent-to-command mappings.
 - `references/network.md` for VPC, subnets, security groups, load balancers, Route 53, and CloudFront.
 - `references/identity-and-security.md` for IAM, KMS, Secrets Manager and SSM metadata, ACM, GuardDuty, Security Hub, and Config.
 - `references/ops-and-cost.md` for alarms, log groups, CloudTrail, queues and topics, EventBridge, API Gateway, Step Functions, tag-based search, Cost Explorer, and Budgets.
+- `references/aws-mcp.md` whenever `mcp__plugin_aws-mcp_aws-mcp__*` tools are present: read it before calling `aws___run_script` or `aws___get_presigned_url`. The deny list and projection rules above apply to those tools too.
 
 ## Errors
 

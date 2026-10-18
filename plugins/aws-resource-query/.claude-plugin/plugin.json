@@ -1,6 +1,6 @@
 {
   "name": "aws-resource-query",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Read-only AWS CLI resource inspection: what exists in an account or region and how it is configured, with a deny-list for secret and data reads, --query projections, and changes only on request.",
   "author": {
     "name": "AdminHead",
