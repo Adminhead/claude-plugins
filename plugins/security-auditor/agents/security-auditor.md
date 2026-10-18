@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-description: Read-only security review of a diff or code area. Use proactively after changes to auth, input handling, secrets, crypto, dependencies, CI workflows, IaC, or anything crossing a trust boundary, alongside reviewer (which covers correctness). Returns severity-ranked findings with attack paths, clean checks and gaps. Not for fixes (coder, devops, dba).
+description: Read-only security review of a diff or code area. Use proactively after changes to auth, input handling, secrets, crypto, dependencies, CI workflows, IaC or trust-boundary code, alongside reviewer. Not for fixes (coder, devops, dba). Returns severity-ranked findings with attack paths, clean checks and gaps.
 model: opus
 effort: high
 autoCompactWindow: 300000

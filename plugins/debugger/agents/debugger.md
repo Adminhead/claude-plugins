@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: Read-only root-cause diagnosis for failing or flaky tests, regressions, and errors or behavior with no known cause, before anyone edits code. Returns the root cause (confirmed or suspected), a repro command, a hypotheses table and a fix recommendation. The caller can pass a stronger model for high-stakes failures (concurrency, data loss, security, production). Not for fixes with a known cause (coder).
+description: Read-only root-cause diagnosis for failing or flaky tests, regressions and unexplained errors, before anyone edits code. Not for fixes with a known cause (coder). For high-stakes failures (concurrency, data loss, security, production) the caller passes a stronger model. Returns root cause, repro, hypotheses and a fix.
 model: sonnet
 effort: high
 autoCompactWindow: 300000

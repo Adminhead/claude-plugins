@@ -254,5 +254,17 @@ def test_catalog_lists_agents_with_their_plugin(root):
     assert "| `helper:helper` | [`helper`](plugins/helper) | haiku | medium | 100k | no | `python-meta` |" in readme
 
 
+def test_subagents_cannot_spawn_agents(root):
+    run(root, "new", "helper", "--kind", "agent", "--description", "Helps.")
+    path = root / "plugins/helper/agents/helper.md"
+    assert plugins.check(root) == []
+    path.write_text(path.read_text().replace("tools: Read, Grep, Glob", "tools: Read, Agent"))
+    assert any("must not list Agent" in e for e in plugins.check(root))
+    path.write_text(path.read_text().replace("tools: Read, Agent\n", "disallowedTools: Agent\n"))
+    assert any("disallowedTools must include Workflow" in e for e in plugins.check(root))
+    path.write_text(path.read_text().replace("disallowedTools: Agent", "disallowedTools: Agent, Workflow"))
+    assert [e for e in plugins.check(root) if not e.startswith("README.md")] == []
+
+
 def test_repo_passes_check():
     assert plugins.check(REPO) == []

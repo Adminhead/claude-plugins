@@ -278,7 +278,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | What | Why |
 | --- | --- |
 | CodeGraph skill, MCP server, guideline mod, autoinit hook; testing harness | codebase-memory-mcp replaces them. |
-| crew Explore agent, orchestration-guard hooks, system prompt override | Built-in Explore plus the codebase-memory agents cover exploration. The guard hooks and copied system prompt drift with each release; `agent-router` replaces the hard-coded routing. |
+| crew Explore agent, orchestration-guard hooks | Built-in Explore plus the codebase-memory agents cover exploration. The guard hooks drift with each release, so their rules live on as prose in `orchestration.md`; `agent-router` replaces the hard-coded routing. The system prompt override is adopted: the orchestration plugin ships it (decision 6). |
 | coremods git-tools, tool-mgr hygiene rules, systemone, DuckDB metrics | No standalone value, contradict current harness guidance, or too heavy. |
 | context7, ripgrep and grep-app skills; worktree, agent-teams, create-skill, map-codebase, editorconfig | Built-ins, server instructions, codebase-memory or repo-local skills cover them. |
 | GitHub, Exa, Playwright and AWS MCP servers | `gh`, claude.ai connectors and CLI skills do the same with less context. |
@@ -310,6 +310,17 @@ Consider extending `scripts/plugins.py new` with a `--from <path>` option that c
 - **Mods registering one event twice.** `CLAUDE.md` says the engine refuses a plugin that registers the same event twice. claude-seo's seo-cockpit calls `on('tool.call')` three times with different matchers in one module. The published `claude-code.d.ts` doesn't settle it. Test before splitting coremods or citing seo-cockpit in `mod-authoring`.
 - **`mcp-scan` name.** Confirm the current package and CLI name now that Invariant Labs is part of Snyk.
 - **`better-auth` provenance.** Confirm the archived skill was rewritten from the docs.
+
+## Future features
+
+### `subagent-spawn-guard` (not started)
+
+Lets write agents such as the coder tiers hand broad searches to read-only agents (`Explore` by default) without a round trip to the orchestrator, while keeping them from starting anything else.
+
+- **Why a mod:** a subagent's `tools` can't be limited to agent types; the `Agent(type)` syntax only applies to the main thread. Listing `Agent` in a subagent lets it spawn any type, which would undo tier routing and the read-only guarantees.
+- **How:** a focused mod plugin hooking `agent.spawn`. `AgentSpawnInput.parentAgentId` is set only when the spawn happens inside a subagent, and the hook can answer `{ deny }`. Rule: a subagent may spawn only allowlisted read-only types (userConfig option, default `Explore`); every other subagent spawn is denied with a message. Main-thread spawns pass through.
+- **Agents that use it** (coder tiers, and possibly `debugger` and `architect`) get `Agent` back in their definitions and declare a plugin dependency on the guard, so they're never installed without it. `scripts/plugins.py`'s spawn check then accepts `Agent` for agents that depend on the guard, and still rejects `Workflow`.
+- **When:** build it if coders run short of context in large repos without a codebase-memory index; in indexed repos `search_graph`, `trace_path` and `get_code_snippet` already keep searches cheap.
 
 ## Open questions
 

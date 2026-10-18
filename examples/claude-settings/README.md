@@ -38,6 +38,7 @@ The tables below cover `settings.global.json` unless a section names another fil
 | `teammateMode` | `auto` | Teammates get split panes when running inside tmux or iTerm2, and run in-process otherwise. Default is `in-process` |
 | `subagentStatusLine` | `jq` command | Rewrites each subagent row in the agent panel to `name · model · progress · tokens` (the model without its `claude-` prefix), so you can see which model each agent runs on. Needs `jq` on `PATH`; a row whose model isn't resolved yet shows without it |
 | `env.CLAUDE_AUTO_BACKGROUND_TASKS` | `1` | Long-running subagents move to the background |
+| `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` | `2` | Caps nesting at one layer below your subagents (the default allows three). Third-party agents built to fan out still work, but nothing nests deeper. The adminhead agents can't spawn at all: each blocks `Agent` and `Workflow` in its own definition, which `scripts/plugins.py check` enforces. `1` turns nesting off for every agent |
 | `env.CLAUDE_CODE_WORKER_CHECKIN_SCHEDULE` | `120` | Reminds Claude to check on background subagents every 2 minutes. Without it there are no reminders |
 | `env.CLAUDE_CODE_ENABLE_TODO_TOOLS` | `1` | Task-tracking tools on every model |
 | `remoteControlAtStartup` | `true` | Connects Remote Control in each session |

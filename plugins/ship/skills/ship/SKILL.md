@@ -1,10 +1,11 @@
 ---
 name: ship
-description: "Ships finished work in one run: commits, pushes, and optionally opens a ready PR, waits for checks and merges. Use when asked to \"commit and push\", \"push this up\", \"ship it\", or \"commit, push, open a PR, and merge it\". Takes an optional level: push, pr or merge."
+description: "Ships finished work in one run: commits, pushes, and optionally opens a ready PR, waits for checks and merges. User-run only (/ship); agents delegate to shipper:shipper instead. Takes an optional level: push, pr or merge."
 argument-hint: "[push|pr|merge] [context for the commit message]"
 context: fork
 agent: shipper:shipper
 background: false
+disable-model-invocation: true
 ---
 
 # Ship

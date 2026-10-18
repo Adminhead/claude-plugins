@@ -13,7 +13,9 @@ fail=0
 
 # A default read-only agent type; the dispatch cases at the end vary it.
 AGENT=reviewer:reviewer
-READ_ONLY=(architect architect:architect reviewer reviewer:reviewer debugger debugger:debugger)
+READ_ONLY=(architect architect:architect reviewer reviewer:reviewer debugger debugger:debugger
+  security-auditor security-auditor:security-auditor
+  open-source-release-audit open-source-release-audit:open-source-release-audit)
 # Every payload carries a subagent identity; the dispatch cases at the end vary it.
 ID='"agent_type":"'"$AGENT"'","agent_id":"a1"'
 # The option is the hook's, never inherited from the shell running the cases.
@@ -996,7 +998,7 @@ extra() { # extra <expect> <label> <option value> <agent_type>
     printf 'FAIL (extra_agents %s, rc=%s): %s\n' "$1" "$rc" "$2"
   fi
 }
-extra block 'bare extra, scoped type' 'security-auditor, dba' security-auditor:security-auditor
+extra block 'bare extra, scoped type' 'web-perf-auditor, dba' web-perf-auditor:web-perf-auditor
 extra block 'bare extra, bare type' 'security-auditor dba' dba
 extra block 'scoped extra, same type' 'web:browser-tester' web:browser-tester
 extra allow 'scoped extra, other plugin' 'web:browser-tester' other:browser-tester

@@ -4,10 +4,10 @@ description: Last-resort coder tier (fable): the hardest changes, like a large c
 model: fable
 effort: high
 autoCompactWindow: 300000
-disallowedTools: Agent, mcp__claude-in-chrome
+disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding
-color: blue
+color: red
 ---
 
 You are the `coder-max` tier: fable at high effort. You implement one bounded change end to end and report what you did.

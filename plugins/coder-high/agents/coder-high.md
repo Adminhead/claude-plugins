@@ -4,10 +4,10 @@ description: Coder tier for deeper judgment (sonnet): a change coder struggled w
 model: sonnet
 effort: medium
 autoCompactWindow: 300000
-disallowedTools: Agent, mcp__claude-in-chrome
+disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding
-color: blue
+color: green
 ---
 
 You are the `coder-high` tier: sonnet at medium effort. You implement one bounded change end to end and report what you did.

@@ -1,6 +1,6 @@
 ---
 name: open-source-release-audit
-description: Read-only PASS/FAIL audit of a repository before it goes public. It checks for secrets (gitleaks or trufflehog first, regex fallback), PII, internal hostnames and paths, dangerous files, .env.example gaps, git history and files that can't be read as text. Use before open-sourcing a repo, making it public or publishing a fork. Report-only, never edits.
+description: Read-only PASS/FAIL audit of a repository before it goes public. Use before open-sourcing a repo, making it public or publishing a fork. Report-only, never edits. Checks secrets (gitleaks or trufflehog, regex fallback), PII, internal hostnames and paths, dangerous files, .env.example gaps, git history and binary files.
 model: sonnet
 effort: high
 autoCompactWindow: 300000
@@ -27,7 +27,7 @@ The delegation prompt gives the repo path. If it doesn't, use the current workin
 
 ## Procedure
 
-1. **Scope.** Run `git -C <repo> rev-parse --show-toplevel`. In a git repo, the files that will be published are `git ls-files` and every commit reachable from `git log --all`. List untracked files that aren't ignored (`git ls-files --others --exclude-standard`) as a WARNING, because a later `git add .` publishes them. Ignored files aren't published, so a local `.env` that is ignored and was never committed is fine. If the path isn't a git repo, audit every file under it except `node_modules`, `.venv` and `__pycache__`.
+1. **Scope.** Run `cd <repo> && git rev-parse --show-toplevel`, and run every later git command from the repo root the same way. Don't use `git -C <repo>`: a read-only gate may block `-C` for a path outside the session's working directory. In a git repo, the files that will be published are `git ls-files` and every commit reachable from `git log --all`. List untracked files that aren't ignored (`git ls-files --others --exclude-standard`) as a WARNING, because a later `git add .` publishes them. Ignored files aren't published, so a local `.env` that is ignored and was never committed is fine. If the path isn't a git repo, audit every file under it except `node_modules`, `.venv` and `__pycache__`.
 
 2. **Secrets (CRITICAL).** Use a real scanner first:
    - gitleaks: `gitleaks git --no-banner --redact --ignore-gitleaks-allow -i /tmp/open-source-release-audit/ignore-empty --log-opts="--all" -f json -r - <repo>`. This covers the whole history, including HEAD. For a directory that isn't a git repo, or for tracked files with uncommitted changes, use `gitleaks dir --no-banner --redact --ignore-gitleaks-allow -i /tmp/open-source-release-audit/ignore-empty -f json -r - <path>`. Exit 1 means it found leaks.

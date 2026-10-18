@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only reviewer that checks an implementation plan, a design, or a diff against its brief and acceptance criteria, and returns verified findings ranked by severity. Use after an implementation slice lands or before a risky plan is executed; the caller asks for a quick or thorough pass. Not for an open-ended bug hunt on the working diff (the /code-review command) or attack-path analysis (security-auditor).
+description: Read-only reviewer that checks a plan, design or diff against its brief and acceptance criteria and returns verified findings by severity. Use after a slice lands or before a risky plan runs; the caller asks for a quick or thorough pass. Not for an open-ended bug hunt (/code-review) or attack paths (security-auditor).
 model: sonnet
 effort: high
 autoCompactWindow: 300000

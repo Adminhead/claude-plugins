@@ -4,14 +4,17 @@ import { join } from 'node:path'
 import { DEFAULT_AGENTS, isReadOnly, parseExtra } from '../agents.ts'
 
 describe('agents', () => {
-  test('defaults gate the scoped and bare general read-only agents only', () => {
-    for (const t of ['architect', 'architect:architect', 'reviewer:reviewer', 'debugger:debugger', 'debugger']) {
+  test('defaults gate the scoped and bare read-only agents only', () => {
+    for (const t of ['architect', 'architect:architect', 'reviewer:reviewer', 'debugger:debugger', 'debugger',
+      'security-auditor', 'security-auditor:security-auditor', 'open-source-release-audit',
+      'open-source-release-audit:open-source-release-audit']) {
       expect(isReadOnly(t)).toBe(true)
     }
-    for (const t of ['coder:coder', 'security:reviewer', 'reviewer:other', 'quick-review', 'Explore', '']) {
+    for (const t of ['coder:coder', 'security:reviewer', 'reviewer:other', 'quick-review', 'Explore', '',
+      'web-perf-auditor:web-perf-auditor', 'browser-tester:browser-tester', 'security:security-auditor']) {
       expect(isReadOnly(t)).toBe(false)
     }
-    expect(DEFAULT_AGENTS.length).toBe(6)
+    expect(DEFAULT_AGENTS.length).toBe(10)
   })
 
   test('a bare extra matches any plugin agent of that name, a scoped one only itself', () => {

@@ -23,6 +23,17 @@ describe('routes', () => {
     expect(s.includes('  ')).toBe(false)
   })
 
+  test('MAX_DESCRIPTION keeps a 320-character description whole and cuts a longer one', () => {
+    expect(MAX_DESCRIPTION).toBe(320)
+    const exact = 'x'.repeat(320)
+    expect(summarize(exact)).toBe(exact)
+    const over = `${'word '.repeat(63)}tail end`
+    const s = summarize(over)
+    expect(s.length <= 320).toBe(true)
+    expect(s.length > 220).toBe(true)
+    expect(s.endsWith('…')).toBe(true)
+  })
+
   test('selectRows sorts, drops the orchestrator, helpers and unsafe names', () => {
     const { rows } = selectRows([
       offer('reviewer:reviewer'),

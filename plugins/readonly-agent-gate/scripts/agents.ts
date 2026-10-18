@@ -1,7 +1,8 @@
 // Which agent types the read-only gate checks. Pure: readonly-gate.ts passes it the hook's
 // agent_type and the plugin option's raw value.
 
-// The general read-only agents, as hooks see them: plugin-scoped when installed from the
+// The read-only agents (general ones plus the security-auditor and open-source-release-audit
+// specialists), as hooks see them: plugin-scoped when installed from the
 // marketplace (`architect:architect`), bare when defined as user or project agents.
 export const DEFAULT_AGENTS: readonly string[] = [
   'architect',
@@ -10,9 +11,14 @@ export const DEFAULT_AGENTS: readonly string[] = [
   'reviewer:reviewer',
   'debugger',
   'debugger:debugger',
+  'security-auditor',
+  'security-auditor:security-auditor',
+  'open-source-release-audit',
+  'open-source-release-audit:open-source-release-audit',
 ]
 // devops is not listed: its change mode runs writing validators such as `tofu init`
-// and `tofu fmt`. cloud-ops-guard blocks its live verbs instead.
+// and `tofu fmt`. cloud-ops-guard blocks its live verbs instead. web-perf-auditor and
+// browser-tester are not listed either; add them through `extra_agents` if wanted.
 
 const NAME = /^[A-Za-z0-9_.@-]+(:[A-Za-z0-9_.@-]+)*$/
 const MAX_OPTION = 4096

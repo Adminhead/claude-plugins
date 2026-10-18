@@ -10,7 +10,7 @@ export type Offer = {
 
 // Bounds: the table rides the Agent tool's description, which every request carries.
 export const MAX_AGENTS = 30
-export const MAX_DESCRIPTION = 220
+export const MAX_DESCRIPTION = 320
 export const MAX_NAME = 80
 // Guard on what is ever stored, so a hostile or broken offer can't grow module memory.
 export const MAX_TRACKED = 200

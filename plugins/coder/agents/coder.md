@@ -4,7 +4,7 @@ description: Default coder tier (haiku): most bounded changes with a known appro
 model: haiku
 effort: medium
 autoCompactWindow: 100000
-disallowedTools: Agent, mcp__claude-in-chrome
+disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding
 color: blue

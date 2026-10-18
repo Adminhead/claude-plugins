@@ -170,6 +170,7 @@ def check(root):
         errors.append("README.md: plugin catalog is stale; run scripts/plugins.py catalog")
     errors += eval_frontmatter_errors(root)
     errors += godot_version_errors(root, entries, manifests)
+    errors += agent_spawn_errors(root)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
@@ -183,6 +184,37 @@ def dep_labels(manifest):
         dep_name, dep_market = parse_dep(dep)
         labels.append(f"`{dep_name}`" if not dep_market else f"`{dep_name}@{dep_market}`")
     return labels
+
+
+# The only agent allowed to start other agents: it runs as the main thread.
+MAIN_THREAD_AGENTS = {"orchestration"}
+SPAWN_TOOLS = ("Agent", "Task", "Workflow")
+
+
+def agent_spawn_errors(root):
+    """Subagents must not start agents: no Agent/Task/Workflow in `tools`, or all denied in `disallowedTools`."""
+    errors = []
+    for f in sorted((root / "plugins").glob("*/agents/*.md")):
+        text = f.read_text(errors="replace")
+        if not text.startswith("---\n") or "\n---" not in text[4:]:
+            continue
+        fm = text[4:text.index("\n---", 4)]
+        name = re.search(r"^name:\s*(\S+)", fm, re.M)
+        if (name.group(1) if name else f.stem) in MAIN_THREAD_AGENTS:
+            continue
+        tools = re.search(r"^tools:\s*(.+)$", fm, re.M)
+        denied = re.search(r"^disallowedTools:\s*(.+)$", fm, re.M)
+        listed = lambda line, tool: re.search(rf"(^|[,\s]){tool}($|[,\s(])", line) is not None
+        rel = f.relative_to(root)
+        if tools:
+            bad = [t for t in SPAWN_TOOLS if listed(tools.group(1), t)]
+            if bad:
+                errors.append(f"{rel}: a subagent must not list {', '.join(bad)} in tools")
+        else:
+            missing = [t for t in ("Agent", "Workflow") if not (denied and listed(denied.group(1), t))]
+            if missing:
+                errors.append(f"{rel}: without a tools allowlist, disallowedTools must include {', '.join(missing)}")
+    return errors
 
 
 GODOT_MINOR = re.compile(r"\b4\.\d+")

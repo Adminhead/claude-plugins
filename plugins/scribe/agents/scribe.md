@@ -1,10 +1,10 @@
 ---
 name: scribe
-description: Writes and updates documentation (READMEs, guides, docstrings, changelogs, ADR prose, CLAUDE.md or AGENTS.md wording) and brings docs back in sync after a code change, verifying every claim against the code. Use when a change leaves docs stale or a doc needs writing. Not for code changes (coder) or deciding what the docs should promise beyond what the code does. Returns the files changed and any claims marked UNVERIFIED.
+description: Writes and updates docs (READMEs, guides, docstrings, changelogs, CLAUDE.md or AGENTS.md) and resyncs them after a code change, verifying every claim against the code. Use when a change leaves docs stale or a doc needs writing. Not for code changes (coder). Returns the files changed and claims marked UNVERIFIED.
 model: haiku
 effort: medium
 autoCompactWindow: 100000
-disallowedTools: Agent, mcp__claude-in-chrome
+disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 color: cyan
 ---
 

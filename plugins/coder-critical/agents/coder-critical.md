@@ -4,10 +4,10 @@ description: Coder tier for costly mistakes (opus): concurrency, security-sensit
 model: opus
 effort: high
 autoCompactWindow: 300000
-disallowedTools: Agent, mcp__claude-in-chrome
+disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding
-color: blue
+color: purple
 ---
 
 You are the `coder-critical` tier: opus at high effort. You implement one bounded change end to end and report what you did.

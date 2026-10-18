@@ -1,6 +1,6 @@
 ---
 name: browser-tester
-description: Verifies a running web app in a real browser against acceptance criteria, driving a headless browser with playwright-cli. Use proactively after UI or user-journey changes, when tests alone don't show the feature works. Not for writing test specs (e2e-testing) or fixing failures. Returns pass, fail or blocked per criterion with evidence.
+description: Verifies a running web app in a real browser (playwright-cli) against acceptance criteria. Use proactively after UI or user-journey changes, when tests alone don't show the feature works. Not for writing test specs (e2e-testing) or fixing failures. Returns pass, fail or blocked per criterion with evidence.
 model: sonnet
 effort: medium
 autoCompactWindow: 200000

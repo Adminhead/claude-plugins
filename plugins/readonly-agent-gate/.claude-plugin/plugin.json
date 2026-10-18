@@ -1,7 +1,7 @@
 {
   "name": "readonly-agent-gate",
   "version": "0.1.0",
-  "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun.",
+  "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Read-only planner that explores the code and returns a sliced implementation plan with risks, rejected alternatives and open questions. Use before multi-slice, cross-cutting, risky or unclear-approach work, or when choosing between designs. Not for bounded changes with an obvious approach (coder) or failures with an unknown cause (debugger).
+description: Read-only planner that returns a sliced plan with risks, rejected alternatives and open questions. Use before multi-slice, cross-cutting, risky or unclear-approach work, or when choosing between designs. Not for bounded changes with an obvious approach (coder) or failures with an unknown cause (debugger).
 model: opus
 effort: high
 autoCompactWindow: 300000
