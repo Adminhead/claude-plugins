@@ -90,7 +90,8 @@
     "orchestration-meta@adminhead": true,
     "agent-status@adminhead": true,
     "cache-clock@adminhead": true,
-    "turn-stats@adminhead": true
+    "turn-stats@adminhead": true,
+    "usage-log@adminhead": true
   },
   "pluginConfigs": {
     "cc-plugin-agents-md@builtin": {

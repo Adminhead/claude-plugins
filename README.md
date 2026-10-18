@@ -19,7 +19,7 @@ The plugins do not ship it. Install it yourself. Its installer sets up its own h
 
 ## Quick start
 
-One script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs at user scope every plugin that file enables: the `baseline` and `orchestration-meta` meta plugins and the `agent-status`, `cache-clock` and `turn-stats` mods. It needs Node 18+ and `claude` on `PATH`.
+One script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs at user scope every plugin that file enables: the `baseline` and `orchestration-meta` meta plugins and the `agent-status`, `cache-clock`, `turn-stats` and `usage-log` mods. It needs Node 18+ and `claude` on `PATH`.
 
 Without a clone, in one line. The repo is private, so the request carries your GitHub CLI token:
 
@@ -295,6 +295,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`outline-docs`](plugins/outline-docs/README.md) | hook | SessionStart hook that tells Claude to record decisions, runbooks and other knowledge worth keeping in Outline as well as the repo. Installs outline-mcp. | - |
 | [`atlassian-mcp`](plugins/atlassian-mcp/README.md) | mcp | Atlassian Rovo MCP server for Atlassian Cloud (remote HTTP at mcp.atlassian.com/v2/mcp, OAuth 2.1): Confluence, Jira and Compass. Sign in with /mcp. | - |
 | [`atlassian-docs`](plugins/atlassian-docs/README.md) | hook | SessionStart hook that tells Claude to record knowledge worth keeping in Confluence and track follow-up work as Jira issues, as well as in the repo. Installs atlassian-mcp. | - |
+| [`usage-log`](plugins/usage-log/README.md) | hook | Mod that logs skill use and the skill listing per prompt to local JSONL, for finding skills that should have fired and didn't. Ships usage-report, which summarizes this log and the bash-rules log. | - |
 
 ### Agents
 

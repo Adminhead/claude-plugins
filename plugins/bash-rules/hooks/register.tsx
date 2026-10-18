@@ -8,6 +8,7 @@ import {
   systemoneRequest, userPrompt, wantsSystemone,
 } from './rules/judge'
 import type { JudgeOptions, ModelVerdict, OllamaApi } from './rules/judge'
+import { appendArgv, line, logFile } from './log/usagelog'
 
 // All `$` code for bash-rules lives here. The verdicts are pure: danger/ (destructive, ask), rules/hygiene.ts (read,
 // write, smuggle) and rules/judge.ts (the model stages' prompt, replies and cache).
@@ -138,39 +139,93 @@ async function inLinkedWorktree($: any): Promise<boolean> {
   }
 }
 
+// What the usage log records for one Bash call: which stage settled it and how. `judge` fills it in.
+type BashEntry = {
+  stage?: 'danger' | 'sql' | 'hygiene' | 'model'
+  rule?: string
+  category?: string
+  tool?: string
+  reasons?: string[]
+  model?: { source: 'ollama' | 'fallback' | 'cache' | 'off' | 'unavailable'; category?: string; confidence?: number; ms?: number }
+}
+
+// The deny text for a command, or null to let it run, with how it was decided recorded in `entry`.
+async function judge($: any, o: JudgeOptions, command: string, entry: BashEntry): Promise<string | null> {
+  const { hit, scan } = analyze(command)
+  if (hit) return (Object.assign(entry, { stage: 'danger', rule: hit.rule }), hit.message)
+  if (!scan) return null
+  // A script file that cannot be read is left to the classic.PreToolUse ask, never to a model.
+  if ((await checkSqlFiles($, sqlFiles(scan.commands))).status === 'destroys') {
+    return (Object.assign(entry, { stage: 'sql', rule: 'db-drop' }), DANGER_MESSAGES['db-drop'])
+  }
+  const v = hygiene(scan.commands)
+  entry.stage = 'hygiene'
+  if (v.kind === 'deny') return (Object.assign(entry, { category: v.category, tool: v.tool }), v.message)
+  if (v.kind === 'pass') return null
+  Object.assign(entry, { stage: 'model', reasons: v.reasons })
+  if (!o.models) return ((entry.model = { source: 'off' }), null)
+
+  let verdict = cache.get(command)
+  if (verdict) entry.model = { source: 'cache', category: verdict.category, confidence: verdict.confidence }
+  else {
+    const started = await $.clock.now()
+    let source: 'ollama' | 'fallback' = 'ollama'
+    let found = await askOllama($, o, command, v.reasons)
+    if (!found) {
+      source = 'fallback'
+      found = await askFallback($, o, command, v.reasons)
+    }
+    // Both stages unavailable: fail open, already logged.
+    if (!found) return ((entry.model = { source: 'unavailable' }), null)
+    verdict = found
+    cache.set(command, verdict)
+    entry.model = { source, category: verdict.category, confidence: verdict.confidence, ms: Math.round((await $.clock.now()) - started) }
+  }
+  return modelNudge(verdict)
+}
+
+// Appends one line to today's bash-rules usage log. Never throws: logging must not change a verdict.
+async function logLine($: any, kind: string, fields: Record<string, unknown>) {
+  try {
+    const now = await $.clock.now()
+    const r = await $.process.run(appendArgv(logFile('bash-rules', now)), { stdin: line(kind, { session: await $.session.id(), ...fields }, now), timeoutMs: 5000 })
+    if (r.exitCode !== 0) report($, 'log', `usage log: ${r.stderr.trim() || `exit ${r.exitCode}`}`)
+    else ok('log')
+  } catch (err) {
+    report($, 'log', err)
+  }
+}
+
 export const register: Register = (on, options) => {
   const o = parseOptions(options)
+  const logging = options?.usageLog !== false
 
-  // Denies destructive Bash, Bash that reads or writes files the built-in tools should, and smuggled payloads.
-  // analyze() bounds the input length before parsing; the model stages bound what they send.
+  // Denies destructive Bash, Bash that reads or writes files the built-in tools should, and smuggled payloads, and logs
+  // each decision with the command's outcome. analyze() bounds the input length before parsing; the model stages bound
+  // what they send.
   on('tool.call', { tool: 'Bash' }, async ($, e: any, next) => {
     if (typeof e.command !== 'string') return next(e)
-    const { hit, scan } = analyze(e.command)
-    if (hit) return { deny: hit.message }
-    if (!scan) return next(e)
-    // A script file that cannot be read is left to the classic.PreToolUse ask, never to a model.
-    if ((await checkSqlFiles($, sqlFiles(scan.commands))).status === 'destroys') return { deny: DANGER_MESSAGES['db-drop'] }
-    const v = hygiene(scan.commands)
-    if (v.kind === 'deny') return { deny: v.message }
-    if (v.kind === 'pass' || !o.models) return next(e)
-
-    let verdict = cache.get(e.command)
-    if (!verdict) {
-      const found = (await askOllama($, o, e.command, v.reasons)) ?? (await askFallback($, o, e.command, v.reasons))
-      // Both stages unavailable: fail open, already logged.
-      if (!found) return next(e)
-      verdict = found
-      cache.set(e.command, verdict)
+    const entry: BashEntry = {}
+    const deny = await judge($, o, e.command, entry)
+    const fields = { agentId: e.agentId, command: e.command, ...entry }
+    if (deny !== null) {
+      if (logging) await logLine($, 'bash', { ...fields, decision: 'deny', message: deny })
+      return { deny }
     }
-    const deny = modelNudge(verdict)
-    return deny ? { deny } : next(e)
+    const started = await $.clock.now()
+    const out: any = await next(e)
+    if (logging) {
+      const ran = out?.deny !== undefined ? { decision: 'denied-later', message: out.deny } : { decision: 'allow', isError: out?.isError === true }
+      await logLine($, 'bash', { ...fields, ...ran, ms: Math.round((await $.clock.now()) - started) })
+    }
+    return out
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'bash-rules: the safety check failed on this command. Rewrite it in plain bash, or hand it to the user to run.' }))
 
   // Asks before Bash that pipes a download into a shell, rewrites git history, git-cleans ignored files outside a
   // linked worktree, or feeds a database client a script file that could not be checked. A deny from a hook below stands.
   on('classic.PreToolUse', async ($, e: any, next) => {
     if (e.tool !== 'Bash' || typeof e.command !== 'string') return next(e)
-    return withAsk(
+    const v = await withAsk(
       e.command,
       () => next(e),
       err => report($, 'ask', err),
@@ -182,5 +237,8 @@ export const register: Register = (on, options) => {
         return sql.status === 'unread' ? { rule: 'sql-unchecked', message: uncheckedMessage(sql.file) } : null
       },
     )
+    // The tool.call line that follows records whether the command then ran.
+    if (logging && typeof v.ask === 'string') await logLine($, 'bash-ask', { agentId: e.agentId, command: e.command, message: v.ask })
+    return v
   })
 }

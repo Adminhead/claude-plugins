@@ -35,6 +35,12 @@ If both models are unavailable, the command runs. The error is logged once to th
 
 **Data flow.** The model stages send the command text, up to 4 KB, to your Ollama server. A `:cloud` model such as the default `clef:cloud` forwards it to ollama.com. If the fallback runs, the command also goes to Anthropic through the session's own credentials, and the cost is billed to the session. Turn the model checks off to keep everything local.
 
+## Usage log
+
+Each Bash call is logged to `~/.local/state/claude-usage/bash-rules-<date>.jsonl`, one JSON object per line. Each line has the session and agent IDs, the command with common secret shapes masked, and the stage that decided it: `danger`, `sql`, `hygiene` or `model`. It also has the rule, category or model verdict (source, confidence, time), and the decision: `deny`, `allow` (with `isError` and duration) or `denied-later` by another hook. A command the guard asks about gets an extra `bash-ask` line.
+
+`$CLAUDE_USAGE_LOG_DIR`, or `$XDG_STATE_HOME/claude-usage`, moves the folder. The folder and files are readable only by you. The `usage-log` plugin deletes files older than its retention setting and ships `usage-report`, which summarizes this log. Masking covers common token formats, not every secret, so treat the log as sensitive. Turn `usageLog` off to write nothing.
+
 ## Settings
 
 Set these in `/config` under bash-rules:
@@ -47,3 +53,4 @@ Set these in `/config` under bash-rules:
 | `ollamaTimeoutMs` | `8000` | At most 9000, because the wait counts against the hook's 10 s budget |
 | `confidence` | `0.8` | Below this, the fallback model decides |
 | `fallbackModel` | `haiku` | Empty skips the fallback |
+| `usageLog` | `true` | Off: no usage log is written |

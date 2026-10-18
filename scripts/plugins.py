@@ -30,7 +30,7 @@ CATALOG_END = "<!-- catalog:end -->"
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 META_FILES = {".claude-plugin/plugin.json", "README.md"}
 SHARED = Path("scripts/shared")
-SHARED_FILES = ("shell/walk.ts", "vendor/unbash.js", "vendor/unbash.d.ts")
+SHARED_FILES = ("shell/walk.ts", "vendor/unbash.js", "vendor/unbash.d.ts", "log/usagelog.ts")
 SCOPES = {"baseline": "user", "orchestration-meta": "user or project"}
 KINDS = ("skill", "agent", "hook", "mcp")
 # Leaves allowed more than one component, with the exact components they may ship.

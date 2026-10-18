@@ -1,0 +1,25 @@
+{
+  "name": "usage-log",
+  "version": "0.1.0",
+  "description": "Mod that logs skill use and the skill listing per prompt to local JSONL, for finding skills that should have fired and didn't. Ships usage-report, which summarizes this log and the bash-rules log.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "retentionDays": {
+      "type": "number",
+      "title": "Keep logs (days)",
+      "description": "Usage log files older than this are deleted at session start, bash-rules' included.",
+      "default": 30,
+      "min": 1,
+      "max": 3650
+    },
+    "promptText": {
+      "type": "boolean",
+      "title": "Log prompt text",
+      "description": "Record each prompt's text, with common secret shapes masked. Off: only its length and any /command. The judged routing report needs the text.",
+      "default": true
+    }
+  }
+}

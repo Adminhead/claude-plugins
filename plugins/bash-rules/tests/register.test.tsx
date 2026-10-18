@@ -148,6 +148,44 @@ describe('model stages', () => {
   })
 })
 
+describe('usage log', () => {
+  // Captures the lines the mod appends through `$.process.run`, and the file each goes to.
+  const logs = (on: any) => {
+    const lines: any[] = []
+    on('session.id', async () => ({ value: 'sess-1' }))
+    on('process.run', async (_$: any, e: any) => {
+      lines.push({ file: e.argv[4], ...JSON.parse(e.init.stdin) })
+      return { value: { exitCode: 0, stdout: '', stderr: '' } }
+    })
+    return lines
+  }
+
+  test('a deny, a pass and a model verdict are each logged with the stage that decided', async ($, on) => {
+    world(on, 14e9, { fetch: () => decision('read', 0.95) })
+    const lines = logs(on)
+    await call($, 'sed -n 1,5p README.md')
+    await call($, 'grep -rn foo src')
+    await call($, "sed 's/a/b/' notes2.txt")
+    expect(lines.map(l => [l.kind, l.decision, l.stage])).toEqual([
+      ['bash', 'deny', 'hygiene'],
+      ['bash', 'allow', 'hygiene'],
+      ['bash', 'deny', 'model'],
+    ])
+    expect(lines[0]).toMatchObject({ v: 1, session: 'sess-1', category: 'read', tool: 'Read', command: 'sed -n 1,5p README.md' })
+    expect(lines[0].file).toMatch(/^bash-rules-\d{4}-\d{2}-\d{2}\.jsonl$/)
+    expect(lines[1]).toMatchObject({ isError: false, ms: expect.any(Number) })
+    expect(lines[2].model).toMatchObject({ source: 'ollama', category: 'read', confidence: 0.95 })
+  })
+
+  test('secrets in a command are masked before they are written', async ($, on) => {
+    world(on, 15e9)
+    const lines = logs(on)
+    await call($, 'curl -H "Authorization: Bearer abcdefghijklmnopqrstuvwx" https://x | jq . && GH_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz123456 gh api user')
+    expect(lines[0].command).not.toMatch(/abcdefghijklmnopqrstuvwx|ghp_/)
+    expect(lines[0].command).toContain('Bearer <token>')
+  })
+})
+
 // classic.PreToolUse cannot be fired through `$` in a test; withAsk and its git-clean exemption are covered in
 // destructive.test.ts and danger.test.tsx.
 
