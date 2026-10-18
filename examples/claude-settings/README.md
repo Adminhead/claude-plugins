@@ -89,3 +89,9 @@ Per-checkout overrides only: turn a shared plugin off for this checkout or give 
 | `avoid-ai-writing@conorbronsdon-skills` | Writing-style skill |
 | `baseline@adminhead`, `orchestration-meta@adminhead` | The user-scope meta plugins: the default set, and the orchestration agent with its general-purpose agents. Each installs the plugins it lists |
 | `agent-status@adminhead`, `cache-clock@adminhead`, `turn-stats@adminhead` | Status mods that no meta plugin installs |
+
+### Skills
+
+| Setting | Why |
+| --- | --- |
+| `skillOverrides` set to `off` for `xlsx`, `pptx`, `docx`, `morning`, `google-workspace`, `computer-use`, `brand-guidelines` | Hides these claude.ai skills (listed as `anthropic-skills:<name>`) from both Claude and the `/` menu, so their descriptions don't take up the skill listing. Keys are the bare skill name. `name-only` keeps a skill listed without its description, `user-invocable-only` keeps only `/name`. Turn one back on in `/skills` or by deleting its entry |
