@@ -3,6 +3,7 @@
 // into the user's Claude Code settings. No npm dependencies; needs Node 18+ and `claude` on PATH.
 //
 //   node scripts/install.mjs [--dry-run] [--no-settings] [--no-plugins] [--settings PATH]
+//   curl -fsSL <raw url of this file> | node --input-type=module - [OPTIONS]
 
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
@@ -13,6 +14,10 @@ import { fileURLToPath } from 'node:url'
 const REPO = 'Adminhead/claude-plugins'
 const EXAMPLE = 'examples/claude-settings/settings.global.json'
 const DEFAULT_PLUGINS = ['baseline@adminhead']
+
+// Piped into `node -`, there is no checkout around the script: argv[1] is "-" and import.meta.url
+// names a virtual file in the current directory.
+const PIPED = process.argv[1] === '-'
 
 const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v)
 
@@ -72,7 +77,8 @@ function parseArgs(argv) {
     else if (a === '--no-plugins') args.plugins = false
     else if (a === '--settings') args.settingsPath = argv[++i]
     else if (a === '-h' || a === '--help') {
-      console.log('Usage: node scripts/install.mjs [--dry-run] [--no-settings] [--no-plugins] [--settings PATH]')
+      console.log('Usage: node scripts/install.mjs [--dry-run] [--no-settings] [--no-plugins] [--settings PATH]\n' +
+        '       curl -fsSL <url> | node --input-type=module - [OPTIONS]')
       process.exit(0)
     } else throw new Error(`unknown option ${a}`)
   }
@@ -106,7 +112,7 @@ function readJson(path) {
 // The example from this checkout when the script runs from one, else from the marketplace clone.
 function loadExample(installLocation) {
   const local = join(dirname(fileURLToPath(import.meta.url)), '..', EXAMPLE)
-  if (existsSync(local)) return [local, readJson(local)]
+  if (!PIPED && existsSync(local)) return [local, readJson(local)]
   if (installLocation && existsSync(join(installLocation, EXAMPLE))) {
     const path = join(installLocation, EXAMPLE)
     return [path, readJson(path)]
@@ -136,6 +142,10 @@ function main() {
       ? claude(['plugin', 'marketplace', 'update', name], args)
       : claude(['plugin', 'marketplace', 'add', repo, '--scope', 'user'], args)
     if (r.status !== 0) throw new Error(`could not add or update the ${name} marketplace (${repo})`)
+  }
+  if (!example && args.dryRun) {
+    console.log('\nDry run: the settings and plugin steps need the marketplace clone; run without --dry-run, or from a checkout, to see them.')
+    return
   }
   if (!example) {
     const added = new Map(listJson(['plugin', 'marketplace', 'list']).map(m => [m.name, m]))
@@ -183,7 +193,7 @@ function main() {
   console.log(args.dryRun ? '\nDry run: nothing changed.' : '\nDone. Restart Claude Code, or run /reload-plugins in an open session.')
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (PIPED || (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1])) {
   try {
     main()
   } catch (e) {

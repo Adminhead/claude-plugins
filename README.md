@@ -19,12 +19,24 @@ The plugins do not ship it. Install it yourself. Its installer sets up its own h
 
 ## Quick start
 
-From a clone, one script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs `baseline` at user scope.
+One script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs `baseline` at user scope. It needs Node 18+ and `claude` on `PATH`.
+
+Without a clone, in one line. The repo is private, so the request carries your GitHub CLI token:
+
+```
+curl -fsSL -H "Authorization: Bearer $(gh auth token)" https://raw.githubusercontent.com/Adminhead/claude-plugins/main/scripts/install.mjs | node --input-type=module -
+```
+
+Options go after the `-`, for example `... | node --input-type=module - --no-plugins`. The marketplace is added over git, so `gh auth status` or your SSH key must already grant access to the repo.
+
+From a clone:
 
 ```
 node scripts/install.mjs --dry-run   # show what would change
 node scripts/install.mjs
 ```
+
+A piped `--dry-run` on a machine without the marketplace can only show the marketplace step, because the settings example comes from the marketplace clone. Use a clone to preview everything.
 
 The merge keeps every key the example doesn't set, such as hooks from other installers. Example values win, arrays gain the example's missing entries, and the old file is saved beside it as `settings.json.bak-<time>`. `--no-settings` and `--no-plugins` skip a step; `--settings PATH` targets another file. A rerun updates what is already installed.
 
