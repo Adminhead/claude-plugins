@@ -1,0 +1,18 @@
+aws plugin (AdminHead)
+
+skills/aws/ is adapted from the following Apache-2.0 skills (see LICENSE):
+
+- "aws-iam" (SKILL.md Verified Edge Cases and references/common-pitfalls.md),
+  "signing-in-to-aws" and "aws-billing-and-cost-management" (cost habits only)
+  in https://github.com/aws/agent-toolkit-for-aws, skills/core-skills,
+  commit 44ba1a5451913998815111cc2d518f5c45f95ef7.
+  Copyright Amazon.com, Inc. or its affiliates.
+
+- "hf-cloud-aws-context-discovery"
+  in https://github.com/huggingface/skills, skills/hf-cloud-aws-context-discovery,
+  commit c3ff942be3e07116b475253f0a8fc4f54682c1a8.
+
+Modifications: merged, condensed, rechecked against AWS docs, rewritten in house
+style. Claims that could not be confirmed were dropped; the user runs logins
+instead of the agent; advice to read ~/.aws/credentials or run
+`aws configure list` was removed.
