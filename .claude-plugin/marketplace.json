@@ -159,13 +159,6 @@
       "category": "development"
     },
     {
-      "name": "bash-danger-guard",
-      "source": "./plugins/bash-danger-guard",
-      "description": "Deprecated: superseded by bash-rules. Mod that denies destructive Bash (rm -rf of root, system or home paths, disk wipes, recursive system chmod/chown, sudo) and unparseable or oversized commands, and asks before force-pushes, hard resets and piped installers like curl | sh.",
-      "version": "0.1.0",
-      "category": "development"
-    },
-    {
       "name": "browser-tester",
       "source": "./plugins/browser-tester",
       "description": "Agent that verifies a running web app in a real browser against acceptance criteria with playwright-cli, returning pass, fail or blocked per criterion with evidence.",

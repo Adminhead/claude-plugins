@@ -42,7 +42,7 @@ All of these metas and the bundle exist now, with empty dependency lists.
 
 | Meta | Scope | Installs |
 | --- | --- | --- |
-| `baseline` | user | Only zero- or low-context items: `git-commit`, `recommend-plugins` (manual), `handoff` (manual), `check-bypass-guard` (hook), `bash-danger-guard` (mod). `git-statusline`, `usage-band` and `mcp-health` (mods). |
+| `baseline` | user | Only zero- or low-context items: `git-commit`, `recommend-plugins` (manual), `handoff` (manual), `check-bypass-guard` (hook), `bash-rules` (mod). `git-statusline`, `usage-band` and `mcp-health` (mods). |
 | `programming-core` (bundle) | via metas | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run` (manual) |
 | `python-meta` | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` |
 | `golang-meta` | project | `programming-core`, `golang`, `gopls@claude-code-lsps` |
@@ -175,7 +175,7 @@ Rules for this collection:
 - Keep upstream attribution lines (MIT and Apache-2.0 notices). Strip ECC's pasted "Prompt Defense Baseline" from any agent.
 - Version-sensitive facts (Vite, Cypress, Prisma, uv, model names in second-opinion) get rechecked with Context7 at port time.
 - Every subagent sets `autoCompactWindow`: 100000 for haiku agents, 200000 for light focused agents, 300000 for long-running or reading-heavy agents. The field only lowers the window a subagent inherits from the session (300k in the settings example).
-- `bash-danger-guard`, `cloud-ops-guard` and `readonly-agent-gate` all vendor the same shell walker. Keep one canonical copy and sync it with a script.
+- `bash-rules`, `cloud-ops-guard` and `readonly-agent-gate` all vendor the same shell walker. Keep one canonical copy and sync it with a script.
 
 ### 11. .NET and Godot (added 2026-10-17)
 
@@ -202,7 +202,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | `recommend-plugins` | S manual | archive setup | baseline | Rewrite for metas, focused plugins and cross-deps. |
 | `handoff` | S manual | mattpocock handoff (+ claude-handoff as a `--bg` option) | baseline | |
 | `check-bypass-guard` | H | ECC config-protection + block-no-verify; wshobson block-no-verify | baseline | Use `ask`, not exit 2, for config edits. |
-| `bash-danger-guard` | M | archive coremods tool-mgr danger rules | baseline | Only the danger rules. The sed/heredoc hygiene rules are dropped. |
+| `bash-rules` | M | archive coremods tool-mgr danger rules | baseline | Replaced `bash-danger-guard` (deleted): the danger rules plus shell read/write/smuggle checks, with Ollama and Haiku stages for unclear commands. |
 | `git-statusline` | M | archive coremods git-line | baseline | + worktree marker, unpushed-commit colour, stash count. |
 | `usage-band` | M | archive coremods usage-band | baseline | + the decision 8 enhancements. |
 | `mcp-health` | M | new, from claude-hud | baseline | |
