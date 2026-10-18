@@ -11,9 +11,9 @@
     "recommend-plugins",
     "handoff",
     "check-bypass-guard",
-    "bash-danger-guard",
     "git-statusline",
     "usage-band",
-    "mcp-health"
+    "mcp-health",
+    "bash-rules"
   ]
 }

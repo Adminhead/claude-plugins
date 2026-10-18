@@ -55,7 +55,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Scope | Installs | Description |
 | --- | --- | --- | --- |
-| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `bash-danger-guard`, `git-statusline`, `usage-band`, `mcp-health` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
+| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
 | [`python-meta`](plugins/python-meta) | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` | Plugin set for Python projects, installed at project scope. Ships no components of its own. |
 | [`golang-meta`](plugins/golang-meta) | project | `programming-core`, `golang`, `gopls@claude-code-lsps` | Plugin set for Go projects, installed at project scope. Ships no components of its own. |
 | [`rust-meta`](plugins/rust-meta) | project | `programming-core`, `rust`, `rust-analyzer@claude-code-lsps` | Plugin set for Rust projects, installed at project scope. Ships no components of its own. |
@@ -86,7 +86,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`ansible`](plugins/ansible) | skill | Ansible skill: playbooks, roles and inventories with idempotency proof, check-mode limits, validate hooks, vault or sops secrets, and ansible-lint style. | `iac-meta` |
 | [`architect`](plugins/architect) | agent | A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. | `orchestration-meta` |
 | [`bash`](plugins/bash) | skill | Bash skill: defensive scripts with strict mode and its holes, quoting, trap cleanup, argument parsing, ShellCheck configuration and Bats tests. | `iac-meta` |
-| [`bash-danger-guard`](plugins/bash-danger-guard) | hook | Mod that denies destructive Bash (rm -rf of root, system or home paths, disk wipes, recursive system chmod/chown, sudo) and unparseable or oversized commands, and asks before force-pushes, hard resets and piped installers like curl | sh. | `baseline` |
+| [`bash-danger-guard`](plugins/bash-danger-guard) | hook | Deprecated: superseded by bash-rules. Mod that denies destructive Bash (rm -rf of root, system or home paths, disk wipes, recursive system chmod/chown, sudo) and unparseable or oversized commands, and asks before force-pushes, hard resets and piped installers like curl | sh. | - |
 | [`browser-tester`](plugins/browser-tester) | agent | Agent that verifies a running web app in a real browser against acceptance criteria with playwright-cli, returning pass, fail or blocked per criterion with evidence. | `web-meta` |
 | [`check-bypass-guard`](plugins/check-bypass-guard) | hook | Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files. Needs bun. | `baseline` |
 | [`click-path-audit`](plugins/click-path-audit) | skill | Audits UI event handlers for behavior bugs. It maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths and effects that reset what a click just set. Use when a button does nothing or leaves the wrong state though each function works alone, or after a shared-state refactor. | - |
@@ -134,7 +134,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`python`](plugins/python) | skill | Python idiom, review and diagnosis: typing, exceptions, resource lifetimes, asyncio, retries and background jobs, profiling and pytest. | `python-meta` |
 | [`python-packaging`](plugins/python-packaging) | skill | Build and validate Python distributions and uv workflows: pyproject.toml, package data, entry points, wheel and sdist checks, uv in CI and Docker, and PyPI trusted publishing. | `python-meta` |
 | [`react`](plugins/react) | skill | Changes, reviews and debugs React components: state ownership, effects, keys, render purity, Server Components and Actions, accessibility, measured performance, React 19 upgrades and component tests. Use for .tsx/.jsx behavior or render cost, such as "this list lags when I type", "it re-renders too much", effect loops or hydration mismatches. | `web-meta` |
-| [`readonly-agent-gate`](plugins/readonly-agent-gate) | hook | PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun. | `orchestration-meta` |
+| [`readonly-agent-gate`](plugins/readonly-agent-gate) | hook | PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun. | `orchestration-meta` |
 | [`recommend-plugins`](plugins/recommend-plugins) | skill | Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command. | `baseline` |
 | [`reviewer`](plugins/reviewer) | agent | A read-only review subagent for implementation plans, designs and diffs, checked against the brief and its acceptance criteria, returning verified findings ranked by severity. The caller picks quick or thorough depth. | `orchestration-meta` |
 | [`rollout-plan`](plugins/rollout-plan) | skill | Plans and verifies production rollouts: strategy choice, preflight go/no-go, phased verification signals, numeric rollback criteria and post-deploy follow-up. | - |
@@ -149,7 +149,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`test-run`](plugins/test-run) | skill | Manual test-run command: detects the test runner, runs the tests affected by your changes, prints only compact failures, and fixes them in a bounded loop. | `programming-core` |
 | [`ts-module-boundaries`](plugins/ts-module-boundaries) | skill | Sets up dependency-cruiser in a TypeScript repo so each package is reachable only through its root entry-point files, with no deep imports and no cycles, then proves the rules fail on a violation. Use when the user asks to enforce package boundaries, stop deep imports or add dependency-cruiser. | - |
 | [`typescript`](plugins/typescript) | skill | Handles TypeScript type-level and compiler work, covering tsconfig strictness, narrowing, generics, discriminated unions, declarations and module resolution, public type APIs, runtime validation of unknown data, and type tests. Use when editing *.ts/*.tsx types or tsconfig.json, or fixing tsc errors. | `node-typescript-meta` |
-| [`ui-critic`](plugins/ui-critic) | agent | Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a rendered page looks generic. Not for mockups, e2e tests or WCAG audits. | `design-core` |
+| [`ui-critic`](plugins/ui-critic) | agent | Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a page looks generic. Not for mockups, e2e tests or WCAG audits. | `design-core` |
 | [`ui-direction`](plugins/ui-direction) | skill | Art direction and build process for new UI or a visual reshape, such as a landing page, marketing site, portfolio, product page or a new app screen with no design system. Grounds the design in the subject, deals a researched direction, plans tokens and checks the render. Use when a page should look designed, or looks generic, templated or AI-made. | `design-core` |
 | [`uiux-lookup`](plugins/uiux-lookup) | skill | Offline lookup of cited UI/UX rules (WCAG 2.2, touch, forms, navigation), 22 stack UI guideline sets including SwiftUI, Compose, Flutter, React Native, WPF, WinUI and Avalonia, Google Fonts metadata and licences, and curated icons. | `design-meta` |
 | [`unit-testing`](plugins/unit-testing) | skill | Focused unit and regression tests for changed behavior or a confirmed bug, in any language: smallest proving test, test-first slices, seams and boundary-only mocks, plus pytest and Vitest/Jest references. No coverage quotas. | `programming-core` |
@@ -270,6 +270,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`coder-critical`](plugins/coder-critical) | agent | Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails. | `orchestration-meta` |
 | [`coder-high`](plugins/coder-high) | agent | Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic. | `orchestration-meta` |
 | [`coder-max`](plugins/coder-max) | agent | Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. | `orchestration-meta` |
+| [`bash-rules`](plugins/bash-rules/README.md) | hook | Mod that denies Bash used to read files (use Read/Grep/Glob), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, or destroy systems, infra and data. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku. | `baseline` |
 
 ### Agents
 
@@ -288,12 +289,12 @@ Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and e
 | `devops:devops` | [`devops`](plugins/devops) | opus | medium | 300k | yes | `iac-meta` |
 | `open-source-release-audit:open-source-release-audit` | [`open-source-release-audit`](plugins/open-source-release-audit) | sonnet | high | 300k | no | - |
 | `orchestration:orchestration` | [`orchestration`](plugins/orchestration) | inherit | - | - | yes | `orchestration-meta` |
-| `plugin-vetter:plugin-vetter` | [`plugin-vetter`](plugins/plugin-vetter) | sonnet | - | 200k | no | - |
+| `plugin-vetter:plugin-vetter` | [`plugin-vetter`](plugins/plugin-vetter) | sonnet | medium | 200k | no | - |
 | `reviewer:reviewer` | [`reviewer`](plugins/reviewer) | sonnet | high | 300k | no | `orchestration-meta` |
 | `scribe:scribe` | [`scribe`](plugins/scribe) | haiku | medium | 100k | yes | `orchestration-meta` |
 | `security-auditor:security-auditor` | [`security-auditor`](plugins/security-auditor) | opus | high | 300k | no | - |
 | `shipper:shipper` | [`shipper`](plugins/shipper) | haiku | medium | 100k | no | `github-meta` |
-| `ui-critic:ui-critic` | [`ui-critic`](plugins/ui-critic) | inherit | - | 200k | no | `design-core` |
+| `ui-critic:ui-critic` | [`ui-critic`](plugins/ui-critic) | inherit | medium | 200k | no | `design-core` |
 | `web-perf-auditor:web-perf-auditor` | [`web-perf-auditor`](plugins/web-perf-auditor) | sonnet | medium | 200k | no | `web-meta` |
 
 <!-- catalog:end -->

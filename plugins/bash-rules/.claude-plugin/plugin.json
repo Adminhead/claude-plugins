@@ -1,0 +1,51 @@
+{
+  "name": "bash-rules",
+  "version": "0.1.0",
+  "description": "Mod that denies Bash used to read files (use Read/Grep/Glob), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, or destroy systems, infra and data. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "modelStages": {
+      "type": "boolean",
+      "title": "Model checks",
+      "description": "Send commands the parser is unsure about to Ollama, then the fallback model. Off: parser only, and unsure commands run.",
+      "default": true
+    },
+    "ollamaUrl": {
+      "type": "string",
+      "title": "Ollama URL",
+      "description": "Base URL of the Ollama server for the first model check. Empty skips Ollama.",
+      "default": "http://localhost:11434"
+    },
+    "ollamaModel": {
+      "type": "string",
+      "title": "Ollama model",
+      "description": "Model for the first check. A :cloud model sends the command to ollama.com. Empty skips Ollama.",
+      "default": "clef:cloud"
+    },
+    "ollamaTimeoutMs": {
+      "type": "number",
+      "title": "Ollama timeout (ms)",
+      "description": "How long to wait for Ollama before falling back (at most 9000, the hook's time budget).",
+      "default": 8000,
+      "min": 500,
+      "max": 9000
+    },
+    "confidence": {
+      "type": "number",
+      "title": "Ollama confidence",
+      "description": "Below this confidence (0 to 1) the fallback model decides instead.",
+      "default": 0.8,
+      "min": 0,
+      "max": 1
+    },
+    "fallbackModel": {
+      "type": "string",
+      "title": "Fallback model",
+      "description": "Model alias or id for the second, final check, billed to the session. Empty skips it.",
+      "default": "haiku"
+    }
+  }
+}

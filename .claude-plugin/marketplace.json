@@ -161,7 +161,7 @@
     {
       "name": "bash-danger-guard",
       "source": "./plugins/bash-danger-guard",
-      "description": "Mod that denies destructive Bash (rm -rf of root, system or home paths, disk wipes, recursive system chmod/chown, sudo) and unparseable or oversized commands, and asks before force-pushes, hard resets and piped installers like curl | sh.",
+      "description": "Deprecated: superseded by bash-rules. Mod that denies destructive Bash (rm -rf of root, system or home paths, disk wipes, recursive system chmod/chown, sudo) and unparseable or oversized commands, and asks before force-pushes, hard resets and piped installers like curl | sh.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -497,7 +497,7 @@
     {
       "name": "readonly-agent-gate",
       "source": "./plugins/readonly-agent-gate",
-      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun.",
+      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -602,7 +602,7 @@
     {
       "name": "ui-critic",
       "source": "./plugins/ui-critic",
-      "description": "Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a rendered page looks generic. Not for mockups, e2e tests or WCAG audits.",
+      "description": "Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a page looks generic. Not for mockups, e2e tests or WCAG audits.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1443,6 +1443,13 @@
       "name": "coder-max",
       "source": "./plugins/coder-max",
       "description": "Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "bash-rules",
+      "source": "./plugins/bash-rules",
+      "description": "Mod that denies Bash used to read files (use Read/Grep/Glob), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, or destroy systems, infra and data. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku.",
       "version": "0.1.0",
       "category": "development"
     }
