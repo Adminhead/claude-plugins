@@ -1,0 +1,9 @@
+{
+  "name": "aws-cli",
+  "version": "0.1.0",
+  "description": "AWS CLI v2 mechanics for scripts and write commands: pagination, --query and output, timeouts, waiters, skeletons, dry runs and client tokens. Not for read-only inspection (aws-resource-query) or profiles, SSO and IAM (aws).",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
