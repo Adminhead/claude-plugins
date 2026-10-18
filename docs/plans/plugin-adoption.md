@@ -31,7 +31,7 @@ This overrides the wshobson reviewer's `port` rows for `terraform`, `helm`, `git
 - **Keep `claude-code-lsps` as the only allowlisted marketplace.** The stack metas depend on its LSP plugins, as the archived coding plugins did: `pyright`, `gopls`, `rust-analyzer`, `vtsls`, `bash-language-server`.
 - **`avoid-ai-writing@conorbronsdon-skills` is a direct user-scope install**, not a dependency. It wins the writing-style comparison (single skill, MIT, maintained, deterministic detector). wshobson's marketplace only mirrors it. It is already in `examples/claude-settings/settings.global.json`.
 - **Don't allowlist `claude-code-workflows` (wshobson).** Only 2 of its 92 plugins are single-component, and allowlisting exposes the other 90. Port `file-conversion` if wanted.
-- **`claude-plugins-official` is allowlisted only for `csharp-lsp`** (csharp-ls), which `dotnet-meta` depends on (user decision, 2026-10-17; claude-code-lsps' `omnisharp` runs the legacy server and a `brew install` hook). Don't add other dependencies on it: Context7 is added on its own when a project needs it, and the official pr-review-toolkit and feature-dev agents stay direct installs.
+- **`claude-plugins-official` is allowlisted for `csharp-lsp` and `context7`.** `csharp-lsp` (csharp-ls) is a `dotnet-meta` dependency (user decision, 2026-10-17; claude-code-lsps' `omnisharp` runs the legacy server and a `brew install` hook). `context7` is a `programming-core` dependency (user decision, 2026-10-18); it runs anonymously, or with OAuth via `/mcp`, because the official config sends no API-key header. `exa@claude-plugins-official` is a direct user-scope install, not a dependency, and is off by default (user decision, 2026-10-18; a dependency can't default to off): it is for sessions without the built-in `WebSearch` (Bedrock, older Vertex models, a `WebSearch` deny rule). Don't add other dependencies on it: the official pr-review-toolkit and feature-dev agents stay direct installs.
 - **Never depend on a mega-plugin:** ECC, mattpocock, agent-skills, taste-skill, claude-skills, claude-seo, ponytail. Port the pieces instead, or install upstream directly for SEO and game-dev work.
 
 ### 3. Meta layout
@@ -43,7 +43,7 @@ All of these metas and the bundle exist now, with empty dependency lists.
 | Meta | Scope | Installs |
 | --- | --- | --- |
 | `baseline` | user | Only zero- or low-context items: `git-commit`, `recommend-plugins` (manual), `handoff` (manual), `check-bypass-guard` (hook), `bash-rules` (mod). `git-statusline`, `usage-band` and `mcp-health` (mods). |
-| `programming-core` (bundle) | via metas | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run` (manual) |
+| `programming-core` (bundle) | via metas | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run` (manual), `grep-app`, `context7@claude-plugins-official` |
 | `python-meta` | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` |
 | `golang-meta` | project | `programming-core`, `golang`, `gopls@claude-code-lsps` |
 | `rust-meta` | project | `programming-core`, `rust`, `rust-analyzer@claude-code-lsps` |
@@ -52,11 +52,12 @@ All of these metas and the bundle exist now, with empty dependency lists.
 | `web-meta` | project | `programming-core`, `design-core`, `web-development`, `react`, `vite`, `e2e-testing`, `playwright-cli`, `browser-tester` (A), `web-perf-auditor` (A) |
 | `design-meta` | project | `design-core`, `uiux-lookup`, `design-critique`, `design-system`, `design-handoff`. No `programming-core`. |
 | `iac-meta` | project | `terraform`, `ansible`, `docker`, `bash`, `cloud-ops-guard` (H), `devops` (A), `bash-language-server@claude-code-lsps` |
-| `kubernetes-meta` | project | `kubernetes`, `helm`, `gitops` |
+| `kubernetes-meta` | project | `kubernetes`, `helm`, `gitops`, `tilt` |
+| `aws-meta` | project or local | `aws`, `aws-cli`, `aws-mcp`, `aws-resource-query`, `aws-cloudwatch`, `aws-well-architected`, `cloud-ops-guard` |
 | `github-meta` | project | `gh-issues`, `gh-pr`, `pr-comments` (manual), `ship`, `shipper` (A), `gh-actions`, `dependabot` |
 | `orchestration-meta` | user or project | `orchestration` (A), `agent-router` (M), the general agents `coder`, `architect`, `reviewer`, `debugger`, `scribe`, and `readonly-agent-gate` (H). See decision 6. |
 
-Reviewers also proposed `aws-meta`, `api-meta`, `observability-meta` and `database-meta`. Each is a 3- to 6-skill cluster that suits only some repos, and a meta's members can't be turned off one by one. They stay direct installs until a real project needs the whole set.
+Reviewers also proposed `aws-meta`, `api-meta`, `observability-meta` and `database-meta`. Each is a 3- to 6-skill cluster that suits only some repos, and a meta's members can't be turned off one by one. They stay direct installs until a real project needs the whole set. `aws-meta` is the exception: the user adopted it on 2026-10-18 at project or local scope, so it installs only in repos that need AWS. The other three stay direct installs.
 
 ### 4. Overlaps resolved
 
@@ -256,7 +257,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | Area | Plugins |
 | --- | --- |
 | API | `api-rest-design` (+ versioning), `api-idempotency`, `api-webhooks`, `api-keys`, `api-oauth-provider`, `api-graphql`, `api-grpc` |
-| AWS | `aws-resource-query`, `aws-cloudwatch`, `aws-well-architected` |
+| AWS | `aws` (credentials, IAM, sign-in) and `aws-cli` (CLI mechanics, write commands) and `aws-mcp` (inside `aws-meta` and on whenever it is installed; us-east-1 endpoint only; docs search, regional availability and `run_script`); `aws-knowledge` (direct, docs only); `aws-resource-query`, `aws-cloudwatch`, `aws-well-architected` |
 | Databases | `db-schema-design` (+ crew dba safety rules), `postgres` (+ wshobson table-design gotchas, query tuning, pgvector), `mysql`, `redis`, `prisma` (new, from ECC) |
 | Deploy and ops | `rollout-plan`, `production-readiness`, `observability-instrumentation`, `promql`, `grafana-dashboards`, `postmortem` |
 | Security | `security-scan` (manual; + SBOM and security-auditor checklist), `threat-model`, `privacy-review`, `mcp-server-audit` (new) |
@@ -267,7 +268,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | Design and docs | `codebase-design` (new, mattpocock + improve-codebase-architecture), `domain-modeling`, `adr-writing`, `docs-audit`, `agent-instructions`, `deprecation-migration` (new) |
 | Repo and config | `pre-commit` (+ hook-repair), `agent-config-audit` (+ mcp-dependency-review), `config-audit`, `devcontainer` (new), `plugin-vetter` (new A, alongside agent-config-audit) |
 | Workflow | `implement-plan`, `research`, `prototype`, `experiment-loop`, `modernize`, `session-retro` (new), `setup-wizard` (new), `test-gap-audit`, `git-history` (+ rebase safety rules) |
-| Tools | `devenv`, `chezmoi`, `pass-cli`, `termwright`, `homelab-network`, `esp-idf`, `grep-app` (P) |
+| Tools | `devenv`, `chezmoi`, `pass-cli`, `termwright`, `homelab-network`, `esp-idf`, `mise` (direct), `tilt` (kubernetes-meta), `grep-app` (programming-core), `exa@claude-plugins-official` (direct, off) |
 | Observability vendor | `sentry-sdk`, `sentry-mcp-self-hosted` (P, pin `@sentry/mcp-server` to a fixed version). The hosted `sentry-mcp` is not adopted. |
 | Specialized agents | `dba` (with the database skills), `security-auditor` (with the security skills) |
 | Mods | `agent-status` (+ model and time since spawn), `cache-clock` (new), `turn-stats` (new) |
@@ -281,7 +282,8 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | crew Explore agent, orchestration-guard hooks | Built-in Explore plus the codebase-memory agents cover exploration. The guard hooks drift with each release, so their rules live on as prose in `orchestration.md`; `agent-router` replaces the hard-coded routing. The system prompt override is adopted: the orchestration plugin ships it (decision 6). |
 | coremods git-tools, tool-mgr hygiene rules, systemone, DuckDB metrics | No standalone value, contradict current harness guidance, or too heavy. |
 | context7, ripgrep and grep-app skills; worktree, agent-teams, create-skill, map-codebase, editorconfig | Built-ins, server instructions, codebase-memory or repo-local skills cover them. |
-| GitHub, Exa, Playwright and AWS MCP servers | `gh`, claude.ai connectors and CLI skills do the same with less context. |
+| GitHub and Playwright MCP servers | `gh`, claude.ai connectors and CLI skills do the same with less context. AWS is not in this row: `aws-mcp` is a pinned SigV4 proxy to the managed AWS MCP Server, and `aws-knowledge` is a docs-only server. |
+| AWS MCP servers skipped: API MCP Server, Documentation MCP, CloudWatch MCP, Cloud Control API MCP; `aws-core@claude-plugins-official` | The API server is superseded by the AWS MCP Server (`aws-mcp`). Documentation duplicates `aws-knowledge`. CloudWatch duplicates the `aws-cloudwatch` skill. Cloud Control is deprecated in favor of the IaC MCP Server. `aws-core` bundles skills, the server and hooks in one plugin, which breaks the one-component rule. |
 | Upstream ponytail plugin | Ruleset merged into `coding`; its 5 extra skills, per-prompt node hook and band mod cost too much. |
 | Language and framework "pro" skills from claude-skills, ECC and wshobson | Generic, often stale, and weaker than the archived versions. |
 | All wshobson and ECC persona agents and commands | Auto-delegating "Use PROACTIVELY" personas with mis-graded severities; overlap built-ins. |
