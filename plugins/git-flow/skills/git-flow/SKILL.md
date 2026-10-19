@@ -10,7 +10,7 @@ Procedures for the Driessen branching model: `main` (every commit is a release, 
 ## Safety rules
 
 - Run `git status` first. Stop on a dirty tree unless the user says otherwise.
-- Never push, force-push, delete remote branches, or tag-and-push without the user's go-ahead. The finish commands below are local; show the push command and ask.
+- Never push, force-push, delete remote branches, or tag-and-push without the user's go-ahead. Finish is local only with default config, but before any finish run `git config --get-regexp '^gitflow\..*push'`; a set push option (for example `gitflow.release.finish.push true`) makes finish a push, so get the user's go-ahead first. Otherwise show the push command and ask.
 - Branch naming and commit messages: defer to the `git-commit` skill when it is installed. The tools default to `feature/`, `release/`, `hotfix/`, `support/` prefixes.
 
 ## When to use this model
@@ -43,7 +43,7 @@ Run `git flow version`:
 - `X.Y.Z (git-flow-next)` (2.x) or `git-flow-next version X` (1.x): git-flow-next, the only maintained CLI. Recommend it.
 - `X.Y.Z (AVH Edition)`: gitflow-avh, archived 2023-06-19. It is what `apt install git-flow` ships. Works, unmaintained.
 - `0.4.1`: nvie's original, archived 2025-10-14. Do not recommend.
-- Not installed: use the plain-git sequences, or suggest `brew install git-flow-next` / `winget install GitTower.GitFlowNext` / `scoop install git-flow-next`. There is no apt package of git-flow-next. Do not install anything without asking.
+- Not installed: use the plain-git sequences, or suggest `brew install git-flow-next` / `winget install GitTower.GitFlowNext` (per the README, unverified) / `scoop install git-flow-next`. There is no apt package of git-flow-next. Do not install anything without asking.
 
 ## Day-to-day procedures
 
@@ -51,7 +51,7 @@ Prefer the CLI when installed; otherwise the plain-git column in [references/pla
 
 | Task | git-flow-next / AVH | Plain git |
 |---|---|---|
-| Init | `git flow init -d` | create `develop` from `main`, push |
+| Init | `git flow init -d` | create `develop` from `main`, push (ask first) |
 | Start feature | `git flow feature start NAME` | `git switch -c feature/NAME develop` |
 | Finish feature | `git flow feature finish NAME` | `git switch develop && git merge --no-ff feature/NAME && git branch -d feature/NAME` |
 | Start release | `git flow release start X.Y.Z` | `git switch -c release/X.Y.Z develop` |
@@ -87,5 +87,5 @@ Full flag lists and config keys: [references/cli-commands.md](references/cli-com
 ## Gotchas
 
 - `git flow init` on a repo with AVH config imports it automatically in git-flow-next. `git flow init --defaults --shared` also writes a committable `.gitflow` file (2.0.0+).
-- Tags are annotated only when a message is given (`-m`).
+- Pass `-m "msg"` on release and hotfix finish so git-flow-next makes an annotated tag (observed). The no-`-m` case is untested. `git push --follow-tags` pushes only annotated tags.
 - Driessen never pushes `main` or tags; after a finish the user decides: `git push origin main develop --follow-tags`.

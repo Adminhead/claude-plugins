@@ -16,7 +16,7 @@ HubFlow is git-flow plus automatic pushing to origin and GitHub pull requests fo
 ## Safety rules
 
 - Run `git status` first.
-- **HubFlow pushes to origin on its own.** `feature start`, `feature finish`, `release start`/`finish` and `hotfix start`/`finish` push (and finish deletes remote branches). Tell the user exactly what a command will push or delete and get a go-ahead before running it. Never run a push, force-push, remote-branch delete or tag push unasked.
+- **HubFlow pushes to origin on its own.** `feature start`, `feature finish`, `release start`/`finish` and `hotfix start`/`finish` push (and finish deletes remote branches). Tell the user exactly what a command will push or delete and get a go-ahead before running it. Never run a push, force-push, remote-branch delete or tag push unasked. Also ask first before `git hf push`, `feature push`, `release push`, `hotfix push`, `update -p` (assume it pushes unless checked), any `cancel` (may delete the remote branch; unverified), and `gh pr create`.
 - Branch naming and commit messages: defer to the `git-commit` skill when it is installed.
 
 ## When to use this model
@@ -49,18 +49,18 @@ More signals: [references/detection.md](references/detection.md).
 | Finish feature | `git hf feature finish NAME` | Run **after** the PR is merged on GitHub; deletes `origin/feature/NAME`, pushes develop | `git switch develop && git pull && git branch -d feature/NAME` |
 | Start release | `git hf release start X.Y.Z` | Fetches and pushes by default | `git switch -c release/X.Y.Z develop` |
 | Finish release | `git hf release finish X.Y.Z` | Merges to master, tags, merges the tag into develop, **pushes develop, master and tags, deletes the remote branch** | `--no-ff` merge to master, `git tag -a`, merge into develop |
-| Hotfix | `git hf hotfix start|finish X.Y.Z` | Same push behaviour as release | as git-flow |
-| Abandon | `git hf feature|release|hotfix cancel [-f] NAME` | | `git branch -D` (ask first) |
+| Start/finish hotfix | `git hf hotfix start X.Y.Z` / `git hf hotfix finish X.Y.Z` | Same push behaviour as release | as git-flow |
+| Abandon | `git hf feature cancel [-f] NAME` (also `release`, `hotfix`) | May delete the remote branch (unverified) | `git branch -D` (ask first) |
 | Refresh | `git hf update` | merges origin/master and origin/develop into local ones, prunes | `git fetch --prune` and merge |
 
 Daily loop from the docs: `feature start`, `git hf push` while working, `git hf update && git merge develop` on the feature each morning, PR on GitHub merged by a colleague ("Don't accept your own pull requests!"), `feature finish`.
 
 ## Behaviours to warn about
 
-- **`feature finish` expects the PR already merged.** If `git rev-list develop..feature/x` is non-empty it stops with "Please raise a pull-request via GitHub first, or use the -f flag." Only use `-f` after telling the user it does a real local merge.
+- **`feature finish` expects the PR already merged.** If `git rev-list develop..feature/x` is non-empty it stops with "Please raise a pull-request via GitHub first, or use the -f flag." `-f` does a real local merge, then pushes the merged develop and deletes the remote branch, bypassing PR review. Ask first.
 - **`-Xtheirs` on release and hotfix finish.** Finish merges into master with `git merge --no-ff -srecursive -Xtheirs`, silently resolving conflicts in favour of the release/hotfix branch. Before finishing, preview conflicts with `git merge-tree --write-tree master release/X.Y.Z` (exit 1 means conflicts that finish would auto-resolve toward the release branch), and tell the user.
 - Release and hotfix finish merge the tag into develop (`-b` merges the branch instead).
-- No tool handles a hotfix while a release branch is open (Driessen's rule: merge the hotfix into the release branch instead of develop). Do it by hand before finishing: `git switch release/X.Y && git merge --no-ff hotfix/X.Y.Z`.
+- AVH and git-flow-next do not handle a hotfix while a release branch is open (HubFlow's source wasn't checked, so assume it doesn't either). Driessen's rule: merge the hotfix into the release branch instead of develop. Do it by hand before finishing: `git switch release/X.Y && git merge --no-ff hotfix/X.Y.Z`.
 - `hotfix start <ver> <older-tag>` still finishes into the latest master, which per the docs can leave master with the wrong version number. Do not use it for old lines.
 - Docs say not to fork repos on GitHub; clone the shared repo directly.
 

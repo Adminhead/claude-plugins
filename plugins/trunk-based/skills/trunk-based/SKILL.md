@@ -54,9 +54,9 @@ Risks: semantic conflicts that merge cleanly but break the build; teammates pull
 
 **Short-lived branch** (the norm at scale):
 ```bash
-git switch -c fix-login origin/main
+git switch -c fix-login --no-track origin/main
 git pull --rebase origin main      # sync often
-# full local build/tests, then push and open a PR (ask first); merge the same day; delete the branch
+# full local build/tests, then git push -u origin HEAD and open a PR (ask first); merge the same day; delete the branch
 ```
 - Lifetime hours to about two days; one developer per branch; no intermediate merges to trunk (merge once, to close it); delete after merging.
 - Build and review on the branch, but never create or publish release artifacts from it.

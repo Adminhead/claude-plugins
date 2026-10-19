@@ -1,5 +1,7 @@
 # git hf commands (v1.5.4)
 
+Ask the user before any of these push or delete remote state: `start`/`finish` (feature, release, hotfix), every `push`, `update -p` (assume it pushes unless checked), and every `cancel` (may delete the remote branch; unverified). `gh pr create` also needs a go-ahead.
+
 ```bash
 git hf init [-af]
 git hf feature [list] [-v]
