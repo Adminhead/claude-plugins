@@ -96,7 +96,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Installs | Used by | Description |
 | --- | --- | --- | --- |
-| [`programming-core`](plugins/programming-core) | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run`, `grep-app`, `context7@claude-plugins-official` | `dotnet-meta`, `godot-meta`, `golang-meta`, `node-typescript-meta`, `python-meta`, `rust-meta`, `web-meta` | Core bundle of general programming plugins that the language and web metas install. Ships no components of its own. |
+| [`programming-core`](plugins/programming-core) | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run`, `grep-app`, `context7@claude-plugins-official`, `feature-flags` | `dotnet-meta`, `godot-meta`, `golang-meta`, `node-typescript-meta`, `python-meta`, `rust-meta`, `web-meta` | Core bundle of general programming plugins that the language and web metas install. Ships no components of its own. |
 | [`design-core`](plugins/design-core) | `ui-direction`, `ui-critic`, `web-design`, `screen-reader-testing`, `accessibility-review`, `ux-copy` | `design-meta`, `web-meta` | Core bundle of UI and UX design plugins that the web and design metas install. Ships no components of its own. |
 | [`gamedev-core`](plugins/gamedev-core) | `game-design`, `game-architecture`, `game-feel`, `level-design`, `game-ui`, `game-audio`, `game-performance`, `game-playtest` | `godot-meta` | Core bundle of engine-agnostic game-development plugins that the game-engine metas install. Ships no components of its own. |
 
@@ -307,6 +307,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`git-flow`](plugins/git-flow) | skill | Teaches Claude the git-flow branching model: detecting it, feature/release/hotfix procedures with git-flow-next, AVH or plain git, and when to pick another model. | - |
 | [`hubflow`](plugins/hubflow) | skill | Teaches Claude to work in repos that use HubFlow (git hf), the archived GitHub-oriented git-flow fork, with warnings about its auto-pushing and merge behaviour. | - |
 | [`trunk-based`](plugins/trunk-based) | skill | Teaches Claude trunk-based development: short-lived branches, feature flags, branch by abstraction, release from trunk or late-cut release branches with cherry-picks. | - |
+| [`feature-flags`](plugins/feature-flags) | skill | Adds, uses, tests and removes feature flags in application code with the repo's own flag tool or OpenFeature, with a reference of common flag platforms. | `programming-core` |
 
 ### Agents
 

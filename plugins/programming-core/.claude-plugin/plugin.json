@@ -1,6 +1,6 @@
 {
   "name": "programming-core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -16,6 +16,7 @@
     {
       "name": "context7",
       "marketplace": "claude-plugins-official"
-    }
+    },
+    "feature-flags"
   ]
 }

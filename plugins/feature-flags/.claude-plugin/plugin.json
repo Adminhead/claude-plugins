@@ -1,0 +1,9 @@
+{
+  "name": "feature-flags",
+  "version": "0.1.0",
+  "description": "Adds, uses, tests and removes feature flags in application code with the repo's own flag tool or OpenFeature, with a reference of common flag platforms.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -22,7 +22,7 @@
       "name": "programming-core",
       "source": "./plugins/programming-core",
       "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "bundle"
     },
     {
@@ -1548,6 +1548,13 @@
       "name": "trunk-based",
       "source": "./plugins/trunk-based",
       "description": "Teaches Claude trunk-based development: short-lived branches, feature flags, branch by abstraction, release from trunk or late-cut release branches with cherry-picks.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "feature-flags",
+      "source": "./plugins/feature-flags",
+      "description": "Adds, uses, tests and removes feature flags in application code with the repo's own flag tool or OpenFeature, with a reference of common flag platforms.",
       "version": "0.1.0",
       "category": "development"
     }
