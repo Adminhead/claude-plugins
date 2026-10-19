@@ -134,6 +134,30 @@ Env var names are conventional and set by each user; none was confirmed as an SD
 
 ---
 
+## 5. Review follow-up verification (accessed 2026-10-18)
+
+Verified against official docs:
+
+- LaunchDarkly mobile key (`mob-`) and client-side ID are not secret; SDK key (`sdk-`) is: https://launchdarkly.com/docs/home/account/environment/keys
+- Flagsmith client-side key is public ("The Environment Key is public"; docs call it Environment Key, not ID): https://docs.flagsmith.com/clients/
+- Firebase API keys for Firebase services only identify the project and are safe in client code if restricted; protection comes from Security Rules and App Check: https://firebase.google.com/docs/projects/api-keys
+- DevCycle Node SDK ships `DevCycleProvider` (OpenFeature): https://docs.devcycle.com/sdk/server-side-sdks/node/node-openfeature
+- Vercel Edge Runtime caveat for some Node.js OpenFeature providers: https://openfeature.dev/blog/vercel-flags-sdk-adapter
+- Unleash provider package and `url`/`customHeaders.Authorization` config: https://docs.getunleash.io/sdks/openfeature/node
+- PostHog local-evaluation secret key naming varies by SDK version: https://posthog.com/docs/feature-flags/local-evaluation
+- LaunchDarkly code references: https://launchdarkly.com/docs/guides/flags/technical-debt
+
+Not confirmed (hedged as "unverified" in the skill references):
+
+- PostHog public project token as safe for client code: https://posthog.com/docs/api did not say.
+- Harness FME client-side key as safe for client code: only "server-side keys should never go in client-side SDKs" was stated (https://developer.harness.io/docs/feature-management-experimentation/sdks-and-infrastructure/).
+- Statsig client key safety (not fetched successfully).
+- flagd YAML support: https://flagd.dev/reference/flag-definitions/ shows only JSON.
+- `InMemoryProvider` in OpenFeature JS docs: the server SDK README (https://raw.githubusercontent.com/open-feature/js-sdk/main/packages/server/README.md) shows `TypedInMemoryProvider` only as a domains example and does not document testing use; `InMemoryProvider` exists in the 1.23.0 package.
+- Env var name patterns for Split and LaunchDarkly: guesses.
+
+---
+
 ## Sources (all accessed 2026-10-18)
 
 - [of-intro] https://openfeature.dev/docs/reference/intro
