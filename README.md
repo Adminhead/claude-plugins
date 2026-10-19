@@ -304,6 +304,9 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`aws-cli`](plugins/aws-cli) | skill | AWS CLI v2 mechanics for scripts and write commands: pagination, --query and output, timeouts, waiters, skeletons, dry runs and client tokens. Not for read-only inspection (aws-resource-query) or profiles, SSO and IAM (aws). | `aws-meta` |
 | [`aws-mcp`](plugins/aws-mcp/README.md) | mcp | The managed AWS MCP Server (us-east-1) through the pinned mcp-proxy-for-aws SigV4 proxy over stdio: AWS docs search, regional availability, and run_script calls signed with your local profile. Optional profile name; blank uses the default credential chain. | `aws-meta` |
 | [`aws-knowledge`](plugins/aws-knowledge/README.md) | mcp | AWS Knowledge MCP server (remote HTTP, no auth): AWS documentation search and reading, regional availability of services and APIs. Docs-only; use aws-mcp instead when you have credentials. | - |
+| [`git-flow`](plugins/git-flow) | skill | Teaches Claude the git-flow branching model: detecting it, feature/release/hotfix procedures with git-flow-next, AVH or plain git, and when to pick another model. | - |
+| [`hubflow`](plugins/hubflow) | skill | Teaches Claude to work in repos that use HubFlow (git hf), the archived GitHub-oriented git-flow fork, with warnings about its auto-pushing and merge behaviour. | - |
+| [`trunk-based`](plugins/trunk-based) | skill | Teaches Claude trunk-based development: short-lived branches, feature flags, branch by abstraction, release from trunk or late-cut release branches with cherry-picks. | - |
 
 ### Agents
 

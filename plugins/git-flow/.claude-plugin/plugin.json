@@ -1,0 +1,9 @@
+{
+  "name": "git-flow",
+  "version": "0.1.0",
+  "description": "Teaches Claude the git-flow branching model: detecting it, feature/release/hotfix procedures with git-flow-next, AVH or plain git, and when to pick another model.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

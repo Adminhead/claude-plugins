@@ -1,0 +1,9 @@
+{
+  "name": "hubflow",
+  "version": "0.1.0",
+  "description": "Teaches Claude to work in repos that use HubFlow (git hf), the archived GitHub-oriented git-flow fork, with warnings about its auto-pushing and merge behaviour.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

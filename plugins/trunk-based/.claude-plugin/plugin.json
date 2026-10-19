@@ -1,0 +1,9 @@
+{
+  "name": "trunk-based",
+  "version": "0.1.0",
+  "description": "Teaches Claude trunk-based development: short-lived branches, feature flags, branch by abstraction, release from trunk or late-cut release branches with cherry-picks.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
