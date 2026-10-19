@@ -35,7 +35,7 @@ Done when: the flag key is defined once, the default is the safe path, and the o
 ## 3. Test
 
 1. Test both states: flag off (legacy behaviour, must be unchanged) and flag on (new behaviour). Add tests next to existing tests for the guarded code.
-2. Set flag values through the repo's test hook or a test provider (OpenFeature `InMemoryProvider`, a flagd file, the platform's test or local mode), never the network. Reset after each test. Patterns in [references/openfeature-and-testing.md](references/openfeature-and-testing.md).
+2. Set flag values through the repo's test hook or a test provider (an OpenFeature in-memory provider if the installed SDK has one, a flagd file, the platform's test or local mode), never the network. Reset after each test. Patterns in [references/openfeature-and-testing.md](references/openfeature-and-testing.md).
 3. Test the default path: provider unavailable or flag missing returns the safe default.
 4. Combinations: test each flag alone, the all-new-off baseline, and the pairs that touch the same code. Do not enumerate every combination.
 5. Run the changed tests and the suites that cover the guarded code; report the commands and results.
@@ -53,7 +53,7 @@ Do this when the rollout is finished, the experiment is decided, or the flag is 
 
 ## Which platform
 
-Only when the user asks for a recommendation and the repo has none: prefer OpenFeature in code, with flagd (open source, file-based) or an env-var provider for a start, so a hosted platform can be added later through a provider without touching call sites. Platform status, licences, SDK packages and OpenFeature providers are in [references/platforms.md](references/platforms.md). Several vendors changed hands recently (Split is now Harness FME; OpenAI announced buying Statsig in 2025), so check a platform's current docs before relying on a detail.
+Only when the user asks for a recommendation and the repo has none: prefer OpenFeature in code, with flagd (open source, file-based) or an env-var provider for a start, so a hosted platform can be added later through a provider without touching call sites. Platform status, licences, SDK packages and OpenFeature providers are in [references/platforms.md](references/platforms.md). Several vendors changed hands recently (Split is now Harness FME; OpenAI announced a Statsig acquisition in 2025, closing unconfirmed), so check a platform's current docs before relying on a detail.
 
 ## Gotchas
 

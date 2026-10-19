@@ -24,7 +24,7 @@ Check the repo's installed OpenFeature SDK version and its docs before copying c
 
 ```ts
 import { OpenFeature } from '@openfeature/server-sdk';
-await OpenFeature.setProviderAndWait(provider);   // await readiness, do not evaluate before it
+await OpenFeature.setProviderAndWait(provider);   // JS API name: waits for readiness; other SDKs name this differently
 const flags = OpenFeature.getClient();
 const on = await flags.getBooleanValue('checkout-new-tax-engine', false, { targetingKey: user.id });
 ```
@@ -45,11 +45,11 @@ Use a hook for cross-cutting needs: log every evaluation with reason, fail a tes
 
 ## flagd
 
-Open-source engine for local development, tests and self-hosting. Flags are defined in a file or other sources with variants, a default variant, and optional targeting rules; the app uses a flagd provider (in-process or RPC). Check the flagd docs for the current file schema before writing one. Do not put production targeting rules in a repo file without the user's approval.
+Open-source engine for local development, tests and self-hosting. Flags are defined in JSON (flagd docs show JSON; other file formats unverified) from a file or other sources, with variants, a default variant, and optional targeting rules; the app uses a flagd provider (in-process or RPC). Check the flagd docs for the current file schema before writing one. Do not put production targeting rules in a repo file without the user's approval.
 
 ## Testing
 
-1. Prefer the OpenFeature in-memory provider (`InMemoryProvider` exported from `@openfeature/server-sdk`; other SDKs have an equivalent): create it with a map of flag key to variants and default variant, set it as the provider in test setup, and swap or reset it per test. Confirm the exact constructor in the installed SDK.
+1. Prefer the OpenFeature in-memory provider if the installed SDK provides one (the JS server SDK README shows `TypedInMemoryProvider` imported from `@openfeature/server-sdk`, and the package also contains an `InMemoryProvider`; other SDKs' equivalents are unverified): create it with a map of flag key to variants and default variant, set it as the provider in test setup, and swap or reset it per test. Confirm the exact constructor in the installed SDK.
 2. If the repo wraps flags in its own function, stub that function instead of the provider.
 3. Platform SDKs usually have an offline, local or file mode (for example local files or test data sources); use it rather than hitting a hosted service. Check the platform docs; never use a real SDK key in tests.
 4. Each guarded change needs: flag off equals old behaviour, flag on equals new behaviour, flag missing or provider failing equals the safe default.
