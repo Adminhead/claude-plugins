@@ -1,0 +1,9 @@
+{
+  "name": "renovate",
+  "version": "0.1.0",
+  "description": "Configure and troubleshoot Renovate (renovate.json, presets, packageRules, schedules, automerge), run it for Forgejo (platform=forgejo), and sweep open Renovate PRs, merging only green ones.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

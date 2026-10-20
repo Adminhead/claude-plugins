@@ -1,0 +1,9 @@
+{
+  "name": "forgejo-mcp",
+  "version": "0.1.0",
+  "description": "Forgejo MCP server (forgejo-mcp, stdio) for one Codeberg or self-hosted Forgejo instance; prompts for the host and an access token kept in secure storage.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

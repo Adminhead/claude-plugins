@@ -91,6 +91,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`kubernetes-meta`](plugins/kubernetes-meta) | project | `kubernetes`, `helm`, `gitops`, `tilt` | Plugin set for Kubernetes projects (manifests, Helm, GitOps), installed at project scope. Ships no components of its own. |
 | [`github-meta`](plugins/github-meta) | project | `gh-issues`, `gh-pr`, `pr-comments`, `ship`, `shipper`, `gh-actions`, `dependabot`, `gh-readme` | Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own. |
 | [`orchestration-meta`](plugins/orchestration-meta) | user or project | `orchestration`, `agent-router`, `coder`, `architect`, `reviewer`, `debugger`, `scribe`, `readonly-agent-gate`, `coder-high`, `coder-critical` | Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. coder-max is not included; install it per repo at local scope. Ships no components of its own. |
+| [`forgejo-meta`](plugins/forgejo-meta) | project | `forgejo-cli`, `forgejo-issues`, `forgejo-pr`, `forgejo-pr-comments`, `forgejo-ship`, `forgejo-shipper`, `forgejo-actions`, `forgejo-mcp`, `renovate`, `forgejo-readme` | Plugin set for Forgejo and Codeberg workflows (fj CLI, issues, pull requests, Actions, Renovate, READMEs, the Forgejo MCP server), installed at project scope. Ships no components of its own. |
 
 ### Core bundles
 
@@ -308,6 +309,17 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`hubflow`](plugins/hubflow) | skill | Teaches Claude to work in repos that use HubFlow (git hf), the archived GitHub-oriented git-flow fork, with warnings about its auto-pushing and merge behaviour. | - |
 | [`trunk-based`](plugins/trunk-based) | skill | Teaches Claude trunk-based development: short-lived branches, feature flags, branch by abstraction, release from trunk or late-cut release branches with cherry-picks. | - |
 | [`feature-flags`](plugins/feature-flags) | skill | Adds, uses, tests and removes feature flags in application code with the repo's own flag tool or OpenFeature, with a reference of common flag platforms. | `programming-core` |
+| [`forgejo-cli`](plugins/forgejo-cli) | skill | Forgejo CLI fj against Codeberg or a self-hosted Forgejo: install, per-host auth, host and remote selection, the command map and its gaps. | `forgejo-meta` |
+| [`forgejo-issues`](plugins/forgejo-issues) | skill | Read, create, edit, close and label single Forgejo or Codeberg issues with fj, including templates, milestones, dependencies and issue search. | `forgejo-meta` |
+| [`forgejo-pr`](plugins/forgejo-pr) | skill | Prepare and open a reviewer-ready Forgejo or Codeberg pull request with fj: convention-following commits, a body with summary visuals, evidence and merge danger, opened as a WIP draft after approval. | `forgejo-meta` |
+| [`forgejo-pr-comments`](plugins/forgejo-pr-comments) | skill | Manual /forgejo-pr-comments: pull a Forgejo PR's review comments into context, triage them, and fix the ones you pick. Read-only on the forge. | `forgejo-meta` |
+| [`forgejo-ship`](plugins/forgejo-ship) | skill | Ship finished work on a Forgejo or Codeberg repo in one run: commit, push, and optionally open a PR with fj, wait for checks and merge, delegated to the forgejo-shipper agent. | `forgejo-meta` |
+| [`forgejo-shipper`](plugins/forgejo-shipper) | agent | Agent that commits finished work, pushes it, and optionally opens a Forgejo PR with fj, waits for checks and merges, on a cheap model. Used by the forgejo-ship skill. | `forgejo-meta` |
+| [`forgejo-actions`](plugins/forgejo-actions) | skill | Create, review, harden and debug Forgejo Actions workflows for forgejo-runner: runner labels, uses: resolution, unsupported GitHub keys, fork-PR approval, secrets, and failed-run diagnosis. | `forgejo-meta` |
+| [`forgejo-mcp`](plugins/forgejo-mcp) | mcp | Forgejo MCP server (forgejo-mcp, stdio) for one Codeberg or self-hosted Forgejo instance; prompts for the host and an access token kept in secure storage. | `forgejo-meta` |
+| [`renovate`](plugins/renovate) | skill | Configure and troubleshoot Renovate (renovate.json, presets, packageRules, schedules, automerge), run it for Forgejo (platform=forgejo), and sweep open Renovate PRs, merging only green ones. | `forgejo-meta` |
+| [`forgejo-readme`](plugins/forgejo-readme) | skill | README skill for Forgejo and Codeberg repos: write, restructure, audit and beautify README.md from facts in the repo, with templates by project type, a scored audit, honest badges and Forgejo rendering rules. | `forgejo-meta` |
+| [`forgejo-release`](plugins/forgejo-release) | skill | Cut, edit and publish Forgejo or Codeberg releases with fj: tags, release notes, drafts and prereleases, and release assets. | - |
 
 ### Agents
 
@@ -324,6 +336,7 @@ Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and e
 | `dba:dba` | [`dba`](plugins/dba) | opus | medium | 500k | yes | - |
 | `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | 400k | no | `orchestration-meta` |
 | `devops:devops` | [`devops`](plugins/devops) | opus | medium | 500k | yes | `iac-meta` |
+| `forgejo-shipper:forgejo-shipper` | [`forgejo-shipper`](plugins/forgejo-shipper) | inherit | - | - | no | `forgejo-meta` |
 | `open-source-release-audit:open-source-release-audit` | [`open-source-release-audit`](plugins/open-source-release-audit) | sonnet | high | 400k | no | - |
 | `orchestration:orchestration` | [`orchestration`](plugins/orchestration) | inherit | - | - | yes | `orchestration-meta` |
 | `plugin-vetter:plugin-vetter` | [`plugin-vetter`](plugins/plugin-vetter) | sonnet | medium | 400k | no | - |

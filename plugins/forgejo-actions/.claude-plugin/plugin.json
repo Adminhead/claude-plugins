@@ -1,0 +1,9 @@
+{
+  "name": "forgejo-actions",
+  "version": "0.1.0",
+  "description": "Create, review, harden and debug Forgejo Actions workflows for forgejo-runner: runner labels, uses: resolution, unsupported GitHub keys, fork-PR approval, secrets, and failed-run diagnosis.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

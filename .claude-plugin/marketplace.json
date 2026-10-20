@@ -1557,6 +1557,90 @@
       "description": "Adds, uses, tests and removes feature flags in application code with the repo's own flag tool or OpenFeature, with a reference of common flag platforms.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "forgejo-meta",
+      "source": "./plugins/forgejo-meta",
+      "description": "Plugin set for Forgejo and Codeberg workflows (fj CLI, issues, pull requests, Actions, Renovate, READMEs, the Forgejo MCP server), installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "forgejo-cli",
+      "source": "./plugins/forgejo-cli",
+      "description": "Forgejo CLI fj against Codeberg or a self-hosted Forgejo: install, per-host auth, host and remote selection, the command map and its gaps.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-issues",
+      "source": "./plugins/forgejo-issues",
+      "description": "Read, create, edit, close and label single Forgejo or Codeberg issues with fj, including templates, milestones, dependencies and issue search.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-pr",
+      "source": "./plugins/forgejo-pr",
+      "description": "Prepare and open a reviewer-ready Forgejo or Codeberg pull request with fj: convention-following commits, a body with summary visuals, evidence and merge danger, opened as a WIP draft after approval.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-pr-comments",
+      "source": "./plugins/forgejo-pr-comments",
+      "description": "Manual /forgejo-pr-comments: pull a Forgejo PR's review comments into context, triage them, and fix the ones you pick. Read-only on the forge.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-ship",
+      "source": "./plugins/forgejo-ship",
+      "description": "Ship finished work on a Forgejo or Codeberg repo in one run: commit, push, and optionally open a PR with fj, wait for checks and merge, delegated to the forgejo-shipper agent.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-shipper",
+      "source": "./plugins/forgejo-shipper",
+      "description": "Agent that commits finished work, pushes it, and optionally opens a Forgejo PR with fj, waits for checks and merges, on a cheap model. Used by the forgejo-ship skill.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-actions",
+      "source": "./plugins/forgejo-actions",
+      "description": "Create, review, harden and debug Forgejo Actions workflows for forgejo-runner: runner labels, uses: resolution, unsupported GitHub keys, fork-PR approval, secrets, and failed-run diagnosis.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-mcp",
+      "source": "./plugins/forgejo-mcp",
+      "description": "Forgejo MCP server (forgejo-mcp, stdio) for one Codeberg or self-hosted Forgejo instance; prompts for the host and an access token kept in secure storage.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "renovate",
+      "source": "./plugins/renovate",
+      "description": "Configure and troubleshoot Renovate (renovate.json, presets, packageRules, schedules, automerge), run it for Forgejo (platform=forgejo), and sweep open Renovate PRs, merging only green ones.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-readme",
+      "source": "./plugins/forgejo-readme",
+      "description": "README skill for Forgejo and Codeberg repos: write, restructure, audit and beautify README.md from facts in the repo, with templates by project type, a scored audit, honest badges and Forgejo rendering rules.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "forgejo-release",
+      "source": "./plugins/forgejo-release",
+      "description": "Cut, edit and publish Forgejo or Codeberg releases with fj: tags, release notes, drafts and prereleases, and release assets.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

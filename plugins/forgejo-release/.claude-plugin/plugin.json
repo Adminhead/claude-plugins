@@ -1,0 +1,9 @@
+{
+  "name": "forgejo-release",
+  "version": "0.1.0",
+  "description": "Cut, edit and publish Forgejo or Codeberg releases with fj: tags, release notes, drafts and prereleases, and release assets.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

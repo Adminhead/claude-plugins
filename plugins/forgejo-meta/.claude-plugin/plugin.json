@@ -1,0 +1,21 @@
+{
+  "name": "forgejo-meta",
+  "version": "0.1.0",
+  "description": "Plugin set for Forgejo and Codeberg workflows (fj CLI, issues, pull requests, Actions, Renovate, READMEs, the Forgejo MCP server), installed at project scope. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "forgejo-cli",
+    "forgejo-issues",
+    "forgejo-pr",
+    "forgejo-pr-comments",
+    "forgejo-ship",
+    "forgejo-shipper",
+    "forgejo-actions",
+    "forgejo-mcp",
+    "renovate",
+    "forgejo-readme"
+  ]
+}

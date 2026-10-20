@@ -1,0 +1,9 @@
+{
+  "name": "forgejo-issues",
+  "version": "0.1.0",
+  "description": "Read, create, edit, close and label single Forgejo or Codeberg issues with fj, including templates, milestones, dependencies and issue search.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "forgejo-pr-comments",
+  "version": "0.1.0",
+  "description": "Manual /forgejo-pr-comments: pull a Forgejo PR's review comments into context, triage them, and fix the ones you pick. Read-only on the forge.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

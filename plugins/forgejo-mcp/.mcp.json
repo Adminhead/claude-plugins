@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "forgejo-mcp": {
+      "command": "TODO",
+      "args": []
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "forgejo-readme",
+  "version": "0.1.0",
+  "description": "README skill for Forgejo and Codeberg repos: write, restructure, audit and beautify README.md from facts in the repo, with templates by project type, a scored audit, honest badges and Forgejo rendering rules.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

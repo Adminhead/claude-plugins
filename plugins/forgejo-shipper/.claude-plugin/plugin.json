@@ -1,0 +1,12 @@
+{
+  "name": "forgejo-shipper",
+  "version": "0.1.0",
+  "description": "Agent that commits finished work, pushes it, and optionally opens a Forgejo PR with fj, waits for checks and merges, on a cheap model. Used by the forgejo-ship skill.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "git-commit"
+  ]
+}

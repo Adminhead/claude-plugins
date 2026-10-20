@@ -1,0 +1,9 @@
+{
+  "name": "forgejo-cli",
+  "version": "0.1.0",
+  "description": "Forgejo CLI fj against Codeberg or a self-hosted Forgejo: install, per-host auth, host and remote selection, the command map and its gaps.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
