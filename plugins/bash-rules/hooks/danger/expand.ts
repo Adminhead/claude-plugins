@@ -22,11 +22,10 @@ const SPECIAL = new Set([
 const DECLARERS = new Set(['export', 'declare', 'typeset', 'local', 'readonly'])
 // Builtins that set a variable named in their words (`read X`, `printf -vX`, `getopts o X`, `unset X`).
 const BINDERS = new Set(['read', 'mapfile', 'readarray', 'printf', 'getopts', 'wait', 'let', 'unset'])
-// Keywords that open and close a compound command: an assignment inside one may not run.
-const OPENERS = new Set(['if', 'while', 'until', 'for', 'select', 'case', '{'])
-const CLOSERS = new Set(['fi', 'done', 'esac', '}'])
-// Keywords after which a command starts.
-const LEADS = new Set(['then', 'do', 'else', 'elif', '!', 'time', 'if', 'while', 'until', '{'])
+// Words that make a compound or control construct. An assignment inside one may not run, and keywords are too easy to
+// misread (`time -p if`, a `fi)` case pattern), so any of them as a word of unquoted command text turns expansion off for
+// the whole command, as do `{ }` groups, `!`, `[[`, subshells, `((` and function definitions.
+const CONTROL = new Set(['if', 'then', 'elif', 'else', 'fi', 'case', 'esac', 'for', 'select', 'while', 'until', 'do', 'done', 'function', 'coproc', 'time'])
 
 // ---------------------------------------------------------------------------------------------------------------
 // Lexer
@@ -34,15 +33,16 @@ const LEADS = new Set(['then', 'do', 'else', 'elif', '!', 'time', 'if', 'while',
 // `quoted` when the site is a whole double-quoted word part (`"$Z"`).
 type Site = { start: number; end: number; name: string; quoted: boolean }
 // An assignment word (`NAME=`, `NAME[i]=`, `NAME+=`) at a command start, or among a declaration's words. `own` when it is
-// a command of its own in the top-level list: in no subshell, substitution, backtick, compound command or function body,
-// and not after `&&` or `||` (nor, see expandable, before `&` or `|`). `end` is where the word stops.
+// a command of its own in the flat top-level list: in no substitution or backtick, and not after `&&` or `||` (nor, see
+// expandable, before `&` or `|`). `end` is where the word stops.
 type AssignWord = { name: string; start: number; valueStart: number; end: number; own: boolean; plain: boolean }
 type Sep = { pos: number; op: string }
-// `tokens` holds every other identifier the text names (`read X`, `for X in`, `${X:-y}`, `'$X'`): such a name is left alone.
-type Lexed = { sites: Site[]; assigns: AssignWord[]; tokens: Set<string>; seps: Sep[] }
+// `tokens` holds every other identifier the text names (`read X`, `${X:-y}`, `'$X'`): such a name is left alone. `control`
+// when the command has a compound or control construct (see CONTROL).
+type Lexed = { sites: Site[]; assigns: AssignWord[]; tokens: Set<string>; seps: Sep[]; control: boolean }
 
 type Kind = 'top' | 'paren' | 'subst' | 'bt' | 'dq' | 'brace' | 'arith'
-type Frame = { kind: Kind; cases: number; depth: number; fn?: boolean }
+type Frame = { kind: Kind; depth: number }
 
 const NAME = /[A-Za-z_]\w*/y
 const WORD = /\w+/y
@@ -58,21 +58,19 @@ const runAt = (re: RegExp, s: string, i: number) => {
 // Finds the expansion sites, assignment words, other identifiers and top-level command separators of a command. Null when
 // the quoting does not balance, so the lexer lost track.
 function lex(s: string): Lexed | null {
-  const out: Lexed = { sites: [], assigns: [], tokens: new Set(), seps: [] }
-  const frames: Frame[] = [{ kind: 'top', cases: 0, depth: 0 }]
+  const out: Lexed = { sites: [], assigns: [], tokens: new Set(), seps: [], control: false }
+  const frames: Frame[] = [{ kind: 'top', depth: 0 }]
   const heredocs: { delim: string; strip: boolean; quoted: boolean }[] = []
   const top = () => frames[frames.length - 1]!
-  const push = (kind: Kind) => frames.push({ kind, cases: 0, depth: 0 })
+  const push = (kind: Kind) => frames.push({ kind, depth: 0 })
   const taint = (text: string) => {
     for (const m of text.matchAll(IDENT)) out.tokens.add(m[0])
   }
   let word: AssignWord | null = null
   let wordStart = true
-  // Top level only: at a command start, inside a declaration's words, how many compound commands are open, and the list
-  // operator before the current command.
+  // Top level only: at a command start, inside a declaration's words, and the list operator before the current command.
   let cmdStart = true
   let declaring = false
-  let compound = 0
   let lastOp = ''
   let i = 0
   const endWord = () => {
@@ -209,15 +207,14 @@ function lex(s: string): Lexed | null {
     i += op.length
     wordStart = true
   }
-  // A word at the top level: keywords open and close compound commands and lead to a command start.
+  // A word at the top level: the first one of a command names it.
   const topWord = (w: string) => {
     if (frames.length !== 1) return
-    if (cmdStart && OPENERS.has(w)) compound++
-    else if (cmdStart && CLOSERS.has(w)) compound = Math.max(0, compound - 1)
-    if (cmdStart && LEADS.has(w)) return
     if (cmdStart) declaring = DECLARERS.has(w)
     cmdStart = false
   }
+  // Whether the word that starts at i ends there plus `n` characters (a whole word, not `{a,b}` or `done.txt`).
+  const whole = (n: number) => /^$|[\s;&|()<>]/.test(s[i + n] ?? '')
 
   while (i < s.length) {
     const f = top()
@@ -316,21 +313,22 @@ function lex(s: string): Lexed | null {
       endWord()
       separator(LIST_OPS.find(op => s.startsWith(op, i))!)
     } else if (ch === '(') {
+      // A subshell, `((`, `f()` or an array: not a flat list.
+      out.control = true
       endWord()
-      // `f()` at the top level: the function body follows, as a command start.
-      const fn = frames.length === 1 && !cmdStart
       push('paren')
-      if (fn) top().fn = true
       i++
       wordStart = true
     } else if (ch === ')') {
       endWord()
-      // A case pattern ends in `)` too.
-      if (f.cases === 0 && (f.kind === 'paren' || f.kind === 'subst')) {
-        frames.pop()
-        if (f.fn) cmdStart = true
-      }
+      if (f.kind === 'paren' || f.kind === 'subst') frames.pop()
       i++
+      wordStart = true
+    } else if ((ch === '<' || ch === '>') && s[i + 1] === '(') {
+      // Process substitution.
+      endWord()
+      push('subst')
+      i += 2
       wordStart = true
     } else if (ch === '<' || ch === '>') {
       endWord()
@@ -344,23 +342,25 @@ function lex(s: string): Lexed | null {
         if (s[i] === '&' || s[i] === '|') i++
       }
       wordStart = false
-    } else if (/\w/.test(ch) || ((ch === '{' || ch === '}' || ch === '!') && wordStart && /[\s;]|^$/.test(s[i + 1] ?? ''))) {
+    } else if (wordStart && ((ch === '{' || ch === '}' || ch === '!') && whole(1) || (ch === '[' && s[i + 1] === '[' && whole(2)))) {
+      // A `{ }` group, `!` negation or `[[ ]]` test.
+      out.control = true
+      i++
+      wordStart = false
+    } else if (/\w/.test(ch)) {
       const m = wordStart && (cmdStart || declaring) ? runAt(ASSIGN, s, i) : null
       if (m) {
-        const own = frames.length === 1 && compound === 0 && (lastOp === '' || lastOp === ';' || lastOp === '\n')
+        const own = frames.length === 1 && (lastOp === '' || lastOp === ';' || lastOp === '\n')
         const a: AssignWord = { name: m[1]!, start: i, valueStart: i + m[0].length, end: s.length, own, plain: !m[2] && !m[3] }
         out.assigns.push(a)
         if (frames.length === 1) word = a
         i += m[0].length
-      } else if (/\w/.test(ch)) {
+      } else {
         const at = wordStart
         const w = ident()
-        if (at && w === 'case' && /\s/.test(s[i] ?? '')) f.cases++
-        if (at && w === 'esac') f.cases = Math.max(0, f.cases - 1)
+        // Keywords count wherever they stand as a whole word: unsure is blocked.
+        if (at && CONTROL.has(w) && /^$|[\s;&|()<>]/.test(s[i] ?? '')) out.control = true
         if (at) topWord(w)
-      } else {
-        topWord(ch)
-        i++
       }
       wordStart = false
     } else {
@@ -575,7 +575,7 @@ export function expandLiteralVars(
 ): string | null {
   if (command.includes(MARK)) return null
   const lx = lex(command)
-  if (!lx) return null
+  if (!lx || lx.control) return null
   const vars = expandable(command, commands, lx)
   if (vars.size === 0) return null
   // Uses count once the assigning command is over: after the first top-level separator past its first assignment.

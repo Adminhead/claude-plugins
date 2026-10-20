@@ -452,6 +452,16 @@ describe('literal variables', () => {
         'false &&\nX="echo hi"; $X rm -rf ~',
         'false || X="echo hi"; $X ls',
         '{ X="echo hi"; }; $X ls',
+        // Any compound or control construct turns expansion off for the whole command.
+        'time -p if false; then X="echo hi"; fi; $X rm -rf ~',
+        'time if false; then X="echo hi"; fi; $X rm -rf ~',
+        'function f {\nX="echo hi"\n}\n$X rm -rf ~',
+        'if false; then case a in b) :;; fi) :;; esac; X="echo hi"; fi; $X rm -rf ~',
+        'select v in a; do X="echo hi"; break; done; $X rm -rf ~',
+        'until true; do X="echo hi"; done; $X rm -rf ~',
+        'X="echo hi"; (true); $X rm -rf ~',
+        'X="echo hi"; [[ -n x ]]; $X rm -rf ~',
+        'X="echo hi"; ! true; $X rm -rf ~',
         // Was a must-pass in the plan: if cd fails, $H is empty and its arguments run as the command.
         'cd w && H="dotnet run --no-build --project src/Tools.Headless -- --content content"; $H --scenario content/scenarios/smoke.json',
       ],
@@ -463,6 +473,8 @@ describe('literal variables', () => {
     expectAll(['X="echo hi"\nbash <<\'EOF\'\n$X rm -rf ~\nEOF', 'X="echo hi"\nbash <<\'EOF\'\n$X cat src/a.ts\nEOF'], 'smuggle/script')
     // Unquoted, the outer shell writes it in before the inner one runs.
     expect(kind('X="echo hi"\nbash <<EOF\n$X ls\nEOF')).toBe('pass')
+    // Keywords in quoted text and heredoc bodies are data: expansion stays on.
+    expectAll(['echo "if then"; X="ls -la"; $X', "cat <<'EOF'\nif done\nEOF\nX=\"ls -la\"; $X", 'X="ls -la"; diff <(echo a) b; $X'], 'pass')
   })
 
   test('IFS set by a binder, computed declarations and wrapped source turn expansion off', () => {
