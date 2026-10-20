@@ -277,5 +277,51 @@ def test_subagents_cannot_spawn_agents(root):
     assert [e for e in plugins.check(root) if not e.startswith("README.md")] == []
 
 
+def add_plugin(root, name, deps=()):
+    plugins.write_json(root / f"plugins/{name}/.claude-plugin/plugin.json",
+                       {"name": name, "version": "0.1.0", "description": "Set.", "dependencies": list(deps)})
+    path = root / ".claude-plugin/marketplace.json"
+    market = json.loads(path.read_text())
+    market["plugins"].append({"name": name, "source": f"./plugins/{name}", "description": "Set.", "version": "0.1.0"})
+    plugins.write_json(path, market)
+    plugins.write_catalog(root)
+
+
+def test_exclusive_metas_must_not_share_plugins(root):
+    add_plugin(root, "github-meta", ["git-tool", "gh-only"])
+    add_plugin(root, "forgejo-meta", ["git-tool", "forge-only"])
+    add_plugin(root, "git-tool", ["shared-lib"])
+    add_plugin(root, "shared-lib")
+    add_plugin(root, "gh-only")
+    add_plugin(root, "forge-only")
+    errors = plugins.check(root)
+    assert "github-meta and forgejo-meta must not share git-tool, shared-lib; scope them per forge" in errors
+
+
+def test_exclusive_metas_may_share_through_baseline(root):
+    add_plugin(root, "github-meta", ["git-tool"])
+    add_plugin(root, "forgejo-meta", ["git-tool"])
+    add_plugin(root, "baseline", ["git-tool"])
+    add_plugin(root, "git-tool")
+    assert not [e for e in plugins.check(root) if "must not share" in e]
+
+
+def test_exclusive_metas_skip_when_absent(root):
+    add_plugin(root, "github-meta", ["git-tool"])
+    add_plugin(root, "git-tool")
+    assert not [e for e in plugins.check(root) if "must not share" in e]
+
+
+def test_closure_terminates_on_cycles_and_skips_foreign_deps():
+    manifests = {
+        "a": {"dependencies": ["b", "missing", "x@other"]},
+        "b": {"dependencies": ["a", {"name": "c", "marketplace": "other"}]},
+        "c": None,
+    }
+    assert plugins.closure("a", manifests) == {"a", "b"}
+    assert plugins.closure("c", manifests) == {"c"}
+    assert plugins.closure("missing", manifests) == set()
+
+
 def test_repo_passes_check():
     assert plugins.check(REPO) == []

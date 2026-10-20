@@ -36,6 +36,8 @@ KINDS = ("skill", "agent", "hook", "mcp")
 # Leaves allowed more than one component, with the exact components they may ship.
 # orchestration's SessionStart hook keeps ~/.local/bin/claude-orchestrate linked to the live install.
 MULTI_COMPONENT = {"orchestration": {("agent", "orchestration"), ("hook", "hooks/hooks.json")}}
+# Pairs of metas whose plugin sets must not overlap, except through baseline.
+EXCLUSIVE_METAS = [("github-meta", "forgejo-meta")]
 
 
 def is_meta(name):
@@ -116,6 +118,34 @@ def load_plugins(root):
     return market, entries, manifests
 
 
+def closure(name, manifests):
+    """Return the set of plugins reachable from `name` through local dependencies, including itself."""
+    seen = set()
+    stack = [name]
+    while stack:
+        current = stack.pop()
+        if current in seen or current not in manifests:
+            continue
+        seen.add(current)
+        for dep in (manifests[current] or {}).get("dependencies", []):
+            dep_name, dep_market = parse_dep(dep)
+            if not dep_market:
+                stack.append(dep_name)
+    return seen
+
+
+def exclusive_meta_errors(manifests):
+    errors = []
+    base = closure("baseline", manifests)
+    for a, b in EXCLUSIVE_METAS:
+        if a not in manifests or b not in manifests:
+            continue
+        shared = (closure(a, manifests) & closure(b, manifests)) - base - {a, b}
+        if shared:
+            errors.append(f"{a} and {b} must not share {', '.join(sorted(shared))}; scope them per forge")
+    return errors
+
+
 def check(root):
     market, entries, manifests = load_plugins(root)
     allowed = set(market.get("allowCrossMarketplaceDependenciesOn", []))
@@ -180,6 +210,7 @@ def check(root):
     errors += eval_frontmatter_errors(root)
     errors += godot_version_errors(root, entries, manifests)
     errors += agent_spawn_errors(root)
+    errors += exclusive_meta_errors(manifests)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
