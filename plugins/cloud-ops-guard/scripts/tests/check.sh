@@ -331,6 +331,38 @@ t "tool name only in a quoted heredoc passed to cat" none $'cat <<\'EOF\' | tee 
 t "tool name in a quoted string" none "echo 'run tofu destroy later'"
 t "commit message heredoc with tool name and a substitution elsewhere" none $'git commit -m "$(cat <<\'EOF\'\nfix aws stuff\nEOF\n)" --author "$(whoami) <a@b>"'
 
+# Precision: heredocs to non-shell commands, unrelated substitutions, literal shell and interpreter scripts
+t "doc heredoc then git add ." none $'cat > docs/x.md <<\'EOF\'\nrun tofu plan\nEOF\ngit add .'
+t "python heredoc writes a doc that names a tool" none $'python3 - <<\'EOF\'\nopen(\'docs/a.md\',\'w\').write(\'tofu plan\')\nEOF'
+t "python heredoc runs a subprocess" ask $'python3 - <<\'EOF\'\nimport subprocess; subprocess.run([\'tofu\',\'destroy\'])\nEOF'
+t "heredoc into bash, plan" ask $'bash <<\'EOF\'\ntofu apply\nEOF'
+t "heredoc into bash behind env" ask $'env X=1 bash <<\'EOF\'\ntofu plan\nEOF'
+t "heredoc into ssh" ask $'ssh host <<\'EOF\'\ntofu plan\nEOF'
+t "saved-plan apply then an unrelated loop substitution" none 'mise run tofu omni apply -no-color tfplan; for i in $(seq 1 15); do sleep 1; done'
+t "date substitution feeds an aws read" none 'S=$(date -u -d "-6 hours" +%FT%TZ); aws cloudwatch get-metric-statistics --namespace AWS/RDS --start-time $S'
+t "aws read-only inside a substitution" none 'RID=$(aws rds describe-db-instances --output text)'
+t "aws read-only inside a substitution, subagent" deny 'RID=$(aws rds describe-db-instances)' notoken
+t "aws describe with a global flag in a substitution" none 'X=$(aws --profile p --region r ec2 describe-instances)'
+t "aws mutating inside a substitution" ask 'X=$(aws ec2 terminate-instances --instance-ids i-1)'
+t "aws op from a substitution" ask 'aws ec2 $(echo terminate-instances) --instance-ids i-1'
+t "aws service from a substitution" ask 'aws $(echo ec2) terminate-instances'
+t "aws options in a variable, read-only op in a substitution" none 'P="--profile p --region r"; X=$(aws $P lambda list-versions-by-function --function-name f)'
+t "literal bash -c script with a substitution" none 'timeout 240 bash -c "until [ \$(curl -s localhost/x | wc -l) -ge 7 ]; do sleep 10; done"; tofu fmt -check'
+t "python -c literal code, expansion in a later argument" none 'for f in a b; do python3 -I -c "import json,sys; json.load(open(sys.argv[1]))" $f.json; done; tofu validate'
+t "python script file with an expansion argument" none 'python3 gen.py $X; tofu validate'
+t "bash script operand is a variable" ask 'S=/tmp/x.sh; bash $S 153; tofu validate'
+t "bash -c with a variable code" ask 'X="tofu apply -auto-approve"; bash -c "$X"'
+t "python -c with a variable code" ask 'python3 -c "$CODE"; tofu validate'
+t "python -m with a variable module" ask 'python3 -m $M; tofu validate'
+t "node -e with a tool name" ask 'node -e "require(\"child_process\").execSync(\"tofu plan\")"'
+t "ssh with a variable stays ask" ask 'ssh h "$C"; tofu plan'
+t "eval with an unrelated variable stays ask" ask 'eval "$C"; tofu plan'
+t "xargs with a variable stays ask" ask 'echo a | xargs echo $X; tofu plan'
+t "substitution as tofu subcommand" deny 'tofu $(echo destroy)'
+t "substitution around an apply" deny 'echo $(tofu apply -auto-approve)'
+t "substitution in a plan argument" ask 'tofu plan $(echo -destroy)'
+t "substitution around a plan" ask 'X=$(mise run tofu core plan)'
+
 # A shared heredoc is parsed once, so a 64 KB command with many commands under one redirect stays fast
 colons=$(printf ':;%.0s' $(seq 6000))
 subs=$(printf '$(tofu destroy)\n%.0s' $(seq 2500))

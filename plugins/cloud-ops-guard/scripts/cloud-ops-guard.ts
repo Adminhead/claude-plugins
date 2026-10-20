@@ -46,8 +46,12 @@ const FORMS = new Map<string, readonly [number, number]>([
 const ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*=/
 const SUBST = /\$\(|`/
 const ENV_SPLIT = /^(?:-[^-]*S|--s)/
-const SHELLS: ReadonlySet<string> = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'eval', 'xargs', 'source', '.', 'su', 'ssh',
-  'python', 'python3', 'perl', 'ruby', 'node'])
+const SHELLS: ReadonlySet<string> = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'eval', 'xargs', 'source', '.', 'su', 'ssh'])
+// Commands for which any `$` in an argument is enough to ask: they join or re-parse their arguments.
+const ANY_DOLLAR: ReadonlySet<string> = new Set(['eval', 'xargs', 'source', '.', 'su', 'ssh'])
+const INTERP = /^(?:python[\d.]*|perl|ruby|node)$/
+// A heredoc body that runs a command from an interpreter.
+const EXEC_CALL = /subprocess|\bos\.(?:system|popen|exec|spawn)|\bPopen|\bsystem\b|\bexec\w*|\bspawn\w*|\bpopen|child_process|Open3|%x|`/
 // Prefixes that run the rest of the words as a command, with their options that take a
 // separate value. Claude Code strips time, timeout, nice, nohup, stdbuf, command, builtin,
 // and noglob before matching allow rules, so the guard must see through each of them.
@@ -77,6 +81,7 @@ const APPLY_REASON = 'Save a plan with -out=tfplan, review it, then run apply tf
 const SUBAGENT_REASON = `Subagents may not run credentialed aws, plan, or apply. Have the main session run it, or put the line '${TOKEN_LINE}' in the brief.`
 const BRIEF_REASON = `Cannot read the subagent brief to check for ${TOKEN_LINE}.`
 const PARSE_REASON = 'Cannot parse this command that mentions a guarded tool.'
+const NESTED_REASON = 'Command substitution around a guarded tool cannot be checked.'
 const DYNAMIC_REASON = 'A variable or substitution as the subcommand or state verb may hide destroy or state rm; write it literally.'
 
 class ParseFailure extends Error {}
@@ -193,6 +198,62 @@ function tfSub(sub: string, rest: readonly string[]): Finding {
   return ['ask', 'Cannot classify this infrastructure subcommand.']
 }
 
+// aws options that take a separate value, which may precede the service.
+const AWS_VALUE_FLAGS: ReadonlySet<string> = new Set(['--profile', '--region', '--output', '--endpoint-url', '--query', '--ca-bundle',
+  '--cli-read-timeout', '--cli-connect-timeout', '--color'])
+
+// The service and operation words of an aws command ('' when absent), skipping global options.
+function awsOp(args: readonly string[]): [string, string] {
+  const pos: string[] = []
+  for (let i = 0; i < args.length && pos.length < 2; i++) {
+    const a = args[i]
+    if (a.startsWith('-')) {
+      if (AWS_VALUE_FLAGS.has(a)) i++
+    } else if (!/^\$\{?\w+\}?$/.test(a)) pos.push(a) // a bare variable may hold options, as in aws $P lambda list-functions
+  }
+  return [pos[0] ?? '', pos[1] ?? '']
+}
+
+const awsReadOnly = (op: string): boolean => /^(?:describe-|list-|get-)/.test(op) || op === 'filter-log-events'
+
+// True when the script or code operand of a shell or interpreter holds an expansion, or an option
+// hides it: `bash -c "$X"`, `bash $S`, `python3 -c "$X"`. A literal operand with expansions among
+// the arguments after it is fine, since the script itself is then checked.
+function operandHidden(name: string, argv: readonly (string | null)[]): boolean {
+  const kind = INTERP.test(name) ? name.replace(/[\d.]+$/, '') : 'sh'
+  const codeCh = { sh: 'c', python: 'cm', perl: 'eE', ruby: 'e', node: 'pe' }[kind] ?? ''
+  const valCh = { sh: 'oO', python: 'WX', perl: 'IM', ruby: 'rI', node: 'r' }[kind] ?? ''
+  const codeLong = ['--eval', '--print']
+  const valLong = ['--rcfile', '--init-file', '--require', '--import', '--loader']
+  for (let i = 1; i < argv.length; i++) {
+    const a = argv[i]
+    if (a === null) return true
+    if (a === '--') return argv[i + 1] === null
+    if (a === '-' || !/^[-+]./.test(a)) return false
+    if (a.startsWith('--')) {
+      if (a.includes('=')) continue
+      if (codeLong.includes(a)) return argv[i + 1] === null
+      if (valLong.includes(a)) {
+        i++
+        if (argv[i] === null) return true
+      }
+      continue
+    }
+    for (let j = 1; j < a.length; j++) {
+      const attached = j < a.length - 1
+      if (a[0] === '-' && codeCh.includes(a[j])) return attached ? false : argv[i + 1] === null
+      if (valCh.includes(a[j])) {
+        if (!attached) {
+          i++
+          if (argv[i] === null) return true
+        }
+        break
+      }
+    }
+  }
+  return false
+}
+
 // Findings for the arguments of tofu, terraform, or terragrunt.
 function classifyTf(args: readonly string[]): Finding[] {
   // Every word that names a subcommand counts, so a flag value cannot hide the real one.
@@ -209,6 +270,7 @@ function classifyTf(args: readonly string[]): Finding[] {
     found.push(['ask', 'This flag migrates state, writes generated files, or prints secrets.'])
   }
   if (args.some(a => TOOLS.has(a))) found.push(['ask', 'A second guarded tool in one command cannot be checked.'])
+  if (args.some(a => !a.startsWith('-') && SUBST.test(a))) found.push(['ask', 'A substitution in the arguments cannot be checked.'])
   return found
 }
 
@@ -237,23 +299,35 @@ function nestedFindings(script: string, depth: number): Finding[] {
 
 // Findings for one task: a word list in which expansions stay as written (`text`) and `argv` keeps
 // the literal value, or null, for nestedScript.
-function classify(argv: readonly (string | null)[], words: readonly string[], depth: number): Finding[] {
+function classify(argv: readonly (string | null)[], words: readonly string[], depth: number, nesting: number): Finding[] {
   const k = stripWrappers(words)
   if (k === null) return [['ask', 'A wrapper option such as env -S or mise exec -c hides the command.']]
   if (k >= words.length) return []
   const cmd = basename(words[k])
   const args = words.slice(k + 1)
   if (/[$`]/.test(words[k])) return [['ask', 'A variable or substitution names the command.']]
-  if (SHELLS.has(cmd)) {
+  if (SHELLS.has(cmd) || INTERP.test(cmd)) {
     const script = nestedScript(argv.slice(k))
     const out = script === null ? [] : nestedFindings(script, depth + 1)
-    if (args.some(a => TOOL_RE.test(a) || a.includes('$'))) {
+    const hidden = ANY_DOLLAR.has(cmd) ? args.some(a => a.includes('$')) : operandHidden(cmd, argv.slice(k))
+    if (hidden || args.some(a => TOOL_RE.test(a))) {
       out.push(['ask', 'A shell, eval, or xargs wraps a guarded tool and cannot be checked.'])
     }
     return out
   }
-  if (TF.has(cmd)) return classifyTf(args)
-  if (cmd === 'aws') return awsHelp(args) ? [] : [['gate', SUBAGENT_REASON]]
+  if (TF.has(cmd)) {
+    const out = classifyTf(args)
+    if (nesting > 0) out.push(['ask', NESTED_REASON])
+    return out
+  }
+  if (cmd === 'aws') {
+    if (awsHelp(args)) return []
+    const out: Finding[] = [['gate', SUBAGENT_REASON]]
+    const op = awsOp(args)
+    if (op.some(w => SUBST.test(w))) out.push(['ask', 'A substitution as the aws service or operation cannot be checked.'])
+    else if (nesting > 0 && !awsReadOnly(op[1])) out.push(['ask', NESTED_REASON])
+    return out
+  }
   // A guarded tool after a command the guard does not know may be a wrapped call.
   const i = args.findIndex(a => TF.has(basename(a)))
   if (i >= 0 && classifyTf(args.slice(i + 1)).some(([kind]) => kind === 'deny')) {
@@ -271,7 +345,7 @@ const runs = (script: string, h: ShellHeredoc): boolean =>
 // Findings for the commands of one parsed script, then for each heredoc body it runs. Commands
 // under one compound share their heredoc objects, so each body is parsed once.
 function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number): Finding[] {
-  const out = commands.flatMap(c => splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth)))
+  const out = commands.flatMap(c => splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth, c.nesting)))
   for (const h of new Set(commands.flatMap(c => c.heredocs))) {
     if (runs(script, h)) out.push(...nestedFindings(h.body, depth + 1))
   }
@@ -350,6 +424,22 @@ const pipedToShell = (c: ShellCommand): boolean =>
   !!c.pipeline && c.pipeline.stage > 0 && readsShellFromStdin(c) &&
   c.pipeline.earlier.some(p => !TOOLS.has(basename(p.text[0] ?? '')) && mentions(p.text.join(' ')) > 0)
 
+// What a command runs, after its wrappers: a shell (or eval, xargs, ssh), an interpreter, or neither.
+function runner(c: ShellCommand): 'shell' | 'interp' | null {
+  const words = c.text[0]?.startsWith('-') ? ['time', ...c.text] : c.text // unbash reads a leading `time` as a keyword
+  const k = stripWrappers(words)
+  if (k === null) return 'shell'
+  if (k >= words.length) return null
+  const kindOf = (w: string | undefined): 'shell' | 'interp' | null => {
+    const n = basename(w ?? '')
+    return INTERP.test(n) ? 'interp' : SHELLS.has(n) ? 'shell' : null
+  }
+  const name = basename(words[k])
+  if (name === 'mise') return words.slice(k + 1).map(kindOf).find(x => x) ?? null
+  if (name === 'busybox') return kindOf(words.slice(k + 1).find(w => !w.startsWith('-')))
+  return kindOf(words[k])
+}
+
 // Best-effort deny or ask for a command outside the allowlist. Null means no opinion.
 function check(cmd: string, d: Record<string, unknown>): Decision | null {
   const parsed = parse(cmd)
@@ -358,8 +448,12 @@ function check(cmd: string, d: Record<string, unknown>): Decision | null {
   // Commands under one compound share its heredoc objects.
   const data = [...new Set(commands.flatMap(c => c.heredocs))].filter(h => !runs(cmd, h)).map(h => h.body)
   const asks: string[] = []
-  if (data.some(b => TOOL_RE.test(b)) && commands.some(c => c.text.some(w => SHELLS.has(basename(w))))) {
-    asks.push('A heredoc that mentions a guarded tool feeds a shell.')
+  const named = data.filter(b => TOOL_RE.test(b))
+  if (named.length) {
+    const kinds = commands.map(runner)
+    if (kinds.includes('shell') || (kinds.includes('interp') && named.some(b => EXEC_CALL.test(b)))) {
+      asks.push('A heredoc that mentions a guarded tool feeds a shell.')
+    }
   }
   let results: Finding[] = []
   if (mentionedOutsideData(cmd, data)) {
@@ -371,7 +465,6 @@ function check(cmd: string, d: Record<string, unknown>): Decision | null {
     }
     if (commands.some(c => c.redirects.some(r => r.op === '>|'))) asks.push('A redirect or operator next to a guarded tool cannot be checked.')
     if (commands.some(pipedToShell)) asks.push('Text that mentions a guarded tool is piped to a shell.')
-    if (commands.some(c => c.nesting > 0)) asks.push('Command substitution around a guarded tool cannot be checked.')
   }
   const denies = results.flatMap(([kind, reason]) => (kind === 'deny' ? [reason!] : []))
   if (denies.length) return ['deny', [...new Set(denies)].join(' ')]
