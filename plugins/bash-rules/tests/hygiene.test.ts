@@ -270,10 +270,6 @@ describe('smuggle', () => {
         'openssl base64 -d <<< aGk= | bash',
         'base64 -d <<< aGVsbG8= > run.sh',
         'echo aGk= | base64 -d > x.sh',
-        "X='rm -rf /tmp/x'; bash -c \"$X\"",
-        "X='ls'; eval \"$X\"",
-        "X='ls -la'; $X",
-        'export P="echo hi"; sh -c "$P"',
         'Y=$(echo aGk= | base64 -d); eval "$Y"',
         'S="print(1)"; python3 -c "$S"',
         'bash -c "$(echo ZWNobyBoaQ== | base64 -d)"',
@@ -309,7 +305,58 @@ describe('smuggle', () => {
   })
 
   test('shapes the parser cannot settle go to the model', () => {
-    expectAll(['echo ls | sh', 'bash -c "$CMD"', 'eval "$(cat x)"', 'python3 -c "exec(input())"', 'DIR=/tmp; bash -c "cd $DIR && make"'], 'unsure')
+    expectAll(['echo ls | sh', 'bash -c "$CMD"', 'eval "$(cat x)"', 'python3 -c "exec(input())"'], 'unsure')
+  })
+})
+
+// B3: a variable assigned plain words is written into the command before the checks, so the rules see what runs.
+describe('literal variables', () => {
+  test('literal and path-finder variables run as commands pass', () => {
+    expectAll(
+      [
+        'cd w && H="dotnet run --no-build --project src/Tools.Headless -- --content content"; $H --scenario content/scenarios/smoke.json --ticks 1200',
+        'S=/tmp/claude-1000/x/scratchpad/setstatus.sh; bash $S 153 "In review"',
+        'C="kubectl --context omni-dev"; $C get ns',
+        'P="kubectl --context omni-dev -n isktel-dev exec isktel-db-1 -c postgres -- psql -U postgres -d isktel -At -c"; $P "select count(*) from sde.types"',
+        'Z=$(find /home/u/.local/share/mise/installs/zizmor -type f -name zizmor | head -1); "$Z" --offline .github/',
+        'export KUBECONFIG=~/.kube/dev.yaml; k="mise exec -- kubectl"; $k get ns',
+      ],
+      'pass',
+    )
+  })
+
+  // These were smuggle (or unsure) while the value was unknown; the value is plain words, so what runs is checked as is.
+  test('literal scripts in variables are checked as written: former smuggle and unsure cases now pass', () => {
+    expectAll(["X='rm -rf /tmp/x'; bash -c \"$X\"", "X='ls'; eval \"$X\"", "X='ls -la'; $X", 'export P="echo hi"; sh -c "$P"', 'DIR=/tmp; bash -c "cd $DIR && make"'], 'pass')
+  })
+
+  test('computed, flag-leading, reassigned or rebound variables stay smuggle', () => {
+    expectAll(
+      [
+        'X=$(echo "rm -rf /"); $X',
+        'PY=$(ls .venv/bin/python || echo /usr/bin/python3); $PY -c "print(1)"',
+        'S="print(1)"; python3 -c "$S"',
+        // The variable supplies the shell's -c: not written in.
+        'S="-c reboot"; bash $S',
+        'X="rm -rf /"; Y=$X; $Y',
+        'X="rm -rf /"; export Y=$X; $Y',
+        'Z="$(which rm) -rf /"; $Z',
+        'X="ls -la"; read X; $X',
+        'X="ls -la"; printf -vX %s rm; $X',
+        'X="ls -la"; (X="ls -l"); $X',
+        'X="ls -la" true; $X',
+        'X="ls -la"; for X in a; do :; done; $X',
+        'X="ls -la"; IFS=, ; $X',
+        'X="ls -la"; eval "$Y"; $X',
+        'X="A=1 ls -la"; $X',
+      ],
+      'smuggle/script',
+    )
+  })
+
+  test('a written-in variable can reveal a read or a write', () => {
+    expectAll(['F=src/a.ts; cat $F', 'T=$(which cat); $T src/a.ts'], 'read/Read')
+    expectAll(["PY=$(command -v python3); $PY - <<'EOF'\nopen('o.txt','w').write('x')\nEOF"], 'write/Write')
   })
 })
 

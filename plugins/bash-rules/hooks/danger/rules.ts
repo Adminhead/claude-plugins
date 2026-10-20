@@ -4,6 +4,7 @@
 
 import { askHit, dangerHit, envSplit, stdinReader, viewsOf } from './danger'
 import type { AskRule, DangerRule } from './danger'
+import { expandLiteralVars } from './expand'
 import { nestedScript, parse, reparse } from '../shell/walk'
 import type { ShellCommand, ShellParse } from '../shell/walk'
 
@@ -71,8 +72,23 @@ export function scan(command: string): Scan {
   return out
 }
 
+// The scan of a command with its literal variables written in (expand.ts), or null when none were, or the rewrite is too
+// long or complex to check.
+function expanded(command: string, s: Scan): Scan | null {
+  const rescan = (text: string) => {
+    const r = scan(text)
+    return r.tooComplex || r.errors.length > 0 ? null : r.commands
+  }
+  const text = expandLiteralVars(command, s.commands, rescan)
+  if (text === null || text.length > MAX_PARSE) return null
+  const x = scan(text)
+  return x.tooComplex || x.errors.length > 0 ? null : x
+}
+
 // The deny verdict for a Bash command: too long, unparseable, or a danger rule, with the scan it came from (null when the
-// command was not parsed or was too complex) so later stages reuse it. A null hit lets it through.
+// command was not parsed or was too complex) so later stages reuse it. A null hit lets it through. The scan is of the
+// command with its literal variables written in, when it has any; the danger rules check both texts, so writing a
+// variable in never drops a deny.
 export function analyze(command: string): { hit: Hit | null; scan: Scan | null } {
   if (command.length > MAX_PARSE) return { hit: { rule: 'too-long', message: TOO_LONG }, scan: null }
   const s = scan(command)
@@ -87,16 +103,20 @@ export function analyze(command: string): { hit: Hit | null; scan: Scan | null }
       scan: s,
     }
   }
-  return { hit: dangerHit(s.commands), scan: s }
+  const x = expanded(command, s)
+  return { hit: (x && dangerHit(x.commands)) ?? dangerHit(s.commands), scan: x ?? s }
 }
 
 export const classify = (command: string): Hit | null => analyze(command).hit
 
-// The ask-tier rules (remote-exec, git-rewrite, git-clean). A command classify() denies never reaches them, so a parse error has no ask.
+// The ask-tier rules (remote-exec, git-rewrite, git-clean), over both the command and its literal-variable rewrite. A
+// command classify() denies never reaches them, so a parse error has no ask.
 export function askRule(command: string): AskHit | null {
   if (command.length > MAX_PARSE) return null
-  const { commands, errors, tooComplex } = scan(command)
-  return errors.length > 0 || tooComplex ? null : askHit(commands)
+  const s = scan(command)
+  if (s.errors.length > 0 || s.tooComplex) return null
+  const x = expanded(command, s)
+  return (x && askHit(x.commands)) ?? askHit(s.commands)
 }
 
 export type Verdict = { allow?: true; ask?: string; deny?: string; [key: string]: unknown }

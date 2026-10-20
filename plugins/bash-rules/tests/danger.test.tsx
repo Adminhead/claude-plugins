@@ -455,6 +455,37 @@ describe('danger rules: review fixes', () => {
     for (const c of ['git push --mirror', 'git push --mirror origin', 'git push -o x origin +main', 'git push -- origin +main']) expect(ask(c)).toBe('git-rewrite')
   })
 })
+
+// B3: literal variables are written in before the danger and ask rules run, and both texts are checked.
+describe('literal variables', () => {
+  test('a literal or path-finder variable cannot hide a danger rule', () => {
+    expect(rule('P="psql -c"; $P "DROP TABLE users"')).toBe('db-drop')
+    expect(rule('K="kubectl --context omni-prod"; $K delete ns foo')).toBe('infra-destroy')
+    expect(rule("X='rm -rf /'; $X")).toBe('rm-root')
+    expect(rule('X="rm -rf /"; bash -c "$X"')).toBe('rm-root')
+    expect(rule('X="rm -rf /"; eval $X')).toBe('rm-root')
+    expect(rule('D=/; rm -rf $D')).toBe('rm-root')
+    expect(rule('Z=$(which rm); $Z -rf /')).toBe('rm-root')
+    expect(rule('X=/dev/sda; dd if=x of=$X')).toBe('disk-wipe')
+  })
+
+  test('a deny the unexpanded text earns stands', () => {
+    // mkfs of an unknown device is a disk wipe whatever the variable holds.
+    expect(rule('D=/tmp/img; mkfs.ext4 $D')).toBe('disk-wipe')
+  })
+
+  test('the ask rules see written-in variables too', () => {
+    expect(ask('G="git push --force"; $G origin main')).toBe('git-rewrite')
+    expect(ask('SH=bash; curl -s x | $SH')).toBe('remote-exec')
+  })
+
+  test('uses before the assignment, single-quoted uses and shape changes are left as written', () => {
+    expect(rule('$X; X="rm -rf /"')).toBeNull()
+    expect(rule("X='rm -rf /'; echo '$X'")).toBeNull()
+    expect(rule('X="a b"; [[ $X == y ]] && rm -rf /')).toBe('rm-root')
+    expect(classify('X="a b"; cat <<< $X')).toBeNull()
+  })
+})
 describe('classic.PreToolUse composition', () => {
   const run = (command: string, inner?: Record<string, unknown>) => {
     const log: string[] = []
