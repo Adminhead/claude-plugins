@@ -37,12 +37,12 @@ const LEAD: Record<Tool, string> = {
 // Appended to the Bash tool's description (register.tsx), so the model, and its subagents, know the rules before the first
 // denial. At most 600 characters.
 export const PRIMER = `bash-rules: this session denies shell file viewers and writers.
-- cat, head, tail, sed -n and awk that print a file are denied, also inside ; and && chains. Use the Read tool, several calls in parallel for several files or ranges.
+- cat, head, tail and sed -n that print a file are denied (awk prints often are), also inside ; and && chains. Use the Read tool, several calls in parallel for several files or ranges.
 - Piping a program's output through head or grep is fine.
 - Write files with the Write or Edit tool, also instead of python - <<EOF scripts that write.
 - grep, rg, find, ls and git stay in Bash.`
 
-export const nudge =(tool: Tool, what: string, note = '') => `bash-rules: this ${LEAD[tool]} (${what}). ${note}${INSTEAD[tool]}`
+export const nudge = (tool: Tool, what: string, note = '') => `bash-rules: this ${LEAD[tool]} (${what}). ${note}${INSTEAD[tool]}`
 
 // The read deny: names the offending segment, says every shell viewer is denied (also inside ; and && chains), and how to
 // split a compound command or a multi-file or multi-range read into parallel Read calls.
@@ -280,15 +280,38 @@ const textSource = (e: ShellCommand) => {
 }
 
 // Code that writes content the script carries.
-const WRITE_CONTENT =
-  /\bopen\s*\([^;\n]*?,\s*(?:mode\s*=\s*)?['"][rbtU]*[wax+]|\.write_(?:text|bytes)\s*\(|\b(?:writeFile|appendFile)(?:Sync)?\s*\(|createWriteStream\s*\(|\bFile\.(?:write|open\s*\([^)]*['"][wa])|\bopen\s*\(?\s*(?:my\s+)?\$?\w+\s*,\s*['"]\s*(?:>|\+<)|\bopen\s*\(?\s*\w+\s*,\s*['"]>|\bfile_put_contents\s*\(/
+const WRITE_CONTENT = new RegExp(
+  [
+    // open(path, 'w'): the mode belongs to the same call (one level of nested parentheses, newlines allowed).
+    String.raw`\bopen\s*\((?:[^()]|\([^()]*\))*?,\s*(?:mode\s*=\s*)?['"][rbtU]*[wax+][bt+]*['"]\s*[,)]`,
+    String.raw`\.open\s*\(\s*(?:mode\s*=\s*)?['"][rbtU]*[wax+][bt+]*['"]`,
+    String.raw`\.write_(?:text|bytes)\s*\(`,
+    String.raw`\b(?:writeFile|appendFile)(?:Sync)?\s*\(`,
+    String.raw`\bDeno\.write(?:Text)?File(?:Sync)?\s*\(`,
+    String.raw`\bBun\.write\s*\(`,
+    String.raw`\bfs\.writeSync\s*\(`,
+    String.raw`createWriteStream\s*\(`,
+    String.raw`\bFile\.(?:write|open\s*\([^)]*['"][wa])`,
+    String.raw`\bopen\s*\(?\s*(?:my\s+)?\$?\w+\s*,\s*['"]\s*(?:>|\+<)`,
+    String.raw`\bopen\s*\(?\s*\w+\s*,\s*['"]>`,
+    String.raw`\bfile_put_contents\s*\(`,
+  ].join('|'),
+)
 // Code that only copies or moves existing files.
 const WRITE_MOVE = /\bshutil\.(?:copy|move)|\bos\.(?:rename|replace)\s*\(/
 const WRITE_CODE = new RegExp(`${WRITE_CONTENT.source}|${WRITE_MOVE.source}`)
 // Opening a sink (`open('/dev/stdout', 'w')`) writes no file.
 const SINK_OPEN = /\bopen\s*\(\s*['"]\/dev\/(?:null|stdout|stderr)['"]/g
-// A script that also reads a file is an edit; else it authors a new file.
-const BODY_READ = /\.read(?:_text|_bytes|lines|line)?\s*\(|\bread_text\s*\(|\breadFile(?:Sync)?\s*\(|\bFile\.read|\bIO\.read|\bfile_get_contents\s*\(|<\$?\w*>|\bslurp\b|\bopen\s*\([^,()]*\)/
+// A script that also reads a file is an edit; else it authors a new file. Reading means `.read(` on an open(...) result or a
+// path variable (not stdin), a read helper, or perl's `<FH>`.
+const BODY_READ = /\breadFile(?:Sync)?\s*\(|\bFile\.read|\bIO\.read|\bfile_get_contents\s*\(|\bslurp\b/
+const BODY_READ_CALL = /([\w)]+)\.read(?:_text|_bytes|lines|line)?\s*\(/g
+const bodyReads = (body: string, program: string) =>
+  BODY_READ.test(body) || [...body.matchAll(BODY_READ_CALL)].some(m => m[1] !== 'stdin') || (program === 'perl' && /<\$?\w*>/.test(body))
+
+// A quoted string that holds write code (`print("f.write_text(s)")`) is text, not a call: blank it before matching.
+const QUOTED = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g
+const unquoteCode = (code: string) => code.replace(QUOTED, q => (WRITE_CODE.test(q.slice(1, -1)) ? '""' : q))
 const READ_CODE = /\bopen\s*\(|\bread_text\s*\(|\breadFile(?:Sync)?\s*\(|\bFile\.read|\bIO\.read|\bfile_get_contents\s*\(|<\$?\w*>|\bslurp\b/
 const EXEC_CODE = /\b(?:exec|eval|compile|Function|instance_eval|class_eval|system|popen|execSync|spawnSync)\s*\(|\bnew\s+Function\b|\beval\b/
 const ENCODED =
@@ -442,7 +465,7 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
       const inline = inlineProgram(v, words)
       if (inline?.literal) {
         if (EXEC_CODE.test(inline.code) && ENCODED.test(inline.code)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} running decoded or encoded code` })
-        else if (WRITE_CODE.test(inline.code)) hits.push({ category: 'write', tool: 'Write', what: `${name} one-liner that writes a file` })
+        else if (WRITE_CODE.test(unquoteCode(inline.code))) hits.push({ category: 'write', tool: 'Write', what: `${name} one-liner that writes a file` })
         else if (EXEC_CODE.test(inline.code)) unsure.push(`${name} one-liner that evaluates code`)
         else if (READ_CODE.test(inline.code)) unsure.push(`${name} one-liner that reads a file`)
       } else if (inline && !inline.literal) {
@@ -463,12 +486,12 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
         if (reader === 'script') {
           for (const body of fedBodies(c)) {
             if (EXEC_CODE.test(body) && ENCODED.test(body)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} script running decoded or encoded code` })
-            else if (WRITE_CONTENT.test(body.replace(SINK_OPEN, 'sink('))) {
+            else if (WRITE_CONTENT.test(unquoteCode(body).replace(SINK_OPEN, 'sink('))) {
               hits.push({
-                category: 'write', tool: BODY_READ.test(body) ? 'Edit' : 'Write', what: `${name} script on stdin that writes files`,
+                category: 'write', tool: bodyReads(body, name) ? 'Edit' : 'Write', what: `${name} script on stdin that writes files`,
                 note: 'If the script computes the change, save it with the Write tool and run it as a file. ',
               })
-            } else if (WRITE_CODE.test(body)) unsure.push(`${name} script on stdin that writes files`)
+            } else if (WRITE_CODE.test(unquoteCode(body))) unsure.push(`${name} script on stdin that writes files`)
           }
         }
       }

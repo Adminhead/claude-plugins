@@ -88,6 +88,14 @@ describe('primer', () => {
     expect((await $.tool.describe({ tool: 'Read', description: 'Read a file.', provider: engine })).description).toBe('Read a file.')
   })
 
+  test('the primer builds on a description a lower hook changed', async ($, on) => {
+    on('tool.describe', async () => ({ description: 'Lower hook text.' }))
+    const bash = (await $.tool.describe({ tool: 'Bash', description: 'Run a command.', provider: { plugin: 'engine', tier: 'core' } as never })).description as string
+    expect(bash).toBe(`Lower hook text.\n\n${PRIMER}`)
+  })
+
+  // `primer: false` is not tested: an inline test plugin cannot import this register or receive options.
+
   test('the primer is short and states the rules', () => {
     expect(PRIMER.length).toBeLessThanOrEqual(600)
     expect(PRIMER).toMatch(/parallel/)
@@ -214,6 +222,15 @@ describe('usage log', () => {
     await call($, 'false')
     expect(lines.map(l => [l.decision, l.isError])).toEqual([['denied-later', undefined], ['allow', true]])
     expect(lines[0].message).toBe(denyText)
+  })
+
+  test('a deny from a lower classic.PreToolUse is logged as denied-later even without error text', async ($, on) => {
+    mock.clock(on, { now: 17e9 })
+    const lines = logs(on)
+    on('classic.PreToolUse', async () => ({ deny: 'blocked by a lower hook' }))
+    on('tool.call', async () => ({ isError: true, result: 'x', text: '' }))
+    await call($, 'mise run tofu core apply -auto-approve')
+    expect(lines.map(l => [l.decision, l.message])).toEqual([['denied-later', 'blocked by a lower hook']])
   })
 
   test('secrets in a command are masked before they are written', async ($, on) => {

@@ -250,6 +250,49 @@ describe('write', () => {
     expect(v.kind === 'deny' ? v.message : '').toMatch(/save it with the Write tool and run it as a file/)
   })
 
+  const py = (body: string) => `python3 - <<'EOF'\n${body}\nEOF`
+
+  test('read-only scripts that mention a mode-like string, or write code in a string, are not denied', () => {
+    expectAll(
+      [
+        "print(open('a.txt').read().replace('x', 'abc'))",
+        "print(sum(1 for l in open('a.csv') if 'a' in l), 'wow')",
+        "print(open('a').read(), 'w')",
+        "print(f(open('a'), 'wrap'))",
+        'print("f.write_text(s)")',
+        `print("would call open(p, 'w')")`,
+      ].map(py),
+      'pass',
+    )
+  })
+
+  test('more write shapes: multi-line open, Path.open, Bun, Deno, fs.writeSync', () => {
+    expectAll(
+      [
+        "open(\n  p,\n  'w'\n).write(x)",
+        "import pathlib\npathlib.Path(p).open('w').write(x)",
+        "open(p, mode='wb').write(b)",
+        "open(os.path.join(a, b), 'w').write(x)",
+        'await Bun.write("a.txt", x)',
+        'await Deno.writeTextFile("a.txt", x)',
+        'fs.writeSync(fd, x)',
+      ].map(py),
+      'write/Write',
+    )
+  })
+
+  test('a script that creates a new file is a Write even when its content has angle brackets or reads stdin', () => {
+    expectAll(
+      [
+        "open('A.cs','w').write('class A { List<int> x; }')",
+        "open('i.html','w').write('<html></html>')",
+        "import sys\nopen('o','w').write(sys.stdin.read())",
+      ].map(py),
+      'write/Write',
+    )
+    expectAll([py("p='f'; s=open(p).read(); open(p,'w').write(s)"), py("import pathlib\nq=pathlib.Path('f'); q.write_text(q.read_text())")], 'write/Edit')
+  })
+
   test('copies and moves, and writes to a sink, stay unsure; reading scripts pass', () => {
     expectAll(
       ["python3 - <<'EOF'\nimport shutil; shutil.copy('a','b')\nEOF", "python3 - <<'EOF'\nopen('/dev/stdout','w').write('x')\nEOF"],
