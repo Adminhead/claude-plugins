@@ -177,6 +177,17 @@ describe('usage log', () => {
     expect(lines[2].model).toMatchObject({ source: 'ollama', category: 'read', confidence: 0.95 })
   })
 
+  test('a classic-hook deny that comes back as a tool error is logged as denied-later; other errors stay allow', async ($, on) => {
+    mock.clock(on, { now: 16e9 })
+    const lines = logs(on)
+    const denyText = 'PreToolUse:Bash hook error: Save a plan with -out=tfplan, then apply that file.'
+    on('tool.call', async (_$: any, e: any) => (e.command.startsWith('mise run') ? { isError: true, result: denyText, text: denyText } : { isError: true, result: 'exit 1', text: 'exit 1' }))
+    await call($, 'mise run tofu core apply -target=module.forgejo01 -auto-approve -no-color')
+    await call($, 'false')
+    expect(lines.map(l => [l.decision, l.isError])).toEqual([['denied-later', undefined], ['allow', true]])
+    expect(lines[0].message).toBe(denyText)
+  })
+
   test('secrets in a command are masked before they are written', async ($, on) => {
     world(on, 15e9)
     const lines = logs(on)

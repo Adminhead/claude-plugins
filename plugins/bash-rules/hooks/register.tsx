@@ -3,6 +3,7 @@ import { DANGER_MESSAGES } from './danger/danger'
 import { analyze, withAsk } from './danger/rules'
 import { MAX_SQL_FILE, MAX_SQL_FILES, destroysData, sqlFiles, sqlPath, uncheckedMessage } from './danger/sqlfile'
 import { hygiene } from './rules/hygiene'
+import { laterDeny } from './rules/outcome'
 import {
   Lru, SYSTEM, apiFor, backoffMs, completionText, modelNudge, ollamaRequest, ollamaStands, parseModelText, parseOllama, parseOptions, parseSystemone,
   systemoneRequest, userPrompt, wantsSystemone,
@@ -12,6 +13,9 @@ import { appendArgv, line, logFile } from './log/usagelog'
 
 // All `$` code for bash-rules lives here. The verdicts are pure: danger/ (destructive, ask), rules/hygiene.ts (read,
 // write, smuggle) and rules/judge.ts (the model stages' prompt, replies and cache).
+
+// Denies that classic hooks below bash-rules issued, per tool_use_id, so tool.call can log them as `denied-later`.
+const hookDenies = new Lru<string, string>(256)
 
 // The last error logged per source, so a repeat stays quiet until that source succeeds again.
 const lastError: Record<string, string | null> = {}
@@ -215,7 +219,8 @@ export const register: Register = (on, options) => {
     const started = await $.clock.now()
     const out: any = await next(e)
     if (logging) {
-      const ran = out?.deny !== undefined ? { decision: 'denied-later', message: out.deny } : { decision: 'allow', isError: out?.isError === true }
+      const later = out?.deny !== undefined ? String(out.deny) : laterDeny(out, hookDenies.get(e.tool_use_id))
+      const ran = later !== null ? { decision: 'denied-later', message: later } : { decision: 'allow', isError: out?.isError === true }
       await logLine($, 'bash', { ...fields, ...ran, ms: Math.round((await $.clock.now()) - started) })
     }
     return out
@@ -237,6 +242,8 @@ export const register: Register = (on, options) => {
         return sql.status === 'unread' ? { rule: 'sql-unchecked', message: uncheckedMessage(sql.file) } : null
       },
     )
+    // A deny from a classic hook below comes back to tool.call as a tool error: keep its text for the log line there.
+    if (typeof v.deny === 'string' && typeof e.tool_use_id === 'string') hookDenies.set(e.tool_use_id, v.deny)
     // The tool.call line that follows records whether the command then ran.
     if (logging && typeof v.ask === 'string') await logLine($, 'bash-ask', { agentId: e.agentId, command: e.command, message: v.ask })
     return v
