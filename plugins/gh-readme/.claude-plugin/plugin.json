@@ -1,6 +1,6 @@
 {
   "name": "gh-readme",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules.",
   "author": {
     "name": "AdminHead",

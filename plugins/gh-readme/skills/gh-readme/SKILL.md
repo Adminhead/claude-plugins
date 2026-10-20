@@ -6,11 +6,13 @@ allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/readme_audit.sh *)
 
 # GitHub README
 
+Not for Forgejo or Codeberg repos (`forgejo-readme`). The rendering rules below (alerts, outline, dark/light images) are GitHub's.
+
 A README is a landing page and a router, not a manual. In a minute a stranger should know what the project is, why to pick it over the obvious alternative, whether it fits their stack and licence, whether it is alive, and what to run first. Then it points them at the docs. A reader who decides *not* to use the project is a good outcome too, so don't try to stop that.
 
 ## Rules that hold in every mode
 
-- **Facts come from the repo.** Before you write a word, read the manifest (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `*.csproj`, `pom.xml`, `composer.json`, `*.gemspec`), the `LICENSE` file, the CLI's argument parser or the `--help` of a binary that is already built, `.github/workflows/`, examples on disk, tags and releases (`gh release list`), and recent commit dates.
+- **Facts come from the repo.** Before you write a word, read the manifest (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `*.csproj`, `pom.xml`, `composer.json`, `*.gemspec`), the `LICENSE` file, the CLI's argument parser or the `--help` of a binary that is already built, `.github/workflows/`, examples on disk, tags and releases (`gh release list` on GitHub, else `git tag --sort=-creatordate`), and recent commit dates.
 - **Never invent.** That covers badges, version numbers, benchmarks, user counts, adopters, compatibility, features and status words such as "production ready" or "battle-tested". A claim with no source in the repo gets cut or downgraded to what you can verify. If you need a fact the repo cannot give you (audience, alternatives, status), ask the user. Never fill the gap with a guess or leave a placeholder.
 - **Every command, flag, default, env var, path and version you write must match its source of truth**, such as the parser, the definition site or the CI matrix. A flag missing from the parser is a hallucination, not a typo.
 - **Text first, decoration second.** Install steps, commands and decision facts live in Markdown, never only in an image. Every image gets alt text that says what it shows. The page has to read correctly when images fail and in registries that strip HTML.

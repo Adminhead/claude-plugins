@@ -1,6 +1,6 @@
 ---
 name: gh-issues
-description: Reads, creates, edits, closes and labels a single GitHub issue with gh, including issue types, sub-issues, blocked-by links, milestones, Projects V2 fields and issue search. Use when the user wants to file or update one issue, set its type, parent, labels or project field, or find issues by query.
+description: Reads, creates, edits, closes and labels a single GitHub issue with gh, including issue types, sub-issues, blocked-by links, milestones, Projects V2 fields and issue search. Use when the user wants to file or update one issue, set its type, parent, labels or project field, or find issues by query. Not for Forgejo or Codeberg remotes (`forgejo-issues`).
 ---
 
 # GitHub issues with gh
@@ -8,6 +8,10 @@ description: Reads, creates, edits, closes and labels a single GitHub issue with
 Make issue changes through `gh`. Reads run freely. Every write needs the user's approval first.
 
 Not for turning a plan or spec into many linked issues (`issue-breakdown`) or classifying and routing an existing backlog (`gh-triage`).
+
+## Forge gate
+
+Before any command, check the repo's host (`git remote get-url origin`, or the `-R` target). Proceed when it is github.com or a host `gh auth status --hostname <host>` knows. Otherwise stop: "not a GitHub remote; on Forgejo or Codeberg use forgejo-issues if installed".
 
 ## Approval gate
 

@@ -1,6 +1,6 @@
 ---
 name: gh-pr
-description: Prepares and opens a GitHub pull request with gh, with convention-following commits and a reviewer-ready body (summary visuals, before/after evidence, merge danger), opened as a draft after approval. Use when asked to open, write or improve a PR or its description, including PRs to someone else's repo.
+description: Prepares and opens a GitHub pull request with gh, with convention-following commits and a reviewer-ready body (summary visuals, before/after evidence, merge danger), opened as a draft after approval. Use when asked to open, write or improve a PR or its description, including PRs to someone else's repo. Not for Forgejo or Codeberg remotes (`forgejo-pr`).
 ---
 
 # Pull Request
@@ -13,7 +13,7 @@ Pushing a branch, opening or editing a PR, and merging are shared-state writes. 
 
 ## Workflow
 
-1. **Inspect.** Run `git status --short --branch`, `git log --oneline <base>..HEAD`, and `git diff <base>...HEAD --stat`. Find the base branch with `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`. List open PRs for the branch (`gh pr list --head <branch>`) so you update instead of duplicating.
+1. **Inspect.** First the forge gate: proceed when the `origin` host is github.com or one `gh auth status --hostname <host>` knows; otherwise stop with "not a GitHub remote; on Forgejo or Codeberg use forgejo-pr if installed". Then run `git status --short --branch`, `git log --oneline <base>..HEAD`, and `git diff <base>...HEAD --stat`. Find the base branch with `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`. List open PRs for the branch (`gh pr list --head <branch>`) so you update instead of duplicating.
 2. **Branch.** Never open a PR from the default branch. If the work sits there, propose a branch name that follows the repo's convention and ask before creating it.
 3. **Commits.** Uncommitted work needs commits first. Follow `git-commit` for convention detection, splitting, and message format, including release-please and commitlint contracts. A PR title is the squash commit subject in many repos, so write it in the same convention. If `git-commit` is not installed, apply the same rule: use the convention evidenced by repo config and history.
 4. **Verify.** Run the cheapest check that covers the change (the repo's test, lint, or build command) so the body's evidence is real. Don't open a PR with a check you know fails unless the PR is explicitly a work in progress, and say so in the body.

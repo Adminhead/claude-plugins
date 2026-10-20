@@ -1,6 +1,6 @@
 {
   "name": "gh-pr",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Prepare and open a reviewer-ready GitHub pull request with gh: convention-following commits, a body with summary visuals, evidence and merge danger, opened as a draft after approval.",
   "author": {
     "name": "AdminHead",

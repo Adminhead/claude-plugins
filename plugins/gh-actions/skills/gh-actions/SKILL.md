@@ -1,6 +1,6 @@
 ---
 name: gh-actions
-description: Creates, reviews, hardens and debugs GitHub Actions workflows and custom actions with least-privilege permissions. Use when editing .github/workflows/*.yml or action.yml, pinning action versions, auditing workflow security, or when a run fails (a pasted actions/runs/<id> URL, "CI failed", "the build is red").
+description: Creates, reviews, hardens and debugs GitHub Actions workflows and custom actions with least-privilege permissions. Use when editing .github/workflows/*.yml or action.yml, pinning action versions, auditing workflow security, or when a GitHub run fails (a pasted github.com actions/runs/<id> URL, "CI failed" or "the build is red" on a GitHub repo). Not for Forgejo or Codeberg (`forgejo-actions`).
 ---
 
 # GitHub Actions
@@ -11,7 +11,7 @@ Not for Dependabot config (`dependabot`), cutting releases (`gh-release`), dispa
 
 ## Before any edit
 
-1. Read repo instructions, the affected `.github/workflows/*.yml` and/or `action.yml`, adjacent actions, and the current diff.
+1. **Forge gate.** If the `origin` host is Forgejo or Codeberg (not github.com and not a host `gh auth status --hostname <host>` knows), or `.forgejo/workflows` or `.gitea/workflows` exists, stop and point to `forgejo-actions`. Forgejo also runs `.github/workflows` when it is the only workflow directory, so a Forgejo remote with only `.github/workflows` is Forgejo's. Then read repo instructions, the affected `.github/workflows/*.yml` and/or `action.yml`, adjacent actions, and the current diff.
 2. Read [security](references/security.md) before every workflow or action edit. Treat the event, checked-out code, artifacts and caches, credentials, and runner as one trust boundary. If the request would run untrusted code with secrets, write permissions, cloud credentials, or a self-hosted runner, stop and ask for a design decision.
 3. Read the guidance for the work:
    - Workflow change or failed run: [workflows](references/workflows.md).
