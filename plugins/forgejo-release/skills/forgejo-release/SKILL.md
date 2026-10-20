@@ -9,7 +9,7 @@ Release by hand only when no tool owns the release. Each tag, push and published
 
 ## 1. Forge gate
 
-Run `git remote -v`. `github.com`, or a host `gh auth status --hostname <host>` knows, means GitHub: stop and name `gh-release` (if installed). `codeberg.org`, a host where `curl -fsS https://<host>/api/forgejo/v1/version` answers, or a repo with `.forgejo/workflows` or `.gitea/workflows` means Forgejo. With several remotes, pass `fj -R <remote>` on every call, never assume `origin`. If fj is missing or logged out, use `forgejo-cli`.
+Run `git remote -v`. `github.com`, or a host `gh auth status --hostname <host>` knows, means GitHub: stop and name `gh-release` (if installed). `codeberg.org`, a host where `curl -fsS https://<host>/api/forgejo/v1/version` answers, or a repo with `.forgejo/workflows` or `.gitea/workflows` means Forgejo. With several remotes, pass `-R <remote>` after the noun (`fj release -R <remote> list`) on every call, never assume `origin`; the `forgejo-cli` placement table lists where each flag goes. If fj is missing or logged out, use `forgejo-cli`.
 
 ## 2. Detect release tooling
 
@@ -27,7 +27,7 @@ A hit means a tool or a workflow already writes the changelog, tags or publishes
 git status --short --branch
 git fetch --tags <remote>
 PREV_TAG=$(git tag --sort=-version:refname --merged HEAD | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
-fj -R <remote> release list
+fj release -R <remote> list
 ```
 
 Work from the default branch, up to date, with a clean tree; otherwise report and ask. Use the user's stated previous tag if they gave one. The `$` anchor skips pre-releases such as `v1.2.0-rc.1`. Keep the repo's `v` prefix. No tag means a first release: ask for the version. No commits since the tag means nothing to release.
@@ -46,7 +46,7 @@ Read the diff, not just subjects, for removed or renamed public symbols (MAJOR),
 After approval of each command:
 
 ```bash
-fj -R <remote> release create "v1.4.0" -T --branch main \
+fj release -R <remote> create "v1.4.0" -T --branch main \
   -b "$(cat /tmp/release-notes.md)" -a dist/app.tar.gz -d
 ```
 

@@ -1,6 +1,6 @@
 ---
 name: forgejo-cli
-description: "Uses the Forgejo CLI fj against Codeberg or a self-hosted Forgejo: install, per-host auth, host and remote selection (-H, -R, -r), the command map and its gaps. Use when fj is missing, says it is not logged in, hits the wrong instance, or for a Forgejo or Codeberg task no narrower forgejo skill covers. Not for github.com or GitHub Enterprise (`gh`)."
+description: "Uses the Forgejo CLI fj against Codeberg or a self-hosted Forgejo: install, per-host auth, host and remote selection (-H, -R, -r and where each goes), the command map and its gaps. Use when fj is missing, says it is not logged in, hits the wrong instance, or for a Forgejo or Codeberg task no narrower forgejo skill covers. Not for github.com or GitHub Enterprise (`gh`)."
 ---
 
 # Forgejo CLI (fj)
@@ -29,7 +29,19 @@ If `fj` is missing, read the install options in [commands](references/commands.m
 
 ## 3. Pick the host and repo
 
-fj never defaults to `origin`. It resolves the repo from `--remote`, else the only remote, else the branch's upstream remote, else a remote matching `--host`. With several remotes, always pass `-R <remote>`. Outside a checkout, pass `-r host/owner/name`. `-H host` sets the instance and `-C dir` the working directory. Confirm the target with `git remote get-url <remote>` before any write.
+fj never defaults to `origin`. It resolves the repo from `--remote`, else the only remote, else the branch's upstream remote, else a remote matching `--host`. With several remotes, name one explicitly. `-H host` sets the instance and `-C dir` the working directory. Confirm the target with `git remote get-url <remote>` before any write.
+
+The remote flag has no single position, and fj rejects a top-level `fj -R`. Use the placement in this table (verified on fj v0.7.0 with `fj <noun> [-R x] <sub> --help`):
+
+| Command | Remote (named git remote) | Repo outside a checkout |
+| --- | --- | --- |
+| `fj issue` | `fj issue -R <remote> <sub> ...` | `-r host/owner/name` on `issue create`, `issue search` and `issue templates` only |
+| `fj release`, `actions`, `milestone`, `wiki`, `tag` | `fj <noun> -R <remote> <sub> ...` | `-r host/owner/name` on every sub, e.g. `fj release -r host/owner/name list` |
+| `fj pr` | `fj pr -R <remote> <sub> ...` only; leaf `pr create`, `status`, `merge` or `search` with `-R` fails | `-r host/owner/name` on `pr create` and `pr search` only, not `status`, `merge` or `view` |
+| `fj repo labels` | none: positional `fj repo labels [REPO] <sub>` | `fj repo labels host/owner/name view` |
+| `fj whoami` | `-r <remote>` (lowercase) | `-H host` |
+
+Check any other command with `fj <noun> [-R x] <sub> --help`.
 
 ## 4. Use the narrower skill
 

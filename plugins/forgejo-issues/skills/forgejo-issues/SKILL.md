@@ -9,7 +9,7 @@ Make issue changes through `fj`. Reads run freely. Every write needs the user's 
 
 ## 1. Forge gate
 
-Run `git remote -v`. `github.com`, or a host `gh auth status --hostname <host>` knows, means GitHub: stop and name `gh-issues` (if installed). `codeberg.org`, a host where `curl -fsS https://<host>/api/forgejo/v1/version` answers, or a repo with `.forgejo/workflows` or `.gitea/workflows` means Forgejo. With several remotes, pass `fj -R <remote>` on every call and never assume `origin`. Outside a checkout use `-r host/owner/name`. If fj is missing or logged out, use `forgejo-cli`.
+Run `git remote -v`. `github.com`, or a host `gh auth status --hostname <host>` knows, means GitHub: stop and name `gh-issues` (if installed). `codeberg.org`, a host where `curl -fsS https://<host>/api/forgejo/v1/version` answers, or a repo with `.forgejo/workflows` or `.gitea/workflows` means Forgejo. With several remotes, pass `-R <remote>` after the noun (`fj issue -R <remote> view 123`) on every call and never assume `origin`; the placement table in `forgejo-cli` lists where each flag goes. Outside a checkout, `issue create`, `issue search` and `issue templates` take `-r host/owner/name`. If fj is missing or logged out, use `forgejo-cli`.
 
 ## Approval gate
 
@@ -24,11 +24,11 @@ Codeberg's terms restrict projects made mostly of generative-AI code, so draft a
 ## Read
 
 ```bash
-fj -R origin issue view 123            # title and body
-fj -R origin issue view 123 comments
-fj -R origin issue search "sso" -s all
-fj -R origin issue search -l bug -a alice -s open --all
-fj -R origin issue templates
+fj issue -R <remote> view 123            # title and body
+fj issue -R <remote> view 123 comments
+fj issue -R <remote> search "sso" -s all
+fj issue -R <remote> search -l bug -a alice -s open --all
+fj issue -R <remote> templates
 ```
 
 `issue search` takes `-l` labels, `-c` creator, `-a` assignee, `-s open|closed|all` (default open), `-m` milestones, `-p` page, `--all`. Output is text, there is no JSON. Confirm flags with `fj issue search --help`.
@@ -36,7 +36,7 @@ fj -R origin issue templates
 ## Create
 
 1. Search for a duplicate first: `fj issue search "<keywords>" -s all`. If one exists, offer to comment on it instead.
-2. List labels and milestones rather than guessing: `fj repo labels view`, `fj milestone search --state all`. With forgejo-mcp tools present (`mcp__plugin_forgejo-mcp_forgejo__*`), use them for label IDs and organization labels.
+2. List labels and milestones rather than guessing: `fj repo labels view` (several remotes: `fj repo labels <host/owner/repo> view`), `fj milestone search --state all`. With forgejo-mcp tools present (`mcp__plugin_forgejo-mcp_forgejo__*`), use them for label IDs and organization labels.
 3. List the repo's templates with `fj issue templates`. Use one with `--template "<name>"`, otherwise a body from [templates](references/templates.md). If the repo disables blank issues, `--template` is required.
 4. Write the body to a file, show the commands, get approval, run them:
 

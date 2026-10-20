@@ -1,6 +1,6 @@
 # fj command map
 
-Verified against `fj --help` output of fj v0.7.0. fj is 0.x, so confirm flags with `fj <cmd> --help`. Global options: `-H/--host`, `-C/--cwd`, `--style fancy|minimal`. Most commands also take `-R/--remote <git remote>` and `-r/--repo host/owner/name`.
+Verified against `fj --help` output of fj v0.7.0. fj is 0.x, so confirm flags with `fj <cmd> --help`. Global options: `-H/--host`, `-C/--cwd`, `--style fancy|minimal`. The remote flags are not global and sit in different places per noun: see the placement table in the forgejo-cli SKILL.md (section 3). In short, `fj <noun> -R <remote> <sub>` (never `fj -R`), and for `fj pr` only at the noun, `fj pr -R <remote> <sub>`.
 
 ## Install
 

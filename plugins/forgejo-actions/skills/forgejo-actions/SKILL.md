@@ -11,7 +11,7 @@ Not for Dependabot or Renovate config, cutting releases, or deployments.
 
 ## Forge gate
 
-Run `git remote -v`, then `git remote get-url <remote>` for the remote the work concerns. In a repo with several remotes, name one explicitly (`fj -R <remote>`); never assume `origin`.
+Run `git remote -v`, then `git remote get-url <remote>` for the remote the work concerns. In a repo with several remotes, name one explicitly (`fj actions -R <remote> <sub>`, placement per the `forgejo-cli` table); never assume `origin`.
 
 - github.com, or a host that `gh auth status --hostname <host>` knows: this is GitHub. Stop and point to `gh-actions` if installed.
 - codeberg.org, a host where `curl -fsS https://<host>/api/forgejo/v1/version` answers, or a repo with `.forgejo/workflows` or `.gitea/workflows`: Forgejo, continue.
