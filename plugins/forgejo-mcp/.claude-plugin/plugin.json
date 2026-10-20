@@ -5,5 +5,20 @@
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "forgejo_host": {
+      "type": "string",
+      "title": "Forgejo host",
+      "description": "Hostname of your Codeberg or self-hosted Forgejo instance, without scheme or path, for example codeberg.org",
+      "required": true
+    },
+    "forgejo_token": {
+      "type": "string",
+      "title": "Forgejo access token",
+      "description": "Access token from Settings > Applications on your instance. Grant the least scope the work needs; read-only use needs only read scopes.",
+      "sensitive": true,
+      "required": true
+    }
   }
 }

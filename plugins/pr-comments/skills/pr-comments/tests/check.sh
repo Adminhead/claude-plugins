@@ -24,4 +24,27 @@ check paged.md page1.json page2.json
 check empty.md empty.json
 check fence.md fence.json
 
+# fetch.sh hints at /forgejo-pr-comments when gh fails on a non-GitHub origin.
+# Stub gh (every call fails) and git (origin is a Codeberg URL) on PATH.
+hint_case() {
+  local origin=$1 want=$2 stubs err got
+  stubs=$(mktemp -d)
+  printf '#!/bin/sh\nexit 1\n' >"$stubs/gh"
+  printf '#!/bin/sh\necho %s\n' "$origin" >"$stubs/git"
+  chmod +x "$stubs/gh" "$stubs/git"
+  err=$(PATH="$stubs:$PATH" "$here/../fetch.sh" 2>&1 >/dev/null || true)
+  rm -rf "$stubs"
+  got=false
+  [[ $err == *forgejo-pr-comments* ]] && got=true
+  if [ "$got" = "$want" ]; then
+    echo "ok   fetch.sh hint ($origin)"
+  else
+    echo "FAIL fetch.sh hint ($origin): $err"
+    status=1
+  fi
+}
+hint_case git@codeberg.org:me/repo.git true
+hint_case https://codeberg.org/me/repo.git true
+hint_case git@github.com:me/repo.git false
+
 exit "$status"

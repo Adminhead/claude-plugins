@@ -1,6 +1,6 @@
 ---
 name: pr-comments
-description: Pulls a GitHub PR's unresolved review threads and review summaries into context, triages them, then fixes the ones the user picks. Read-only on GitHub. Invoke as /pr-comments [PR number|URL].
+description: Pulls a GitHub PR's unresolved review threads and review summaries into context, triages them, then fixes the ones the user picks. Read-only on GitHub. Not for Forgejo or Codeberg PRs (/forgejo-pr-comments). Invoke as /pr-comments [PR number|URL].
 disable-model-invocation: true
 argument-hint: "[PR number|URL]"
 allowed-tools: Bash(${CLAUDE_SKILL_DIR}/fetch.sh), Bash(${CLAUDE_SKILL_DIR}/fetch.sh *)

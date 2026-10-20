@@ -1,6 +1,6 @@
 {
   "name": "dependabot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Configure and troubleshoot GitHub Dependabot (dependabot.yml ecosystems, groups, cooldown, ignore rules, private registries) and sweep open Dependabot PRs, merging only green ones.",
   "author": {
     "name": "AdminHead",

@@ -19,8 +19,16 @@ done
 [[ ${1:-} != -* ]] || fail "expected a PR number or URL, not an option: $1"
 
 # gh pr view accepts a number, a URL, or nothing (the current branch).
-url=$(gh pr view ${1:+"$1"} --json url --jq .url) ||
+if ! url=$(gh pr view ${1:+"$1"} --json url --jq .url); then
+  host=$(git remote get-url origin 2>/dev/null || true)
+  host=${host#*://}
+  host=${host#*@}
+  host=${host%%[:/]*}
+  if [ -n "$host" ] && [ "$host" != github.com ] && ! gh auth status --hostname "$host" >/dev/null 2>&1; then
+    echo "hint: origin host $host is not GitHub; for Forgejo or Codeberg PRs use /forgejo-pr-comments" >&2
+  fi
   fail "could not find the pull request (see gh's message above)"
+fi
 
 # https://github.com/OWNER/REPO/pull/N
 IFS=/ read -r _ _ _ owner repo _ pr <<<"$url"

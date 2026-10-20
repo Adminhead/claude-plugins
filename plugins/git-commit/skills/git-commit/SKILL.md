@@ -5,7 +5,7 @@ description: Writes and creates Git commits in the repository's own message conv
 
 # Git commit
 
-Build commits from the actual diff, in the repository's own convention. A request to commit authorizes creating commits. It does not authorize pushing (use `ship` for push, PR or merge requests if installed), amending, rebasing, resetting, stashing, force-pushing, skipping hooks, or changing Git config. History rewriting belongs to `git-history`.
+Build commits from the actual diff, in the repository's own convention. A request to commit authorizes creating commits. It does not authorize pushing (use `ship`, or `forgejo-ship` on Forgejo, for push, PR or merge requests if installed), amending, rebasing, resetting, stashing, force-pushing, skipping hooks, or changing Git config. History rewriting belongs to `git-history`.
 
 ## Boundaries
 

@@ -1,6 +1,6 @@
 {
   "name": "git-commit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Writes and creates Git commits in the repository's own message convention (Conventional Commits, release-please, commitlint) and names new branches to match it.",
   "author": {
     "name": "AdminHead",

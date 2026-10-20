@@ -7,7 +7,7 @@ description: Configures and troubleshoots GitHub Dependabot (.github/dependabot.
 
 Two jobs: change Dependabot config, or sweep the open Dependabot PRs ([Sweep open PRs](#sweep-open-prs)). Use the `gh` CLI throughout.
 
-Not for general Actions workflows or failing-check diagnosis (`gh-actions`), alert triage and dismissal (`gh-code-security`), or reviewing non-Dependabot PRs (`gh-triage`).
+Not for Forgejo repos or Renovate config (`renovate`), general Actions workflows or failing-check diagnosis (`gh-actions`), alert triage and dismissal (`gh-code-security`), or reviewing non-Dependabot PRs (`gh-triage`).
 
 ## Configure
 

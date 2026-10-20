@@ -1,6 +1,6 @@
 ---
 name: ship
-description: "Ships finished work in one run: commits, pushes, and optionally opens a ready PR, waits for checks and merges. User-run only (/ship); agents delegate to shipper:shipper instead. Takes an optional level: push, pr or merge."
+description: "Ships finished work on a GitHub repo with gh: commits, pushes, and optionally opens a ready PR, waits for checks and merges. User-run only (/ship); agents delegate to shipper:shipper instead. Takes an optional level: push, pr or merge."
 argument-hint: "[push|pr|merge] [context for the commit message]"
 context: fork
 agent: shipper:shipper
@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 Carry current work through commit, push, and optionally PR and merge. The request is the authorization for every step at the chosen level, so don't pause for approval between steps. Stop and report when a gate fails.
 
-Not for writing or improving a PR body (`gh-pr`), commit-only requests (`git-commit`), or acting on review comments (`pr-comments`).
+Not for writing or improving a PR body (`gh-pr`), commit-only requests (`git-commit`), or acting on review comments (`pr-comments`), or Forgejo and Codeberg repos (`forgejo-ship`).
 
 Arguments: $ARGUMENTS
 
@@ -36,6 +36,7 @@ Use the level argument if given. Otherwise infer it from the context and take th
 
 ## Steps
 
+0. **Forge gate.** Check the `origin` host (`git remote get-url origin`). Proceed when it is github.com or a host `gh auth status --hostname <host>` knows. Otherwise stop and report: "not a GitHub remote; on Forgejo or Codeberg use /forgejo-ship if installed".
 1. **Branch.** At `push` level, stay on the current branch, including the default branch; the request authorizes it. At `pr` or `merge` level on the default branch, create a branch named by the repo's convention (`git-commit` holds the branch-naming rules) and carry the working changes onto it.
 2. **Commit.** Run `git status --short --branch`, `git diff`, `git diff --staged`, and `git log --oneline -15`. Use the repo's message convention (`git-commit` holds the rules; otherwise match recent history and use Conventional Commits). Stage explicit paths, leave unrelated or sensitive files out, and report them. Commit and let hooks run. If a hook fails, fix what it reports and make a new commit. With nothing to commit and unpushed commits ahead, go on to push.
 3. **Push.** Run `git push`, or `git push -u origin <branch>` when no upstream exists. On a non-fast-forward rejection, stop and report. Don't rebase to make it fit. If branch protection rejects a push to the default branch, stop and offer the `pr` level.

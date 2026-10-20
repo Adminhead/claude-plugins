@@ -1,8 +1,17 @@
 {
-  "mcpServers": {
-    "forgejo-mcp": {
-      "command": "TODO",
-      "args": []
+  "forgejo": {
+    "command": "forgejo-mcp",
+    "args": ["--transport", "stdio", "--url", "https://${user_config.forgejo_host}"],
+    "env": {
+      "FORGEJO_ACCESS_TOKEN": "${user_config.forgejo_token}",
+      "FORGEJO_USER_AGENT": "forgejo-mcp (adminhead plugin)",
+      "GITEA_HOST": "",
+      "GITEA_ACCESS_TOKEN": "",
+      "FORGEJO_URL": "",
+      "FORGEJO_MCP_ALLOW_FILE_PATH_UPLOAD": "",
+      "FORGEJO_MCP_UPLOAD_ROOT": "",
+      "FORGEJO_DEBUG": "",
+      "GITEA_DEBUG": ""
     }
   }
 }

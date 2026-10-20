@@ -55,7 +55,8 @@ Markers are hints; the catalog descriptions decide which plugin fits.
 | Design tokens, Figma links, component libraries, UI-only repos | design |
 | `*.tf`, Ansible playbooks, Dockerfiles, many `*.sh` | infrastructure as code |
 | Kubernetes manifests, Helm charts, Argo CD or Flux config | Kubernetes |
-| `.github/workflows`, `.github/dependabot.yml`, GitHub remote | GitHub workflows |
+| `.github/workflows`, `.github/dependabot.yml`, GitHub remote | GitHub workflows (`github-meta`), unless the remote is Forgejo (next row) |
+| `.forgejo/workflows`, `.gitea/workflows`, Codeberg remote, a host answering `/api/forgejo/v1/version`; `.github/workflows` with a Forgejo remote | Forgejo workflows (`forgejo-meta`, not `github-meta`) |
 | Migrations, `schema.sql`, Prisma, an ORM | databases |
 | OpenAPI, `.proto`, GraphQL schemas | API design |
 | Sentry, Prometheus, Grafana, OpenTelemetry | observability |

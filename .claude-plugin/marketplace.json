@@ -218,7 +218,7 @@
       "name": "dependabot",
       "source": "./plugins/dependabot",
       "description": "Configure and troubleshoot GitHub Dependabot (dependabot.yml ecosystems, groups, cooldown, ignore rules, private registries) and sweep open Dependabot PRs, merging only green ones.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -281,7 +281,7 @@
       "name": "gh-actions",
       "source": "./plugins/gh-actions",
       "description": "Create, review, harden and debug GitHub Actions workflows and custom actions with gh: least-privilege permissions, action pinning, script-injection and pull_request_target checks, and failed-run diagnosis.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -295,14 +295,14 @@
       "name": "gh-issues",
       "source": "./plugins/gh-issues",
       "description": "Read, create, edit, close and label single GitHub issues with gh, including issue types, sub-issues, blocked-by links, milestones, Projects V2 fields and issue search.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "gh-pr",
       "source": "./plugins/gh-pr",
       "description": "Prepare and open a reviewer-ready GitHub pull request with gh: convention-following commits, a body with summary visuals, evidence and merge danger, opened as a draft after approval.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -330,7 +330,7 @@
       "name": "git-commit",
       "source": "./plugins/git-commit",
       "description": "Writes and creates Git commits in the repository's own message convention (Conventional Commits, release-please, commitlint) and names new branches to match it.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -448,8 +448,8 @@
     {
       "name": "pr-comments",
       "source": "./plugins/pr-comments",
-      "description": "Manual /pr-comments: pull a PR's unresolved review threads and review summaries into context, triage them, and fix the ones you pick. Read-only on GitHub.",
-      "version": "0.1.0",
+      "description": "Manual /pr-comments: pull a PR's unresolved review threads and review summaries into context, triage them, and fix the ones you pick. Read-only on GitHub. Not for Forgejo or Codeberg PRs (/forgejo-pr-comments).",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -505,7 +505,7 @@
       "name": "recommend-plugins",
       "source": "./plugins/recommend-plugins",
       "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -546,15 +546,15 @@
     {
       "name": "ship",
       "source": "./plugins/ship",
-      "description": "Ship finished work in one run: commit, push, and optionally open a PR, watch checks and merge, delegated to the shipper agent.",
-      "version": "0.1.0",
+      "description": "Ship finished work on a GitHub repo in one run: commit, push, and optionally open a PR, watch checks and merge, delegated to the shipper agent.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "shipper",
       "source": "./plugins/shipper",
-      "description": "Agent that commits finished work, pushes it, and optionally opens a PR, watches checks and merges, on a cheap model. Used by the ship skill.",
-      "version": "0.1.1",
+      "description": "Agent that commits finished work, pushes it, and optionally opens a GitHub PR, watches checks and merges, on a cheap model. Used by the ship skill.",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1422,7 +1422,7 @@
       "name": "gh-readme",
       "source": "./plugins/gh-readme",
       "description": "README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
