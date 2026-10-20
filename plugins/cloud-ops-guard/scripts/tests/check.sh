@@ -15,6 +15,9 @@ bad() { fail=$((fail + 1)); echo "FAIL $1 (expected $2, got $3)"; }
 printf 'apiVersion: v1\nkind: Config\ncurrent-context: omni-prod\n' >"$root/kube-prod.yaml"
 printf 'apiVersion: v1\nkind: Config\ncurrent-context: omni-dev\n' >"$root/kube-dev.yaml"
 { head -c 2000000 /dev/zero | tr '\0' '#'; printf '\ncurrent-context: omni-prod\n'; } >"$root/kube-big.yaml"
+{ printf 'current-context: omni-prod\n'; head -c 2000000 /dev/zero | tr '\0' '#'; printf '\n'; } >"$root/kube-bigfirst.yaml"
+printf 'current-context: omni-prod\n' >"$root/cfg-a.yaml"
+printf 'current-context: omni-dev\n' >"$root/cfg-b.yaml"
 kubecfg=$root/kube-dev.yaml
 guard() { KUBECONFIG=${kubecfg:-$root/kube-dev.yaml} bun --no-env-file --config=/dev/null "$script"; }
 
@@ -548,6 +551,78 @@ t "kubectl in echo is data" none "echo kubectl --context omni-prod delete pv x"
 t "product is not prod" none "kubectl --context product-team apply -f x.yaml"
 t "prodigy is not prod" none "kubectl --context prodigy apply -f x.yaml"
 t "K variable holding a prod context stays quiet" none 'K="kubectl --context omni-prod"; $K get pods'
+
+# Review fixes
+# Variables bound by loops, read and the like are unknown
+t "plan variable rebound by a for loop" ask 'P=tfplan; for P in -auto-approve; do tofu apply $P; done'
+t "plan variable rebound by read" ask 'P=tfplan; read -r P < args.txt; tofu apply $P'
+t "plan variable rebound by mapfile" ask 'P=tfplan; mapfile -t P < args.txt; tofu apply $P'
+t "plan variable rebound by printf -v" ask 'P=tfplan; printf -v P %s -auto-approve; tofu apply $P'
+t "plan variable rebound by arithmetic" ask 'P=tfplan; (( P = 1 )); tofu apply $P'
+t "plan variable rebound by a default assignment" ask 'P=tfplan; : ${P:=x}; tofu apply $P'
+t "plan variable bound once stays a plan" none 'P=core.tfplan; tofu apply $P'
+t "kube context rebound by a for loop" ask 'C=omni-dev; for C in omni-prod; do kubectl --context $C delete pv pv-1; done'
+# A variable in the last part of a command path may name any command
+t "path with variable tool name: destroy" ask 'D=/usr/bin; T=tofu; $D/$T destroy -auto-approve'
+t "path with variable tool name: state rm" ask 'D=/usr/bin; T=tofu; $D/$T state rm module.db'
+t "substituted path to the tool" ask '$(echo /usr/bin/tofu) destroy -auto-approve'
+# Heredocs fed to a shell behind an unknown command
+t "heredoc into flock bash" ask $'flock /tmp/l bash <<\'EOF\'\ntofu destroy -auto-approve\nEOF'
+t "heredoc into docker exec sh" ask $'docker exec -i c sh <<\'EOF\'\ntofu destroy -auto-approve\nEOF'
+t "doc heredoc with a later dot argument is data" none $'cat > docs/x.md <<\'EOF\'\nrun tofu plan\nEOF\ngit add . && git commit -m x'
+t "python heredoc posix_spawn" ask $'python3 - <<\'EOF\'\nimport os; os.posix_spawn("/usr/bin/tofu", ["tofu","destroy"], {})\nEOF'
+t "python heredoc pty spawn" ask $'python3 - <<\'EOF\'\nimport pty; pty.spawn(["tofu","destroy"])\nEOF'
+t "perl heredoc qx" ask $'perl - <<\'EOF\'\nmy $x = qx{tofu destroy};\nEOF'
+t "perl heredoc backticks" ask $'perl - <<\'EOF\'\nmy $x = `tofu destroy`;\nEOF'
+t "perl heredoc open with a pipe" ask $'perl - <<\'EOF\'\nopen(F, "tofu destroy |");\nEOF'
+# kubectl flags, verbs and selectors
+t "-h as a flag value does not mean help" deny "kubectl --cache-dir -h --context omni-prod delete pv pv-1"
+t "unknown-value flag cannot hide the verb" deny "kubectl --context omni-prod --profile-output get delete pv pv-1"
+t "delete --grace-period value" deny "kubectl --context omni-prod delete --grace-period 0 pv pv-1"
+t "delete --timeout and --cascade values" deny "kubectl --context omni-prod delete --timeout 30s --cascade foreground pvc d"
+t "protected kind after a name" deny "kubectl --context omni-prod delete deploy x pv/pv-1"
+t "empty --context falls through to --kubeconfig" deny "kubectl --context= --kubeconfig ~/.kube/prod-kubeconfig.yaml delete pv pv-1"
+kubecfg=$prod t "empty --context and --kubeconfig use the fixture" deny "kubectl --context= --kubeconfig= delete pv pv-1"
+kubecfg=$prod t "empty --context '' uses the fixture" deny "kubectl --context '' delete pv pv-1"
+t "xargs feeds kubectl delete" ask "kubectl --context omni-prod get pv -o name | xargs kubectl --context omni-prod delete"
+t "watch wraps kubectl delete" deny "watch -n1 kubectl --context omni-prod delete pv pv-1"
+t "watch wraps kubectl apply on prod" ask "watch kubectl --context omni-prod apply -f x.yaml"
+t "heredoc into bash holds kubectl" ask $'bash <<\'EOF\'\nkubectl --context omni-prod delete pv pv-1\nEOF'
+t "echoed kubectl piped to sh" ask 'echo "kubectl --context omni-prod delete pv pv-1" | sh'
+t "variable holding kubectl, delete pv" deny 'K="kubectl --context omni-prod"; $K delete pv pv-1'
+t "variable holding kubectl, get stays quiet" none 'K="kubectl --context omni-prod"; $K get pods'
+t "brew install helm is data" none "brew install helm"
+kubecfg=$prod t "export after the command is ignored" deny "kubectl -n x delete pvc d; export KUBECONFIG=$root/kube-dev.yaml"
+kubecfg=$prod t "dev export before may sit in a subshell" deny "( export KUBECONFIG=$root/kube-dev.yaml ); kubectl -n x delete pvc d"
+t "dev export before, dev process" none "export KUBECONFIG=$root/kube-dev.yaml; kubectl -n x delete pvc d"
+t "kubectl auth reconcile on prod" ask "kubectl --context omni-prod auth reconcile -f rbac.yaml"
+t "kubectl auth can-i" none "kubectl --context omni-prod auth can-i delete pv"
+t "kubectl auth whoami" none "kubectl --context omni-prod auth whoami"
+t "--cluster named prod" deny "kubectl --cluster prod-eks --context omni-dev delete pv pv-1"
+t "HELM_KUBECONTEXT prefix on prod" ask "HELM_KUBECONTEXT=omni-prod helm upgrade x chart"
+t "HELM_KUBECONTEXT export on prod" ask "export HELM_KUBECONTEXT=omni-prod; helm upgrade x chart"
+t "HELM_KUBECONTEXT dev" none "HELM_KUBECONTEXT=omni-dev helm upgrade x chart"
+t "--kubeconfig not named prod selects a prod context" deny "kubectl --kubeconfig $root/cfg-a.yaml delete pv pv-1"
+t "--kubeconfig not named prod selects a dev context" none "kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1"
+kubecfg=$root/kube-bigfirst.yaml t "current-context inside the read cap of a big file" deny "kubectl -n x delete pvc d"
+t "talosctl wipe" ask "talosctl wipe disk sda"
+t "talosctl upgrade-k8s" ask "talosctl upgrade-k8s --to 1.31.0"
+t "talosctl etcd leave" ask "talosctl etcd leave"
+t "talosctl rollback" ask "talosctl rollback"
+t "talosctl patch machineconfig" ask "talosctl patch mc -p @p.yaml"
+t "talosctl edit machineconfig" ask "talosctl edit machineconfig"
+t "talosctl patch of a non-config is quiet" none "talosctl get machineconfig"
+# tofu flags with values, aws global flags and variables
+t "show -json=true asks" ask "tofu show -json=true tfplan"
+t "output -raw=true asks" ask "tofu output -raw=true x"
+t "aws global --cli-binary-format" ask "aws --cli-binary-format raw-in-base64-out ec2 terminate-instances --instance-ids i-1"
+t "aws operation in a variable" ask 'OP=terminate-instances; aws ec2 $OP --instance-ids i-1'
+t "aws operation in an unknown variable" ask 'aws ec2 $OP --instance-ids i-1'
+t "aws read operation in a variable" none 'OP=describe-instances; aws ec2 $OP'
+# awk programs that run commands
+t "awk system() runs tofu" ask "awk 'BEGIN{system(\"tofu destroy -auto-approve\")}' /dev/null"
+t "awk pipe to getline runs tofu" ask "awk 'BEGIN{\"tofu output\" | getline x}' /dev/null"
+t "awk printing a tool name is data" none "awk '/tofu/ {print \$1}' notes.txt"
 
 # A shared heredoc is parsed once, so a 64 KB command with many commands under one redirect stays fast
 colons=$(printf ':;%.0s' $(seq 6000))
