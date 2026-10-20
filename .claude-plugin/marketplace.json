@@ -155,7 +155,7 @@
       "name": "architect",
       "source": "./plugins/architect",
       "description": "A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -497,8 +497,8 @@
     {
       "name": "readonly-agent-gate",
       "source": "./plugins/readonly-agent-gate",
-      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands that don't write outside /tmp and the session scratchpad. Needs bun.",
-      "version": "0.1.0",
+      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. Needs bun.",
+      "version": "0.2.0",
       "category": "development"
     },
     {

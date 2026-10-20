@@ -448,7 +448,8 @@ def catalog_section(root, entries, manifests):
         lines += ["", "### Agents", "",
                   "Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and effort are defaults; "
                   "a caller can pass another model per call. An agent without Edit/Write tools can still change state "
-                  "through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash.", "",
+                  "through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash and "
+                  "limits their file-writing tools to scratch paths (`architect` has Write/Edit for scratch docs).", "",
                   "| Agent | Plugin | Model | Effort | Context | Edit/Write tools | In |",
                   "| --- | --- | --- | --- | --- | --- | --- |", *agents]
     lines += ["", CATALOG_END]

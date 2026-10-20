@@ -17,8 +17,7 @@
 import { writeSync } from 'node:fs'
 import { MAX_DEPTH, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand } from './shell/walk.ts'
-
-const SCRATCH_MSG = 'This agent is read-only; write scratch files under /tmp or the session scratchpad only.'
+import { SCRATCH_MSG, isScratch, isScratchRoot, joinPath, normpath, setScratchRoots } from './scratch.ts'
 
 // Stands for an expanded assignment name or value, which the walker reports as null without its
 // source text. It never matches a name, is never empty or `cat`, and is not a scratch path.
@@ -43,53 +42,12 @@ const NONE = set()
 
 // ---------------------------------------------------------------- helpers
 
-// posixpath.normpath: collapses `.`, `..` and repeated slashes, keeping a leading `//`.
-function normpath(p: string): string {
-  if (p === '') return '.'
-  const initial = p.startsWith('//') && !p.startsWith('///') ? 2 : p.startsWith('/') ? 1 : 0
-  const out: string[] = []
-  for (const c of p.split('/')) {
-    if (c === '' || c === '.') continue
-    if (c !== '..' || (!initial && !out.length) || out.at(-1) === '..') out.push(c)
-    else if (out.length) out.pop()
-  }
-  return '/'.repeat(initial) + out.join('/') || '.'
-}
-
 const basename = (p: string): string => p.slice(p.lastIndexOf('/') + 1)
 
 // str.partition: [head, separator or '', tail].
 function partition(s: string, sep: string): [string, string, string] {
   const k = s.indexOf(sep)
   return k < 0 ? [s, '', ''] : [s.slice(0, k), sep, s.slice(k + sep.length)]
-}
-
-// Extra scratch roots: $TMPDIR and the session scratchpad (the payload's `scratchpad_dir`, set by
-// the harness, not the model). Each must be absolute and at least two levels deep, so a bad value
-// can never make `/` or `/home` scratch.
-let scratchRoots: string[] = []
-
-function scratchRoot(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length > 4096 || !value.startsWith('/')) return null
-  const norm = normpath(value)
-  return norm.split('/').filter(Boolean).length >= 2 ? norm : null
-}
-
-function setScratchRoots(scratchpad: unknown): void {
-  scratchRoots = [scratchRoot(process.env.TMPDIR), scratchRoot(scratchpad)].filter((r): r is string => r !== null)
-}
-
-function isScratch(path: string): boolean {
-  if (['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/tty'].includes(path)) return true
-  const norm = normpath(path)
-  if (/^\/tmp(\/[^\n]+)?$/.test(norm)) return true
-  return scratchRoots.some(t => norm === t || norm.startsWith(`${t}/`))
-}
-
-// A scratch directory itself, after normalizing `..`.
-function isScratchRoot(path: string): boolean {
-  const norm = normpath(path)
-  return norm === '/tmp' || scratchRoots.includes(norm)
 }
 
 // [index, word] of the first non-option word, skipping values of `valued` options.
@@ -329,8 +287,6 @@ function gitConfigOk(key: string, value: string): boolean {
   return key === 'core.pager' && (value === '' || value === 'cat')
 }
 
-// posixpath.join for two parts.
-const joinPath = (a: string, b: string): string => (b.startsWith('/') ? b : a === '' || a.endsWith('/') ? a + b : `${a}/${b}`)
 
 // Options before the subcommand: -c may only set display keys, repos must be under cwd.
 function checkGitGlobals(pre: Words): void {

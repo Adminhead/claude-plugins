@@ -950,7 +950,7 @@ fm allow 'read allowed through the hook command' 'ls'
 fm block 'missing runtime blocks' 'ls' PATH=/nonexistent
 
 # The block message names /tmp, since TMPDIR is empty in agent Bash.
-err=$(jq -n '{'"$ID"',tool_input:{command:"touch a"}}' | invoke "$HOOK" 2>&1 >/dev/null) || true
+err=$(jq -n '{'"$ID"',tool_name:"Bash",tool_input:{command:"touch a"}}' | invoke "$HOOK" 2>&1 >/dev/null) || true
 if [[ "$err" == *"under /tmp or the session scratchpad only"* && "$err" != *TMPDIR* ]]; then
   pass=$((pass + 1))
 else
@@ -959,7 +959,7 @@ else
 fi
 
 # An injected crash must exit 2 with an internal-error message.
-err=$(printf '{%s,"tool_input":{"command":"ls"}}' "$ID" | READONLY_BASH_TEST_FAULT=1 invoke "$HOOK" 2>&1 >/dev/null) && rc=0 || rc=$?
+err=$(printf '{%s,"tool_name":"Bash","tool_input":{"command":"ls"}}' "$ID" | READONLY_BASH_TEST_FAULT=1 invoke "$HOOK" 2>&1 >/dev/null) && rc=0 || rc=$?
 if [[ $rc -eq 2 && "$err" == *"internal error"* ]]; then
   pass=$((pass + 1))
 else
