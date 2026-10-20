@@ -1,6 +1,6 @@
 ---
 name: ship
-description: "Ships finished work on a GitHub repo with gh: commits, pushes, and optionally opens a ready PR, waits for checks and merges. User-run only (/ship); agents delegate to shipper:shipper instead. Takes an optional level: push, pr or merge."
+description: "Ships finished work on a GitHub repo with gh: commits, pushes, and optionally opens a ready PR, waits for checks and merges. User-run only (/ship); agents delegate to shipper:shipper instead. Takes an optional level: push, pr or merge. Not for Forgejo or Codeberg (`forgejo-ship`)."
 argument-hint: "[push|pr|merge] [context for the commit message]"
 context: fork
 agent: shipper:shipper

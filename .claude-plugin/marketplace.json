@@ -309,7 +309,7 @@
       "name": "gh-release",
       "source": "./plugins/gh-release",
       "description": "Cut a manual GitHub release with gh: detect release tooling first, propose a SemVer bump from the public-API diff, draft a Keep a Changelog entry, open a release PR, then tag and publish after approval.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {

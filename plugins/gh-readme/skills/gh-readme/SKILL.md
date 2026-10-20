@@ -1,12 +1,14 @@
 ---
 name: gh-readme
-description: Writes, restructures, audits and beautifies a repository's README.md, its GitHub landing page, from facts in the repo. Section order by project type, a scored audit, honest shields.io badges, dark/light logos, alerts and relative links. Use when asked to write, review, fix, reorder or polish a README or a repo's front page.
+description: Writes, restructures, audits and beautifies a repository's README.md, its GitHub landing page, from facts in the repo. Section order by project type, a scored audit, honest shields.io badges, dark/light logos, alerts and relative links. Use when asked to write, review, fix, reorder or polish a README or a repo's front page. Not for Forgejo or Codeberg (`forgejo-readme`).
 allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/readme_audit.sh *)
 ---
 
 # GitHub README
 
 Not for Forgejo or Codeberg repos (`forgejo-readme`). The rendering rules below (alerts, outline, dark/light images) are GitHub's.
+
+**Forge gate.** Proceed when the `origin` host is github.com or one `gh auth status --hostname <host>` knows; otherwise stop with "not a GitHub remote; on Forgejo or Codeberg use forgejo-readme if installed".
 
 A README is a landing page and a router, not a manual. In a minute a stranger should know what the project is, why to pick it over the obvious alternative, whether it fits their stack and licence, whether it is alive, and what to run first. Then it points them at the docs. A reader who decides *not* to use the project is a good outcome too, so don't try to stop that.
 

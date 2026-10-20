@@ -1,6 +1,6 @@
 ---
 name: dependabot
-description: Configures and troubleshoots GitHub Dependabot (.github/dependabot.yml ecosystems, groups, cooldown, ignore rules, private registries) and sweeps open Dependabot PRs, merging only green ones. Use when editing dependabot.yml, diagnosing missing Dependabot PRs or alerts, or asked to "merge the dependabot PRs" or clear a Dependabot backlog.
+description: Configures and troubleshoots GitHub Dependabot (.github/dependabot.yml ecosystems, groups, cooldown, ignore rules, private registries) and sweeps open Dependabot PRs, merging only green ones. Use when editing dependabot.yml, diagnosing missing Dependabot PRs or alerts, or asked to "merge the dependabot PRs" or clear a Dependabot backlog. Not for Forgejo or Codeberg (`renovate`).
 ---
 
 # GitHub Dependabot
@@ -8,6 +8,8 @@ description: Configures and troubleshoots GitHub Dependabot (.github/dependabot.
 Two jobs: change Dependabot config, or sweep the open Dependabot PRs ([Sweep open PRs](#sweep-open-prs)). Use the `gh` CLI throughout.
 
 Not for Forgejo repos or Renovate config (`renovate`), general Actions workflows or failing-check diagnosis (`gh-actions`), alert triage and dismissal (`gh-code-security`), or reviewing non-Dependabot PRs (`gh-triage`).
+
+**Forge gate.** Proceed when the `origin` host is github.com or one `gh auth status --hostname <host>` knows; otherwise stop with "not a GitHub remote; on Forgejo or Codeberg use renovate if installed".
 
 ## Configure
 

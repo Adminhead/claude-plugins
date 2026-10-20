@@ -1,6 +1,6 @@
 ---
 name: forgejo-ship
-description: "Ships finished work on a Forgejo or Codeberg repo in one run: commits, pushes, and optionally opens a ready PR with fj, waits for checks and merges. User-run only (/forgejo-ship); agents delegate to forgejo-shipper:forgejo-shipper instead. Takes an optional level: push, pr or merge. Not for github.com (`ship`)."
+description: "Ships finished work on a Forgejo or Codeberg repo in one run: commits, pushes, and optionally opens a ready PR with fj, waits for checks and merges. User-run only (/forgejo-ship); agents delegate to forgejo-shipper:forgejo-shipper only when the user explicitly asked in this conversation for that level (push, pr or merge). Takes an optional level: push, pr or merge. Not for github.com (`ship`)."
 argument-hint: "[push|pr|merge] [context for the commit message]"
 context: fork
 agent: forgejo-shipper:forgejo-shipper
@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 # Forgejo ship
 
-Carry current work through commit, push, and optionally PR and merge on a Forgejo or Codeberg repo. The request is the authorization for every step at the chosen level, so don't pause for approval between steps. Stop and report when a gate fails.
+Carry current work through commit, push, and optionally PR and merge on a Forgejo or Codeberg repo. The user's explicit request for the chosen level is the authorization for every step at that level, so don't pause for approval between steps. Stop and report when a gate fails. Codeberg's terms restrict projects made mostly of generative-AI code, so never post or merge unattended. Run it only for a level the user asked for; an agent must not pick the level on its own.
 
 Not for writing or improving a PR body (`forgejo-pr`), commit-only requests (`git-commit`), acting on review comments (`forgejo-pr-comments`), or GitHub repos (`ship`).
 

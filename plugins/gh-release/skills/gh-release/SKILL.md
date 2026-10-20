@@ -1,6 +1,6 @@
 ---
 name: gh-release
-description: Cuts a manual GitHub release for a single-package repo: defers to release-please, semantic-release or changesets when present, proposes a SemVer bump from the public-API diff, drafts a Keep a Changelog entry, opens a release PR, then tags and publishes with gh after approval. Use when asked to cut or prepare a release or changelog entry by hand.
+description: Cuts a manual GitHub release for a single-package repo: defers to release-please, semantic-release or changesets when present, proposes a SemVer bump from the public-API diff, drafts a Keep a Changelog entry, opens a release PR, then tags and publishes with gh after approval. Use when asked to cut or prepare a release or changelog entry by hand. Not for Forgejo or Codeberg (`forgejo-release`).
 ---
 
 # GitHub Release
@@ -8,6 +8,8 @@ description: Cuts a manual GitHub release for a single-package repo: defers to r
 Release by hand only when no tool owns the release. Not for the Conventional Commit contract that drives release-please (`git-commit`) or release workflow files (`gh-actions`).
 
 Each tag, push, and published release is irreversible or public, so ask for explicit approval of the exact command before running it. Steps 1 to 4 are read-only.
+
+**Forge gate.** Proceed when the `origin` host is github.com or one `gh auth status --hostname <host>` knows; otherwise stop with "not a GitHub remote; on Forgejo or Codeberg use forgejo-release if installed".
 
 ## 1. Detect release tooling
 

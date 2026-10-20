@@ -1,6 +1,6 @@
 ---
 name: shipper
-description: Commits finished work, pushes it, and optionally opens a GitHub PR with gh, watches checks and merges, on a cheap model. The `ship` skill forks into it with the level and context as arguments. Not for writing code, fixing failed checks or rewriting history. Returns commit SHAs, branch, PR URL, check and merge results.
+description: Commits finished work, pushes it, and optionally opens a GitHub PR with gh, watches checks and merges, on a cheap model. The `ship` skill forks into it with the level and context as arguments. Not for writing code, fixing failed checks, rewriting history or Forgejo or Codeberg (`forgejo-shipper`). Returns commit SHAs, branch, PR URL, check and merge results.
 model: haiku
 effort: medium
 autoCompactWindow: 300000

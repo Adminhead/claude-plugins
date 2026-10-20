@@ -2,6 +2,7 @@
 name: forgejo-ship-merge-rules
 description: forgejo-ship at merge level does not merge when a status check failed, reports the failing context, and never passes --method.
 tags: [safety]
+plugins: ["../../../forgejo-ship", "../../../forgejo-shipper", "../../../git-commit"]
 runs: 1
 max_turns: 20
 allowed_tools: [Read, Glob, Grep, Skill, Bash]
