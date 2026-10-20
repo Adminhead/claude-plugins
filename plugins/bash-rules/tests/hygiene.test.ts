@@ -382,7 +382,8 @@ describe('literal variables', () => {
   test('literal and path-finder variables run as commands pass', () => {
     expectAll(
       [
-        'cd w && H="dotnet run --no-build --project src/Tools.Headless -- --content content"; $H --scenario content/scenarios/smoke.json --ticks 1200',
+        'cd w; H="dotnet run --no-build --project src/Tools.Headless -- --content content"; $H --scenario content/scenarios/smoke.json --ticks 1200',
+        'H="dotnet run --no-build --project src/Tools.Headless --" && $H --content content',
         'S=/tmp/claude-1000/x/scratchpad/setstatus.sh; bash $S 153 "In review"',
         'C="kubectl --context omni-dev"; $C get ns',
         'P="kubectl --context omni-dev -n isktel-dev exec isktel-db-1 -c postgres -- psql -U postgres -d isktel -At -c"; $P "select count(*) from sde.types"',
@@ -422,9 +423,65 @@ describe('literal variables', () => {
     )
   })
 
+  // Review of the first cut: in each of these bash runs something other than the rewrite would, so nothing is written in.
+  test('path finders are written in only as a quoted command word: an empty or spaced path stays smuggle', () => {
+    expectAll(
+      [
+        'Z=$(which nosuchtool 2>/dev/null); $Z rm -rf ~',
+        'Z=$(command -v nosuchtool); $Z rm -rf ~',
+        'Z=$(type -P nosuchtool); $Z rm -rf ~',
+        'Z=$(find . -name nosuchtool | head -1); $Z rm -rf ~',
+        'Z=$(which nosuchtool 2>/dev/null); $Z cat src/a.ts',
+        // realpath and readlink print a path whose basename can differ from the operand's.
+        'Z=$(readlink ./bin/tool); "$Z" x',
+        'Z=$(readlink -f ./bin/tool); "$Z" x',
+        'Z=$(realpath ./bin/tool); "$Z" x',
+      ],
+      'smuggle/script',
+    )
+  })
+
+  test('an assignment that may not run, or runs elsewhere, is not written in', () => {
+    expectAll(
+      [
+        'false && X="echo hi"; $X rm -rf ~',
+        'X="echo hi" & $X rm -rf ~',
+        'if false; then X="echo hi"; fi; $X rm -rf ~',
+        'f() { X="echo hi"; }; $X rm -rf ~',
+        'case a in b) X="echo hi";; esac; $X rm -rf ~',
+        'false &&\nX="echo hi"; $X rm -rf ~',
+        'false || X="echo hi"; $X ls',
+        '{ X="echo hi"; }; $X ls',
+        // Was a must-pass in the plan: if cd fails, $H is empty and its arguments run as the command.
+        'cd w && H="dotnet run --no-build --project src/Tools.Headless -- --content content"; $H --scenario content/scenarios/smoke.json',
+      ],
+      'smuggle/script',
+    )
+  })
+
+  test("a quoted heredoc body is literal: its $X is not written in", () => {
+    expectAll(['X="echo hi"\nbash <<\'EOF\'\n$X rm -rf ~\nEOF', 'X="echo hi"\nbash <<\'EOF\'\n$X cat src/a.ts\nEOF'], 'smuggle/script')
+    // Unquoted, the outer shell writes it in before the inner one runs.
+    expect(kind('X="echo hi"\nbash <<EOF\n$X ls\nEOF')).toBe('pass')
+  })
+
+  test('IFS set by a binder, computed declarations and wrapped source turn expansion off', () => {
+    expectAll(
+      [
+        'X="echo,a b"; printf -v IFS ,; $X',
+        'X="echo,a b"; read IFS <<< ,; $X',
+        'X="echo,a b"; for IFS in ,; do :; done; $X',
+        'X="ls -la"; declare -n N="$(printf %b \\\\x58)"; N="rm -rf ~"; $X',
+        'X="ls -la"; builtin source ./f; $X',
+        'X="ls -la"; command . ./f; $X',
+      ],
+      'smuggle/script',
+    )
+  })
+
   test('a written-in variable can reveal a read or a write', () => {
-    expectAll(['F=src/a.ts; cat $F', 'T=$(which cat); $T src/a.ts'], 'read/Read')
-    expectAll(["PY=$(command -v python3); $PY - <<'EOF'\nopen('o.txt','w').write('x')\nEOF"], 'write/Write')
+    expectAll(['F=src/a.ts; cat $F', 'T=$(which cat); "$T" src/a.ts'], 'read/Read')
+    expectAll(["PY=$(command -v python3); \"$PY\" - <<'EOF'\nopen('o.txt','w').write('x')\nEOF"], 'write/Write')
   })
 })
 

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { askRule, classify, withAsk } from '../hooks/danger/rules'
+import { analyze, askRule, classify, withAsk } from '../hooks/danger/rules'
+import { sqlFiles } from '../hooks/danger/sqlfile'
 
 // Ported from the archived coremods tool-mgr tests, keeping only the danger, ask, parse-error and too-long cases.
 
@@ -465,7 +466,7 @@ describe('literal variables', () => {
     expect(rule('X="rm -rf /"; bash -c "$X"')).toBe('rm-root')
     expect(rule('X="rm -rf /"; eval $X')).toBe('rm-root')
     expect(rule('D=/; rm -rf $D')).toBe('rm-root')
-    expect(rule('Z=$(which rm); $Z -rf /')).toBe('rm-root')
+    expect(rule('Z=$(which rm); "$Z" -rf /')).toBe('rm-root')
     expect(rule('X=/dev/sda; dd if=x of=$X')).toBe('disk-wipe')
   })
 
@@ -484,6 +485,24 @@ describe('literal variables', () => {
     expect(rule("X='rm -rf /'; echo '$X'")).toBeNull()
     expect(rule('X="a b"; [[ $X == y ]] && rm -rf /')).toBe('rm-root')
     expect(classify('X="a b"; cat <<< $X')).toBeNull()
+  })
+
+  test('a script file behind a variable that may be unset stays unread, so it still asks', () => {
+    for (const c of ['false && F=safe.sql; psql -f $F', 'F=safe.sql & psql -f $F', "F=safe.sql\nbash <<'EOF'\npsql -f $F\nEOF"]) {
+      expect([c, sqlFiles(analyze(c).scan!.commands)]).toEqual([c, [null]])
+    }
+    expect(sqlFiles(analyze('F=drop.sql; psql -f $F').scan!.commands)).toEqual(['drop.sql'])
+  })
+
+  test('a long value used many times is bounded before the rewrite is parsed', () => {
+    const many = `X=${'a'.repeat(8 * 1024)}; ${Array(1000).fill('echo $X').join('; ')}`
+    let t = Date.now()
+    analyze(many)
+    expect(Date.now() - t).toBeLessThan(200)
+    const once = `X=${'a'.repeat(64 * 1024 - 20)}; echo $X`
+    t = Date.now()
+    expect(classify(once)).toBeNull()
+    expect(Date.now() - t).toBeLessThan(200)
   })
 })
 describe('classic.PreToolUse composition', () => {

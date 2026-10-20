@@ -79,8 +79,8 @@ function expanded(command: string, s: Scan): Scan | null {
     const r = scan(text)
     return r.tooComplex || r.errors.length > 0 ? null : r.commands
   }
-  const text = expandLiteralVars(command, s.commands, rescan)
-  if (text === null || text.length > MAX_PARSE) return null
+  const text = expandLiteralVars(command, s.commands, rescan, MAX_PARSE)
+  if (text === null) return null
   const x = scan(text)
   return x.tooComplex || x.errors.length > 0 ? null : x
 }
