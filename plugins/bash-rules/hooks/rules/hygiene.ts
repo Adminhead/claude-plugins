@@ -34,7 +34,15 @@ const LEAD: Record<Tool, string> = {
   script: 'hides what it runs',
 }
 
-export const nudge = (tool: Tool, what: string, note = '') => `bash-rules: this ${LEAD[tool]} (${what}). ${note}${INSTEAD[tool]}`
+// Appended to the Bash tool's description (register.tsx), so the model, and its subagents, know the rules before the first
+// denial. At most 600 characters.
+export const PRIMER = `bash-rules: this session denies shell file viewers and writers.
+- cat, head, tail, sed -n and awk that print a file are denied, also inside ; and && chains. Use the Read tool, several calls in parallel for several files or ranges.
+- Piping a program's output through head or grep is fine.
+- Write files with the Write or Edit tool, also instead of python - <<EOF scripts that write.
+- grep, rg, find, ls and git stay in Bash.`
+
+export const nudge =(tool: Tool, what: string, note = '') => `bash-rules: this ${LEAD[tool]} (${what}). ${note}${INSTEAD[tool]}`
 
 // The read deny: names the offending segment, says every shell viewer is denied (also inside ; and && chains), and how to
 // split a compound command or a multi-file or multi-range read into parallel Read calls.

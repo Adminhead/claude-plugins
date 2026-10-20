@@ -47,6 +47,12 @@
       "description": "Model alias or id for the second, final check, billed to the session. Empty skips it.",
       "default": "haiku"
     },
+    "primer": {
+      "type": "boolean",
+      "title": "Rules primer",
+      "description": "Add a short note on the read and write rules to the Bash tool's description, so the model and its subagents avoid the denied commands. Off: the description is unchanged.",
+      "default": true
+    },
     "usageLog": {
       "type": "boolean",
       "title": "Usage log",

@@ -35,6 +35,10 @@ If both models are unavailable, the command runs. The error is logged once to th
 
 **Data flow.** The model stages send the command text, up to 4 KB, to your Ollama server. A `:cloud` model such as the default `clef:cloud` forwards it to ollama.com. If the fallback runs, the command also goes to Anthropic through the session's own credentials, and the cost is billed to the session. Turn the model checks off to keep everything local.
 
+## Primer
+
+The mod appends a short note (the `PRIMER` constant in `hooks/rules/hygiene.ts`, at most 600 characters) to the Bash tool's description: shell file viewers are denied even inside `;` and `&&` chains, use parallel Read calls, write with Write or Edit, and grep, rg, find, ls and git stay in Bash. Most denials happen in subagents, which see the tool description but not the main session's instructions. Turn `primer` off to leave the description unchanged.
+
 ## Usage log
 
 Each Bash call is logged to `~/.local/state/claude-usage/bash-rules-<date>.jsonl`, one JSON object per line. Each line has the session and agent IDs, the command with common secret shapes masked, and the stage that decided it: `danger`, `sql`, `hygiene` or `model`. It also has the rule, category or model verdict (source, confidence, time), and the decision: `deny`, `allow` (with `isError` and duration) or `denied-later` by another hook. A command the guard asks about gets an extra `bash-ask` line.
@@ -53,4 +57,5 @@ Set these in `/config` under bash-rules:
 | `ollamaTimeoutMs` | `8000` | At most 9000, because the wait counts against the hook's 10 s budget |
 | `confidence` | `0.8` | Below this, the fallback model decides |
 | `fallbackModel` | `haiku` | Empty skips the fallback |
+| `primer` | `true` | Off: the Bash tool's description is not extended with the read and write rules |
 | `usageLog` | `true` | Off: no usage log is written |

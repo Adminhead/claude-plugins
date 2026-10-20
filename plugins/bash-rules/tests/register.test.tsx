@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
+import { PRIMER } from '../hooks/rules/hygiene'
 
 // The mod through the engine: the parser's denies and passes, then the model stages with Ollama (`http.fetch`) and the
 // fallback (`model.complete`) stubbed. Each test runs at its own clock time and uses its own commands, so the module's
@@ -74,6 +75,25 @@ describe('parser stage', () => {
   test('an unparseable command is denied', async ($, on) => {
     world(on, 4e9)
     expect((await call($, 'echo $(')).deny).toMatch(/could not parse/)
+  })
+})
+
+describe('primer', () => {
+  test('the Bash description gets the rules primer appended; other tools are untouched', async ($, on) => {
+    on('tool.describe', async (_$: any, e: any) => ({ description: e.description }))
+    const engine = { plugin: 'engine', tier: 'core' } as never
+    const bash = (await $.tool.describe({ tool: 'Bash', description: 'Run a command.', provider: engine })).description as string
+    expect(bash.startsWith('Run a command.\n\n')).toBe(true)
+    expect(bash.endsWith(PRIMER)).toBe(true)
+    expect((await $.tool.describe({ tool: 'Read', description: 'Read a file.', provider: engine })).description).toBe('Read a file.')
+  })
+
+  test('the primer is short and states the rules', () => {
+    expect(PRIMER.length).toBeLessThanOrEqual(600)
+    expect(PRIMER).toMatch(/parallel/)
+    expect(PRIMER).toMatch(/\; and &&/)
+    expect(PRIMER).toMatch(/Write or Edit/)
+    expect(PRIMER).toMatch(/grep, rg, find, ls and git stay in Bash/)
   })
 })
 

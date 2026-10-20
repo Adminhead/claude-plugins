@@ -2,7 +2,7 @@ import type { Register } from 'claude-code'
 import { DANGER_MESSAGES } from './danger/danger'
 import { analyze, withAsk } from './danger/rules'
 import { MAX_SQL_FILE, MAX_SQL_FILES, destroysData, sqlFiles, sqlPath, uncheckedMessage } from './danger/sqlfile'
-import { hygiene } from './rules/hygiene'
+import { PRIMER, hygiene } from './rules/hygiene'
 import { laterDeny } from './rules/outcome'
 import {
   Lru, SYSTEM, apiFor, backoffMs, completionText, modelNudge, ollamaRequest, ollamaStands, parseModelText, parseOllama, parseOptions, parseSystemone,
@@ -203,6 +203,9 @@ async function logLine($: any, kind: string, fields: Record<string, unknown>) {
 export const register: Register = (on, options) => {
   const o = parseOptions(options)
   const logging = options?.usageLog !== false
+
+  // Tells the model the read and write rules in the Bash tool's description, which subagents see too. Off with `primer: false`.
+  if (options?.primer !== false) on('tool.describe', { tool: 'Bash' }, async ($, e: any, next) => ({ ...(await next(e)), description: `${e.description}\n\n${PRIMER}` }))
 
   // Denies destructive Bash, Bash that reads or writes files the built-in tools should, and smuggled payloads, and logs
   // each decision with the command's outcome. analyze() bounds the input length before parsing; the model stages bound
