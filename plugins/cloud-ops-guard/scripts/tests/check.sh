@@ -74,6 +74,11 @@ t() { # name expected command [agent_id]
   got=$(mkin "$3" "${4:-}" | decision)
   if [ "$got" = "$2" ]; then ok "$1"; else bad "$1" "$2" "$got"; fi
 }
+why() { # name reason-substring command [agent_id]
+  local got
+  got=$(mkin "$3" "${4:-}" | guard 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"]["permissionDecisionReason"])' 2>/dev/null)
+  case $got in *"$2"*) ok "$1" ;; *) bad "$1" "reason with '$2'" "$got" ;; esac
+}
 raw() { # name expected raw-stdin
   local got
   got=$(printf '%s' "$3" | decision)
@@ -261,7 +266,8 @@ t "unparseable quote" ask "tofu plan 'oops"
 t "unknown subcommand" ask "tofu frobnicate"
 t "state pull" ask "tofu state pull"
 t "taint" ask "tofu taint aws_instance.a"
-t "show" ask "tofu show x.tfplan"
+t "show reads a plan" none "tofu show x.tfplan"
+t "show -json prints values" ask "tofu show -json x.tfplan"
 t "\$() with plan" ask "echo \$(tofu plan)"
 
 # Forms the shell AST walker sees: substitutions, nested shells, heredocs, wrappers
@@ -362,6 +368,51 @@ t "substitution as tofu subcommand" deny 'tofu $(echo destroy)'
 t "substitution around an apply" deny 'echo $(tofu apply -auto-approve)'
 t "substitution in a plan argument" ask 'tofu plan $(echo -destroy)'
 t "substitution around a plan" ask 'X=$(mise run tofu core plan)'
+
+# Saved plans and read-only subcommands
+t "terragrunt apply --working-dir saved plan" none "terragrunt apply --working-dir live/pg -lock-timeout=5m -no-color tfplan"
+t "terragrunt apply absolute working dir and plan" none "terragrunt apply --working-dir /abs/live/pg -no-color /abs/live/pg/pg.tfplan"
+t "terragrunt apply --log-level value" none "terragrunt apply --log-level debug --config live/x.hcl tfplan"
+t "apply core.plan" none "tofu apply core.plan"
+t "apply plan.bin" none "tofu apply plan.bin"
+t "apply a plan under a variable directory" none 'S=/tmp/x; tofu apply -lock-timeout=15m $S/slice52.tfplan'
+t "apply a plan in a variable" none 'P=core.tfplan; tofu apply $P'
+t "apply a braced plan variable" none 'P=core.tfplan; tofu apply ${P}'
+t "apply a plan variable, subagent without token" deny 'P=core.tfplan; tofu apply $P' notoken
+t "apply a plan variable, subagent with token" none 'P=core.tfplan; tofu apply $P' withtoken
+t "apply an unassigned plan variable" ask 'tofu apply "$P"'
+t "apply a plan under a computed directory" ask 'S=$(mktemp -d); tofu apply $S/x.tfplan'
+t "apply a variable that is not a plan name" deny 'P=main.tf; tofu apply $P'
+t "apply a variable holding -auto-approve" deny 'P=-auto-approve; tofu apply $P'
+t "apply a variable holding two words" deny 'P="-auto-approve x.tfplan"; tofu apply $P'
+t "apply unassigned variable and -auto-approve" deny 'tofu apply $P -auto-approve'
+t "apply a variable assigned twice" ask 'P=a.tfplan; P=$(ls); tofu apply $P'
+t "apply a variable set by a prefix assignment" ask 'P=a.tfplan tofu apply $P'
+t "apply with flags after the plan" deny "mise run tofu grafana apply tfplan -no-color"
+why "apply flags after the plan: reason" "Put flags before the plan file: apply -no-color tfplan." "mise run tofu grafana apply tfplan -no-color"
+t "apply a parameter default stays a deny" deny 'tofu apply ${X:--auto-approve}'
+t "apply plan name as a flag value is not the plan" deny "tofu apply -var tfplan"
+t "providers schema" none "tofu providers schema -json"
+t "providers lock" none "tofu providers lock"
+t "providers with an unknown verb" ask "tofu providers frob"
+t "graph" none "tofu graph"
+t "metadata functions" none "tofu metadata functions -json"
+t "terragrunt hclfmt" none "terragrunt hclfmt"
+t "terragrunt hcl fmt" none "terragrunt hcl fmt"
+t "terragrunt hcl validate" none "terragrunt hcl validate --inputs"
+t "terragrunt list" none "terragrunt list"
+t "terragrunt find with a working dir" none "terragrunt --working-dir live find"
+t "terragrunt --version" none "terragrunt --version"
+t "terragrunt run --all show" none "terragrunt run --all -- show tfplan"
+t "terragrunt run apply -auto-approve" deny "terragrunt run -- apply -auto-approve"
+t "terragrunt run --all apply saved plan" none "terragrunt run --all -- apply tfplan"
+t "terragrunt hcl with an unknown verb" ask "terragrunt hcl frob"
+t "list is not a read-only verb for tofu" ask "tofu list"
+t "mise which tofu" none "mise which tofu"
+t "mise where terragrunt" none "mise where terragrunt"
+t "mise ls is a lookup" none "mise ls terraform"
+t "tofu test still asks" ask "tofu test"
+t "plan -out=x.plan gets no allow" none "tofu plan -out=x.plan"
 
 # A shared heredoc is parsed once, so a 64 KB command with many commands under one redirect stays fast
 colons=$(printf ':;%.0s' $(seq 6000))

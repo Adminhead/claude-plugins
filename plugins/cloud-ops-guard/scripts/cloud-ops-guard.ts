@@ -66,12 +66,19 @@ const WRAPPERS = new Map<string, ReadonlySet<string>>([
   ...['nohup', 'command', 'builtin', 'noglob'].map((w): [string, ReadonlySet<string>] => [w, new Set()]),
 ])
 const QUIET_SUBS: ReadonlySet<string> = new Set(['validate', 'fmt', 'init', 'output', 'version', '-version', '--version', '-v',
-  'help', '-help', '--help', '-h'])
-const ASK_SUBS: ReadonlySet<string> = new Set(['show', 'refresh', 'taint', 'untaint', 'console', 'force-unlock', 'workspace',
-  'providers', 'graph', 'get', 'login', 'logout', 'test', 'metadata', 'push', 'modules'])
-const SUBCMDS: ReadonlySet<string> = new Set([...QUIET_SUBS, ...ASK_SUBS, 'apply', 'destroy', 'import', 'state', 'plan'])
+  'help', '-help', '--help', '-h', 'graph', 'metadata'])
+const ASK_SUBS: ReadonlySet<string> = new Set(['refresh', 'taint', 'untaint', 'console', 'force-unlock', 'workspace',
+  'get', 'login', 'logout', 'test', 'push', 'modules'])
+const SUBCMDS: ReadonlySet<string> = new Set([...QUIET_SUBS, ...ASK_SUBS, 'apply', 'destroy', 'import', 'state', 'plan', 'show',
+  'providers'])
+// terragrunt commands that only read or format configuration, found as the first non-flag word.
+const TG_READ_ONLY: ReadonlySet<string> = new Set(['hclfmt', 'list', 'find', 'dag', 'info', 'render'])
 const VALUE_FLAGS: ReadonlySet<string> = new Set(['var', 'var-file', 'target', 'target-file', 'exclude', 'exclude-file', 'replace',
-  'lock-timeout', 'parallelism', 'state', 'state-out', 'backup'])
+  'lock-timeout', 'parallelism', 'state', 'state-out', 'backup', 'working-dir', 'terragrunt-working-dir', 'log-level',
+  'terragrunt-log-level', 'config', 'terragrunt-config', 'download-dir', 'tf-path', 'iam-assume-role', 'queue-include-dir',
+  'queue-exclude-dir', 'log-format'])
+// Saved plan files for apply: tfplan, <name>.tfplan, <name>.plan, plan.bin. The allowlist's PLANFILE stays strict.
+const SAVED_PLAN = /^(?!-)[\w./-]*(?:(?<![\w-])tfplan|\.tfplan|\.plan|(?<![\w-])plan\.bin)$/
 const MAX_LINE = 1 << 20 // bytes read per transcript line
 const MAX_CMD = 1 << 16 // longest command the guard parses; longer ones that name a tool ask
 const LINE_BREAK = /\r\n|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029]/ // ASCII and Unicode line boundaries
@@ -81,6 +88,7 @@ const APPLY_REASON = 'Save a plan with -out=tfplan, review it, then run apply tf
 const SUBAGENT_REASON = `Subagents may not run credentialed aws, plan, or apply. Have the main session run it, or put the line '${TOKEN_LINE}' in the brief.`
 const BRIEF_REASON = `Cannot read the subagent brief to check for ${TOKEN_LINE}.`
 const PARSE_REASON = 'Cannot parse this command that mentions a guarded tool.'
+const FLAGS_AFTER_REASON = 'Put flags before the plan file: apply -no-color tfplan.'
 const NESTED_REASON = 'Command substitution around a guarded tool cannot be checked.'
 const DYNAMIC_REASON = 'A variable or substitution as the subcommand or state verb may hide destroy or state rm; write it literally.'
 
@@ -148,6 +156,7 @@ function stripWrappers(words: readonly string[]): number | null {
     else if (w === 'mise') {
       const rest = words.slice(i + 1)
       if (rest.some(a => a === '-c' || a === '--command' || a.startsWith('--command='))) return null
+      if (['which', 'where', 'ls'].includes(rest[0])) return words.length // a lookup, not a run
       const j = rest.findIndex(a => TOOLS.has(a))
       return j < 0 ? i : i + 1 + j
     } else if (wrapper) {
@@ -162,26 +171,79 @@ function stripWrappers(words: readonly string[]): number | null {
   return Math.min(i, words.length)
 }
 
-// True when apply's arguments are flags and one trailing literal plan file.
-function savedPlan(rest: readonly string[]): boolean {
-  const pos: string[] = []
+// Literal shell variables of one script: a value, or null when it is unknown or assigned twice.
+type Vars = ReadonlyMap<string, string | null>
+const VAR_WORD = /^(--?[\w-]+=)?\$(?:(\w+)|\{(\w+)\})([\w./-]*)$/
+const LITERAL_VALUE = /^[\w./=:@,+%-]+(?: [\w./=:@,+%-]+)*$/
+const UNKNOWN = '\0' // stands for a variable word whose value is not known
+
+// The words with `$NAME`, `${NAME}` and `$NAME/tail` replaced by the variable's literal value when
+// the script assigns one, else UNKNOWN. Other words, flags with unknown values included, stay.
+function expandVars(words: readonly string[], vars: Vars): string[] {
+  return words.flatMap(a => {
+    const m = VAR_WORD.exec(a)
+    if (!m) return [a]
+    const [, flag, n1, n2, tail] = m
+    const v = vars.get(n1 ?? n2)
+    if (typeof v !== 'string') return [flag ? a : UNKNOWN]
+    return flag ? [flag + v + tail] : (v + tail).split(' ')
+  })
+}
+
+// The variables a script assigns by plain `NAME=value` commands. A prefix assignment, an
+// append, or a value with an expansion or odd characters makes the name unknown.
+function collectVars(commands: readonly ShellCommand[]): Vars {
+  const vars = new Map<string, string | null>()
+  const set = (name: string, value: string | null): void => {
+    const ok = value !== null && LITERAL_VALUE.test(value)
+    vars.set(name, ok && (!vars.has(name) || vars.get(name) === value) ? value : null)
+  }
+  for (const c of commands) {
+    const bare = c.argv.length === 0
+    for (const a of c.assigns) {
+      if (a.name !== null && /^\w+$/.test(a.name)) set(a.name, bare && !a.append ? a.value : null)
+    }
+    if (['export', 'declare', 'typeset', 'local', 'readonly'].includes(c.text[0])) {
+      for (const [i, w] of c.text.entries()) {
+        const m = /^(\w+)=/.exec(w)
+        if (m) set(m[1], c.argv[i] === null ? null : c.argv[i]!.slice(m[0].length))
+      }
+    }
+  }
+  return vars
+}
+
+// The finding for apply's arguments: a gate when they are flags and one trailing saved plan file,
+// else a deny, or an ask when the one plan word is a variable the script does not set.
+function applyFinding(rest: readonly string[], vars: Vars): Finding {
+  const words = expandVars(rest, vars)
+  const pos: number[] = []
   let skip = false
-  for (const a of rest) {
+  for (const [i, a] of words.entries()) {
     if (skip) skip = false
     else if (a.startsWith('-') && a !== '-') {
       const name = a.replace(/^-+/, '').split('=')[0]
-      if (name === 'auto-approve' || name === 'destroy') return false
+      if (name === 'auto-approve' || name === 'destroy') return ['deny', APPLY_REASON]
       skip = !a.includes('=') && VALUE_FLAGS.has(name)
-    } else pos.push(a)
+    } else pos.push(i)
   }
-  return pos.length === 1 && pos[0] === rest.at(-1) && PLANFILE.test(pos[0])
+  if (pos.length !== 1) return ['deny', APPLY_REASON]
+  const plan = words[pos[0]]
+  if (plan === UNKNOWN) return ['ask', 'Cannot tell whether this variable is a saved plan file.']
+  if (!SAVED_PLAN.test(plan)) return ['deny', APPLY_REASON]
+  return pos[0] === words.length - 1 ? ['gate', SUBAGENT_REASON] : ['deny', FLAGS_AFTER_REASON]
 }
 
 // True for a non-flag word whose value is only known at run time.
 const dynamic = (word: string): boolean => !word.startsWith('-') && (word.includes('$') || word.includes('`'))
 
-function tfSub(sub: string, rest: readonly string[]): Finding {
-  if (sub === 'apply') return savedPlan(rest) ? ['gate', SUBAGENT_REASON] : ['deny', APPLY_REASON]
+function tfSub(sub: string, rest: readonly string[], vars: Vars): Finding {
+  if (sub === 'apply') return applyFinding(rest, vars)
+  if (sub === 'providers') {
+    const verb = rest.find(a => !a.startsWith('-'))
+    return verb === undefined || ['schema', 'lock', 'mirror'].includes(verb) ? ['neutral', null] : ['ask', 'Cannot classify this providers command.']
+  }
+  if (sub === 'show') return rest.some(a => /^--?json$/.test(a)) ? ['ask', 'show -json prints sensitive values.'] : ['neutral', null]
   if (sub === 'destroy') return ['deny', 'Run plan -destroy -out=tfplan, review it, then apply that file.']
   if (sub === 'import') return ['deny', 'Add an import block and apply it through a saved plan.']
   if (sub === 'state') {
@@ -254,13 +316,30 @@ function operandHidden(name: string, argv: readonly (string | null)[]): boolean 
   return false
 }
 
+// The first n words that are neither flags nor the values of the flags in VALUE_FLAGS ('' pads).
+function firstWords(args: readonly string[], n: number): string[] {
+  const out: string[] = []
+  for (let i = 0; i < args.length && out.length < n; i++) {
+    const a = args[i]
+    if (a.startsWith('-')) {
+      if (!a.includes('=') && VALUE_FLAGS.has(a.replace(/^-+/, ''))) i++
+    } else out.push(a)
+  }
+  while (out.length < n) out.push('')
+  return out
+}
+
 // Findings for the arguments of tofu, terraform, or terragrunt.
-function classifyTf(args: readonly string[]): Finding[] {
+function classifyTf(args: readonly string[], tool: string, vars: Vars): Finding[] {
   // Every word that names a subcommand counts, so a flag value cannot hide the real one.
   // The word after state is its verb (state show), which tfSub reads from there.
   const found: Finding[] = []
   for (const [i, a] of args.entries()) {
-    if (SUBCMDS.has(a) && args[i - 1] !== 'state') found.push(tfSub(a, args.slice(i + 1)))
+    if (SUBCMDS.has(a) && args[i - 1] !== 'state') found.push(tfSub(a, args.slice(i + 1), vars))
+  }
+  if (tool === 'terragrunt') {
+    const pos = firstWords(args, 2)
+    if (TG_READ_ONLY.has(pos[0]) || (pos[0] === 'hcl' && ['fmt', 'validate'].includes(pos[1]))) found.push(['neutral', null])
   }
   if (!found.length) {
     // With no literal subcommand, a variable word may be destroy.
@@ -299,7 +378,7 @@ function nestedFindings(script: string, depth: number): Finding[] {
 
 // Findings for one task: a word list in which expansions stay as written (`text`) and `argv` keeps
 // the literal value, or null, for nestedScript.
-function classify(argv: readonly (string | null)[], words: readonly string[], depth: number, nesting: number): Finding[] {
+function classify(argv: readonly (string | null)[], words: readonly string[], depth: number, nesting: number, vars: Vars): Finding[] {
   const k = stripWrappers(words)
   if (k === null) return [['ask', 'A wrapper option such as env -S or mise exec -c hides the command.']]
   if (k >= words.length) return []
@@ -316,7 +395,7 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
     return out
   }
   if (TF.has(cmd)) {
-    const out = classifyTf(args)
+    const out = classifyTf(args, cmd, vars)
     if (nesting > 0) out.push(['ask', NESTED_REASON])
     return out
   }
@@ -330,7 +409,7 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   }
   // A guarded tool after a command the guard does not know may be a wrapped call.
   const i = args.findIndex(a => TF.has(basename(a)))
-  if (i >= 0 && classifyTf(args.slice(i + 1)).some(([kind]) => kind === 'deny')) {
+  if (i >= 0 && classifyTf(args.slice(i + 1), basename(args[i]), vars).some(([kind]) => kind === 'deny')) {
     return [['ask', 'An unrecognized command wraps a guarded tool.']]
   }
   return []
@@ -345,7 +424,8 @@ const runs = (script: string, h: ShellHeredoc): boolean =>
 // Findings for the commands of one parsed script, then for each heredoc body it runs. Commands
 // under one compound share their heredoc objects, so each body is parsed once.
 function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number): Finding[] {
-  const out = commands.flatMap(c => splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth, c.nesting)))
+  const vars = collectVars(commands)
+  const out = commands.flatMap(c => splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth, c.nesting, vars)))
   for (const h of new Set(commands.flatMap(c => c.heredocs))) {
     if (runs(script, h)) out.push(...nestedFindings(h.body, depth + 1))
   }
