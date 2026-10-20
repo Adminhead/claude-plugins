@@ -13,11 +13,11 @@
 // never printed. This is a guardrail, not a sandbox: encoded payloads, script files, and
 // wrappers it does not know can evade the deny check.
 
-import { closeSync, openSync, readFileSync, readSync, writeSync } from 'node:fs'
+import { closeSync, constants, fstatSync, openSync, readFileSync, readSync, statSync, writeSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { nestedScript, parse, reparse } from './shell/walk.ts'
-import type { ShellCommand, ShellHeredoc } from './shell/walk.ts'
+import type { ShellCommand, ShellHeredoc, ShellRedirect } from './shell/walk.ts'
 
 const TOKEN_LINE = 'ALLOW: cloud-ops'
 const TF: ReadonlySet<string> = new Set(['tofu', 'terraform', 'terragrunt'])
@@ -199,13 +199,14 @@ function expandVars(words: readonly string[], vars: Vars): string[] {
   })
 }
 
-// The variables a script assigns by plain `NAME=value` commands. A prefix assignment, an
-// append, or a value with an expansion or odd characters makes the name unknown.
+// The variables a script assigns once by a plain `NAME=value` command. A prefix assignment, an
+// append, a second assignment, a shell-maintained name such as `_`, or a value with an expansion or
+// odd characters makes the name unknown. A script that can bind a variable any other way trusts none.
 function collectVars(commands: readonly ShellCommand[], script: string): Vars {
   const vars = new Map<string, string | null>()
   const set = (name: string, value: string | null): void => {
-    const ok = value !== null && LITERAL_VALUE.test(value)
-    vars.set(name, ok && (!vars.has(name) || vars.get(name) === value) ? value : null)
+    const ok = value !== null && LITERAL_VALUE.test(value) && !vars.has(name) && !SHELL_VARS.test(name)
+    vars.set(name, ok ? value : null)
   }
   for (const c of commands) {
     const bare = c.argv.length === 0
@@ -219,26 +220,55 @@ function collectVars(commands: readonly ShellCommand[], script: string): Vars {
       }
     }
   }
-  // A name that a loop, read, arithmetic or other binding also sets is unknown, whatever its assignments say.
-  for (const [name, v] of vars) if (typeof v === 'string' && bindsElsewhere(script, name)) vars.set(name, null)
+  if (rebinds(commands, script, vars)) {
+    // Every name the script uses is unknown, so a variable command word asks even in k8sOnly.
+    for (const m of plainText(script).matchAll(/\$\{?(\w+)/g)) vars.set(m[1], null)
+    for (const name of vars.keys()) vars.set(name, null)
+  }
   return vars
 }
 
-// Whether the script binds the variable other than by `NAME=value`: for/select, read, mapfile,
-// getopts, printf -v, declare -n, let or arithmetic assignment, ${NAME:=x}, unset.
-function bindsElsewhere(script: string, name: string): boolean {
-  if (script.length > MAX_CMD) return true
-  const n = `\\b${name}\\b`
-  const stop = '[^;&|\\n]{0,200}' // bounded: the script is model-controlled text
-  return [
-    `\\b(?:for|select)\\s+${n}`,
-    `\\b(?:read|mapfile|readarray|unset|let)\\b${stop}${n}`,
-    `\\bgetopts\\s+\\S+\\s+${n}`,
-    `\\bprintf\\s+-v\\s*${n}`,
-    `\\b(?:declare|typeset|local)\\b${stop}-\\w*n\\w*${stop}${n}`,
-    `\\(\\([^\\n)]{0,200}?${n}\\s*[-+*/%&|^<>]*=(?!=)`,
-    `\\$\\{${name}:?[=]`,
-  ].some(p => new RegExp(p).test(script))
+// Names the shell sets itself: `$_` is the last argument of the previous command, IFS changes splitting.
+const SHELL_VARS = /^(?:_\w*|IFS|BASH\w*|RANDOM|SRANDOM|SECONDS|LINENO|PWD|OLDPWD|REPLY|OPTARG|OPTIND|HISTCMD|EPOCH\w+|MATCH|MBEGIN|MEND|match|mbegin|mend|status|argv)$/
+// Builtins that bind a variable or run code in the current shell, in bash or zsh. Any command word
+// naming one counts: the walker's words are unquoted and decoded, so `"read"`, `\read` and `$'\x72ead'` match.
+const REBIND_WORDS: ReadonlySet<string> = new Set(['eval', 'source', 'read', 'mapfile', 'readarray', 'getopts', 'printf', 'print',
+  'vared', 'zparseopts', 'declare', 'typeset', 'local', 'integer', 'float', 'private', 'let', 'unset', 'trap', 'alias', 'autoload',
+  'emulate', 'enable', 'zmodload', 'sched'])
+// Loops, arithmetic, `${NAME:=x}`, IFS, and zsh glob qualifiers that run code (`*(e:'P=x':)`, `*(+f)`)
+// anywhere in the script text, quotes and escapes removed.
+const REBIND_RE = /(?<![\w./-])(?:for|select|foreach|IFS)(?![\w./-])|\(\(|\$\{[^}]*=|\([^()\s]{0,16}e[^\w\s()]|\(\+\w/
+
+// Whether the script can bind a variable other than by a plain `NAME=value`: a loop, arithmetic,
+// `${NAME:=x}` or IFS anywhere; a word naming a binding builtin; an element assignment; `export` with
+// a flag or a computed name; zsh's `set -A`; or a command named by `.`, a brace or glob pattern, a
+// substitution, or a variable that is unknown or holds a binding word.
+function rebinds(commands: readonly ShellCommand[], script: string, vars: Vars): boolean {
+  if (script.length > MAX_CMD || REBIND_RE.test(plainText(script))) return true
+  return commands.some(c => {
+    if (c.assigns.some(a => a.name === null || !/^\w+$/.test(a.name))) return true
+    if (c.text.some(w => REBIND_WORDS.has(w))) return true
+    for (const [i, w] of c.text.entries()) {
+      if ((w === 'export' || w === 'readonly') && c.text.slice(i + 1).some(a => !/^[A-Za-z_]\w*(?:=|$)/.test(a))) return true
+    }
+    const k = stripWrappers(c.text)
+    if (k === null) return true
+    if (k >= c.text.length) return false
+    const w = c.text[k]
+    if (w === '.' || w === '-') return true // source, and zsh's precommand modifier
+    if (w !== '[' && w !== '[[' && /[{}*?[\]]/.test(w)) return true // `{rea,}d` and `rea?` can expand to read
+    if (w === 'set' && c.text.slice(k + 1).some(a => /^[-+]\w*A|[$`]/.test(a))) return true
+    if (!/[$`]/.test(w)) return false
+    // A variable the script never sets comes from the user's environment.
+    const bare = /^\$(\w+)$|^\$\{(\w+)\}$/.exec(w)
+    if (bare) {
+      const held = vars.get(bare[1] ?? bare[2])
+      return held === null || (held !== undefined && held.split(' ').some(x => x === '.' || x === '-' || REBIND_WORDS.has(x)))
+    }
+    // A word with a slash outside its expansions names a file, never a builtin.
+    const rest = w.replace(/\$(?:\w+|\{\w+\})/g, '')
+    return /[$`]/.test(rest) || !rest.includes('/')
+  })
 }
 
 // The finding for apply's arguments: a gate when they are flags and one trailing saved plan file,
@@ -400,21 +430,43 @@ function flagValue(args: readonly string[], names: readonly string[]): string | 
   return out
 }
 
-// The current-context name from a kubeconfig: the given path, else the first $KUBECONFIG file, else ~/.kube/config.
-function currentContext(file?: string): string | null {
-  const kc = process.env.KUBECONFIG
-  const path = file ?? (kc ? kc.split(':')[0] : join(homedir(), '.kube', 'config'))
+// The current-context name of a kubeconfig file ('' when it names none), or null when the path is not
+// a regular file or cannot be read. A FIFO or device would block the read past the hook's timeout, so
+// the path is checked before the open, opened without blocking, and checked again on the descriptor.
+function kubeContext(path: string): string | null {
   let fd: number | null = null
   try {
-    fd = openSync(path, 'r')
+    if (!statSync(path).isFile()) return null
+    fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK)
+    if (!fstatSync(fd).isFile()) return null
     const buf = Buffer.alloc(MAX_KUBECONFIG)
     const n = readSync(fd, buf, 0, buf.length, 0)
-    return /^current-context:[ \t]*["']?([^\s"']+)/m.exec(buf.subarray(0, n).toString('utf8'))?.[1] ?? null
+    return /^current-context:[ \t]*["']?([^\s"']+)/m.exec(buf.subarray(0, n).toString('utf8'))?.[1] ?? ''
   } catch {
-    return null // an unreadable kubeconfig is not production
+    return null
   } finally {
     if (fd !== null) closeSync(fd)
   }
+}
+
+// Whether a kubeconfig path or KUBECONFIG list the command names is production: by its name, else by
+// the current-context of its files. A file is read only when files is set (the script runs no other
+// command that could write it first) and its path is absolute (the shell's directory may differ from
+// the hook's); otherwise, or when a file is missing, not a regular file or unreadable, it is 'unknown'.
+function kubeconfigProd(value: string, vars: Vars, files: boolean): boolean | 'unknown' {
+  const r = prodValue(value, vars)
+  if (r !== false) return r
+  const list = expandVars([value], vars)[0]
+  if (/[$`]/.test(list)) return 'unknown'
+  let unknown = false
+  for (const p of list.split(':')) {
+    if (!p) continue
+    const path = p.startsWith('~/') ? join(homedir(), p.slice(2)) : p
+    const ctx = files && path.startsWith('/') ? kubeContext(path) : null
+    if (ctx === null) unknown = true
+    else if (PROD_RE.test(ctx)) return true
+  }
+  return unknown ? 'unknown' : false
 }
 
 // Words that are neither flags nor values of the flags in K8S_VALUE_FLAGS.
@@ -434,43 +486,69 @@ function k8sWords(args: readonly string[]): { pos: string[]; help: boolean } {
 
 // Whether the command targets production: --context or --kube-context, else --kubeconfig, else a
 // KUBECONFIG= prefix or export, else the current-context of the kubeconfig in use (read only when asked).
-function prodTarget(tool: string, pre: readonly string[], args: readonly string[], vars: Vars, env: Vars): boolean | 'unknown' {
+// A selector taken from a variable may be empty at run time (its assignment sat in a subshell), which
+// falls back to the process's kubeconfig, so that kubeconfig weighs in too.
+function prodTarget(tool: string, pre: readonly string[], args: readonly string[], vars: Vars, env: Vars, files: boolean): boolean | 'unknown' {
   const prefixed = (name: string): string | undefined => pre.findLast(w => w.startsWith(`${name}=`))?.slice(name.length + 1) || undefined
+  const orProcess = (v: string, r: boolean | 'unknown'): boolean | 'unknown' => (r === false && v.includes('$') && processProd() ? true : r)
   const cluster = flagValue(args, ['--cluster'])
   if (cluster !== undefined && prodValue(cluster, vars) === true) return true
   const ctx = flagValue(args, ['--context', '--kube-context']) ?? (tool === 'helm' ? prefixed('HELM_KUBECONTEXT') : undefined)
-  if (ctx !== undefined) return prodValue(ctx, vars)
+  if (ctx !== undefined) return orProcess(ctx, prodValue(ctx, vars))
   const helmEnv = tool === 'helm' ? env.get('HELM_KUBECONTEXT') : undefined
   if (helmEnv) {
     // An earlier export may sit in a subshell, so the process's own context still weighs in.
     const r = prodValue(helmEnv, vars)
     return r === true || processProd() ? true : r
   }
+  // A file not named prod can still select a prod context, so the file is read.
   const flagKc = flagValue(args, ['--kubeconfig'])
-  if (flagKc !== undefined) {
-    const r = prodValue(flagKc, vars)
-    if (r !== false || /[~$`]/.test(flagKc)) return r
-    const cur = currentContext(flagKc) // a file not named prod can still select a prod context
-    return cur !== null && PROD_RE.test(cur)
-  }
+  if (flagKc !== undefined) return orProcess(flagKc, kubeconfigProd(flagKc, vars, files))
   const preKc = prefixed('KUBECONFIG')
-  if (preKc !== undefined) return prodValue(preKc, vars)
+  if (preKc !== undefined) return orProcess(preKc, kubeconfigProd(preKc, vars, files))
   const envKc = env.get('KUBECONFIG')
   if (envKc) {
-    const r = prodValue(envKc, vars)
+    const r = kubeconfigProd(envKc, vars, files)
     return r === true || processProd() ? true : r
   }
   return processProd()
 }
 
+// Whether the hook's own kubeconfig (the first $KUBECONFIG file, else ~/.kube/config) selects a
+// production context. One that cannot be read is not production.
 const processProd = (): boolean => {
-  const cur = currentContext()
+  const kc = process.env.KUBECONFIG
+  const cur = kubeContext(kc ? kc.split(':')[0] : join(homedir(), '.kube', 'config'))
   return cur !== null && PROD_RE.test(cur)
+}
+
+// Commands that write no local file, and kubectl verbs that write or run one (cp, edit's editor, diff's
+// differ, plugins) or rewrite the kubeconfig (config set and use-context).
+const NO_WRITE: ReadonlySet<string> = new Set(['export', 'declare', 'typeset', 'local', 'readonly', '[', 'test', 'echo', 'printf', 'true',
+  'false', ':', 'set', 'sleep', 'exit', 'date', 'head', 'tail', 'grep', 'wc', 'cut', 'tr', 'jq', 'cat', 'cd', 'ls', 'mkdir'])
+const KUBECTL_LOCAL: ReadonlySet<string> = new Set(['cp', 'edit', 'diff', 'kustomize', 'plugin', 'config', 'cluster-info'])
+const KUBECONFIG_READS: ReadonlySet<string> = new Set(['view', 'current-context', 'get-contexts', 'get-clusters', 'get-users'])
+
+// Whether a command can write no file: no output redirect other than to /dev/null or a descriptor
+// copy, and a plain assignment, a command from NO_WRITE, or a kubectl verb that keeps to the cluster.
+// Anything else may create or rewrite the kubeconfig a later kubectl reads, so the guard cannot read it.
+function writesNothing(c: ShellCommand): boolean {
+  const writes = (r: ShellRedirect): boolean =>
+    r.op.includes('>') && r.target !== '/dev/null' && !(r.op === '>&' && /^(?:\d+|-)$/.test(r.target ?? ''))
+  if (c.redirects.some(writes)) return false
+  const k = stripWrappers(c.text)
+  if (k === null) return false
+  if (k >= c.text.length || NO_WRITE.has(c.text[k])) return true
+  if (basename(c.text[k]) !== 'kubectl') return false
+  const { pos } = k8sWords(c.text.slice(k + 1))
+  if (pos[0] === 'config') return KUBECONFIG_READS.has(pos[1])
+  if (pos[0] === 'cluster-info') return !pos.includes('dump')
+  return (KUBECTL_READ.has(pos[0]) || K8S_MUTATING.has(pos[0])) && !KUBECTL_LOCAL.has(pos[0])
 }
 
 // Findings for kubectl, helm, talosctl and omnictl. On a production cluster a mutation asks, and a
 // subagent needs the brief token. Deleting volumes, claims, CRDs or nodes there is denied.
-function k8sFindings(tool: string, pre: readonly string[], args: readonly string[], vars: Vars, env: Vars): Finding[] {
+function k8sFindings(tool: string, pre: readonly string[], args: readonly string[], vars: Vars, env: Vars, files: boolean): Finding[] {
   const { pos, help } = k8sWords(args)
   if (help) return [] // help text changes nothing
   const gated = (reason: string): Finding[] => [['ask', reason], ['gate', SUBAGENT_REASON]]
@@ -487,7 +565,7 @@ function k8sFindings(tool: string, pre: readonly string[], args: readonly string
   if (!verb || (vi < 0 && (tool === 'kubectl' ? KUBECTL_READ : HELM_READ).has(verb))) return []
   if (verb === 'rollout' && ['status', 'history'].includes(rest[0])) return []
   if (tool === 'kubectl' && pos[0] === 'auth' && ['can-i', 'whoami'].includes(pos[1])) return []
-  const prod = prodTarget(tool, pre, args, vars, env)
+  const prod = prodTarget(tool, pre, args, vars, env, files)
   if (prod === false) return []
   // After delete, any word naming a protected kind (alone, as kind/name, or in a comma list) is denied.
   if (prod === true && tool === 'kubectl' && verb === 'delete' &&
@@ -502,6 +580,27 @@ const DATA_CMDS: ReadonlySet<string> = new Set(['echo', 'printf', 'cat', 'grep',
   'tee', 'git', 'gh', 'jq', 'yq', 'man', 'which', 'whereis', 'type', 'ls', 'diff', 'wc', 'sort', 'uniq', 'cut', 'tr', 'fd', 'find',
   'rm', 'cp', 'mv', 'mkdir', 'touch', 'chmod', 'cd', 'test', '[', '[[', 'brew', 'apt', 'apt-get', 'dnf', 'yum', 'pacman', 'yay', 'pip',
   'pip3', 'npm', 'pnpm', 'cargo', 'go', 'gem'])
+
+// Where the command a package runner or find action runs starts among its arguments, or null when the
+// command is not one: npm, pnpm, yarn or bun exec, dlx or x; npx, bunx, pnpx; gem, bundle or brew
+// bundle exec; uv or pipx run; find -exec, -execdir, -ok or -okdir. Options before the command are skipped.
+function execStart(cmd: string, args: readonly string[]): number | null {
+  const after = (verbs: readonly string[]): number => {
+    const j = args.findIndex(a => verbs.includes(a))
+    return j < 0 ? -1 : j + 1
+  }
+  let i: number
+  if (['npx', 'bunx', 'pnpx'].includes(cmd)) i = 0
+  else if (['npm', 'pnpm', 'yarn', 'bun'].includes(cmd)) i = after(['exec', 'dlx', 'x'])
+  else if (cmd === 'gem' || cmd === 'bundle') i = after(['exec'])
+  else if (cmd === 'brew') i = args[after(['bundle'])] === 'exec' ? after(['bundle']) + 1 : -1
+  else if (cmd === 'uv' || cmd === 'pipx') i = after(['run'])
+  else if (cmd === 'find') i = after(['-exec', '-execdir', '-ok', '-okdir'])
+  else return null
+  if (i < 0) return null
+  while (i < args.length && args[i].startsWith('-')) i++
+  return i
+}
 
 // True when the script or code operand of a shell or interpreter holds an expansion, or an option
 // hides it: `bash -c "$X"`, `bash $S`, `python3 -c "$X"`. A literal operand with expansions among
@@ -603,9 +702,10 @@ function nestedFindings(script: string, depth: number, k8sOnly: boolean): Findin
 
 // Findings for one task: a word list in which expansions stay as written (`text`) and `argv` keeps
 // the literal value, or null, for nestedScript. With k8sOnly the script names no Terraform or aws
-// tool, so only the Kubernetes tools are checked, and none of the generic asks apply.
+// tool, so only the Kubernetes tools are checked, and none of the generic asks apply. files says
+// whether a kubeconfig the command names may be read (see kubeconfigProd).
 function classify(argv: readonly (string | null)[], words: readonly string[], depth: number, nesting: number, vars: Vars, env: Vars,
-  prefix: readonly string[], k8sOnly: boolean): Finding[] {
+  prefix: readonly string[], k8sOnly: boolean, files: boolean): Finding[] {
   const k = stripWrappers(words)
   if (k === null) return [['ask', 'A wrapper option such as env -S or mise exec -c hides the command.']]
   if (k >= words.length) return []
@@ -614,15 +714,21 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   // A path whose last part is literal (`$S/locked.sh`) is a script the wrapped-tool check below sees through.
   // A variable or substitution in the last part (`$D/$T`, `$(echo /usr/bin/tofu)`) may name any command.
   const pathLike = words[k].includes('/') && !SUBST.test(words[k]) && !basename(words[k]).includes('$')
-  // A variable that holds a Kubernetes command is read as that command, so `K="kubectl --context prod"; $K delete pv x` is judged.
+  // A variable that holds a Kubernetes command, behind wrappers or not, is read as that command, so
+  // `K="sudo kubectl --context prod"; $K delete pv x` is judged.
   const bare = /^\$(\w+)$|^\$\{(\w+)\}$/.exec(words[k])
-  const held = bare ? vars.get(bare[1] ?? bare[2]) : undefined
-  if (typeof held === 'string' && K8S.has(basename(held.split(' ')[0]))) {
+  const name = bare ? (bare[1] ?? bare[2]) : null
+  const held = name === null ? undefined : vars.get(name)
+  if (typeof held === 'string' && held.split(' ').some(w => K8S.has(basename(w)))) {
     const parts = held.split(' ')
     return classify([...argv.slice(0, k), ...parts, ...argv.slice(k + 1)], [...words.slice(0, k), ...parts, ...words.slice(k + 1)],
-      depth, nesting, vars, env, prefix, k8sOnly)
+      depth, nesting, vars, env, prefix, k8sOnly, files)
   }
-  if (/[$`]/.test(words[k]) && !pathLike) return k8sOnly ? [] : [['ask', 'A variable or substitution names the command.']]
+  // With only Kubernetes tools named, a variable the script never sets is some other command; one it
+  // sets to an unknown value, or a substitution, may be kubectl.
+  if (/[$`]/.test(words[k]) && !pathLike) {
+    return k8sOnly && name !== null && !vars.has(name) ? [] : [['ask', 'A variable or substitution names the command.']]
+  }
   if (SHELLS.has(cmd) || INTERP.test(cmd)) {
     const script = nestedScript(argv.slice(k))
     const out = script === null ? [] : nestedFindings(script, depth + 1, k8sOnly)
@@ -649,7 +755,7 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
     if (nesting > 0) out.push(['ask', NESTED_REASON])
     return out
   }
-  if (K8S.has(cmd)) return k8sFindings(cmd, [...prefix, ...words.slice(0, k)], args, vars, env)
+  if (K8S.has(cmd)) return k8sFindings(cmd, [...prefix, ...words.slice(0, k)], args, vars, env, files)
   if (cmd === 'aws' && !k8sOnly) {
     if (awsHelp(args)) return []
     const out: Finding[] = [['gate', SUBAGENT_REASON]]
@@ -659,13 +765,24 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
     else if (nesting > 0 && !awsReadOnly(op[1])) out.push(['ask', NESTED_REASON])
     return out
   }
+  // A package runner or find action runs its arguments as a command, which is classified as one.
+  const start = execStart(cmd, args)
+  if (start !== null) {
+    const j = k + 1 + start
+    const out = classify(argv.slice(j), words.slice(j), depth, nesting, vars, env, [...prefix, ...words.slice(0, k)], k8sOnly, files)
+    // npm exec -c and the like run a shell string.
+    if (args.some(a => /\s/.test(a) && (TOOL_RE.test(a) || K8S_RE.test(a)))) {
+      out.push(['ask', 'A package runner or find action runs a command string that names a guarded tool.'])
+    }
+    return out
+  }
   // A guarded tool after a command the guard does not know may be a wrapped call. A script path
   // gets the wrapped tool's own findings; other commands only matter when the wrapped call is denied.
   const i = args.findIndex(a => (!k8sOnly && TF.has(basename(a))) || K8S.has(basename(a)))
   if (i < 0) return []
   const tool = basename(args[i])
   const wrapped = K8S.has(tool)
-    ? k8sFindings(tool, [...prefix, ...words.slice(0, k)], args.slice(i + 1), vars, env)
+    ? k8sFindings(tool, [...prefix, ...words.slice(0, k)], args.slice(i + 1), vars, env, files)
     : classifyTf(args.slice(i + 1), tool, vars)
   const denied = wrapped.some(([kind]) => kind === 'deny')
   if (DATA_CMDS.has(cmd)) return denied && !K8S.has(tool) ? [['ask', 'An unrecognized command wraps a guarded tool.']] : []
@@ -683,11 +800,13 @@ const runs = (script: string, h: ShellHeredoc): boolean =>
 function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number, k8sOnly: boolean): Finding[] {
   const vars = collectVars(commands, script)
   const envSeen = collectEnv(commands)
+  // A kubeconfig is read only for a top-level script whose commands cannot write it first.
+  const files = depth === 0 && commands.every(writesNothing)
   const out = commands.flatMap((c, i) => {
     // NAME=value prefixes are not among the command's words.
     const prefix = c.argv.length ? c.assigns.map(a => `${a.name}=${a.value ?? UNKNOWN_ENV}`) : []
     const env = envBefore(envSeen, i)
-    return splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth, c.nesting, vars, env, prefix, k8sOnly))
+    return splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth, c.nesting, vars, env, prefix, k8sOnly, files))
   })
   for (const h of new Set(commands.flatMap(c => c.heredocs))) {
     if (runs(script, h)) out.push(...nestedFindings(h.body, depth + 1, k8sOnly))

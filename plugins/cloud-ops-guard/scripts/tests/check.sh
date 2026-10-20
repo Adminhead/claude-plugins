@@ -18,8 +18,12 @@ printf 'apiVersion: v1\nkind: Config\ncurrent-context: omni-dev\n' >"$root/kube-
 { printf 'current-context: omni-prod\n'; head -c 2000000 /dev/zero | tr '\0' '#'; printf '\n'; } >"$root/kube-bigfirst.yaml"
 printf 'current-context: omni-prod\n' >"$root/cfg-a.yaml"
 printf 'current-context: omni-dev\n' >"$root/cfg-b.yaml"
+mkdir -p "$root/.kube"
+printf 'current-context: omni-dev\n' >"$root/.kube/dev.yaml"
+mkfifo "$root/kube-fifo.yaml"
 kubecfg=$root/kube-dev.yaml
-guard() { KUBECONFIG=${kubecfg:-$root/kube-dev.yaml} bun --no-env-file --config=/dev/null "$script"; }
+# HOME is the test root too, so a ~/ kubeconfig path in a command resolves to a fixture.
+guard() { HOME=$root KUBECONFIG=${kubecfg:-$root/kube-dev.yaml} bun --no-env-file --config=/dev/null "$script"; }
 
 # The walker copies must match the canonical copy in scripts/shared byte for byte, when this
 # plugin sits in the marketplace checkout. Installed alone, the check is skipped.
@@ -612,6 +616,79 @@ t "talosctl rollback" ask "talosctl rollback"
 t "talosctl patch machineconfig" ask "talosctl patch mc -p @p.yaml"
 t "talosctl edit machineconfig" ask "talosctl edit machineconfig"
 t "talosctl patch of a non-config is quiet" none "talosctl get machineconfig"
+# Rebinding: any construct that can bind a variable other than one plain NAME=value makes every variable unknown
+t "printf -v with a quoted name" ask 'P=tfplan; printf -v "P" %s -auto-approve; tofu apply $P'
+t "read -d with a quoted delimiter" ask 'P=tfplan; read -r -d "|" P < args.txt; tofu apply $P'
+t "eval assigns the plan variable" ask 'P=tfplan; eval P=-auto-approve; tofu apply $P'
+t "source may assign the plan variable" ask 'P=tfplan; source ./vars.sh; tofu apply $P'
+t "dot may assign the plan variable" ask 'P=tfplan; . ./vars.sh; tofu apply $P'
+t "read with a quoted name" ask 'P=tfplan; read -r "P" < args.txt; tofu apply $P'
+t "mapfile with a quoted name" ask 'P=tfplan; mapfile -t "P" < args.txt; tofu apply $P'
+t "read with a prompt over 200 characters" ask "P=tfplan; read -r -p \"$(printf 'x%.0s' $(seq 250))\" P; tofu apply \$P"
+t "read spelled as an ANSI-C string" ask "P=tfplan; \$'\\x72ead' P < args.txt; tofu apply \$P"
+t "read spelled by brace expansion" ask 'P=tfplan; {rea,}d P < args.txt; tofu apply $P'
+t "read named by a substitution" ask 'P=tfplan; $(echo read) P < args.txt; tofu apply $P'
+t "read named by a variable" ask 'R=read; P=tfplan; $R P < args.txt; tofu apply $P'
+t "element assignment rebinds the plan variable" ask 'P=tfplan; P[0]=-auto-approve; tofu apply $P'
+t "export append rebinds the plan variable" ask 'P=x; export P+=.tfplan; tofu apply $P'
+t "a plan variable assigned twice" ask 'P=tfplan; P=tfplan; tofu apply $P'
+t "\$_ is the last argument, not its assignment" ask '_=tfplan; echo -auto-approve; tofu apply $_'
+t "IFS splits a plan variable" ask 'P=x-auto-approvex.tfplan; IFS=x; tofu apply $P'
+t "zsh glob qualifier runs an assignment" ask "P=tfplan; : *(e:'P=-auto-approve':); tofu apply \$P"
+t "eval rebinds the kube context" ask 'C=omni-dev; eval C=omni-prod; kubectl --context $C delete pv pv-1'
+t "export append rebinds the kube context" ask 'C=omni; export C+=-prod; kubectl --context $C delete pv pv-1'
+t "held kubectl with a rebinding read asks" ask 'K="kubectl --context omni-prod"; read x </dev/null; $K delete pv pv-1'
+t "loop variable naming kubectl asks" ask 'for k in kubectl; do $k --context omni-prod delete pv pv-1; done'
+t "substitution naming kubectl asks" ask '$(which kubectl) --context omni-prod delete pv pv-1'
+t "unset variable as a command with only kubectl named stays quiet" none 'kubectl --context omni-dev get pods; $EDITOR notes.txt'
+kubecfg=$prod t "context variable set in a subshell falls back to the prod process" deny '(C=omni-dev); kubectl --context=$C delete pv pv-1'
+t "context variable set in a subshell, dev process" none '(C=omni-dev); kubectl --context=$C delete pv pv-1'
+# Package runners and find actions run their arguments as a command
+t "npm exec wraps kubectl delete pv" deny "npm exec -- kubectl --context omni-prod delete pv pv-1"
+t "pnpm dlx wraps kubectl delete pv" deny "pnpm dlx kubectl --context omni-prod delete pv pv-1"
+t "find -exec wraps kubectl delete pv" deny "find . -exec kubectl --context omni-prod delete pv {} \\;"
+t "npx wraps kubectl delete pv" deny "npx kubectl --context omni-prod delete pv pv-1"
+t "npm exec wraps tofu destroy" deny "npm exec -- tofu destroy -auto-approve"
+t "pnpm exec wraps tofu destroy" deny "pnpm exec tofu destroy -auto-approve"
+t "bundle exec wraps tofu destroy" deny "bundle exec tofu destroy"
+t "uv run wraps tofu destroy" deny "uv run --no-project tofu destroy"
+t "brew bundle exec wraps tofu destroy" deny "brew bundle exec -- tofu destroy"
+t "npm exec runs sh -c with kubectl" deny "npm exec -- sh -c 'kubectl --context omni-prod delete pv pv-1'"
+t "npx -c runs a command string" ask "npx -c 'kubectl --context omni-prod delete pv pv-1'"
+t "npx plan in a subagent without token" deny "npx tofu plan" notoken
+t "find -exec grep of a tool name is data" none "find . -name '*.md' -exec grep -l kubectl {} +"
+t "npm install stays quiet" none "npm install"
+t "pnpm add helm stays quiet" none "pnpm add helm"
+# Variables that hold a wrapped kubectl
+t "variable holding mise exec kubectl, delete pv" deny 'k="mise exec -- kubectl --context omni-prod"; $k delete pv pv-1'
+t "variable holding sudo kubectl, delete pv" deny 'K="sudo kubectl --context omni-prod"; $K delete pv pv-1'
+t "variable holding mise exec kubectl on dev, get" none 'k="mise exec -- kubectl --context omni-dev"; $k get ns'
+# Kubeconfig files: only regular files are read, and only when no command in the script can write them
+start=$(date +%s%N)
+got=$(mkin "kubectl --kubeconfig $root/kube-fifo.yaml delete pv pv-1" | timeout 5 bash -c "$(declare -f guard decision); root='$root' script='$script' kubecfg='$root/kube-dev.yaml' decision")
+ms=$(( ($(date +%s%N) - start) / 1000000 ))
+if [ "$got" = ask ]; then ok "--kubeconfig FIFO asks without blocking (${ms} ms)"; else bad "--kubeconfig FIFO" "ask within 5 s" "$got"; fi
+got=$(mkin "KUBECONFIG=$root/kube-fifo.yaml kubectl delete pv pv-1" | timeout 5 bash -c "$(declare -f guard decision); root='$root' script='$script' kubecfg='$root/kube-dev.yaml' decision")
+if [ "$got" = ask ]; then ok "KUBECONFIG= FIFO asks without blocking"; else bad "KUBECONFIG= FIFO" "ask within 5 s" "$got"; fi
+got=$(mkin "kubectl delete pv pv-1" | timeout 5 bash -c "$(declare -f guard decision); root='$root' script='$script' kubecfg='$root/kube-fifo.yaml' decision")
+if [ "$got" = none ]; then ok "process kubeconfig FIFO is not prod and does not block"; else bad "process kubeconfig FIFO" "none within 5 s" "$got"; fi
+t "missing --kubeconfig asks" ask "kubectl --kubeconfig $root/missing.yaml delete pv pv-1"
+t "directory as --kubeconfig asks" ask "kubectl --kubeconfig $root/.kube delete pv pv-1"
+if [ "$(id -u)" != 0 ]; then
+  cp "$root/cfg-b.yaml" "$root/noread.yaml" && chmod 000 "$root/noread.yaml"
+  t "unreadable --kubeconfig asks" ask "kubectl --kubeconfig $root/noread.yaml delete pv pv-1"
+fi
+t "relative --kubeconfig asks" ask "kubectl --kubeconfig cfg-b.yaml delete pv pv-1"
+t "KUBECONFIG= prefix selects a prod context" deny "KUBECONFIG=$root/cfg-a.yaml kubectl delete pv pv-1"
+t "exported KUBECONFIG selects a prod context" deny "export KUBECONFIG=$root/cfg-a.yaml; kubectl delete pv pv-1"
+t "KUBECONFIG list with a prod file" deny "KUBECONFIG=$root/cfg-b.yaml:$root/cfg-a.yaml kubectl delete pv pv-1"
+t "missing ~/ kubeconfig asks" ask 'export KUBECONFIG=~/.kube/missing.yaml; kubectl -n x delete pvc d'
+t "kubeconfig created in the same command asks" ask "cp a k.yaml && kubectl --kubeconfig k.yaml delete pv pv-1"
+t "kubeconfig overwritten in the same command asks" ask "cp $root/cfg-a.yaml $root/cfg-b.yaml && kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1"
+t "kubeconfig switched by kubectl config asks" ask "export KUBECONFIG=$root/cfg-b.yaml; kubectl config use-context omni-prod; kubectl delete pv pv-1"
+t "kubeconfig written by a redirect asks" ask "echo x > $root/cfg-b.yaml; kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1"
+t "kubeconfig in a nested shell asks" ask "bash -c 'kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1'"
+t "dev kubeconfig with read-only neighbours stays quiet" none "export KUBECONFIG=$root/cfg-b.yaml; [ \"\$(kubectl config current-context)\" = omni-dev ] || exit 9; kubectl delete pvc d 2>&1 | tail -1"
 # tofu flags with values, aws global flags and variables
 t "show -json=true asks" ask "tofu show -json=true tfplan"
 t "output -raw=true asks" ask "tofu output -raw=true x"
