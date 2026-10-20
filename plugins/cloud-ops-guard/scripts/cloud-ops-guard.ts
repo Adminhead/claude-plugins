@@ -1,5 +1,6 @@
 #!/usr/bin/env -S bun --no-env-file --config=/dev/null
-// PreToolUse hook on Bash: guard OpenTofu, Terraform, Terragrunt, and AWS CLI calls.
+// PreToolUse hook on Bash: guard OpenTofu, Terraform, Terragrunt, and AWS CLI calls, and the
+// kubectl, helm, talosctl and omnictl calls that change a production cluster.
 //
 // Allow comes only from a strict allowlist: the whole command must be one of a few exact
 // read-only or saved-plan forms, spelled in characters a shell treats as plain text.
@@ -13,6 +14,7 @@
 // wrappers it does not know can evade the deny check.
 
 import { closeSync, openSync, readFileSync, readSync, writeSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { nestedScript, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand, ShellHeredoc } from './shell/walk.ts'
@@ -21,6 +23,10 @@ const TOKEN_LINE = 'ALLOW: cloud-ops'
 const TF: ReadonlySet<string> = new Set(['tofu', 'terraform', 'terragrunt'])
 const TOOLS: ReadonlySet<string> = new Set([...TF, 'aws'])
 const TOOL_RE = /(?<![\w.-])(?:tofu|terraform|terragrunt|aws)(?![\w-])/
+// Kubernetes tools, checked on their own path (k8sFindings) and never by the Terraform asks above.
+const K8S: ReadonlySet<string> = new Set(['kubectl', 'helm', 'talosctl', 'omnictl'])
+const K8S_RE = /(?<![\w.-])(?:kubectl|helm|talosctl|omnictl)(?![\w-])/
+const PROD_RE = /(?:^|[^a-z0-9])prod(?:uction)?(?:[^a-z0-9]|$)/i
 
 // gate: a subagent needs the brief token. sensitive: the same, and the main session is asked too.
 type Kind = 'safe' | 'gate' | 'sensitive' | 'ask' | 'deny' | 'neutral'
@@ -158,7 +164,7 @@ function stripWrappers(words: readonly string[]): number | null {
       const rest = words.slice(i + 1)
       if (rest.some(a => a === '-c' || a === '--command' || a.startsWith('--command='))) return null
       if (['which', 'where', 'ls'].includes(rest[0])) return words.length // a lookup, not a run
-      const j = rest.findIndex(a => TOOLS.has(a))
+      const j = rest.findIndex(a => TOOLS.has(a) || K8S.has(a))
       return j < 0 ? i : i + 1 + j
     } else if (wrapper) {
       i++
@@ -291,6 +297,121 @@ function awsDestructive([service, op]: readonly [string, string], args: readonly
   return service === 's3' && (['rm', 'rb', 'mv'].includes(op) || (op === 'sync' && args.includes('--delete')))
 }
 
+// Kubernetes. Only the command word after the wrappers counts, so kubectl as an argument is data.
+// Production is judged by the whole-word PROD_RE on the context name, or on a kubeconfig path.
+const K8S_VALUE_FLAGS: ReadonlySet<string> = new Set(['n', 'namespace', 'context', 'kube-context', 'cluster', 'user', 'kubeconfig', 's',
+  'server', 'token', 'as', 'as-group', 'request-timeout', 'cache-dir', 'certificate-authority', 'client-certificate', 'client-key',
+  'tls-server-name', 'username', 'password', 'v', 'f', 'filename', 'k', 'kustomize', 'l', 'selector', 'o', 'output', 'c', 'container',
+  'field-selector', 'replicas', 'p', 'patch', 'patch-file', 'e', 'endpoints', 'nodes', 'talosconfig', 'omniconfig'])
+const KUBECTL_READ: ReadonlySet<string> = new Set(['get', 'describe', 'logs', 'top', 'explain', 'api-resources', 'api-versions', 'version',
+  'cluster-info', 'diff', 'events', 'wait', 'port-forward', 'proxy', 'auth', 'config', 'completion', 'kustomize', 'options', 'plugin', 'help'])
+const HELM_READ: ReadonlySet<string> = new Set(['list', 'ls', 'get', 'status', 'history', 'show', 'search', 'repo', 'template', 'lint',
+  'version', 'env', 'dependency', 'dep', 'pull', 'package', 'verify', 'plugin', 'completion', 'help', 'diff'])
+// talosctl and omnictl subcommands that change or restart nodes and clusters, asked in any context.
+const TALOS_ASK: ReadonlySet<string> = new Set(['reset', 'upgrade', 'apply-config', 'reboot', 'shutdown', 'remove-member'])
+const OMNI_ASK: ReadonlySet<string> = new Set(['delete', 'apply'])
+// kubectl delete targets that are denied on production.
+const PROTECTED_KINDS: ReadonlySet<string> = new Set(['pv', 'pvs', 'persistentvolume', 'persistentvolumes', 'pvc', 'pvcs',
+  'persistentvolumeclaim', 'persistentvolumeclaims', 'crd', 'crds', 'customresourcedefinition', 'customresourcedefinitions',
+  'no', 'node', 'nodes'])
+const K8S_DENY = 'Deleting persistent volumes, claims, CRDs or nodes on a production cluster needs the user.'
+const MAX_KUBECONFIG = 1 << 20 // bytes of a kubeconfig the guard reads
+const UNKNOWN_ENV = '\0'
+
+// KUBECONFIG as the script sets it with NAME=value or export, every value joined by ':' (UNKNOWN_ENV when an expansion hides one).
+function collectEnv(commands: readonly ShellCommand[]): Vars {
+  const seen: string[] = []
+  for (const c of commands) {
+    if (c.argv.length === 0) {
+      for (const a of c.assigns) if (a.name === 'KUBECONFIG') seen.push(a.value ?? UNKNOWN_ENV)
+    } else if (['export', 'declare', 'typeset', 'local', 'readonly'].includes(c.text[0])) {
+      for (const w of c.text) if (w.startsWith('KUBECONFIG=')) seen.push(w.slice('KUBECONFIG='.length))
+    }
+  }
+  return new Map(seen.length ? [['KUBECONFIG', seen.join(':')]] : [])
+}
+
+// Whether a context name or kubeconfig path is production: true, false, or 'unknown' when an expansion hides it.
+function prodValue(v: string, vars: Vars): boolean | 'unknown' {
+  if (v.includes(UNKNOWN_ENV)) return PROD_RE.test(v) ? true : 'unknown'
+  const e = expandVars([v], vars)[0]
+  if (PROD_RE.test(v) || PROD_RE.test(e)) return true
+  return e === UNKNOWN || SUBST.test(e) || /^\$\{?\w+\}?$/.test(e) ? 'unknown' : false
+}
+
+// The value of the last `--name value` or `--name=value` among args, or undefined.
+function flagValue(args: readonly string[], names: readonly string[]): string | undefined {
+  let out: string | undefined
+  for (const [i, a] of args.entries()) {
+    for (const n of names) {
+      if (a === n) out = args[i + 1] ?? ''
+      else if (a.startsWith(`${n}=`)) out = a.slice(n.length + 1)
+    }
+  }
+  return out
+}
+
+// The current-context name from the kubeconfig the environment selects: the first $KUBECONFIG file, else ~/.kube/config.
+function currentContext(): string | null {
+  const kc = process.env.KUBECONFIG
+  const path = kc ? kc.split(':')[0] : join(homedir(), '.kube', 'config')
+  let fd: number | null = null
+  try {
+    fd = openSync(path, 'r')
+    const buf = Buffer.alloc(MAX_KUBECONFIG)
+    const n = readSync(fd, buf, 0, buf.length, 0)
+    return /^current-context:[ \t]*["']?([^\s"']+)/m.exec(buf.subarray(0, n).toString('utf8'))?.[1] ?? null
+  } catch {
+    return null // an unreadable kubeconfig is not production
+  } finally {
+    if (fd !== null) closeSync(fd)
+  }
+}
+
+// Words that are neither flags nor values of the flags in K8S_VALUE_FLAGS.
+function k8sWords(args: readonly string[]): string[] {
+  const out: string[] = []
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a.startsWith('-') && a !== '-') {
+      if (!a.includes('=') && K8S_VALUE_FLAGS.has(a.replace(/^-+/, ''))) i++
+    } else out.push(a)
+  }
+  return out
+}
+
+// Whether the command targets production: --context or --kube-context, else --kubeconfig, else a
+// KUBECONFIG= prefix or export, else the current-context of the kubeconfig in use (read only when asked).
+function prodTarget(pre: readonly string[], args: readonly string[], vars: Vars, env: Vars): boolean | 'unknown' {
+  const ctx = flagValue(args, ['--context', '--kube-context'])
+  if (ctx !== undefined) return prodValue(ctx, vars)
+  const kc = flagValue(args, ['--kubeconfig']) ?? pre.findLast(w => w.startsWith('KUBECONFIG='))?.slice('KUBECONFIG='.length) ?? env.get('KUBECONFIG')
+  if (kc !== undefined && kc !== null) return prodValue(kc, vars)
+  const cur = currentContext()
+  return cur !== null && PROD_RE.test(cur)
+}
+
+// Findings for kubectl, helm, talosctl and omnictl. On a production cluster a mutation asks, and a
+// subagent needs the brief token. Deleting volumes, claims, CRDs or nodes there is denied.
+function k8sFindings(tool: string, pre: readonly string[], args: readonly string[], vars: Vars, env: Vars): Finding[] {
+  if (args.some(a => a === '--help' || a === '-h')) return [] // help text changes nothing
+  const pos = k8sWords(args)
+  const gated = (reason: string): Finding[] => [['ask', reason], ['gate', SUBAGENT_REASON]]
+  if (tool === 'talosctl') return pos.some(w => TALOS_ASK.has(w)) ? gated('This talosctl command resets, upgrades, reconfigures or restarts nodes.') : []
+  if (tool === 'omnictl') return pos.some(w => OMNI_ASK.has(w)) ? gated('This omnictl command deletes or applies Omni resources.') : []
+  const verb = pos[0] ?? ''
+  if (!verb || (tool === 'kubectl' ? KUBECTL_READ : HELM_READ).has(verb)) return []
+  if (verb === 'rollout' && ['status', 'history'].includes(pos[1])) return []
+  const prod = prodTarget(pre, args, vars, env)
+  if (prod === false) return []
+  if (prod === true && tool === 'kubectl' && verb === 'delete') {
+    const targets = pos.slice(1)
+    const typed = targets[0]?.includes('/') ? targets : targets.slice(0, 1)
+    if (typed.some(w => w.split('/')[0].split(',').some(k => PROTECTED_KINDS.has(k.toLowerCase().split('.')[0])))) return [['deny', K8S_DENY]]
+  }
+  return gated(prod === 'unknown' ? 'Cannot tell which cluster this changes.' : 'This changes a production cluster.')
+}
+
 // Commands whose arguments are usually data, so a tool name among them is not a wrapped call.
 const DATA_CMDS: ReadonlySet<string> = new Set(['echo', 'printf', 'cat', 'grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk', 'head', 'tail',
   'tee', 'git', 'gh', 'jq', 'yq', 'man', 'which', 'whereis', 'type', 'ls', 'diff', 'wc', 'sort', 'uniq', 'cut', 'tr', 'fd', 'find',
@@ -388,15 +509,17 @@ function splitTasks(c: ShellCommand): [(string | null)[], string[]][] {
 }
 
 // Findings for the script text of sh -c or eval, parsed one level deeper.
-function nestedFindings(script: string, depth: number): Finding[] {
+function nestedFindings(script: string, depth: number, k8sOnly: boolean): Finding[] {
   const r = reparse(script, depth)
   if (r.errors.length) throw new ParseFailure(r.errors[0].message)
-  return scriptFindings(r.commands, script, depth)
+  return scriptFindings(r.commands, script, depth, k8sOnly)
 }
 
 // Findings for one task: a word list in which expansions stay as written (`text`) and `argv` keeps
-// the literal value, or null, for nestedScript.
-function classify(argv: readonly (string | null)[], words: readonly string[], depth: number, nesting: number, vars: Vars): Finding[] {
+// the literal value, or null, for nestedScript. With k8sOnly the script names no Terraform or aws
+// tool, so only the Kubernetes tools are checked, and none of the generic asks apply.
+function classify(argv: readonly (string | null)[], words: readonly string[], depth: number, nesting: number, vars: Vars, env: Vars,
+  prefix: readonly string[], k8sOnly: boolean): Finding[] {
   const k = stripWrappers(words)
   if (k === null) return [['ask', 'A wrapper option such as env -S or mise exec -c hides the command.']]
   if (k >= words.length) return []
@@ -404,10 +527,11 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   const args = words.slice(k + 1)
   const pathLike = words[k].includes('/')
   // A bare variable may be any command. A path with a variable (`$S/locked.sh`) is a script the wrapped-tool check below sees through.
-  if (/[$`]/.test(words[k]) && !pathLike) return [['ask', 'A variable or substitution names the command.']]
+  if (/[$`]/.test(words[k]) && !pathLike) return k8sOnly ? [] : [['ask', 'A variable or substitution names the command.']]
   if (SHELLS.has(cmd) || INTERP.test(cmd)) {
     const script = nestedScript(argv.slice(k))
-    const out = script === null ? [] : nestedFindings(script, depth + 1)
+    const out = script === null ? [] : nestedFindings(script, depth + 1, k8sOnly)
+    if (k8sOnly) return out
     const hidden = ANY_DOLLAR.has(cmd) ? args.some(a => a.includes('$')) : operandHidden(cmd, argv.slice(k))
     if (hidden || args.some(a => TOOL_RE.test(a))) {
       out.push(['ask', 'A shell, eval, or xargs wraps a guarded tool and cannot be checked.'])
@@ -419,6 +543,8 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
     if (nesting > 0) out.push(['ask', NESTED_REASON])
     return out
   }
+  if (K8S.has(cmd)) return k8sFindings(cmd, [...prefix, ...words.slice(0, k)], args, vars, env)
+  if (k8sOnly) return []
   if (cmd === 'aws') {
     if (awsHelp(args)) return []
     const out: Finding[] = [['gate', SUBAGENT_REASON]]
@@ -446,11 +572,16 @@ const runs = (script: string, h: ShellHeredoc): boolean =>
 
 // Findings for the commands of one parsed script, then for each heredoc body it runs. Commands
 // under one compound share their heredoc objects, so each body is parsed once.
-function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number): Finding[] {
+function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number, k8sOnly: boolean): Finding[] {
   const vars = collectVars(commands)
-  const out = commands.flatMap(c => splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth, c.nesting, vars)))
+  const env = collectEnv(commands)
+  const out = commands.flatMap(c => {
+    // NAME=value prefixes are not among the command's words.
+    const prefix = c.argv.length ? c.assigns.map(a => `${a.name}=${a.value ?? UNKNOWN_ENV}`) : []
+    return splitTasks(c).flatMap(([argv, words]) => classify(argv, words, depth, c.nesting, vars, env, prefix, k8sOnly))
+  })
   for (const h of new Set(commands.flatMap(c => c.heredocs))) {
-    if (runs(script, h)) out.push(...nestedFindings(h.body, depth + 1))
+    if (runs(script, h)) out.push(...nestedFindings(h.body, depth + 1, k8sOnly))
   }
   return out
 }
@@ -502,12 +633,12 @@ function briefAllows(d: Record<string, unknown>): boolean | null {
 }
 
 // How many times the script names a guarded tool, with quotes and line continuations joined.
-const mentions = (s: string): number => plainText(s).match(new RegExp(TOOL_RE, 'g'))?.length ?? 0
+const mentions = (s: string, re: RegExp = TOOL_RE): number => plainText(s).match(new RegExp(re, 'g'))?.length ?? 0
 
 // Whether the script names a tool outside its data heredoc bodies. The bodies sit inside the
 // script, so the script's count never falls below theirs; no text is cut.
-const mentionedOutsideData = (script: string, data: readonly string[]): boolean =>
-  mentions(script) > data.reduce((n, body) => n + mentions(body), 0)
+const mentionedOutsideData = (script: string, data: readonly string[], re: RegExp = TOOL_RE): boolean =>
+  mentions(script, re) > data.reduce((n, body) => n + mentions(body, re), 0)
 
 const SHELL_NAMES: ReadonlySet<string> = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh'])
 
@@ -559,13 +690,16 @@ function check(cmd: string, d: Record<string, unknown>): Decision | null {
     }
   }
   let results: Finding[] = []
-  if (mentionedOutsideData(cmd, data)) {
+  const tf = mentionedOutsideData(cmd, data)
+  if (tf || mentionedOutsideData(cmd, data, K8S_RE)) {
     try {
-      results = scriptFindings(commands, cmd, 0)
+      results = scriptFindings(commands, cmd, 0, !tf)
     } catch (e) {
       if (e instanceof ParseFailure) return ['ask', PARSE_REASON]
       throw e
     }
+  }
+  if (tf) {
     if (commands.some(c => c.redirects.some(r => r.op === '>|'))) asks.push('A redirect or operator next to a guarded tool cannot be checked.')
     if (commands.some(pipedToShell)) asks.push('Text that mentions a guarded tool is piped to a shell.')
   }
@@ -586,7 +720,8 @@ export function decide(d: unknown): Decision | null {
   if (input.tool_name !== 'Bash') return null
   const cmd = (input.tool_input as { command?: unknown }).command
   if (typeof cmd !== 'string') return ['ask', 'Command is not a string.']
-  if (!TOOL_RE.test(plainText(cmd))) return null
+  const plain = plainText(cmd)
+  if (!TOOL_RE.test(plain) && !K8S_RE.test(plain)) return null
   if (cmd.length > MAX_CMD) return ['ask', 'Command is too long to check.']
   const kind = allowlisted(cmd)
   if (kind === 'safe' || (kind === 'gate' && !input.agent_id)) return ['allow', ALLOW_REASON]

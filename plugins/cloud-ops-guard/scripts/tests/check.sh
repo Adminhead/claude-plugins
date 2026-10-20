@@ -11,7 +11,12 @@ pass=0 fail=0
 ok() { pass=$((pass + 1)); echo "ok   $1"; }
 bad() { fail=$((fail + 1)); echo "FAIL $1 (expected $2, got $3)"; }
 
-guard() { bun --no-env-file --config=/dev/null "$script"; }
+# Every case runs against a kubeconfig fixture: the guard never reads ~/.kube. kubecfg picks the fixture.
+printf 'apiVersion: v1\nkind: Config\ncurrent-context: omni-prod\n' >"$root/kube-prod.yaml"
+printf 'apiVersion: v1\nkind: Config\ncurrent-context: omni-dev\n' >"$root/kube-dev.yaml"
+{ head -c 2000000 /dev/zero | tr '\0' '#'; printf '\ncurrent-context: omni-prod\n'; } >"$root/kube-big.yaml"
+kubecfg=$root/kube-dev.yaml
+guard() { KUBECONFIG=${kubecfg:-$root/kube-dev.yaml} bun --no-env-file --config=/dev/null "$script"; }
 
 # The walker copies must match the canonical copy in scripts/shared byte for byte, when this
 # plugin sits in the marketplace checkout. Installed alone, the check is skipped.
@@ -469,6 +474,80 @@ t "aws filter-log-events" none "aws logs filter-log-events --log-group-name g"
 t "aws describe with global flags" none "aws --region us-east-1 --output json ec2 describe-instances"
 t "aws iam delete-user help is allowed" allow "aws iam delete-user help"
 t "aws terminate in a subagent without token" deny "aws ec2 terminate-instances --instance-ids i-1" notoken
+
+# Kubernetes: production is judged by context, kubeconfig, or the fixture's current-context
+prod=$root/kube-prod.yaml
+t "prod delete pvc and pv" deny "kubectl --context omni-prod -n lh-backup-test delete pvc/data pv/pv-1"
+t "prod delete pv, --context=" deny "kubectl --context=omni-prod delete pv pv-1"
+t "prod delete pvc by plural name" deny "kubectl --context omni-prod -n x delete persistentvolumeclaims data"
+t "prod delete crd" deny "kubectl --context omni-prod delete crd foos.example.com"
+t "prod delete node" deny "kubectl --context omni-prod delete node n1"
+t "prod delete node behind wrappers" deny "timeout 30 env X=1 kubectl --context omni-prod delete node n1"
+t "prod delete pvc by KUBECONFIG prefix" deny "KUBECONFIG=~/.kube/prod-kubeconfig.yaml kubectl -n x delete pvc d"
+t "prod delete pvc by exported KUBECONFIG" deny 'export KUBECONFIG=~/.kube/prod-kubeconfig.yaml; kubectl -n x delete pvc d'
+t "prod delete pvc by --kubeconfig" deny "kubectl --kubeconfig ~/.kube/prod-kubeconfig.yaml -n x delete pvc d"
+t "prod delete via mise exec" deny "export KUBECONFIG=~/.kube/prod-kubeconfig.yaml; mise exec -- kubectl delete pvc d"
+kubecfg=$prod t "prod fixture current-context, guarded delete" deny '[ "$(kubectl config current-context)" = omni-prod ] && kubectl -n lh-backup-test delete pvc data'
+kubecfg=$prod t "prod fixture current-context, delete pv" deny "kubectl delete pv pv-1"
+t "prod apply, subagent without token" deny "kubectl --context omni-prod apply -f x.yaml" notoken
+t "prod delete ns asks" ask "kubectl --context omni-prod delete ns foo"
+t "prod delete longhorn volume asks" ask "kubectl --context omni-prod -n longhorn-system delete volume v1"
+t "prod delete a group-qualified kind asks" ask "kubectl --context omni-prod -n longhorn-system delete backupvolumes.longhorn.io b1"
+t "prod delete -f asks" ask "kubectl --context omni-prod delete -f x.yaml"
+t "prod apply asks" ask "kubectl --context omni-prod apply -f x.yaml"
+t "prod apply with a token still asks" ask "kubectl --context omni-prod apply -f x.yaml" withtoken
+t "prod scale asks" ask "kubectl --context omni-prod -n isktel scale deploy/worker --replicas=0"
+t "prod rollout restart asks" ask "kubectl --context omni-prod rollout restart deploy/x"
+t "prod rollout undo asks" ask "kubectl --context omni-prod rollout undo deploy/x"
+t "prod exec asks" ask "kubectl --context omni-prod exec -it pod -- sh"
+t "prod drain asks" ask "kubectl --context omni-prod drain n1 --ignore-daemonsets"
+t "prod patch asks" ask "kubectl --context omni-prod patch deploy x -p '{}'"
+t "prod unknown verb asks" ask "kubectl --context omni-prod frobnicate"
+t "production context name asks" ask "kubectl --context eks-production apply -f x.yaml"
+t "prod context from a variable asks" ask 'C=omni-prod; kubectl --context $C apply -f x.yaml'
+t "unknown context asks" ask 'kubectl --context "$CTX" apply -f x.yaml'
+t "helm upgrade on prod asks" ask "helm --kube-context omni-prod upgrade x chart"
+t "helm install on prod asks" ask "helm --kube-context omni-prod install x chart"
+t "helm rollback on prod asks" ask "helm --kube-context omni-prod rollback x 1"
+t "helm upgrade on prod, subagent without token" deny "helm --kube-context omni-prod upgrade x chart" notoken
+t "talosctl reset asks" ask "talosctl -n 10.0.0.1 reset"
+t "talosctl upgrade asks" ask "talosctl --nodes 10.0.0.1 upgrade --image x"
+t "talosctl apply-config asks" ask "talosctl apply-config -n 10.0.0.1 -f c.yaml"
+t "talosctl reboot asks" ask "talosctl -n 10.0.0.1 reboot"
+t "talosctl shutdown asks" ask "talosctl -n 10.0.0.1 shutdown"
+t "talosctl etcd remove-member asks" ask "talosctl etcd remove-member abc"
+t "talosctl in a subagent without token" deny "talosctl -n 10.0.0.1 reset" notoken
+t "omnictl delete asks" ask "omnictl delete cluster x"
+t "omnictl apply asks" ask "omnictl apply -f c.yaml"
+t "omnictl get" none "omnictl get clusters"
+t "omnictl delete --help" none "omnictl delete --help"
+t "talosctl reboot --help" none "talosctl reboot --help"
+t "prod apply --help" none "kubectl --context omni-prod apply --help"
+t "dev scale" none "kubectl --context omni-dev -n isktel-dev scale deploy/worker --replicas=0"
+t "dev delete pvc" none "kubectl --context omni-dev -n x delete pvc d"
+t "dev helm upgrade" none "helm --kube-context omni-dev upgrade x chart"
+t "prod get pods" none "kubectl --context omni-prod get pods -A"
+t "prod logs" none "kubectl --context omni-prod logs x"
+t "prod describe pv" none "kubectl --context omni-prod describe pv"
+t "prod rollout status" none "kubectl --context omni-prod rollout status deploy/x"
+t "prod config view" none "kubectl --context omni-prod config view"
+t "prod helm list" none "helm --kube-context omni-prod list -A"
+t "prod kubeconfig get" none 'export KUBECONFIG=~/.kube/prod-kubeconfig.yaml; mise exec -- kubectl -n flux-system get ks'
+t "dev kubeconfig delete" none 'export KUBECONFIG=~/.kube/dev.yaml; kubectl -n x delete pvc d'
+t "variable context holding dev" none 'C=omni-dev; kubectl --context $C apply -f x.yaml'
+t "talosctl get members" none "talosctl get members"
+t "fixture dev current-context, delete pvc" none "kubectl -n x delete pvc d"
+t "fixture dev current-context, apply" none "kubectl apply -f x.yaml"
+kubecfg=$prod t "fixture prod current-context, get" none "kubectl -n x get pvc"
+kubecfg=$prod t "fixture prod current-context, apply asks" ask "kubectl apply -f x.yaml"
+kubecfg=$prod t "explicit dev context beats the prod fixture" none "kubectl --context omni-dev apply -f x.yaml"
+kubecfg=$root/missing.yaml t "unreadable kubeconfig is not prod" none "kubectl -n x delete pvc d"
+kubecfg=$root/kube-big.yaml t "current-context past the read cap is not read" none "kubectl -n x delete pvc d"
+t "kubectl as an argument is data" none "git log --grep kubectl"
+t "kubectl in echo is data" none "echo kubectl --context omni-prod delete pv x"
+t "product is not prod" none "kubectl --context product-team apply -f x.yaml"
+t "prodigy is not prod" none "kubectl --context prodigy apply -f x.yaml"
+t "K variable holding a prod context stays quiet" none 'K="kubectl --context omni-prod"; $K get pods'
 
 # A shared heredoc is parsed once, so a 64 KB command with many commands under one redirect stays fast
 colons=$(printf ':;%.0s' $(seq 6000))
