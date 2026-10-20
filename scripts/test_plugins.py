@@ -323,5 +323,24 @@ def test_closure_terminates_on_cycles_and_skips_foreign_deps():
     assert plugins.closure("missing", manifests) == set()
 
 
+def test_closure_follows_deps_naming_the_own_marketplace():
+    manifests = {
+        "a": {"dependencies": ["b@mine", "x@other"]},
+        "b": {"dependencies": []},
+        "x": {"dependencies": []},
+    }
+    assert plugins.closure("a", manifests, "mine") == {"a", "b"}
+    assert plugins.closure("a", manifests) == {"a"}
+
+
+def test_exclusive_metas_share_detected_through_own_marketplace_deps(root):
+    own = plugins.load_json(root / plugins.MARKETPLACE)["name"]
+    add_plugin(root, "github-meta", [f"gh-pr@{own}"])
+    add_plugin(root, "forgejo-meta", [f"gh-pr@{own}"])
+    add_plugin(root, "gh-pr")
+    errors = plugins.check(root)
+    assert "github-meta and forgejo-meta must not share gh-pr; scope them per forge" in errors
+
+
 def test_repo_passes_check():
     assert plugins.check(REPO) == []

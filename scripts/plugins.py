@@ -118,8 +118,10 @@ def load_plugins(root):
     return market, entries, manifests
 
 
-def closure(name, manifests):
-    """Return the set of plugins reachable from `name` through local dependencies, including itself."""
+def closure(name, manifests, own=None):
+    """Return the set of plugins reachable from `name` through local dependencies, including itself.
+
+    A dependency is local when its marketplace is unset or equals `own`, the marketplace's own name."""
     seen = set()
     stack = [name]
     while stack:
@@ -129,18 +131,18 @@ def closure(name, manifests):
         seen.add(current)
         for dep in (manifests[current] or {}).get("dependencies", []):
             dep_name, dep_market = parse_dep(dep)
-            if not dep_market:
+            if not dep_market or dep_market == own:
                 stack.append(dep_name)
     return seen
 
 
-def exclusive_meta_errors(manifests):
+def exclusive_meta_errors(manifests, own=None):
     errors = []
-    base = closure("baseline", manifests)
+    base = closure("baseline", manifests, own)
     for a, b in EXCLUSIVE_METAS:
         if a not in manifests or b not in manifests:
             continue
-        shared = (closure(a, manifests) & closure(b, manifests)) - base - {a, b}
+        shared = (closure(a, manifests, own) & closure(b, manifests, own)) - base - {a, b}
         if shared:
             errors.append(f"{a} and {b} must not share {', '.join(sorted(shared))}; scope them per forge")
     return errors
@@ -210,7 +212,7 @@ def check(root):
     errors += eval_frontmatter_errors(root)
     errors += godot_version_errors(root, entries, manifests)
     errors += agent_spawn_errors(root)
-    errors += exclusive_meta_errors(manifests)
+    errors += exclusive_meta_errors(manifests, own)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
