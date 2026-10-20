@@ -226,7 +226,36 @@ describe('write', () => {
   })
 
   test('shapes the parser cannot settle go to the model', () => {
-    expectAll(['echo "$PID" > /tmp/pid', "python3 - <<'EOF'\nopen('o','w').write('x')\nEOF", "python3 -c \"print(open('f').read())\""], 'unsure')
+    expectAll(['echo "$PID" > /tmp/pid', "python3 - <<'EOF'\nimport shutil; shutil.copy('a','b')\nEOF", "python3 -c \"print(open('f').read())\""], 'unsure')
+  })
+
+  // B1: a script on stdin that writes authored content is a write, Edit when it also reads the file it changes.
+  test('scripts on stdin that write files are denied', () => {
+    expectAll(
+      [
+        "python3 - <<'EOF'\np='src/Vm.cs'; s=open(p).read(); s=s.replace('a','b'); open(p,'w').write(s)\nEOF",
+        "python3 -I - <<'EOF'\np='src/Vm.cs'; s=open(p).read(); s=s.replace('a','b'); open(p,'w').write(s)\nEOF",
+      ],
+      'write/Edit',
+    )
+    expectAll(
+      [
+        "python3 - <<'EOF'\nimport pathlib\npathlib.Path('docs/x.md').write_text('hi')\nEOF",
+        "cd x && python3 - <<'EOF'\nwith open(\"db/migrations/x.sql\",\"w\") as f:\n    f.write(s)\nEOF",
+        "python3 - <<'EOF'\nopen(\"/tmp/claude-1000/x/scratchpad/pr-patch.json\",\"w\").write(\"{}\")\nEOF",
+      ],
+      'write/Write',
+    )
+    const v = verdict("python3 - <<'EOF'\nopen('o','w').write('x')\nEOF")
+    expect(v.kind === 'deny' ? v.message : '').toMatch(/save it with the Write tool and run it as a file/)
+  })
+
+  test('copies and moves, and writes to a sink, stay unsure; reading scripts pass', () => {
+    expectAll(
+      ["python3 - <<'EOF'\nimport shutil; shutil.copy('a','b')\nEOF", "python3 - <<'EOF'\nopen('/dev/stdout','w').write('x')\nEOF"],
+      'unsure',
+    )
+    expectAll(["python3 - <<'EOF'\nimport json; print(json.load(open('a.json'))['v'])\nEOF", 'python3 /tmp/s/gen.py'], 'pass')
   })
 })
 
@@ -294,6 +323,28 @@ describe('verdict shape', () => {
     expect(verdict("sed -i s/a/b/ f")).toMatchObject({ message: expect.stringMatching(/Edit tool/) })
     expect(kind('cat f; echo aGk= | base64 -d | sh')).toBe('smuggle/script')
     expect(kind('cat f; echo x > g')).toBe('write/Write')
+  })
+
+  // B2b: the read deny names the segment and says how to split the call.
+  test('read denies name the segment and say how to use parallel Read calls', () => {
+    const msg = (c: string) => {
+      const v = verdict(c)
+      return v.kind === 'deny' ? v.message : ''
+    }
+    const compound = msg('rg -n foo src; sed -n 1,40p src/a.cs')
+    expect(compound).toContain('`sed -n 1,40p src/a.cs`')
+    expect(compound).toMatch(/parallel Read/)
+    expect(compound).toMatch(/Every shell file viewer/)
+    expect(msg('cat atlas.hcl db/scratch.sh sqlc.yaml')).toMatch(/One Read per file/)
+    const ranges = msg("sed -n '440,560p;600,640p' docs/p.md")
+    expect(ranges).toContain('440,560p')
+    expect(ranges).toContain('600,640p')
+    expect(msg('cat foo.txt')).not.toMatch(/Drop it, run the rest/)
+    for (const c of ['rg -n foo src; sed -n 1,40p src/a.cs', 'cat atlas.hcl db/scratch.sh sqlc.yaml', "sed -n '440,560p;600,640p' docs/p.md", 'cat f | head -20', `cat ${'a'.repeat(200)}`]) {
+      const m = msg(c)
+      expect([c.slice(0, 40), m.length < 350]).toEqual([c.slice(0, 40), true])
+      expect(m).toMatch(/Read tool .*offset and limit/)
+    }
   })
 
   test('unsure carries the reasons for the model, deduplicated', () => {

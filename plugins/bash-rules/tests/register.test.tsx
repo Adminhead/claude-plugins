@@ -54,6 +54,14 @@ describe('parser stage', () => {
     expect(w.fetches.length).toBe(0)
   })
 
+  test('a script on stdin that writes a file is denied; a read-only compound names its segment', async ($, on) => {
+    const w = world(on, 2.5e9)
+    expect((await call($, "python3 - <<'EOF'\nopen('o','w').write('x')\nEOF")).deny).toMatch(/^bash-rules: this writes file content .*writes files.*Write tool/)
+    const read = (await call($, 'rg -n foo src; sed -n 1,40p src/a.cs')).deny
+    expect(read).toMatch(/`sed -n 1,40p src\/a\.cs`.*parallel Read/)
+    expect(w.ran).toEqual([])
+  })
+
   test('benign commands reach the tool without a model call', async ($, on) => {
     const w = world(on, 3e9)
     for (const c of ['rm -rf ./build', 'git log | grep fix', 'npm test > out.log 2>&1', 'git commit -F - <<EOF\nmsg\nEOF', 'grep -rn foo src', "find . -name '*.ts'"]) {

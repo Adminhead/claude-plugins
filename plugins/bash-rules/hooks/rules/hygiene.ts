@@ -16,7 +16,8 @@ export type Verdict =
   | { kind: 'unsure'; reasons: string[] }
 
 type Argv = readonly (string | null)[]
-type Finding = { category: Category; tool: Tool; what: string }
+// `seg`, `compound` and `multi` shape the read deny text (see readNudge); `note` is extra advice for any deny.
+type Finding = { category: Category; tool: Tool; what: string; seg?: string; compound?: boolean; multi?: string; note?: string }
 
 // What to use instead, per tool. Model verdicts reuse these (judge.ts).
 export const INSTEAD: Record<Tool, string> = {
@@ -33,7 +34,25 @@ const LEAD: Record<Tool, string> = {
   script: 'hides what it runs',
 }
 
-export const nudge = (tool: Tool, what: string) => `bash-rules: this ${LEAD[tool]} (${what}). ${INSTEAD[tool]}`
+export const nudge = (tool: Tool, what: string, note = '') => `bash-rules: this ${LEAD[tool]} (${what}). ${note}${INSTEAD[tool]}`
+
+// The read deny: names the offending segment, says every shell viewer is denied (also inside ; and && chains), and how to
+// split a compound command or a multi-file or multi-range read into parallel Read calls.
+// The segment is cut to at most 80 characters, and shorter when that keeps the whole text under MAX_READ_NUDGE.
+const MAX_READ_NUDGE = 350
+function readNudge(h: Finding): string {
+  const build = (max: number) => {
+    const seg = h.seg === undefined ? h.what : `\`${h.seg.length > max ? h.seg.slice(0, max - 3) + '...' : h.seg}\``
+    const parts = [`bash-rules: this reads a file through the shell (${seg}).`, 'Every shell file viewer is denied, also in ; and && chains.']
+    if (h.compound) parts.push('Drop it, run the rest, use parallel Read calls.')
+    if (h.multi) parts.push(`${h.multi.length > 60 ? h.multi.slice(0, 57) + '...' : h.multi}.`)
+    parts.push(INSTEAD.Read)
+    return parts.join(' ')
+  }
+  let out = build(80)
+  for (let max = 70; out.length >= MAX_READ_NUDGE && max >= 20; max -= 10) out = build(max)
+  return out
+}
 
 // More commands than this (after nested scripts) are left to the model rather than walked pairwise.
 const MAX_COMMANDS = 400
@@ -174,6 +193,9 @@ const SHOW = new Set(['cat', 'tac', 'nl', 'bat', 'batcat', 'less', 'more', 'most
 // Search programs: never a read themselves, and a file read piped into one is a search.
 const GREPS = new Set(['grep', 'egrep', 'fgrep', 'rg', 'ag', 'ack', 'ugrep'])
 
+// `cat a b`: one Read per file.
+const multiFiles = (ops: readonly (string | null)[]) => (ops.length > 1 ? { multi: 'One Read per file' } : {})
+
 // Whether a viewer program reads a file for display. `xargs` hands it file operands. Searches (grep, rg, find, fd, ls)
 // return null: they are the shell's job.
 function readOf(v: Argv, c: ShellCommand, viaXargs: boolean): ReadHit {
@@ -183,12 +205,12 @@ function readOf(v: Argv, c: ShellCommand, viaXargs: boolean): ReadHit {
     const s = split(v, name === 'nl' ? 'bdfhilnsvw' : name === 'bat' || name === 'batcat' ? 'lrHm' : '', ['--line-range', '--language'])
     // cat -A/-v/-e/-t show what Read cannot (control characters, line ends).
     if (name === 'cat' && has(s, '-A', '-v', '-e', '-t', '-E', '-T', '--show-all', '--show-nonprinting')) return null
-    return files(s.operands).length > 0 || fromFile ? { category: 'read', tool: 'Read', what: `${name} of a file` } : null
+    return files(s.operands).length > 0 || fromFile ? { category: 'read', tool: 'Read', what: `${name} of a file`, ...multiFiles(files(s.operands)) } : null
   }
   if (name === 'head' || name === 'tail') {
     const s = split(v, 'nc', ['--lines', '--bytes', '--pid', '--sleep-interval'])
     if (has(s, '-f', '-F', '--follow', '--retry')) return null
-    return files(s.operands).length > 0 || fromFile ? { category: 'read', tool: 'Read', what: `${name} of a file` } : null
+    return files(s.operands).length > 0 || fromFile ? { category: 'read', tool: 'Read', what: `${name} of a file`, ...multiFiles(files(s.operands)) } : null
   }
   if (name === 'sed' || name === 'gsed') {
     const s = split(v, 'efl', ['--expression', '--file', '--line-length'])
@@ -198,7 +220,13 @@ function readOf(v: Argv, c: ShellCommand, viaXargs: boolean): ReadHit {
     const ops = scripts.length > 0 || byFile ? s.operands : s.operands.slice(1)
     if (scripts.length === 0 && !byFile) scripts.push(s.operands[0] ?? null)
     if (files(ops).length === 0 && !fromFile) return null
-    if (!byFile && scripts.every(t => t !== null && sedPrintOnly(t))) return { category: 'read', tool: 'Read', what: 'sed printing lines of a file' }
+    if (!byFile && scripts.every(t => t !== null && sedPrintOnly(t))) {
+      const ranges = scripts.flatMap(t => (t ?? '').split(/[;\n]/).map(p => p.trim()).filter(p => p !== ''))
+      return {
+        category: 'read', tool: 'Read', what: 'sed printing lines of a file',
+        ...(ranges.length > 1 ? { multi: `One Read per range (${ranges.join(' and ')})` } : multiFiles(files(ops))),
+      }
+    }
     return { unsure: 'sed transforms a file and prints the result' }
   }
   if (/^(?:g|m|n)?awk$/.test(name)) {
@@ -243,8 +271,16 @@ const textSource = (e: ShellCommand) => {
   return authored(last, textOf(e, last), e) !== null
 }
 
-const WRITE_CODE =
-  /\bopen\s*\([^;\n]*?,\s*(?:mode\s*=\s*)?['"][rbtU]*[wax+]|\.write_(?:text|bytes)\s*\(|\b(?:writeFile|appendFile)(?:Sync)?\s*\(|createWriteStream\s*\(|\bFile\.(?:write|open\s*\([^)]*['"][wa])|\bopen\s*\(?\s*(?:my\s+)?\$?\w+\s*,\s*['"]\s*(?:>|\+<)|\bopen\s*\(?\s*\w+\s*,\s*['"]>|\bfile_put_contents\s*\(|\bshutil\.(?:copy|move)|\bos\.(?:rename|replace)\s*\(/
+// Code that writes content the script carries.
+const WRITE_CONTENT =
+  /\bopen\s*\([^;\n]*?,\s*(?:mode\s*=\s*)?['"][rbtU]*[wax+]|\.write_(?:text|bytes)\s*\(|\b(?:writeFile|appendFile)(?:Sync)?\s*\(|createWriteStream\s*\(|\bFile\.(?:write|open\s*\([^)]*['"][wa])|\bopen\s*\(?\s*(?:my\s+)?\$?\w+\s*,\s*['"]\s*(?:>|\+<)|\bopen\s*\(?\s*\w+\s*,\s*['"]>|\bfile_put_contents\s*\(/
+// Code that only copies or moves existing files.
+const WRITE_MOVE = /\bshutil\.(?:copy|move)|\bos\.(?:rename|replace)\s*\(/
+const WRITE_CODE = new RegExp(`${WRITE_CONTENT.source}|${WRITE_MOVE.source}`)
+// Opening a sink (`open('/dev/stdout', 'w')`) writes no file.
+const SINK_OPEN = /\bopen\s*\(\s*['"]\/dev\/(?:null|stdout|stderr)['"]/g
+// A script that also reads a file is an edit; else it authors a new file.
+const BODY_READ = /\.read(?:_text|_bytes|lines|line)?\s*\(|\bread_text\s*\(|\breadFile(?:Sync)?\s*\(|\bFile\.read|\bIO\.read|\bfile_get_contents\s*\(|<\$?\w*>|\bslurp\b|\bopen\s*\([^,()]*\)/
 const READ_CODE = /\bopen\s*\(|\bread_text\s*\(|\breadFile(?:Sync)?\s*\(|\bFile\.read|\bIO\.read|\bfile_get_contents\s*\(|<\$?\w*>|\bslurp\b/
 const EXEC_CODE = /\b(?:exec|eval|compile|Function|instance_eval|class_eval|system|popen|execSync|spawnSync)\s*\(|\bnew\s+Function\b|\beval\b/
 const ENCODED =
@@ -368,7 +404,10 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
             if (out !== 'consumed') unsure.push(r.unsure)
           } else if (out === 'shown') {
             // `cat f | grep x` is a search, which the shell does.
-            if (!downstream(c, commands).some(d => GREPS.has(baseName(d.argv[0] ?? null)))) hits.push(r)
+            if (!downstream(c, commands).some(d => GREPS.has(baseName(d.argv[0] ?? null)))) {
+              const related = new Set<ShellCommand>([c, ...downstream(c, commands), ...(c.pipeline?.earlier ?? [])])
+              hits.push({ ...r, seg: words.join(' '), compound: commands.some(d => d.nesting === 0 && !related.has(d)) })
+            }
           }
           else if (out !== 'consumed') unsure.push(`${r.what} piped into ${out.unknown}`)
         }
@@ -416,7 +455,12 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
         if (reader === 'script') {
           for (const body of fedBodies(c)) {
             if (EXEC_CODE.test(body) && ENCODED.test(body)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} script running decoded or encoded code` })
-            else if (WRITE_CODE.test(body)) unsure.push(`${name} script on stdin that writes files`)
+            else if (WRITE_CONTENT.test(body.replace(SINK_OPEN, 'sink('))) {
+              hits.push({
+                category: 'write', tool: BODY_READ.test(body) ? 'Edit' : 'Write', what: `${name} script on stdin that writes files`,
+                note: 'If the script computes the change, save it with the Write tool and run it as a file. ',
+              })
+            } else if (WRITE_CODE.test(body)) unsure.push(`${name} script on stdin that writes files`)
           }
         }
       }
@@ -454,7 +498,7 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
   const order: Category[] = ['smuggle', 'write', 'read']
   for (const cat of order) {
     const h = hits.find(x => x.category === cat)
-    if (h) return { kind: 'deny', category: h.category, tool: h.tool, message: nudge(h.tool, h.what) }
+    if (h) return { kind: 'deny', category: h.category, tool: h.tool, message: cat === 'read' ? readNudge(h) : nudge(h.tool, h.what, h.note) }
   }
   return unsure.length > 0 ? { kind: 'unsure', reasons: [...new Set(unsure)].slice(0, 6) } : { kind: 'pass' }
 }
