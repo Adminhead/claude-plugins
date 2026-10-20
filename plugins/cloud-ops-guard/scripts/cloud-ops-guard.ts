@@ -22,7 +22,8 @@ const TF: ReadonlySet<string> = new Set(['tofu', 'terraform', 'terragrunt'])
 const TOOLS: ReadonlySet<string> = new Set([...TF, 'aws'])
 const TOOL_RE = /(?<![\w.-])(?:tofu|terraform|terragrunt|aws)(?![\w-])/
 
-type Kind = 'safe' | 'gate' | 'ask' | 'deny' | 'neutral'
+// gate: a subagent needs the brief token. sensitive: the same, and the main session is asked too.
+type Kind = 'safe' | 'gate' | 'sensitive' | 'ask' | 'deny' | 'neutral'
 type Finding = readonly [Kind, string | null]
 type Decision = readonly ['allow' | 'ask' | 'deny', string]
 
@@ -65,12 +66,12 @@ const WRAPPERS = new Map<string, ReadonlySet<string>>([
   ['sudo', new Set(['-u', '-g', '-h', '-p', '-U', '-C', '-D', '-R', '-T', '-r', '-t'])],
   ...['nohup', 'command', 'builtin', 'noglob'].map((w): [string, ReadonlySet<string>] => [w, new Set()]),
 ])
-const QUIET_SUBS: ReadonlySet<string> = new Set(['validate', 'fmt', 'init', 'output', 'version', '-version', '--version', '-v',
+const QUIET_SUBS: ReadonlySet<string> = new Set(['validate', 'fmt', 'init', 'version', '-version', '--version', '-v',
   'help', '-help', '--help', '-h', 'graph', 'metadata'])
-const ASK_SUBS: ReadonlySet<string> = new Set(['refresh', 'taint', 'untaint', 'console', 'force-unlock', 'workspace',
-  'get', 'login', 'logout', 'test', 'push', 'modules'])
+const ASK_SUBS: ReadonlySet<string> = new Set(['taint', 'untaint', 'force-unlock', 'workspace', 'get', 'login', 'logout', 'test',
+  'push', 'modules'])
 const SUBCMDS: ReadonlySet<string> = new Set([...QUIET_SUBS, ...ASK_SUBS, 'apply', 'destroy', 'import', 'state', 'plan', 'show',
-  'providers'])
+  'providers', 'output', 'console', 'refresh'])
 // terragrunt commands that only read or format configuration, found as the first non-flag word.
 const TG_READ_ONLY: ReadonlySet<string> = new Set(['hclfmt', 'list', 'find', 'dag', 'info', 'render'])
 const VALUE_FLAGS: ReadonlySet<string> = new Set(['var', 'var-file', 'target', 'target-file', 'exclude', 'exclude-file', 'replace',
@@ -120,7 +121,7 @@ function tfForm(args: readonly string[]): Kind | null {
   const names = rest.slice(n)
   const [lo, hi] = FORMS.get(sub) ?? [1, 0]
   if (!(lo <= names.length && names.length <= hi && flags.every(flagOk) && names.every(w => NAME.test(w)))) return null
-  return sub === 'plan' ? 'gate' : 'safe'
+  return sub === 'plan' || sub === 'state show' ? 'gate' : 'safe'
 }
 
 // True for aws --version and aws [<service> [<operation>]] help, which call no API.
@@ -243,13 +244,18 @@ function tfSub(sub: string, rest: readonly string[], vars: Vars): Finding {
     const verb = rest.find(a => !a.startsWith('-'))
     return verb === undefined || ['schema', 'lock', 'mirror'].includes(verb) ? ['neutral', null] : ['ask', 'Cannot classify this providers command.']
   }
-  if (sub === 'show') return rest.some(a => /^--?json$/.test(a)) ? ['ask', 'show -json prints sensitive values.'] : ['neutral', null]
+  if (sub === 'show' || sub === 'output') {
+    return rest.some(a => /^--?(?:json|raw)$/.test(a)) ? ['sensitive', `${sub} -json or -raw prints sensitive values.`] : ['gate', SUBAGENT_REASON]
+  }
+  if (sub === 'console' || sub === 'refresh') return ['sensitive', `${sub} reads state and credentials.`]
   if (sub === 'destroy') return ['deny', 'Run plan -destroy -out=tfplan, review it, then apply that file.']
   if (sub === 'import') return ['deny', 'Add an import block and apply it through a saved plan.']
   if (sub === 'state') {
     const verb = rest.find(a => !a.startsWith('-')) ?? ''
     if (dynamic(verb)) return ['deny', DYNAMIC_REASON]
-    if (verb === 'list' || verb === 'show') return ['neutral', null]
+    if (verb === 'list') return ['neutral', null]
+    if (verb === 'show') return ['gate', SUBAGENT_REASON]
+    if (verb === 'pull') return ['sensitive', 'state pull prints the whole state, secrets included.']
     if (['rm', 'mv', 'push', 'replace-provider'].includes(verb)) {
       return ['deny', 'Use moved/removed blocks and a saved plan; manual state surgery needs the user.']
     }
@@ -277,6 +283,18 @@ function awsOp(args: readonly string[]): [string, string] {
 }
 
 const awsReadOnly = (op: string): boolean => /^(?:describe-|list-|get-)/.test(op) || op === 'filter-log-events'
+
+// aws operations that delete, stop, or loosen access, as the main session should confirm.
+const AWS_DESTRUCTIVE = /^(?:delete-|terminate-|remove-|deregister-|revoke-|detach-|disassociate-|disable-|stop-|put-[\w-]*-policy$)/
+function awsDestructive([service, op]: readonly [string, string], args: readonly string[]): boolean {
+  if (AWS_DESTRUCTIVE.test(op)) return true
+  return service === 's3' && (['rm', 'rb', 'mv'].includes(op) || (op === 'sync' && args.includes('--delete')))
+}
+
+// Commands whose arguments are usually data, so a tool name among them is not a wrapped call.
+const DATA_CMDS: ReadonlySet<string> = new Set(['echo', 'printf', 'cat', 'grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk', 'head', 'tail',
+  'tee', 'git', 'gh', 'jq', 'yq', 'man', 'which', 'whereis', 'type', 'ls', 'diff', 'wc', 'sort', 'uniq', 'cut', 'tr', 'fd', 'find',
+  'rm', 'cp', 'mv', 'mkdir', 'touch', 'chmod', 'cd', 'test', '[', '[['])
 
 // True when the script or code operand of a shell or interpreter holds an expansion, or an option
 // hides it: `bash -c "$X"`, `bash $S`, `python3 -c "$X"`. A literal operand with expansions among
@@ -384,7 +402,9 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   if (k >= words.length) return []
   const cmd = basename(words[k])
   const args = words.slice(k + 1)
-  if (/[$`]/.test(words[k])) return [['ask', 'A variable or substitution names the command.']]
+  const pathLike = words[k].includes('/')
+  // A bare variable may be any command. A path with a variable (`$S/locked.sh`) is a script the wrapped-tool check below sees through.
+  if (/[$`]/.test(words[k]) && !pathLike) return [['ask', 'A variable or substitution names the command.']]
   if (SHELLS.has(cmd) || INTERP.test(cmd)) {
     const script = nestedScript(argv.slice(k))
     const out = script === null ? [] : nestedFindings(script, depth + 1)
@@ -404,15 +424,18 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
     const out: Finding[] = [['gate', SUBAGENT_REASON]]
     const op = awsOp(args)
     if (op.some(w => SUBST.test(w))) out.push(['ask', 'A substitution as the aws service or operation cannot be checked.'])
+    else if (awsDestructive(op, args)) out.push(['ask', 'This aws command deletes, stops, or loosens access to resources.'])
     else if (nesting > 0 && !awsReadOnly(op[1])) out.push(['ask', NESTED_REASON])
     return out
   }
-  // A guarded tool after a command the guard does not know may be a wrapped call.
+  // A guarded tool after a command the guard does not know may be a wrapped call. A script path
+  // gets the wrapped tool's own findings; other commands only matter when the wrapped call is denied.
   const i = args.findIndex(a => TF.has(basename(a)))
-  if (i >= 0 && classifyTf(args.slice(i + 1), basename(args[i]), vars).some(([kind]) => kind === 'deny')) {
-    return [['ask', 'An unrecognized command wraps a guarded tool.']]
-  }
-  return []
+  if (i < 0) return []
+  const wrapped = classifyTf(args.slice(i + 1), basename(args[i]), vars)
+  const denied = wrapped.some(([kind]) => kind === 'deny')
+  if (DATA_CMDS.has(cmd)) return denied ? [['ask', 'An unrecognized command wraps a guarded tool.']] : []
+  return pathLike || denied ? wrapped : []
 }
 
 // A heredoc body that is read as commands rather than data: one whose delimiter never comes (it
@@ -548,8 +571,8 @@ function check(cmd: string, d: Record<string, unknown>): Decision | null {
   }
   const denies = results.flatMap(([kind, reason]) => (kind === 'deny' ? [reason!] : []))
   if (denies.length) return ['deny', [...new Set(denies)].join(' ')]
-  asks.push(...results.flatMap(([kind, reason]) => (kind === 'ask' ? [reason!] : [])))
-  if (d.agent_id && results.some(([kind]) => kind === 'gate')) {
+  asks.push(...results.flatMap(([kind, reason]) => (kind === 'ask' || (kind === 'sensitive' && !d.agent_id) ? [reason!] : [])))
+  if (d.agent_id && results.some(([kind]) => kind === 'gate' || kind === 'sensitive')) {
     const ok = briefAllows(d)
     if (ok === false) return ['deny', SUBAGENT_REASON]
     if (ok === null) asks.push(BRIEF_REASON)

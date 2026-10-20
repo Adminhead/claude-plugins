@@ -92,7 +92,7 @@ t "plan -out=tfplan" allow "tofu plan -out=tfplan"
 t "validate" allow "terraform validate"
 t "fmt" allow "tofu fmt -recursive"
 t "init" allow "tofu init -upgrade"
-t "output prompts (prints secrets)" none "tofu output -json"
+t "output -json prompts (prints secrets)" ask "tofu output -json"
 t "state list" allow "tofu state list"
 t "state show" allow "tofu state show aws_instance.a"
 t "apply saved plan prompts" none "tofu apply x.tfplan"
@@ -113,7 +113,7 @@ t "plan with a separate value word gets no allow" none "tofu plan -var x=1"
 t "double space gets no allow" none "tofu  plan"
 t "terragrunt plan gets no allow" none "terragrunt plan"
 t "mise env word with a path gets no allow" none "mise run tofu ../x plan"
-t "mise run flags get no allow" none "mise run --quiet tofu core output -json x"
+t "mise run flags get no allow" none "mise run --quiet tofu core output x"
 t "init -migrate-state" ask "tofu init -migrate-state -force-copy"
 t "plan -generate-config-out" ask "tofu plan -generate-config-out=x.tf"
 t "state show -show-sensitive" ask "mise run tofu core state show -show-sensitive module.x"
@@ -146,7 +146,7 @@ t "state show with a redirect" none "mise run tofu core state show module.x 2>&1
 # Review bypasses: each once returned allow
 t "glued ;newline" none $'tofu plan;\nrm -rf $HOME/x'
 t "glued ;newline sudo" none $'tofu plan;\nsudo rm -rf /x'
-t "glued ;( aws" none "tofu plan;(aws s3 rb s3://x --force)"
+t "glued ;( aws" ask "tofu plan;(aws s3 rb s3://x --force)"
 t "glued ;( aws in a subagent" deny "tofu plan;(aws s3 rb s3://x --force)" notoken
 t "glued &&(" deny "tofu plan &&(tofu apply -auto-approve)"
 t "glued );" deny "(tofu plan);tofu destroy -auto-approve"
@@ -169,7 +169,7 @@ t "mise ::: chains tasks" deny "mise run tofu core plan ::: tofu core apply -aut
 t "mise ::: after another task" deny "mise run lint ::: tofu core apply -auto-approve"
 t "aws help as a value" deny "aws iam delete-user --user-name help" notoken
 t "aws help after force" deny "aws s3 rb s3://x --force help" notoken
-t "aws help as a value, main session" none "aws iam delete-user --user-name help"
+t "aws help as a value, main session" ask "aws iam delete-user --user-name help"
 t "env --split-string" ask "env --split-string='sh -c \"id\"' tofu plan"
 t "env -S" ask "env -S 'sh -c id' tofu plan"
 
@@ -228,8 +228,8 @@ t "loop body in a subshell" deny 'for d in a b; do (cd $d && tofu apply); done'
 t "function body" deny "f() { tofu destroy -auto-approve; }; f"
 
 # Commands the guard does not know
-t "unknown wrapper" ask "op run -- tofu apply -auto-approve"
-t "unknown option cluster" ask "sudo -iu root tofu destroy"
+t "unknown wrapper" deny "op run -- tofu apply -auto-approve"
+t "unknown option cluster" deny "sudo -iu root tofu destroy"
 t "echo with a dangerous tool call" ask "echo tofu apply"
 t "variable as the command" ask 'X=tofu; $X destroy'
 t "eval of a variable" ask "CMD='tofu destroy'; eval \"\$CMD\""
@@ -413,6 +413,62 @@ t "mise where terragrunt" none "mise where terragrunt"
 t "mise ls is a lookup" none "mise ls terraform"
 t "tofu test still asks" ask "tofu test"
 t "plan -out=x.plan gets no allow" none "tofu plan -out=x.plan"
+
+# Credentialed reads: gated for subagents; the main session is asked only where values leak
+t "subagent console, no token" deny "tofu console" notoken
+t "subagent console via mise, no token" deny "echo 'jsonencode(local.x)' | mise run tofu cloudflare console" notoken
+t "subagent state pull, no token" deny "tofu state pull" notoken
+t "subagent state show, no token" deny "tofu state show module.x" notoken
+t "subagent show, no token" deny "tofu show tfplan" notoken
+t "subagent output -json, no token" deny "tofu output -json" notoken
+t "subagent output, no token" deny "tofu output" notoken
+t "subagent refresh, no token" deny "tofu refresh" notoken
+t "subagent state list, no token" allow "tofu state list" notoken
+t "subagent console, token" none "tofu console" withtoken
+t "subagent state pull, token" none "tofu state pull" withtoken
+t "subagent state show, token" allow "tofu state show module.x" withtoken
+t "subagent output -json, token" none "tofu output -json" withtoken
+t "subagent show, token" none "tofu show tfplan" withtoken
+t "main output -json asks" ask "tofu output -json"
+t "main output -raw asks" ask "tofu output -raw db_password"
+t "main show -json asks" ask "tofu show -json tfplan"
+t "main state pull asks" ask "tofu state pull"
+t "main console asks" ask "tofu console"
+t "main refresh asks" ask "tofu refresh"
+t "main output is quiet" none "tofu output"
+t "main show is quiet" none "tofu show"
+t "main state show is allowed" allow "tofu state show aws_instance.a"
+
+# Wrappers around a guarded tool
+t "lock wrapper script, saved plan, main" none '$S/locked.sh tofu-core mise run tofu core apply tfplan'
+t "lock wrapper script, saved plan, subagent" deny '$S/locked.sh tofu-core mise run tofu core apply tfplan' notoken
+t "lock wrapper script, saved plan, subagent token" none '$S/locked.sh tofu-core mise run tofu core apply tfplan' withtoken
+t "lock wrapper script, auto-approve" deny '$S/locked.sh tofu-core mise run tofu core apply -auto-approve'
+t "absolute wrapper script, auto-approve" deny '/abs/wrapper.sh mise run tofu core apply -auto-approve'
+t "bare variable command stays ask" ask 'K=tofu; $K apply -auto-approve'
+t "echo of an apply stays ask" ask 'echo tofu apply -auto-approve'
+t "git argument named like a tool is data" none 'git checkout terraform'
+t "path git with a tool word is data" none '/usr/bin/git log tofu'
+
+# aws in the main session: destructive operations ask
+t "aws terminate-instances" ask "aws ec2 terminate-instances --instance-ids i-1"
+t "aws rds delete-db-instance" ask "aws rds delete-db-instance --db-instance-identifier x"
+t "aws s3 rm" ask "aws s3 rm s3://b/k --recursive"
+t "aws s3 rb" ask "aws s3 rb s3://b --force"
+t "aws s3 mv" ask "aws s3 mv s3://b/a s3://b/c"
+t "aws s3 sync --delete" ask "aws s3 sync . s3://b --delete"
+t "aws s3 sync" none "aws s3 sync . s3://b"
+t "aws put-bucket-policy" ask "aws s3api put-bucket-policy --bucket b --policy file://p.json"
+t "aws iam delete-user behind --profile" ask "aws --profile prod iam delete-user --user-name x"
+t "aws stop-instances" ask "aws ec2 stop-instances --instance-ids i-1"
+t "aws detach-role-policy" ask "aws iam detach-role-policy --role-name r --policy-arn a"
+t "aws revoke-security-group-ingress" ask "aws ec2 revoke-security-group-ingress --group-id g"
+t "aws s3 ls" none "aws s3 ls"
+t "aws s3 cp" none "aws s3 cp a s3://b/a"
+t "aws filter-log-events" none "aws logs filter-log-events --log-group-name g"
+t "aws describe with global flags" none "aws --region us-east-1 --output json ec2 describe-instances"
+t "aws iam delete-user help is allowed" allow "aws iam delete-user help"
+t "aws terminate in a subagent without token" deny "aws ec2 terminate-instances --instance-ids i-1" notoken
 
 # A shared heredoc is parsed once, so a 64 KB command with many commands under one redirect stays fast
 colons=$(printf ':;%.0s' $(seq 6000))
