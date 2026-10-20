@@ -313,7 +313,7 @@ const bodyReads = (body: string, program: string) =>
 const QUOTED = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g
 const unquoteCode = (code: string) => code.replace(QUOTED, q => (WRITE_CODE.test(q.slice(1, -1)) ? '""' : q))
 const READ_CODE = /\bopen\s*\(|\bread_text\s*\(|\breadFile(?:Sync)?\s*\(|\bFile\.read|\bIO\.read|\bfile_get_contents\s*\(|<\$?\w*>|\bslurp\b/
-const EXEC_CODE = /\b(?:exec|eval|compile|Function|instance_eval|class_eval|system|popen|execSync|spawnSync)\s*\(|\bnew\s+Function\b|\beval\b/
+const EXEC_CODE = /\b(?:exec|eval|compile|Function|instance_eval|class_eval|system|popen|execSync|spawnSync)\s*\(|\bnew\s+Function\b|\beval\b|\bvm\.run\w*\s*\(|\b(?:setTimeout|setInterval)\s*\(\s*['"`]|\bshell\s*=\s*True\b/
 const ENCODED =
   /b64decode|\bbase64\b|decode_base64|\batob\s*\(|fromCharCode|\bfromhex\b|unhexlify|codecs\.decode|zlib\.decompress|marshal\.loads|\bpack\s*\(?\s*['"][Hhu]|Buffer\.from\s*\([^)]*['"](?:base64|hex)['"]|(?:\\x[0-9a-fA-F]{2}){4,}|(?:\\[0-7]{3}){4,}|['"][A-Za-z0-9+/]{120,}={0,2}['"]/
 
@@ -466,6 +466,7 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
       if (inline?.literal) {
         if (EXEC_CODE.test(inline.code) && ENCODED.test(inline.code)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} running decoded or encoded code` })
         else if (WRITE_CODE.test(unquoteCode(inline.code))) hits.push({ category: 'write', tool: 'Write', what: `${name} one-liner that writes a file` })
+        else if (WRITE_CODE.test(inline.code)) unsure.push(`${name} one-liner that mentions a file write in a string`)
         else if (EXEC_CODE.test(inline.code)) unsure.push(`${name} one-liner that evaluates code`)
         else if (READ_CODE.test(inline.code)) unsure.push(`${name} one-liner that reads a file`)
       } else if (inline && !inline.literal) {
@@ -491,7 +492,8 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
                 category: 'write', tool: bodyReads(body, name) ? 'Edit' : 'Write', what: `${name} script on stdin that writes files`,
                 note: 'If the script computes the change, save it with the Write tool and run it as a file. ',
               })
-            } else if (WRITE_CODE.test(unquoteCode(body))) unsure.push(`${name} script on stdin that writes files`)
+            } else if (WRITE_CODE.test(body)) unsure.push(`${name} script on stdin that writes files, or mentions a file write in a string`)
+            else if (EXEC_CODE.test(body)) unsure.push(`${name} script on stdin that evaluates code`)
           }
         }
       }

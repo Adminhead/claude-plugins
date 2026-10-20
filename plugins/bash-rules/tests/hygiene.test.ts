@@ -259,11 +259,36 @@ describe('write', () => {
         "print(sum(1 for l in open('a.csv') if 'a' in l), 'wow')",
         "print(open('a').read(), 'w')",
         "print(f(open('a'), 'wrap'))",
-        'print("f.write_text(s)")',
-        `print("would call open(p, 'w')")`,
       ].map(py),
       'pass',
     )
+  })
+
+  // Blanking a string never leads to pass: a write mentioned in a string is at best unsure, and executed strings are never silent.
+  test('write code in a string is unsure, and executed or stray-quoted strings are never a pass', () => {
+    expectAll(['print("f.write_text(s)")', `print("would call open(p, 'w')")`].map(py), 'unsure')
+    const bodies = [
+      `exec("open('o','w').write('x')")`,
+      `eval("open('o','w').write('x')")`,
+      `exec(compile("open('o','w').write('x')",'f','exec'))`,
+      `s="open('o','w').write('x')"; exec(s)`,
+      `import subprocess\nsubprocess.run("echo x > f", shell=True)`,
+      `new Function("require('fs').writeFileSync('x','y')")()`,
+      `eval("require('fs').writeFileSync('x','y')")`,
+      `vm.runInThisContext("require('fs').writeFileSync('x','y')")`,
+      `vm.runInNewContext("require('fs').writeFileSync('x','y')")`,
+      `setTimeout("require('fs').writeFileSync('x','y')")`,
+    ]
+    const inlines = [
+      ...bodies.map(b => `python3 -c ${JSON.stringify(b)}`),
+      ...bodies.map(b => `node -e ${JSON.stringify(b)}`),
+      ...bodies.map(b => `node <<'EOF'\n${b}\nEOF`),
+      ...bodies.map(py),
+    ]
+    for (const c of inlines) expect([c, ['pass'].includes(kind(c))]).toEqual([c, false])
+    // A stray quote must not hide a real write.
+    const stray = "s.replace(/'/g, ''); require('fs').writeFileSync('x','y')"
+    for (const c of [py(stray), `node -e ${JSON.stringify(stray)}`, `node <<'EOF'\n${stray}\nEOF`]) expect([c, kind(c) === 'pass']).toEqual([c, false])
   })
 
   test('more write shapes: multi-line open, Path.open, Bun, Deno, fs.writeSync', () => {
