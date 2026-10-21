@@ -1,0 +1,33 @@
+spring-boot-testing
+Copyright AdminHead
+
+This plugin contains material adapted from two sources.
+
+awesome-copilot, Copyright GitHub, Inc., licensed under the MIT License (see
+LICENSE-MIT).
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+Paths: skills/spring-boot-testing/SKILL.md, skills/spring-boot-testing/references/test-slices-overview.md, skills/spring-boot-testing/references/webmvctest.md, skills/spring-boot-testing/references/datajpatest.md, skills/spring-boot-testing/references/restclienttest.md, skills/spring-boot-testing/references/mockmvc-tester.md, skills/spring-boot-testing/references/mockmvc-classic.md, skills/spring-boot-testing/references/resttestclient.md, skills/spring-boot-testing/references/mockitobean.md, skills/spring-boot-testing/references/testcontainers-jdbc.md, skills/spring-boot-testing/references/context-caching.md, skills/spring-boot-testing/references/sb4-migration.md
+
+spring-testing-skills, Copyright 2026 Spring AI Community Contributors,
+licensed under the Apache License, Version 2.0 (see LICENSE). Its API license
+detection reports NOASSERTION, but the LICENSE file in the repository is the
+Apache License 2.0.
+
+Upstream: https://github.com/spring-ai-community/spring-testing-skills @ 7e7b33174e8b4cf7d756b73d76ec4ebd3f82568c
+Paths: skills/spring-security-testing/SKILL.md, skills/spring-security-testing/references/security-testing-patterns.md, skills/spring-webflux-testing/SKILL.md, skills/spring-webflux-testing/references/webflux-testing-patterns.md
+
+Modifications: the files were modified. SKILL.md was written fresh in the
+house style, with routing to java-testing, spring-boot and unit-testing. The
+upstream references were merged and condensed into six references plus the
+Boot 4 migration notes. The awesome-copilot assertj, instancio, code-complexity
+and "80% coverage minimum" material was dropped. Facts were rechecked against
+docs.spring.io (Spring Boot and Spring Framework testing references), the
+Spring Boot 4.0 migration guide and Maven Central on 2026-10-20. Fixes on
+port: @MockBean and @SpyBean are removed in Boot 4, not only deprecated;
+MockMvcTester arrived with Spring Framework 6.2 (Boot 3.4), not Boot 3.2; a
+mocked prototype or scoped bean becomes a singleton mock rather than "now
+works"; Boot 4 no longer registers TestRestTemplate or WebTestClient beans in
+@SpringBootTest; Testcontainers 2 modules are named testcontainers-<module>;
+the servlet OIDC post-processor is oidcLogin(), while mockOidcLogin() is the
+WebFlux name.
