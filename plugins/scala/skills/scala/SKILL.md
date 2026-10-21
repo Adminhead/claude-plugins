@@ -1,6 +1,6 @@
 ---
 name: scala
-description: Writes, reviews, debugs and tests Scala 3 and 2.13 code (case classes, enums and ADTs, given/using and implicits, extension methods, pattern matching, Option/Either/Try, Futures, Cats Effect or ZIO code, MUnit, ScalaTest, ScalaCheck, scalafmt, scalafix). Use for any work in *.scala or *.sc files, a "No given instance of type" or "could not find implicit value" error, a Future or Await deadlock, a non-exhaustive match warning, a Scala 2 to 3 migration, or setting up the Metals language server.
+description: Writes, reviews, debugs and tests Scala 3 and 2.13 code (case classes, enums and ADTs, given/using and implicits, type class instances such as Ordering, extension methods, pattern matching, Option/Either/Try, Futures, Cats Effect or ZIO code, MUnit FunSuite and ScalaTest suites, ScalaCheck, scalafmt, scalafix). Use whenever writing or debugging *.scala or *.sc code, including writing a MUnit or ScalaTest suite for a Scala object, and for a compile error such as "No given instance of type", "cannot find an ordering" or "could not find implicit value" (a missing type class instance, for example sorting a case class). Also for a Future or Await deadlock, a non-exhaustive match warning, a Scala 2 to 3 migration, or setting up the Metals language server.
 ---
 
 # Scala

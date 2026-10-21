@@ -24,7 +24,10 @@ Checked against the Metals docs on 2026-10-20 (latest stable 1.6.9, released 202
 
 Metals imports the build and indexes it before diagnostics and symbol search work, so the first start in a project can take minutes (the plugin allows 120 seconds for startup). `statusBarProvider: "log-message"` makes Metals send its status to the log instead of the editor status bar. `isHttpEnabled` stays at its default (off).
 
-If Metals waits for you to accept a build import, no editor UI answers it. Set the `autoImportBuilds` user setting (values `off`, `initial`, `all`; default `off`) to `initial` by passing it as `settings` in `.lsp.json`, or import the build once from a terminal with the same build tool (`sbt bloopInstall` or `sbt compile`).
+If Metals waits for you to accept a build import, no editor UI answers it. Two ways around that:
+
+- Import once from a terminal. For sbt this is `sbt -Dbloop.export-jar-classifiers=sources bloopInstall` (needs the sbt-bloop plugin; checked against scalameta.org/metals/docs/build-tools/sbt on 2026-10-20), then let Metals connect to the build server on its next start.
+- Set the `autoImportBuilds` user setting (values `off`, `initial`, `all`; default `off`) to `initial`. Metals reads user configuration only under the `"metals"` section, so the server entry in `.lsp.json` needs `"settings": {"metals": {"autoImportBuilds": "initial"}}`. Editing the installed plugin's `.lsp.json` is overwritten on the next plugin update, so make the change in a local copy loaded with `claude --plugin-dir <path>`.
 
 ## Troubleshooting
 
@@ -40,4 +43,4 @@ Metals writes `.metals/`, `.bloop/` and `project/metals.sbt` into the project. M
 
 ## Security
 
-A build import runs sbt, Bloop or the project's other build tool, which executes the project's build definition (`build.sbt`, plugins, `build.mill`). Only open projects you trust, as with any IDE import.
+A build import runs sbt, Bloop or the project's other build tool, which executes the project's build definition (`build.sbt`, plugins, `build.mill`). Only open projects you trust, as with any IDE import. Claude Code also starts Metals itself as soon as it touches a `.scala` or `.sbt` file, so opening an untrusted repository with this plugin enabled can run its build definition or a `.bsp/*.json` build server command without any prompt. Enable the plugin only in projects you trust.
