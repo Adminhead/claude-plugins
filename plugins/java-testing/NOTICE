@@ -1,0 +1,25 @@
+Copyright AdminHead
+
+This plugin contains material adapted from two MIT-licensed sources (see
+LICENSE):
+
+github/awesome-copilot (https://github.com/github/awesome-copilot), Copyright
+GitHub, Inc.
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+Paths: skills/java-junit/SKILL.md
+
+decebals/claude-code-java (https://github.com/decebals/claude-code-java),
+Copyright (c) 2026 Decebal Suiu.
+
+Upstream: https://github.com/decebals/claude-code-java @ 0d98fe9bd62923e819568ee1e041a1bf320f74d4
+Paths: skills/test-quality/SKILL.md
+
+Modifications: SKILL.md written fresh in the house style, folding in the
+structure, parameterized-source, AssertJ and anti-pattern guidance of both
+sources; the 80% coverage target dropped (no quotas) and replaced by a
+JaCoCo-for-gaps stance; the Mockito, Testcontainers, run-and-filter and
+coverage references written from the Mockito javadoc, the JUnit user guide and
+the Surefire, Failsafe and Gradle test-filter docs. The JUnit 6 baseline and
+the Mockito Java 21+ agent setup were checked against official docs on
+2026-10-20.

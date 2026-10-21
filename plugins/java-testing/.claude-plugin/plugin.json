@@ -1,7 +1,7 @@
 {
   "name": "java-testing",
   "version": "0.1.0",
-  "description": "Writes and fixes Java tests with JUnit 5, Mockito and AssertJ: test structure, parameterized tests, mocks versus fakes, Testcontainers, and flaky test diagnosis.",
+  "description": "Writes, runs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers: parameterized and nested tests, strict stubs, injected clocks, filtering with -Dtest and --tests, no-tests-found diagnosis, Surefire versus Failsafe and slow container suites.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
