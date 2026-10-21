@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "adminhead": {
+      "source": {
+        "source": "github",
+        "repo": "Adminhead/claude-plugins"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "vet@adminhead": true,
+    "plugin-vetter@adminhead": true
+  }
+}

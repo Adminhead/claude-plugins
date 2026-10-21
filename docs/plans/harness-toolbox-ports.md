@@ -430,4 +430,5 @@ Self-run: `mcp__consult__consult` is not available in this session. Each point w
 ## Status
 - Done: S0-S6; S7 steps 1, 2 and 6 (bumps, catalog/check/validate, vet evals: see docs/research/evals-2026-10-21.md). Review fixes landed as eeeb640, 1222d9c (bash-rules), 91b65f1 (necromancy) and abdf3c0 (docs).
 - In progress: none.
-- Left: S7 steps 3-5 (push + ship-plugin x5, enable vet at project scope, live checks), waiting on the user's go-ahead to push.
+- S7 steps 3-4 done 2026-10-21: pushed (ab4ebbb..8588c1b), bash-rules 0.4.0 and baseline 0.2.0 updated at user scope, prove and necromancy installed at user scope (a baseline update does not install new dependencies), vet 0.1.0 + plugin-vetter enabled at project scope in `.claude/settings.json`.
+- Left: S7 step 5 live checks, after `/reload-plugins`.
