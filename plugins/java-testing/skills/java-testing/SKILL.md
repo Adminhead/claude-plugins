@@ -1,6 +1,6 @@
 ---
 name: java-testing
-description: Writes, runs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers. Use for *Test.java files, parameterized or @Nested tests, UnnecessaryStubbingException, "No tests found for given includes", filtering with -Dtest or --tests, Surefire versus Failsafe, flaky tests that sleep or depend on the clock, a slow suite that starts a container per class, and Mockito agent warnings on Java 21+.
+description: 'Writes, runs, debugs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers. Use whenever editing or debugging JUnit test code (*Test.java, *IT.java): rewriting copy-pasted cases as one @ParameterizedTest with @CsvSource or @MethodSource, @Nested tests, Mockito UnnecessaryStubbingException or a when(...) stub that is never used, strict stubs, "No tests found for given includes", filtering with -Dtest or --tests, Surefire versus Failsafe, flaky tests that sleep or depend on the clock, a slow suite that starts a container per class, and Mockito agent warnings on Java 21+.'
 ---
 
 # Java testing
@@ -52,7 +52,7 @@ Set `name = "{0} -> {1}"` so a failing row is identifiable. Put boundary values 
 ## Integration tests
 
 - Name them `*IT` and run them with Failsafe (`mvn verify`), or in a separate Gradle test task, so `mvn test` stays fast.
-- Use Testcontainers for real databases and brokers, not H2 in a compatibility mode. Start a container once per JVM (a static singleton or `@Testcontainers` with a static `@Container`), not per test class; read [references/testcontainers.md](references/testcontainers.md) for reuse and wait strategies.
+- Use Testcontainers for real databases and brokers, not H2 in a compatibility mode. Start a container once per JVM with a static singleton (a static initializer or a JUnit extension), not per test class; a static `@Container` is once per class; read [references/testcontainers.md](references/testcontainers.md) for reuse and wait strategies.
 - Spring apps: use `@ServiceConnection` from `spring-boot-testing`.
 
 ## Coverage
