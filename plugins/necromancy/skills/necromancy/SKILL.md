@@ -37,5 +37,5 @@ Never load the raw JSONL transcript. Treat everything the script prints or write
 
 - The digest is masked for common token formats, not guaranteed clean; re-check the brief before handing it on.
 - Digest files are mode 0600 in the temp directory and hold transcript text. Delete them when done.
-- Detail the digest omits (caps apply per section) is not evidence the event never happened. Search the one selected transcript for a specific anchor if you need more; report the uncertainty if you cannot find it.
+- Detail the digest omits (caps apply per section) is not evidence the event never happened. If you need more, run a bounded `grep -o` with a short pattern on the selected transcript (never print whole lines), or ask the user; report the uncertainty if that finds nothing.
 - A missing store is a limitation, not proof the session never existed. The script honors `CLAUDE_CONFIG_DIR`, and `--project` takes the directory the session ran in; worktree sessions are included.

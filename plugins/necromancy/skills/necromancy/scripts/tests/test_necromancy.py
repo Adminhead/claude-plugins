@@ -169,8 +169,39 @@ class TestParser(Store):
 
     def test_slash_command_rendering(self):
         body = "<command-name>/review</command-name><command-args>the diff</command-args>"
-        s = n.Session(self.write("s1", [user(body), user("<command-name>/clear</command-name>")]))
-        self.assertEqual(s.prompts, ["/review the diff", "/clear"])
+        s = n.Session(self.write("s1", [user(body)]))
+        self.assertEqual(s.prompts, ["/review the diff"])
+
+    def test_bare_clear_and_compact_are_not_the_first_ask(self):
+        recs = [user("<command-name>/clear</command-name>"), user("/compact"), user("real ask")]
+        s = n.Session(self.write("s1", recs))
+        self.assertEqual(s.first_ask(), "real ask")
+
+    def test_sdk_prompt_is_the_fallback_first_ask(self):
+        recs = [user("headless task", turnOrigin="sdk"), user("meta", turnOrigin="sdk", isMeta=True)]
+        self.assertEqual(n.Session(self.write("s1", recs)).first_ask(), "headless task")
+        recs.append(user("human one"))
+        self.assertEqual(n.Session(self.write("s1", recs)).first_ask(), "human one")
+
+    def test_unanswered_call_followed_by_later_records_is_not_pending(self):
+        recs = [assistant(tool_use("b1", "Bash", command="sleep 9")), user("never mind"), assistant(text("ok"))]
+        self.assertIsNone(n.Session(self.write("s1", recs)).pending)
+
+    def test_forced_truncation_keeps_final_text_and_updates_counts(self):
+        recs = [user("ask")]
+        recs += [assistant(tool_use(f"t{i}", "Bash", command="x" * 400)) for i in range(25)]
+        recs += [tool_result("t1", "e" * 900, is_error=True)] * 15
+        recs += [assistant(tool_use(f"e{i}", "Edit", file_path="/é/" + "d" * 190 + str(i))) for i in range(40)]
+        recs += [assistant(text("FINALMARK " + "z" * 700))]
+        with mock.patch.object(n, "MAX_DIGEST", 6000):
+            text_, counts = self.digest(recs)
+        self.assertLessEqual(len(text_.encode("utf-8")), 6000)
+        self.assertIn("FINALMARK", text_)
+        self.assertIn("trimmed", text_)
+        self.assertEqual(counts["Final assistant text"], 1)
+        self.assertLess(counts["Files written"], 40)
+        shown = text_.split("## Files written")[1].split("##")[0].count("\n- ")
+        self.assertEqual(shown, counts["Files written"])
 
     def test_ask_user_question_answers(self):
         recs = [tool_result("q1", toolUseResult={"answers": {"Which db?": "postgres"}})]
@@ -323,6 +354,13 @@ class TestMasking(unittest.TestCase):
         self.assertEqual(n.redact("Bearer " + "f" * 20), "Bearer <token>")
         self.assertEqual(n.redact("MY_API_KEY=hunter2hunter2"), "MY_API_KEY=<redacted>")
         self.assertEqual(n.redact("https://user:hunter2@example.com"), "https://user:<redacted>@example.com")
+
+    def test_masks_after_non_ascii_letters(self):
+        for prefix in ("日本", "é"):
+            out = n.redact(prefix + "sk-ant-" + "a" * 24)
+            self.assertNotIn("a" * 24, out)
+            out = n.redact(prefix + "ghp_" + "b" * 24)
+            self.assertNotIn("b" * 24, out)
 
     def test_digest_masks_every_section(self):
         secret = "ghp_" + "z" * 30

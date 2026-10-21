@@ -45,6 +45,10 @@ SECRETS = [
     (re.compile(r"(://[^/\s:@]+:)[^@\s/]+@"), r"\1<redacted>@"),
 ]
 
+# ASCII-only \b, as in the JS source: a CJK or accented letter before a token must not hide it.
+SECRETS = [(re.compile(rx.pattern, (rx.flags & ~re.UNICODE) | re.ASCII), to) for rx, to in SECRETS]
+
+BARE_COMMANDS = ("/clear", "/compact")
 COMMIT_RE = re.compile(r"\[([\w./-]+)(?: \(root-commit\))? ([0-9a-f]{7,40})\] (.+)")
 HANDOFF_PATH_RE = re.compile(r"\S*handoff-\S*\.md")
 CMD_NAME_RE = re.compile(r"<command-name>\s*(.*?)\s*</command-name>", re.S)
@@ -196,6 +200,7 @@ class Session:
         self.compactions = 0
         self.last_type = None
         self.prompts = []
+        self.sdk_prompts = []
         self.answers = []
         self.rejections = []
         self.summary = None
@@ -215,6 +220,8 @@ class Session:
         self._task_seq = 0
         for rec in read_records(path):
             self._take(rec)
+        if not self.prompts:  # a headless `claude -p` session has no human turns
+            self.prompts = self.sdk_prompts
         self.pending = list(self._pending.values())[-1] if self._pending else None
 
     def _note(self, seq, value):
@@ -242,6 +249,7 @@ class Session:
         if rec.get("isSidechain"):
             return
         if t in ("user", "assistant"):
+            self._pending.clear()  # a later record means an earlier unanswered call was not the last thing that happened
             self._note(self.cwds, rec.get("cwd"))
             self._note(self.branches, rec.get("gitBranch"))
             self._note(self.versions, rec.get("version"))
@@ -326,8 +334,12 @@ class Session:
             return
         if is_human(rec, text):
             shown = render_prompt(text)
-            if shown:
+            if shown and shown not in BARE_COMMANDS:
                 self.prompts.append(shown)
+        elif rec.get("turnOrigin") == "sdk" and isinstance(content, str):
+            shown = render_prompt(text)
+            if shown:
+                self.sdk_prompts.append(shown)
 
     def _tool_result(self, b, res):
         tid = b.get("tool_use_id")
@@ -388,17 +400,13 @@ def list_line(s, now):
 
 
 def digest_text(s):
-    """The digest and a count per section."""
-    counts = {}
-    out = []
+    """The digest and a count per section. Over the cap, the largest sections shrink first; the header and the final
+    assistant text are kept."""
+    secs = []
 
-    def section(name, lines, count=None):
-        counts[name] = len(lines) if count is None else count
-        out.append(f"## {name}")
-        out.extend(lines or ["(none)"])
-        out.append("")
+    def section(name, lines):
+        secs.append((name, lines))
 
-    out.append("# Necromancy digest\n")
     head = [
         f"- session: {s.id}",
         f"- file: {s.path}",
@@ -421,21 +429,39 @@ def digest_text(s):
     summary = []
     if s.summary:
         summary = ["> " + ln for ln in redact(s.summary).strip()[:2500].splitlines()]
-    section("Latest compact summary", summary, 1 if s.summary else 0)
+    section("Latest compact summary", summary)
     tasks = sorted(s.tasks.values(), key=lambda t: t["status"] in ("completed", "deleted"))
-    section("Tasks", [f"- [{t['status']}] {clip(t['subject'], 200)}" for t in tasks[:30]], min(len(tasks), 30))
-    files = s.files.most_common(40)
-    section("Files written", [f"- {clip(p, 200)} ({n}x)" for p, n in files])
+    section("Tasks", [f"- [{t['status']}] {clip(t['subject'], 200)}" for t in tasks[:30]])
+    section("Files written", [f"- {clip(p, 200)} ({c}x)" for p, c in s.files.most_common(40)])
     section("Git", [f"- {clip(g, 200)}" for g in s.git[-15:]])
     section("Commands (last)", [f"- `{clip(c, 160)}`" for c in s.commands[-25:]])
     section("Subagents", [f"- {clip(a, 200)}" for a in s.agents[-20:]])
     section("Errors", [f"- {clip(e, 200)}" for e in s.errors[-15:]])
     section("Final assistant text", [f"- {clip_tail(t, 800)}" for t in s.finals])
-    text = "\n".join(out)
+
+    def render():
+        out = ["# Necromancy digest\n"]
+        for name, lines in secs:
+            out += [f"## {name}", *(lines or ["(none)"]), ""]
+        return "\n".join(out)
+
+    def size():
+        return len(render().encode("utf-8"))
+
+    if size() > MAX_DIGEST:
+        head.append("- note: sections were trimmed to fit 32 KB")
+        keep = ("Header", "Final assistant text")
+        while size() > MAX_DIGEST:
+            trimmable = [lines for name, lines in secs if name not in keep and lines]
+            if not trimmable:
+                break
+            max(trimmable, key=lambda ln: sum(len(x.encode("utf-8")) for x in ln)).pop()
+    text = render()
     raw = text.encode("utf-8")
-    if len(raw) > MAX_DIGEST:
+    if len(raw) > MAX_DIGEST:  # backstop: the kept sections alone are over the cap
         marker = "\n\n[digest truncated at 32 KB]\n".encode()
         text = raw[: MAX_DIGEST - len(marker)].decode("utf-8", "ignore") + marker.decode()
+    counts = {name: (1 if lines else 0) if name == "Latest compact summary" else len(lines) for name, lines in secs}
     return text, counts
 
 
@@ -474,9 +500,9 @@ def cmd_list(args):
 
 def write_private(path, text):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)  # an existing file keeps its old mode through O_CREAT
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(text)
-    os.chmod(path, 0o600)
 
 
 def cmd_digest(args):
