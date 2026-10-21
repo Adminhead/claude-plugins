@@ -9,5 +9,6 @@ The plugin does not install Metals. Before starting Claude Code:
 1. Install a JDK (Metals needs 11 or newer; 17 is the usual choice) and set `JAVA_HOME`.
 2. Install Coursier, then `cs install metals`.
 3. Make sure `command -v metals` works in the shell that launches Claude Code.
+4. Make sure the build tool (`sbt --version` for sbt) runs in the project directory. The plugin sets `autoImportBuilds` to `all`, so Metals imports the build without a prompt (Claude Code cannot answer Metals' import prompt, and Metals aborts startup if it asks). Metals runs the project's build definition on import, so enable the plugin only in projects you trust.
 
 Details, settings and troubleshooting: `skills/scala/references/metals.md`. Without `metals` on the PATH the skill still works and the LSP server simply does not start.

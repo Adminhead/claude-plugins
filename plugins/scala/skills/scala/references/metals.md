@@ -24,10 +24,15 @@ Checked against the Metals docs on 2026-10-20 (latest stable 1.6.9, released 202
 
 Metals imports the build and indexes it before diagnostics and symbol search work, so the first start in a project can take minutes (the plugin allows 120 seconds for startup). `statusBarProvider: "log-message"` makes Metals send its status to the log instead of the editor status bar. `isHttpEnabled` stays at its default (off).
 
-If Metals waits for you to accept a build import, no editor UI answers it. Two ways around that:
+Claude Code's LSP client does not implement `window/showMessageRequest`. Metals asks "New sbt workspace detected, would you like to import the build?" through that request, and the resulting error made Metals 1.6.9 abort its startup (`Unexpected error initializing server: ... Unhandled method window/showMessageRequest`, then shutdown). The plugin therefore sets `"settings": {"metals": {"autoImportBuilds": "all"}}` in `.lsp.json`; Claude Code pushes it with `workspace/didChangeConfiguration`, and Metals imports the build without asking (values `off`, `initial`, `all`; default `off`). Verified on 2026-10-21 with Metals 1.6.9, sbt 1.11.7 and Scala 3.3.6: the import ran (`sbt bloopInstall`), and a session received the type error (`Found: ("text" : String) Required: Int`) and the syntax errors from Bloop.
 
-- Import once from a terminal. For sbt this is `sbt -Dbloop.export-jar-classifiers=sources bloopInstall` (needs the sbt-bloop plugin; checked against scalameta.org/metals/docs/build-tools/sbt on 2026-10-20), then let Metals connect to the build server on its next start.
-- Set the `autoImportBuilds` user setting (values `off`, `initial`, `all`; default `off`) to `initial`. Metals reads user configuration only under the `"metals"` section, so the server entry in `.lsp.json` needs `"settings": {"metals": {"autoImportBuilds": "initial"}}`. Editing the installed plugin's `.lsp.json` is overwritten on the next plugin update, so make the change in a local copy loaded with `claude --plugin-dir <path>`.
+Notes from that test:
+
+- Diagnostics from the compiler arrive only after the import and first compile finish (seconds to minutes). Until then Metals reports parser-only `scalameta` diagnostics, which can be wrong for Scala 3 syntax.
+- Metals still sends two harmless prompts (start the HTTP server for the Doctor, and a "mis-configuration" warning). Claude Code answers them with an error; Metals carries on. They did not stop startup or diagnostics.
+- The import needs `sbt` to run from the environment Claude Code inherits. A `mise` shim without an active version fails there; check `sbt --version` in the project directory first. A second sbt on the same machine can hold `~/.ivy2/.sbt.ivy.lock` and stall the import (`waiting for lock`).
+- To import by hand instead (for example for a build that needs special flags), run `sbt -Dbloop.export-jar-classifiers=sources bloopInstall` once (needs the sbt-bloop plugin; checked against scalameta.org/metals/docs/build-tools/sbt on 2026-10-20) and Metals connects to Bloop on its next start.
+- To disable the auto import, use a local copy of the plugin loaded with `claude --plugin-dir <path>`; edits to the installed copy are overwritten on the next plugin update.
 
 ## Troubleshooting
 

@@ -1,6 +1,6 @@
 {
   "name": "scala",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Scala skill for Scala 3 and 2.13 (follows the project's syntax): ADTs, given/using and implicits, missing type class instances such as Ordering, Futures and effects, MUnit FunSuite and ScalaTest suites, scalafmt, 2.13 to 3 migration. Also configures the Metals language server for .scala, .sc and .sbt files.",
   "author": {
     "name": "AdminHead",
