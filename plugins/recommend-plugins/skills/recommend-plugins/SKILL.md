@@ -28,7 +28,7 @@ Sort the catalog into four kinds:
 
 - **Meta plugins** (`baseline`, the `*-meta` plugins): deps-only sets. Their dependency lists say what they install.
 - **Core bundles** (`*-core`, described as a core bundle): deps-only sets that metas list. Propose a bundle on its own only when no meta that lists it fits.
-- **Focused plugins**: everything else; each ships one skill, agent, hook config or MCP server.
+- **Focused plugins**: everything else; each ships one skill, agent, hook config, MCP server or LSP component. A few are listed in `MULTI_COMPONENT` in `scripts/plugins.py` and ship two (`scala` is a skill plus the Metals LSP, `orchestration` an agent plus a hook).
 - **Cross-marketplace dependencies**: entries with a `marketplace` other than `adminhead` (for example LSP plugins from `claude-code-lsps`). They install with the plugin that lists them; never propose them separately.
 
 ## 3. Inventory
@@ -37,7 +37,7 @@ Run `claude plugin list --json`. A plugin is effective here if it is installed a
 
 - Expand each effective meta and bundle through its dependency list. Skip every plugin already effective, directly or through a set.
 - Report disabled ones and suggest `claude plugin enable <id> --scope <scope>`.
-- Flag official LSP plugins (`pyright-lsp`, `gopls-lsp`, `typescript-lsp`, `jdtls-lsp` and similar from `claude-plugins-official`) that would duplicate an LSP a proposed meta installs. Don't remove them.
+- Flag official LSP plugins (`pyright-lsp`, `gopls-lsp`, `typescript-lsp` and similar from `claude-plugins-official`) that would duplicate an LSP a proposed meta installs. `jdtls-lsp` is `java-meta`'s own dependency, so it isn't a duplicate; when `java-meta` is proposed, flag `jdtls@claude-code-lsps` as the duplicate instead. Don't remove them.
 - Report an effective plugin whose dependency isn't installed at a scope that covers it, and offer to install the missing one.
 
 ## 4. Inspect the project
