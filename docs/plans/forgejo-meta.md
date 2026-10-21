@@ -75,7 +75,7 @@ Done when:
 
 - **Naming:** `forgejo-` prefix: forgejo-cli, forgejo-issues, forgejo-pr, forgejo-pr-comments, forgejo-ship, forgejo-shipper, forgejo-actions, forgejo-mcp; forge-neutral `renovate`.
 - **Tools:** fj first. forgejo-mcp tools fill gaps (Actions runs/logs, review comments, repo settings, branch protection, statuses as JSON, label IDs). Skills check for `mcp__plugin_forgejo-mcp_forgejo__*` tools and fall back to the web UI / pasted logs. No hard skill dependency on forgejo-mcp; the meta installs it.
-- **MCP auth:** stdio, `forgejo-mcp` binary on PATH (sentry-mcp-self-hosted pattern).
+- **MCP auth:** superseded in forgejo-mcp 0.2.0 (2026-10-21): the plugin is now an HTTP client of the server hosted at `https://<host>/mcp`, sending `Authorization: token ${user_config.forgejo_token}`. Original design: stdio, `forgejo-mcp` binary on PATH (sentry-mcp-self-hosted pattern).
   - `args`: `["--transport","stdio","--url","https://${user_config.forgejo_host}"]`
   - `env`: `FORGEJO_ACCESS_TOKEN=${user_config.forgejo_token}` (sensitive, required), `FORGEJO_USER_AGENT="forgejo-mcp (adminhead plugin)"`, and blank `GITEA_HOST`, `GITEA_ACCESS_TOKEN`, `FORGEJO_URL`, `FORGEJO_MCP_ALLOW_FILE_PATH_UPLOAD`, `FORGEJO_MCP_UPLOAD_ROOT`, `FORGEJO_DEBUG`. Token never in argv.
 - **Standalone:** (a) dependency closures of the two metas disjoint except `baseline` plugins, enforced by `check`; (b) each forge skill's description names its forge; (c) each forge skill starts with a forge gate (remote host: github.com or a `gh auth status --hostname` host = GitHub; `/api/forgejo/v1/version` answers, codeberg.org, or `.forgejo/` / `.gitea/` workflows = Forgejo); on the wrong forge it stops and names its counterpart. No GitHub plugin renamed.

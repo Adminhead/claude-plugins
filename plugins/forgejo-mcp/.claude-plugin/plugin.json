@@ -1,7 +1,7 @@
 {
   "name": "forgejo-mcp",
-  "version": "0.1.0",
-  "description": "Forgejo MCP server (forgejo-mcp, stdio) for one Codeberg or self-hosted Forgejo instance; prompts for the host and an access token kept in secure storage.",
+  "version": "0.2.0",
+  "description": "Connects to a forgejo-mcp server hosted at https://<host>/mcp on a self-hosted Forgejo instance, sending your access token as the Authorization header; prompts for the host and a token kept in secure storage.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
@@ -10,7 +10,7 @@
     "forgejo_host": {
       "type": "string",
       "title": "Forgejo host",
-      "description": "Hostname of your Codeberg or self-hosted Forgejo instance, without scheme or path, for example codeberg.org",
+      "description": "Hostname of your Forgejo instance that serves forgejo-mcp at /mcp, without scheme or path, for example git.example.com",
       "required": true
     },
     "forgejo_token": {
