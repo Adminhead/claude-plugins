@@ -608,13 +608,17 @@ function pathOf(w: string): string {
 
 // Commands that only take a path as a name: metadata readers, text printers, and git subcommands that do not read contents.
 const NAME_ONLY_GIT = new Set(['check-ignore', 'ls-files', 'log', 'status'])
-function namesOnly(v: Argv): boolean {
+function namesOnly(v: Argv, c: ShellCommand, all: readonly ShellCommand[]): boolean {
   const name = baseName(v[0])
-  if (name === 'echo' || name === 'printf') return true
+  if (name === 'echo' || name === 'printf') {
+    // A later stage that takes file names from stdin (`echo path | xargs cat`) reads the file.
+    return !all.some(d => d.pipeline !== null && d.nesting === c.nesting && d.pipeline.earlier.includes(c) && runsAny([d], ['xargs', 'parallel']))
+  }
   if (name === 'du') return !v.some(a => a !== null && a.startsWith('--files0-from'))
   if (name === 'file') return !hasFlag(v, 'f', ['--files-from'])
   if (METADATA.has(name)) return true
   const call = gitCall(v)
+  if (call?.sub === 'log' && hasFlag(['git', ...call.rest], 'pu', ['--patch'])) return false
   return call !== null && (NAME_ONLY_GIT.has(call.sub) || (call.sub === 'rm' && call.rest.includes('--cached')))
 }
 
@@ -636,7 +640,7 @@ const entersClaudeDir = (c: ShellCommand) => {
 // are skipped, their file operands count.
 const credentialsRead = (v: Argv, c: ShellCommand, all: readonly ShellCommand[]): boolean => {
   const name = baseName(v[0])
-  const exempt = namesOnly(v)
+  const exempt = namesOnly(v, c, all)
   if (c.redirects.some(r => r.op !== '<<' && r.op !== '<<<' && r.target !== null && credPath(r.target))) return true
   if (exempt) return false
   const words = viewText(c, v)

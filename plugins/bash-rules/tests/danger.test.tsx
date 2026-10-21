@@ -707,6 +707,13 @@ describe('credentials-read', () => {
       'du --files0-from=~/.claude/.credentials.json',
       'file -f ~/.claude/.credentials.json',
       'echo x > ~/.claude/.credentials.json',
+      'echo ~/.claude/.credentials.json | xargs jq .',
+      'echo ~/.claude/.credentials.json | xargs -I{} cp {} /tmp',
+      'printf %s ~/.claude/.credentials.json | xargs -0 cat',
+      "echo '~/.claude/.credentials.json' | xargs cat",
+      'git log -p -- .claude/.credentials.json',
+      'git log --follow -p -- .claude/.credentials.json',
+      'git log --patch -- .claude/.credentials.json',
     ]) {
       expect([c, rule(c)]).toEqual([c, 'credentials-read'])
     }
