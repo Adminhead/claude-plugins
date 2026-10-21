@@ -209,6 +209,31 @@ describe('3 no server, unsafe sockets', () => {
       symlinkSync(f.socket, link)
       const r = await client(plan(f, { socket: link }))
       expect(r.out).toMatchObject({ ok: true, reply: REPLY })
+      // The target's directory and the target itself get the same checks as a plain socket.
+      const tdir = join(f.dir, `codex-daemon-${process.getuid!()}`)
+      chmodSync(tdir, 0o777)
+      const wide = await client(plan(f, { socket: link }))
+      expect(wide.out.kind).toBe('socket-unsafe')
+      expect(wide.out.message).toMatch(/world-writable \(mode 777\)/)
+      chmodSync(tdir, 0o700)
+      expect(f.connections).toBe(0)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }, 20000)
+
+  test('a correctly named codex-daemon link whose target is a regular file is socket-unsafe', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cas-'))
+    try {
+      const link = join(dir, 'c.sock')
+      const tdir = join(dir, `codex-daemon-${process.getuid!()}`)
+      mkdirSync(tdir, { mode: 0o700 })
+      const target = join(tdir, createHash('sha256').update(link).digest('hex'))
+      writeFileSync(target, '')
+      symlinkSync(target, link)
+      const r = await client(plan({ socket: link } as any, { socket: link }))
+      expect(r.out.kind).toBe('socket-unsafe')
+      expect(r.out.message).toMatch(/not a socket/)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -308,6 +333,48 @@ describe('6-7 server requests', () => {
     expect(f.sent('turn/interrupt')).toHaveLength(0)
   }, 20000)
 
+  const foreignApproval = { threadId: 'thr-someone-else', turnId: 'x', itemId: 'i', startedAtMs: 1, command: 'rm -rf /' }
+
+  test("6 another thread's approval during stages 0-2 gets no answer, in a call and in --probe; a thread-less one gets -32601", async () => {
+    let f: FakeAppServer
+    const s: Scenario = {
+      threadStart: () => {
+        // Sent before the thread/start response, so the client cannot yet know its own thread.
+        void f.request('item/commandExecution/requestApproval', foreignApproval, 300)
+        return {}
+      },
+      // Sent before the first mcpServerStatus/list answer: the client knows its thread by then.
+      mcpPages: (_t, names) => {
+        void f.request('item/commandExecution/requestApproval', foreignApproval, 300)
+        void f.request('attestation/generate', {}, 300)
+        return [{ data: names.map(name => ({ name, runtimeStatus: 'disabled' })), nextCursor: null }]
+      },
+    }
+    f = fake(s)
+    const r = await client(plan(f))
+    expect(r.out).toMatchObject({ ok: true, reply: REPLY })
+    const p = await client({ cwd: REPO, socket: f.socket }, { probe: true })
+    expect(p.out.ok).toBe(true)
+    await Bun.sleep(350)
+    expect(f.frames.filter(x => x.dir === 'out' && x.msg.method === 'item/commandExecution/requestApproval').length).toBeGreaterThan(2)
+    expect(f.answersTo('item/commandExecution/requestApproval')).toHaveLength(0)
+    expect(f.answersTo('attestation/generate').map(a => a.msg.error?.code)).toEqual([-32601, -32601])
+  }, 20000)
+
+  test('6 an approval for our thread during stage 2 is cancelled and stops the call before the prompt is sent', async () => {
+    let f: FakeAppServer
+    f = fake({
+      mcpPages: (threadId, names) => {
+        void f.request('item/fileChange/requestApproval', { threadId, turnId: 'x', itemId: 'i', startedAtMs: 1 }, 300)
+        return [{ data: names.map(name => ({ name, runtimeStatus: 'disabled' })), nextCursor: null }]
+      },
+    })
+    const r = await client(plan(f))
+    expect(r.out.kind).toBe('sandbox')
+    expect(f.answersTo('item/fileChange/requestApproval').map(a => a.msg.result)).toEqual([{ decision: 'cancel' }])
+    noTurn(f)
+  }, 20000)
+
   test('6 a completed fileChange fails the call with sandbox', async () => {
     const f = fake({
       turn: t => {
@@ -405,34 +472,43 @@ describe('9 timeout', () => {
         await t.interrupted
       },
     })
-    const r = await client(plan(f, { timeoutSec: 2 }))
+    const r = await client(plan(f, { timeoutSec: 3 }))
     expect(r.out).toMatchObject({ ok: false, kind: 'timeout' })
-    expect(r.out.message).toBe('codex did not finish within 2s; consult interrupted the turn')
+    expect(r.out.message).toBe('codex did not finish within 3s; consult interrupted the turn')
     expect(f.sent('turn/interrupt')[0]!.msg.params).toEqual({ threadId: f.turns[0]!.threadId, turnId: f.turns[0]!.turnId })
     expect(f.sent('thread/unsubscribe')).toHaveLength(1)
-    expect(r.ms).toBeLessThan(2000 + 3000)
+    expect(r.ms).toBeLessThan(3000 + 3000)
     f.scenario.turn = undefined
     expect((await client(plan(f))).out).toMatchObject({ ok: true, reply: REPLY })
   }, 20000)
 
   test('an unconfirmed interrupt still exits within timeoutSec + 2 + 5 + 2 s', async () => {
     const f = fake({ confirmInterrupt: false, turn: t => t.respond() })
-    const r = await client(plan(f, { timeoutSec: 2 }))
+    const r = await client(plan(f, { timeoutSec: 3 }))
     expect(r.out.kind).toBe('timeout')
     expect(r.out.message).toMatch(/did not confirm the interrupt; if it stays busy, run systemctl --user restart codex-consult/)
     expect(f.sent('turn/interrupt')).toHaveLength(1)
-    expect(r.ms).toBeLessThan((2 + 2 + 5 + 2) * 1000 + 2000)
+    expect(r.ms).toBeLessThan((3 + 2 + 5 + 2) * 1000 + 2000)
   }, 30000)
 
   test('a start response that never arrives: wait 2 s, then say the turn may still start', async () => {
     const f = fake({ turn: () => {} })
-    const r = await client(plan(f, { timeoutSec: 2 }))
+    const r = await client(plan(f, { timeoutSec: 3 }))
     expect(r.out.kind).toBe('timeout')
     expect(r.out.message).toMatch(/may still start on the server/)
     expect(f.sent('turn/interrupt')).toHaveLength(0)
-    expect(r.ms).toBeGreaterThan(3900)
-    expect(r.ms).toBeLessThan(2000 + 2000 + 2000 + 2000)
+    expect(r.ms).toBeGreaterThan(4900)
+    expect(r.ms).toBeLessThan(3000 + 2000 + 2000 + 2000)
   }, 30000)
+
+  test('under 2 s left before stage 3: timeout with no review started, and no prompt sent', async () => {
+    const f = fake()
+    const r = await client(plan(f, { timeoutSec: 1 }))
+    expect(r.out.kind).toBe('timeout')
+    expect(r.out.message).toMatch(/no review was started/)
+    noTurn(f)
+    expect(f.sent('thread/unsubscribe')).toHaveLength(1)
+  }, 20000)
 })
 
 describe('10 concurrency', () => {
@@ -599,7 +675,8 @@ describe('14 notifications before the response', () => {
     const f = fake({ turn: early(true, { reviewThreadId: 'thr-detached' }) })
     const r = await client(diff(f))
     expect(r.out.kind).toBe('protocol')
-    expect(r.out.message).toMatch(/thr-detached/)
+    expect(r.out.message).toMatch(/detached thread thr-detached, not on our thread thr-/)
+    expect(f.sent('turn/interrupt').map(x => x.msg.params)).toEqual([{ threadId: 'thr-detached', turnId: f.turns[0]!.turnId }])
   }, 20000)
 })
 

@@ -10,7 +10,7 @@ import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, statSy
 import {
   answerServerRequest, checkAccount, checkDaemonLink, checkSocketPath, isSymlink, checkClientRequest, checkCwd, checkLockdown, checkProbeRequest, checkProjectLayers, checkProvider,
   checkReadOnly, checkServerLocked, checkSocketStat, checkVersion, CLOSE_MS, CONNECT_MS, INIT_MS, initializeParams, INTERRUPT_GRACE_SEC,
-  LOG_CHARS, Matcher, MAX_FRAME_BYTES, MAX_REQUEST_BYTES, mcpServerNames, newTurnState, noServerMessage, observedModel, projectLayers,
+  LOG_CHARS, Matcher, MAX_FRAME_BYTES, MAX_LINE_BYTES, MAX_REQUEST_BYTES, mcpServerNames, newTurnState, noServerMessage, observedModel, projectLayers,
   reduce, resolveSocket, reviewStartParams, SIGNAL_MESSAGE, snippet, socketDir, socketUnsafe, threadStartParams, timeoutMessage,
   TURN_ID_WAIT_MS, turnOutcome, turnStartParams, UNIT_NAME, untestedHint, utf8Bytes, fitLine, type ClientRequest, type ClientResult,
   type Fail, type Items, type Msg,
@@ -72,7 +72,7 @@ class Conn {
   private pending = new Map<number, Pending>()
   lost: Fail | undefined
   onNotification: (m: Msg) => void = () => {}
-  onRequest: (id: unknown, method: string, params: unknown) => void = (id) => this.replyError(id, -32601, 'not supported by consult')
+  onRequest: (id: unknown, method: string, params: unknown) => void = (id, method, params) => answerRequest(this, id, method, params)
 
   private constructor(private ws: WebSocket) {
     ws.onmessage = ev => this.receive(ev.data)
@@ -185,6 +185,23 @@ class Conn {
       this.ws.close()
     } catch {}
   }
+}
+
+// Server requests in every stage. Another thread's request gets no answer: before our thread exists every
+// thread-scoped request is another's. A thread-less or unknown one gets -32601. Ours get the answer table; a
+// failure is kept in `requestFailure` (stage 3 interrupts on it, earlier stages stop on it).
+const NO_THREAD = '\u0000no thread yet'
+let requestFailure: Fail | undefined
+const requestNotices: string[] = []
+function answerRequest(c: Conn, id: unknown, method: string, params: unknown) {
+  const a = answerServerRequest(method, params, threadId ?? NO_THREAD)
+  if (a === null) return log(`left ${snippet(method, 60)} for another thread`)
+  if ('error' in a) return c.replyError(id, a.error.code, a.error.message)
+  c.reply(id, a.result)
+  log(`answered ${snippet(method, 60)}`)
+  if (a.notice && requestNotices.length < 20) requestNotices.push(a.notice)
+  if (a.fail && !requestFailure) requestFailure = a.fail
+  poke()
 }
 
 // --- local checks -------------------------------------------------------------------------------------------
@@ -356,6 +373,7 @@ async function prepare(cwd: string, socketOption: string | undefined, o: { probe
   const hooks = await rpc('hooks/list', { cwds: [cwd] })
   const lockdown = checkLockdown(pages, hooks)
   if (lockdown) throw new Stop(lockdown)
+  if (requestFailure) throw new Stop(requestFailure)
 
   const notices: string[] = []
   const sources = Array.isArray(ts.instructionSources) ? ts.instructionSources.filter((s: unknown) => typeof s === 'string') : []
@@ -379,7 +397,10 @@ async function prepare(cwd: string, socketOption: string | undefined, o: { probe
 // --- stage 3: the turn --------------------------------------------------------------------------------------
 
 let turnId: string | undefined
+// The thread the turn runs on when review/start detached it from ours.
+let turnThread: string | undefined
 let turnDone = () => false
+const MIN_TURN_MS = 2000
 
 async function review(req: ClientRequest, r: Ready): Promise<ClientResult> {
   const state = newTurnState()
@@ -394,16 +415,9 @@ async function review(req: ClientRequest, r: Ready): Promise<ClientResult> {
   }
   onOurs = m => handle(r.matcher.push(m))
   turnDone = () => r.matcher.done
-  r.conn.onRequest = (id, method, params) => {
-    const a = answerServerRequest(method, params, r.threadId)
-    if (a === null) return log(`left ${snippet(method, 60)} for another thread`)
-    if ('error' in a) return r.conn.replyError(id, a.error.code, a.error.message)
-    r.conn.reply(id, a.result)
-    log(`answered ${snippet(method, 60)}`)
-    if (a.notice && r.notices.length < 20) r.notices.push(a.notice)
-    if (a.fail && !failure) failure = a.fail
-    poke()
-  }
+  if (requestFailure) throw new Stop(requestFailure)
+  // The prompt leaves only with time for the turn to start and be interrupted cleanly.
+  if (deadline - Date.now() < MIN_TURN_MS) stop('timeout', `codex took the whole deadline to get ready (under ${MIN_TURN_MS / 1000}s left of ${req.timeoutSec}s); no review was started`)
   // Notifications buffered since thread/start are in the matcher; it replays them at setTurn.
   const method = req.mode === 'plan' ? 'turn/start' : 'review/start'
   const params = req.mode === 'plan' ? turnStartParams(req, r.threadId) : reviewStartParams(req, r.threadId)
@@ -414,7 +428,11 @@ async function review(req: ClientRequest, r: Ready): Promise<ClientResult> {
       const id = resp?.turn?.id
       if (typeof id !== 'string' || id === '') startError = { kind: 'protocol', message: `${method} returned no turn id` }
       else {
-        if (req.mode === 'diff' && resp.reviewThreadId !== r.threadId) failure ??= { kind: 'protocol', message: `review/start answered on thread ${snippet(resp.reviewThreadId, 80)}, not ours; consult expects an inline review` }
+        if (req.mode === 'diff' && resp.reviewThreadId !== r.threadId) {
+          const other = typeof resp.reviewThreadId === 'string' && resp.reviewThreadId !== '' ? resp.reviewThreadId : undefined
+          if (other) turnThread = other
+          failure ??= { kind: 'protocol', message: `review/start ran the review on detached thread ${snippet(resp.reviewThreadId, 80)}, not on our thread ${r.threadId}; consult expects an inline review` }
+        }
         turnId = id
         handle(r.matcher.setTurn(id))
       }
@@ -425,9 +443,10 @@ async function review(req: ClientRequest, r: Ready): Promise<ClientResult> {
       poke()
     })
 
-  const finished = await waitFor(() => r.matcher.done || !!failure || !!startError || !!r.conn.lost, deadline - Date.now())
+  const finished = await waitFor(() => r.matcher.done || !!failure || !!requestFailure || !!startError || !!r.conn.lost, deadline - Date.now())
   const items: Items = state.items
   const fails = (f: Fail): ClientResult => ({ ok: false, kind: f.kind, message: f.message, log: logText(), items })
+  failure ??= requestFailure
 
   if (r.conn.lost) return fails(r.conn.lost)
   if (startError) return fails(startError)
@@ -448,7 +467,7 @@ async function review(req: ClientRequest, r: Ready): Promise<ClientResult> {
       provider: String(r.threadStart.modelProvider),
       version,
       durationMs: Date.now() - started,
-      notices: [...r.notices, ...state.notices].slice(0, 30),
+      notices: [...r.notices, ...requestNotices, ...state.notices].slice(0, 30),
       items,
     }
   }
@@ -456,11 +475,16 @@ async function review(req: ClientRequest, r: Ready): Promise<ClientResult> {
   return fails({ kind: 'timeout', message: timeoutMessage(req.timeoutSec, i) })
 }
 
-// Interrupts our turn and waits for its turn/completed. Never kills the server.
+// Interrupts our turn and waits for its turn/completed. Never kills the server. A turn on a detached review
+// thread is interrupted there; its completion is not ours to watch, so the interrupt's answer confirms it.
 async function interrupt(r: Ready): Promise<{ turnKnown: boolean; confirmed: boolean }> {
   if (turnId === undefined) await waitFor(() => turnId !== undefined || !!r.conn.lost, TURN_ID_WAIT_MS)
   if (turnId === undefined || r.conn.lost) return { turnKnown: turnId !== undefined, confirmed: false }
-  r.conn.call('turn/interrupt', { threadId: r.threadId, turnId }, INTERRUPT_GRACE_SEC * 1000).catch(() => {})
+  const sent = r.conn.call('turn/interrupt', { threadId: turnThread ?? r.threadId, turnId }, INTERRUPT_GRACE_SEC * 1000).then(
+    () => true,
+    () => false,
+  )
+  if (turnThread !== undefined && turnThread !== r.threadId) return { turnKnown: true, confirmed: await sent }
   const confirmed = await waitFor(() => r.matcher.done || !!r.conn.lost, INTERRUPT_GRACE_SEC * 1000)
   return { turnKnown: true, confirmed: confirmed && r.matcher.done }
 }
@@ -488,7 +512,7 @@ async function onSignal() {
   stopping = true
   const c = conn
   if (c && !c.lost && threadId !== undefined && turnId !== undefined && !turnDone()) {
-    await Promise.race([c.call('turn/interrupt', { threadId, turnId }, 2000).catch(() => {}), sleep(2000)])
+    await Promise.race([c.call('turn/interrupt', { threadId: turnThread ?? threadId, turnId }, 2000).catch(() => {}), sleep(2000)])
   }
   if (c && !c.lost && threadId !== undefined) c.call('thread/unsubscribe', { threadId }, 500).catch(() => {})
   c?.close()
@@ -513,7 +537,10 @@ async function main(): Promise<string> {
     const checked = checkProbeRequest(raw)
     if ('kind' in checked) throw new Stop(checked)
     const r = await prepare(checked.ok.cwd ?? process.cwd(), checked.ok.socket, { probe: true })
-    return JSON.stringify({
+    // Server-supplied values are bounded one by one; the asserts already pinned the ones that matter.
+    const ts = r.threadStart
+    const sb = ts.sandbox
+    const line = JSON.stringify({
       ok: true,
       socket: r.socket,
       version,
@@ -521,16 +548,19 @@ async function main(): Promise<string> {
       signedIn: r.account.signedIn,
       accountType: r.account.accountType,
       locked: true,
-      projectLayers: r.layers,
-      sandbox: r.threadStart.sandbox,
-      approvalPolicy: r.threadStart.approvalPolicy,
-      approvalsReviewer: r.threadStart.approvalsReviewer,
-      modelProvider: r.threadStart.modelProvider,
-      cwd: r.threadStart.cwd,
-      instructionSources: Array.isArray(r.threadStart.instructionSources) ? r.threadStart.instructionSources.slice(0, 20) : [],
+      projectLayers: r.layers.slice(0, 20).map(l => ({ folder: snippet(l.folder, 300), enabled: l.enabled, keys: l.keys.slice(0, 30).map(k => snippet(k, 60)) })),
+      sandbox: { type: snippet(sb.type, 40), networkAccess: sb.networkAccess === true },
+      approvalPolicy: snippet(ts.approvalPolicy, 40),
+      approvalsReviewer: snippet(ts.approvalsReviewer, 40),
+      modelProvider: snippet(ts.modelProvider, 40),
+      cwd: snippet(ts.cwd, 1024),
+      instructionSources: Array.isArray(ts.instructionSources) ? ts.instructionSources.slice(0, 20).map((s: unknown) => snippet(s, 300)) : [],
       mcp: r.mcp,
       hooks: r.hooks,
+      notices: requestNotices.slice(0, 10),
     })
+    if (utf8Bytes(line) > MAX_LINE_BYTES) stop('protocol', 'the probe result did not fit the consult output limit')
+    return line
   }
   const checked = checkClientRequest(raw)
   if ('kind' in checked) throw new Stop(checked)

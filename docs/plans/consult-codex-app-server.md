@@ -16,9 +16,10 @@ Checked against:
 Harness-toolbox ports are out of scope.
 
 ## Status
-- Done: S1 (bb1f80e), S2 (the `feat(consult): add codex app-server client with fake-server spec` commit).
+- Done: S1 (bb1f80e), S2 (90defcc), S3 (780b1c2), S4 (1815f12), and the review fixes (the `fix(consult): leave foreign server requests unanswered in every stage, tighten client edges` commit).
 - In progress: none.
-- Left: S3, S4, S5.
+- Left: S5.
+- S3 stdout cut size: not measurable in the mod test kit, which cannot run real processes (`process.run` has no implementation beneath the test's hooks) and cannot set plugin options. L2(h) covers the cut; the client's 48,000-byte line cap and `parseClientResult`'s cut-line recognition stand until then. The `codexSocket` option is covered by the pure `socketOption` and `codexRequest` tests only.
 - S2 step 1 (2026-10-21, codex-cli 0.162.1, throwaway foreground servers with the unit's flags on short `/tmp` sockets, no turn; all stopped and removed):
   1. `thread/start.config.{model, review_model, model_reasoning_effort}` is accepted (scratch `CODEX_HOME`, no auth). The response echoes `model: "probe-model"`, `reasoningEffort: "low"`; `review_model` raises no error but is not observable without a turn, so `observedModel` stays.
   2. `config.tools` is `null` under the unit's flags, with the real `~/.codex` (`config/read {}` only) and with a scratch home. `checkServerLocked` keeps "absent or null".

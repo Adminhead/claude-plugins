@@ -204,7 +204,9 @@ describe('consult tool', () => {
   async function start($: any, on: any, run: Run, decision: string | Error = 'allow') {
     calls.length = 0
     const clock = mock.clock(on, { now: 1_000_000 })
-    on('tool.check', async () => {
+    // The verdict for consult itself; $.ui.ask's own AskUserQuestion call is checked through the same event.
+    on('tool.check', async (_$: any, e: any) => {
+      if (e?.tool === 'AskUserQuestion') return { decision: 'allow' }
       if (decision instanceof Error) throw decision
       return { decision }
     })
