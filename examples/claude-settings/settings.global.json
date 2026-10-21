@@ -4,7 +4,7 @@
   "advisorModel": "fable",
   "effortLevel": "medium",
   "autoCompactEnabled": true,
-  "autoCompactWindow": 500000,
+  "autoCompactWindow": 750000,
   "skillListingBudgetFraction": 0.03,
   "bashOutputMaxChars": 10000,
   "promptCacheTtl": "1h",

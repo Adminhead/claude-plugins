@@ -5,7 +5,7 @@
 ## Plugins
 
 - `baseline` (user scope) and `*-meta` (project scope) are meta plugins: only a `plugin.json` whose `dependencies` list focused plugins or `*-core` bundles. A core bundle (marketplace category `bundle`, named `*-core` by convention, such as `programming-core`; `ef-core` is an ordinary plugin) has the same shape, lists only focused plugins, and is shared by several metas. Every other plugin ships exactly one component; the exceptions are listed in `MULTI_COMPONENT` in `scripts/plugins.py` (orchestration's agent plus the SessionStart hook that links its launcher, and scala's skill plus its Metals `.lsp.json`).
-- Subagents do not set `autoCompactWindow`; they inherit the session's window (the settings example sets 500000). The field can only lower that window, so agent files must not carry it.
+- Subagents do not set `autoCompactWindow`; they inherit the session's window (the settings example sets 750000). The field can only lower that window, so agent files must not carry it.
 - Scaffold with `scripts/plugins.py new`, and run `python3 scripts/plugins.py check` after any plugin change. Never hand-edit the README catalog; run `scripts/plugins.py catalog`.
 - The Bash parser (`shell/walk.ts`, `vendor/unbash.*`) is vendored into several guard plugins, and the usage log writer (`log/usagelog.ts`) into `bash-rules` and `usage-log`. Edit only `scripts/shared/`, then run `scripts/plugins.py sync-shared`; `check` fails on a drifted copy.
 
