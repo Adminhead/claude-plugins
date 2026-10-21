@@ -10,7 +10,8 @@ Paths: skills/vet/SKILL.md
 Modifications: steps 2, 3 and 5, the verdict table, step 7 and the Rules are kept
 verbatim, except that the dedupe and G1 searches use `command grep -rin` (Claude's
 grep honors .gitignore), step 2 names this repository's search paths, and the
-`/outside` reference is dropped. Steps 1, 4 and 6 are adapted: links come from the
+`/outside` reference is dropped. One sentence after the verdict table, mapping
+Adopted vs Stole the idea, is added. Steps 1, 4 and 6 are adapted: links come from the
 user or the research inbox, helper agents are told to compare against this
 marketplace, and the ledger is one line per repo in the research ledger of
 docs/README.md with a hand-off to plugin-vetter for anything adopted. The

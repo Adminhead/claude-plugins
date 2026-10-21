@@ -141,7 +141,7 @@ is what stops a re-evaluation. One line per repo, with the verdict on the line (
 headings, so it reads on a phone):
 
 ```text
-- **<Verdict>** · [owner/repo](url) · YYYY-MM-DD · what it is; why, in a clause. → [detail](research/<file>.md#anchor)
+- **<Verdict>**[ (recommendation)] · [owner/repo](url) · YYYY-MM-DD · what it is; why, in a clause. → [detail](research/<file>.md#anchor)
 ```
 
 - Sort order: Adopted, Watching, Stole the idea, Rejected, Not evaluated; oldest first
