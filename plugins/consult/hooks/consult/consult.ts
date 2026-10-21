@@ -1,6 +1,6 @@
 // The consult tool's pure logic: input validation, prompts, argv and output clipping. No `$` here, so
 // `claude plugin test` can exercise it directly; register.tsx runs what this builds.
-import { CODEX_EFFORTS, MAX_REPLY, MAX_TIMEOUT_SEC, MODEL } from './appserver'
+import { checkSocketPath, CODEX_EFFORTS, MAX_REPLY, MAX_TIMEOUT_SEC, MODEL, type ClientOk, type ClientRequest } from './appserver'
 
 export { MAX_REPLY, MAX_TIMEOUT_SEC }
 
@@ -24,30 +24,31 @@ const MAX_PATH = 4096
 export const TOOL = {
   name: 'consult',
   description:
-    'Ask codex (OpenAI) or agy (Google Gemini) for a read-only second opinion on a diff or a plan. Sends code or plan text to that vendor. One call is one focused pass and must finish within timeoutSec (default 480, max 540); split larger reviews into several calls. The second-opinion skill, if installed, covers choosing model, effort and pass size.',
+    'Ask codex (OpenAI, the default) or agy (Google Gemini) for a read-only second opinion on a diff or a plan. Sends code or plan text to that vendor. codex runs on the user\'s running, locked codex-consult app server (consult README, "Run the codex app server"); for codex, model and effort are optional and default to that server\'s config. One call is one focused pass and must finish within timeoutSec (default 480, max 540); split larger reviews into several calls. The second-opinion skill, if installed, covers choosing model, effort and pass size.',
   inputSchema: {
     type: 'object',
     properties: {
       // Not `tool`: that key carries the tool name in a tool.call event and cannot be overridden.
-      cli: { type: 'string', enum: ['codex', 'agy'], description: 'The reviewer CLI.' },
+      cli: { type: 'string', enum: ['codex', 'agy'], description: 'The reviewer. Default codex.' },
       mode: { type: 'string', enum: ['diff', 'plan'], description: 'diff reviews changes in a git repo; plan critiques the plan given in notes.' },
-      model: { type: 'string', description: 'codex: e.g. gpt-6-astra (list: codex debug models). agy: a gemini-* model, e.g. gemini-4-argon-high (list: agy models).' },
-      effort: { type: 'string', enum: CODEX_EFFORTS, description: 'low|medium|high|xhigh|max for both CLIs.' },
+      model: { type: 'string', description: 'codex (optional; default: the server config): e.g. gpt-6-astra (list: codex debug models). agy (required): a gemini-* model, e.g. gemini-4-argon-high (list: agy models).' },
+      effort: { type: 'string', enum: CODEX_EFFORTS, description: 'low|medium|high|xhigh|max. Optional for codex (default: the server config), required for agy.' },
       notes: { type: 'string', maxLength: MAX_NOTES, description: 'Plan mode: the plan and what to scrutinize (required). Diff mode: optional focus, such as the dimension or file group for this pass.' },
       repo: { type: 'string', description: 'Directory to review. Default: the session directory.' },
       base: { type: 'string', description: 'Diff mode: review changes relative to this ref (git diff base...HEAD). Excludes commit.' },
       commit: { type: 'string', description: 'Diff mode: review the changes of this commit. Excludes base.' },
       timeoutSec: { type: 'integer', minimum: 1, maximum: MAX_TIMEOUT_SEC, description: `Default ${DEFAULT_TIMEOUT_SEC}.` },
     },
-    required: ['cli', 'mode', 'model', 'effort'],
+    required: ['mode'],
   },
 }
 
 export type Consult = {
   cli: 'codex' | 'agy'
   mode: 'diff' | 'plan'
-  model: string
-  effort: string
+  // Always set for agy; optional for codex, where the server config decides.
+  model?: string
+  effort?: string
   notes: string
   repo?: string
   base?: string
@@ -63,12 +64,17 @@ function optional(v: unknown, name: string, max: number): string | undefined | {
 }
 
 export function validate(input: Record<string, any>): Checked {
-  const { cli, mode, model, effort } = input
+  const { mode, model, effort } = input
+  const cli = input.cli ?? 'codex'
   if (cli !== 'codex' && cli !== 'agy') return { error: 'cli must be codex or agy' }
   if (mode !== 'diff' && mode !== 'plan') return { error: 'mode must be diff or plan' }
-  if (typeof model !== 'string' || !MODEL.test(model.slice(0, 101))) return { error: 'model is required and must look like a model id (see the matrix in the second-opinion skill)' }
-  if (typeof effort !== 'string' || effort === '') return { error: 'effort is required (see the matrix in the second-opinion skill)' }
-  if (cli === 'codex' && !CODEX_EFFORTS.includes(effort)) return { error: 'codex effort must be low|medium|high|xhigh|max (ultra is not allowed)' }
+  if (cli === 'agy' || model !== undefined) {
+    if (typeof model !== 'string' || !MODEL.test(model.slice(0, 101))) {
+      return { error: `model ${cli === 'agy' ? 'is required for agy and ' : ''}must look like a model id (see the matrix in the second-opinion skill)` }
+    }
+  }
+  if (cli === 'agy' && (typeof effort !== 'string' || effort === '')) return { error: 'effort is required for agy (see the matrix in the second-opinion skill)' }
+  if (cli === 'codex' && effort !== undefined && !CODEX_EFFORTS.includes(effort)) return { error: 'codex effort must be low|medium|high|xhigh|max (ultra is not allowed)' }
   if (cli === 'agy') {
     if (!AGY_EFFORTS.includes(effort)) return { error: 'agy effort must be low|medium|high|xhigh|max' }
     if (!model.startsWith('gemini-')) return { error: 'agy model must be a gemini-* model (a different family from Claude)' }
@@ -89,7 +95,18 @@ export function validate(input: Record<string, any>): Checked {
   }
   const t = input.timeoutSec ?? DEFAULT_TIMEOUT_SEC
   if (typeof t !== 'number' || !Number.isInteger(t) || t < 1 || t > MAX_TIMEOUT_SEC) return { error: `timeoutSec must be an integer from 1 to ${MAX_TIMEOUT_SEC}` }
-  return { ok: { cli, mode, model, effort, notes, repo: repo as string | undefined, base: base as string | undefined, commit: commit as string | undefined, timeoutSec: t } }
+  const ok: Consult = { cli, mode, notes, repo: repo as string | undefined, base: base as string | undefined, commit: commit as string | undefined, timeoutSec: t }
+  if (model !== undefined) ok.model = model
+  if (effort !== undefined) ok.effort = effort
+  return { ok }
+}
+
+// The consult `codexSocket` option: '' (unset) or a path checkSocketPath accepts. The client resolves the default
+// ($XDG_RUNTIME_DIR/codex-consult.sock) and checks the socket itself, following codex's own codex-daemon symlink.
+export function socketOption(value: unknown): { socket?: string } | { error: string } {
+  if (value === undefined || value === '') return {}
+  const bad = checkSocketPath(value)
+  return bad ? { error: `the consult codexSocket option is invalid: ${bad.message} (set it in /config)` } : { socket: value as string }
 }
 
 // Hardened git: the repo's config cannot run a pager, fsmonitor, external diff, textconv or signature
@@ -160,15 +177,21 @@ export function preamble(c: Consult, repo: string, canRead = true): string {
 
 const withNotes = (p: string, notes: string) => (notes === '' ? p : `${p}\n\n--- Notes from the requester ---\n${notes}`)
 
-// `timeout` kills the CLI itself; a SIGTERM that is ignored becomes SIGKILL after the grace.
+// agy only: `timeout` kills the CLI itself; a SIGTERM that is ignored becomes SIGKILL after the grace.
 const guarded = (c: Consult, argv: string[]) => ['timeout', '-k', String(KILL_GRACE_SEC), String(c.timeoutSec), ...argv]
 
-// The prompt goes on stdin. Diff mode runs in the repo; plan mode points codex at it.
-export function codexCall(c: Consult, repo: string): { argv: string[]; cwd?: string; stdin: string } {
-  const common = ['-m', c.model, '-c', `model_reasoning_effort="${c.effort}"`, '--ephemeral']
-  const stdin = withNotes(preamble(c, repo), c.notes)
-  if (c.mode === 'diff') return { argv: guarded(c, ['codex', 'exec', 'review', '-', '-c', 'sandbox_mode="read-only"', ...common]), cwd: repo, stdin }
-  return { argv: guarded(c, ['codex', 'exec', '-', '-s', 'read-only', '--skip-git-repo-check', '-C', repo, ...common]), stdin }
+// Over the client's own deadline: 2 s for a late start response, the 5 s interrupt grace, 2 s to close, 10 s slack.
+export const CLIENT_SLACK_SEC = 2 + 5 + 2 + 10
+export const CLIENT_SCRIPT = 'scripts/codex-app-server.ts'
+export const clientArgv = (root: string) => ['bun', '--no-env-file', '--config=/dev/null', `${root}/${CLIENT_SCRIPT}`]
+
+// The codex client's stdin: the prompt (preamble plus notes) for the repo, and only the options the caller set.
+export function codexRequest(c: Consult, repo: string, socket?: string): ClientRequest {
+  const req: ClientRequest = { mode: c.mode, cwd: repo, prompt: withNotes(preamble(c, repo), c.notes), timeoutSec: c.timeoutSec }
+  if (c.model !== undefined) req.model = c.model
+  if (c.effort !== undefined) req.effort = c.effort
+  if (socket !== undefined) req.socket = socket
+  return req
 }
 
 // agy has no read-only mode and ignores stdin in print mode. It runs in an empty workspace whose
@@ -195,8 +218,10 @@ export function clip(text: string, max: number, what: string): string {
   return text.length <= max ? text : `${text.slice(0, max)}\n[${what} truncated at ${max} characters]`
 }
 
-export function header(c: Consult, repo: string): string {
-  return `second-opinion: ${c.cli} ${c.model}/${c.effort} mode=${c.mode} repo=${repo}`
+// `resolved` is the codex client's result: the model and effort it reports, labelled with where they came from.
+export function header(c: Consult, repo: string, resolved?: Pick<ClientOk, 'model' | 'effort' | 'modelSource'>): string {
+  const model = resolved ? `${resolved.model ?? 'default'}/${resolved.effort ?? 'default'} (${resolved.modelSource})` : `${c.model}/${c.effort}`
+  return `second-opinion: ${c.cli} ${model} mode=${c.mode} repo=${repo}`
 }
 
 export function tail(...logs: string[]): string {

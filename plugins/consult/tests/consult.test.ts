@@ -1,5 +1,9 @@
-import { describe, expect, test } from 'claude-code/testing'
-import { agyCall, agyHooksJson, agyInputText, blockedFiles, clip, codexCall, diffArgv, failure, fileListArgvs, MAX_NOTES, preamble, tail, validate, type Consult } from '../hooks/consult/consult'
+import { describe, expect, mock, test } from 'claude-code/testing'
+import { clientErrorText, fitLine, KINDS, type ClientResult } from '../hooks/consult/appserver'
+import {
+  agyCall, agyHooksJson, agyInputText, blockedFiles, clientArgv, CLIENT_SLACK_SEC, clip, codexRequest, diffArgv, failure, fileListArgvs, header,
+  MAX_NOTES, preamble, socketOption, tail, validate, type Consult,
+} from '../hooks/consult/consult'
 
 const REPO = '/home/u/repo'
 const ok = (over: Record<string, unknown> = {}): Consult => {
@@ -11,26 +15,35 @@ const err = (over: Record<string, unknown>) => {
   const r = validate({ cli: 'codex', mode: 'diff', model: 'gpt-6-sol', effort: 'high', ...over })
   return 'error' in r ? r.error : null
 }
+const AGY = { cli: 'agy', model: 'gemini-4-argon-high', effort: 'high' }
 
 describe('validate', () => {
   test('a minimal diff call gets the default timeout', () => {
     expect(ok()).toMatchObject({ cli: 'codex', mode: 'diff', notes: '', timeoutSec: 480 })
   })
 
-  test('missing or wrong tool, mode, model and effort are refused', () => {
+  test('cli defaults to codex, where model and effort are optional', () => {
+    const r = validate({ mode: 'diff' })
+    expect(r).toEqual({ ok: { cli: 'codex', mode: 'diff', notes: '', repo: undefined, base: undefined, commit: undefined, timeoutSec: 480 } })
+    expect(err({ model: undefined, effort: undefined })).toBeNull()
+    expect(err({ cli: 'codex', model: 'gpt-6-sol', effort: undefined })).toBeNull()
+  })
+
+  test('wrong tool, mode, model and effort are refused; agy still needs model and effort', () => {
     expect(err({ cli: 'gpt' })).toMatch(/cli must be/)
     expect(err({ mode: 'other' })).toMatch(/mode must be/)
-    expect(err({ model: undefined })).toMatch(/model is required/)
-    expect(err({ model: '--oops' })).toMatch(/model is required/)
-    expect(err({ effort: undefined })).toMatch(/effort is required/)
+    expect(err({ model: '--oops' })).toMatch(/model must look like a model id/)
+    expect(err({ model: 5 })).toMatch(/model must look like/)
+    expect(err({ ...AGY, model: undefined })).toMatch(/model is required for agy/)
+    expect(err({ ...AGY, effort: undefined })).toMatch(/effort is required for agy/)
   })
 
   test('codex refuses ultra; agy refuses ultra and non-gemini models', () => {
     expect(err({ effort: 'ultra' })).toMatch(/ultra is not allowed/)
-    expect(err({ cli: 'agy', model: 'gemini-4-argon-high', effort: 'ultra' })).toMatch(/agy effort/)
-    expect(err({ cli: 'agy', model: 'gemini-4-argon-high', effort: 'xhigh' })).toBeNull()
-    expect(err({ cli: 'agy', model: 'claude-sonnet-4-6', effort: 'high' })).toMatch(/gemini-\*/)
-    expect(err({ cli: 'agy', model: 'gemini-4-argon-high', effort: 'max' })).toBeNull()
+    expect(err({ ...AGY, effort: 'ultra' })).toMatch(/agy effort/)
+    expect(err({ ...AGY, effort: 'xhigh' })).toBeNull()
+    expect(err({ ...AGY, model: 'claude-sonnet-4-6' })).toMatch(/gemini-\*/)
+    expect(err({ ...AGY, effort: 'max' })).toBeNull()
     expect(err({ effort: 'xhigh' })).toBeNull()
   })
 
@@ -67,12 +80,19 @@ describe('validate', () => {
     expect(err({ repo: '' })).toMatch(/repo must be/)
     expect(err({ repo: 3 })).toMatch(/repo must be/)
   })
+
+  test('the codexSocket option is unset, or a path checkSocketPath accepts', () => {
+    expect(socketOption(undefined)).toEqual({})
+    expect(socketOption('')).toEqual({})
+    expect(socketOption('/run/user/1000/codex-consult.sock')).toEqual({ socket: '/run/user/1000/codex-consult.sock' })
+    for (const bad of ['/tmp/a b.sock', '/tmp/x?y.sock', '/tmp/a#b.sock', 'rel.sock', '/a/../b.sock', 7]) expect((socketOption(bad) as any).error).toMatch(/codexSocket option is invalid/)
+  })
 })
 
 describe('blockedFiles', () => {
   test('secret-like names are blocked, examples and ordinary files are not', () => {
-    const names = ['a.py', '.env', 'cfg/.env.local', 'cl\u00e9.pem', 'd\u00e9/.env', 'we"ird.pem', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt', '.env.example', 'x/.env.sample']
-    expect(blockedFiles(names.join('\0'))).toEqual(['.env', 'cfg/.env.local', 'cl\u00e9.pem', 'd\u00e9/.env', 'we"ird.pem', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt'])
+    const names = ['a.py', '.env', 'cfg/.env.local', 'clé.pem', 'dé/.env', 'we"ird.pem', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt', '.env.example', 'x/.env.sample']
+    expect(blockedFiles(names.join('\0'))).toEqual(['.env', 'cfg/.env.local', 'clé.pem', 'dé/.env', 'we"ird.pem', 'server.pem', 'id_rsa', 'keys/id_ed25519.pub', 'db/credentials.json', 'my_secret.txt'])
   })
 
   test('a path too long to scan is blocked unread', () => {
@@ -81,27 +101,26 @@ describe('blockedFiles', () => {
 })
 
 describe('argv building', () => {
-  test('codex diff mode runs in the repo, read-only, prompt on stdin, under timeout', () => {
-    const c = ok({ notes: 'Focus: auth', timeoutSec: 100 })
-    const call = codexCall(c, REPO)
-    expect(call.argv.slice(0, 5)).toEqual(['timeout', '-k', '5', '100', 'codex'])
-    expect(call.argv).toEqual(expect.arrayContaining(['exec', 'review', '-', 'sandbox_mode="read-only"', '-m', 'gpt-6-sol', 'model_reasoning_effort="high"', '--ephemeral']))
-    expect(call.cwd).toBe(REPO)
-    expect(call.stdin).toContain('uncommitted changes')
-    expect(call.stdin).toMatch(/--- Notes from the requester ---\nFocus: auth$/)
+  test('the codex request carries the diff prompt with the notes, for the repo', () => {
+    const req = codexRequest(ok({ notes: 'Focus: auth', timeoutSec: 100 }), REPO)
+    expect(req).toMatchObject({ mode: 'diff', cwd: REPO, model: 'gpt-6-sol', effort: 'high', timeoutSec: 100 })
+    expect(req.prompt).toContain('uncommitted changes')
+    expect(req.prompt).toMatch(/--- Notes from the requester ---\nFocus: auth$/)
   })
 
-  test('codex plan mode reads stdin, read-only, with the repo as -C', () => {
-    const call = codexCall(ok({ mode: 'plan', notes: 'plan text' }), REPO)
-    expect(call.argv).toEqual(expect.arrayContaining(['exec', '-', '-s', 'read-only', '--skip-git-repo-check', '-C', REPO]))
-    expect(call.argv).not.toContain('review')
-    expect(call.cwd).toBeUndefined()
-    expect(call.stdin).toContain('adversarial reviewer')
-    expect(call.stdin).toContain('plan text')
+  test('the codex request leaves out model, effort and socket unless given', () => {
+    const req = codexRequest(ok({ model: undefined, effort: undefined }), REPO)
+    expect(Object.keys(req).sort()).toEqual(['cwd', 'mode', 'prompt', 'timeoutSec'])
+    expect(codexRequest(ok(), REPO, '/tmp/s.sock').socket).toBe('/tmp/s.sock')
+  })
+
+  test('the codex client argv runs bun without env file or config', () => {
+    expect(clientArgv('/p')).toEqual(['bun', '--no-env-file', '--config=/dev/null', '/p/scripts/codex-app-server.ts'])
+    expect(CLIENT_SLACK_SEC).toBe(19)
   })
 
   test('agy runs in the workspace without the repo, under timeout', () => {
-    const c = ok({ cli: 'agy', model: 'gemini-4-argon-high', effort: 'high', timeoutSec: 60 })
+    const c = ok({ ...AGY, timeoutSec: 60 })
     const call = agyCall(c, REPO, '/tmp/ws')
     expect(call.cwd).toBe('/tmp/ws')
     expect(call.argv.slice(0, 5)).toEqual(['timeout', '-k', '5', '60', 'agy'])
@@ -111,8 +130,10 @@ describe('argv building', () => {
 
   test('agy plan prompts do not offer repo files it cannot see; codex plan prompts do', () => {
     const plan = { mode: 'plan', notes: 'p' }
-    expect(agyCall(ok({ cli: 'agy', model: 'gemini-4-argon-high', ...plan }), REPO, '/tmp/ws').argv.at(-1)).not.toContain('may read files')
-    expect(codexCall(ok(plan), REPO).stdin).toContain(`You may read files in ${REPO}`)
+    expect(agyCall(ok({ ...AGY, ...plan }), REPO, '/tmp/ws').argv.at(-1)).not.toContain('may read files')
+    const req = codexRequest(ok(plan), REPO)
+    expect(req.prompt).toContain(`You may read files in ${REPO}`)
+    expect(req.prompt).toContain('adversarial reviewer')
   })
 
   test('agy hook config points at the gate and matches every tool', () => {
@@ -121,7 +142,7 @@ describe('argv building', () => {
   })
 
   test('agy input holds the notes and the diff', () => {
-    const text = agyInputText(ok({ cli: 'agy', model: 'gemini-4-argon-high', notes: 'focus' }), '+x = 2')
+    const text = agyInputText(ok({ ...AGY, notes: 'focus' }), '+x = 2')
     expect(text).toContain('focus')
     expect(text).toContain('--- Diff under review ---\n+x = 2')
     expect(agyInputText(ok({ mode: 'plan', notes: 'p' }), '')).not.toContain('Diff under review')
@@ -156,19 +177,33 @@ describe('output', () => {
     expect(tail('y'.repeat(10_000)).length).toBe(4000)
   })
 
-  test('a timeout and a failure say so, with the log tail', () => {
-    const c = ok({ timeoutSec: 60 })
+  test('an agy timeout and failure say so, with the log tail', () => {
+    const c = ok({ ...AGY, timeoutSec: 60 })
     expect(failure(c, 124, '', 'stuck')).toMatch(/timed out.*60s.*Split.*\nstuck$/s)
     expect(failure(c, 137, '', '')).toMatch(/timed out/)
     expect(failure(c, 2, '', 'bad flag')).toMatch(/exited 2\.\nbad flag$/)
     expect(failure(c, 0, '', '')).toMatch(/empty reply/)
   })
+
+  test('the header labels where the codex model came from', () => {
+    expect(header(ok(), REPO, { model: 'gpt-6-sol', effort: 'high', modelSource: 'observed' })).toBe(`second-opinion: codex gpt-6-sol/high (observed) mode=diff repo=${REPO}`)
+    expect(header(ok({ model: undefined, effort: undefined }), REPO, { model: null, effort: null, modelSource: 'config' })).toBe(`second-opinion: codex default/default (config) mode=diff repo=${REPO}`)
+    expect(header(ok(AGY), REPO)).toBe(`second-opinion: agy gemini-4-argon-high/high mode=diff repo=${REPO}`)
+  })
 })
+
+const ITEMS = { commandExecution: { completed: 1, failed: 0, declined: 0 }, fileChange: { completed: 0, failed: 0, declined: 0 } }
+const clientOk = (over: Record<string, unknown> = {}): ClientResult => ({
+  ok: true, reply: 'No significant findings.\n', model: 'gpt-6-sol', effort: 'high', modelSource: 'requested', provider: 'openai', version: '0.162.1', durationMs: 9, notices: [], items: ITEMS, ...over,
+} as ClientResult)
+const line = (r: ClientResult) => fitLine(r) + '\n'
 
 describe('consult tool', () => {
   const calls: any[] = []
-  async function start($: any, on: any, run: (argv: string[], e: any) => { exitCode: number; stdout?: string; stderr?: string }, decision: string | Error = 'allow') {
+  type Run = (argv: string[], e: any) => { exitCode: number; stdout?: string; stderr?: string } | Promise<{ exitCode: number; stdout?: string; stderr?: string }>
+  async function start($: any, on: any, run: Run, decision: string | Error = 'allow') {
     calls.length = 0
+    const clock = mock.clock(on, { now: 1_000_000 })
     on('tool.check', async () => {
       if (decision instanceof Error) throw decision
       return { decision }
@@ -177,26 +212,103 @@ describe('consult tool', () => {
     on('session.start', async () => ({ cwd: REPO }))
     on('process.run', async (_$: any, e: any) => {
       calls.push(e)
-      const r = run(e.argv, e)
+      const r = await run(e.argv, e)
       return { value: { stdout: '', stderr: '', ...r } }
     })
     await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    return clock
   }
   const base = { tool: 'mcp__consult__consult', cli: 'codex', model: 'gpt-6-sol', effort: 'high', mode: 'diff' }
+  const isClient = (argv: string[]) => argv[0] === 'bun'
   const happy = (argv: string[]) => {
     if (argv[0] === 'sh') return { exitCode: 0, stdout: REPO + '\n' + REPO + '\n' }
     if (argv.includes('--name-only') || argv.includes('ls-files')) return { exitCode: 0, stdout: 'a.py\0' }
+    if (isClient(argv)) return { exitCode: 0, stdout: line(clientOk()) }
     return { exitCode: 0, stdout: 'No significant findings.\n' }
   }
+  const withClient = (r: { exitCode: number; stdout?: string; stderr?: string } | ((e: any) => any)) => (argv: string[], e: any) => (isClient(argv) ? (typeof r === 'function' ? r(e) : r) : happy(argv))
 
-  test('a diff call returns the header and the reply, and runs codex once', async ($, on) => {
+  test('a diff call returns the header and the reply, and runs the codex client once', async ($, on) => {
     await start($, on, happy)
     const out: any = await $.tool.call({ ...base, notes: 'focus' })
-    expect(out.result).toMatch(/^second-opinion: codex gpt-6-sol\/high mode=diff repo=\/home\/u\/repo\nNo significant findings\.$/)
-    const codex = calls.filter(c => c.argv.includes('codex'))
-    expect(codex).toHaveLength(1)
-    expect(codex[0].init.stdin).toContain('focus')
-    expect(codex[0].init.timeoutMs).toBe((480 + 5 + 10) * 1000)
+    expect(out.result).toMatch(/^second-opinion: codex gpt-6-sol\/high \(requested\) mode=diff repo=\/home\/u\/repo\nNo significant findings\.$/)
+    const client = calls.filter(c => isClient(c.argv))
+    expect(client).toHaveLength(1)
+    expect(JSON.parse(client[0].init.stdin)).toMatchObject({ mode: 'diff', cwd: REPO, model: 'gpt-6-sol', effort: 'high', timeoutSec: 480 })
+    expect(JSON.parse(client[0].init.stdin).prompt).toContain('focus')
+    expect(client[0].init.timeoutMs).toBe((480 + 2 + 5 + 2 + 10) * 1000)
+  })
+
+  test('without cli the client runs once with the exact argv, cwd = plugin root, and no model, effort or socket', async ($, on) => {
+    await start($, on, happy)
+    const out: any = await $.tool.call({ tool: 'mcp__consult__consult', mode: 'plan', notes: 'Plan: add 1+1.', timeoutSec: 60 })
+    expect(out.result).toMatch(/^second-opinion: codex gpt-6-sol\/high \(requested\) mode=plan/)
+    const client = calls.filter(c => isClient(c.argv))
+    expect(client).toHaveLength(1)
+    const root = client[0].init.cwd
+    expect(root).toMatch(/^\//)
+    expect(root).not.toBe(REPO)
+    expect(client[0].argv).toEqual(['bun', '--no-env-file', '--config=/dev/null', `${root}/scripts/codex-app-server.ts`])
+    const stdin = JSON.parse(client[0].init.stdin)
+    expect(Object.keys(stdin).sort()).toEqual(['cwd', 'mode', 'prompt', 'timeoutSec'])
+    expect(client[0].init.timeoutMs).toBe((60 + 19) * 1000)
+    expect(calls.some(c => c.argv.includes('codex') || c.argv.includes('timeout'))).toBe(false)
+  })
+
+  test('the header shows an observed model and the notices', async ($, on) => {
+    await start($, on, withClient({ exitCode: 0, stdout: line(clientOk({ model: 'gpt-6-mini', effort: 'low', modelSource: 'observed', notices: ['AGENTS.md loaded: /r/AGENTS.md'], reply: 'finding' })) }))
+    const out: any = await $.tool.call(base)
+    expect(out.result).toBe(`second-opinion: codex gpt-6-mini/low (observed) mode=diff repo=${REPO}\nnote: AGENTS.md loaded: /r/AGENTS.md\nfinding`)
+  })
+
+  test('every client failure kind maps to its text; timeout says to split the review', async ($, on) => {
+    let kind = 'input'
+    await start($, on, withClient(() => ({ exitCode: 0, stdout: line({ ok: false, kind, message: `msg-${kind}`, log: 'log tail' } as ClientResult) })))
+    for (const k of KINDS) {
+      kind = k
+      const out: any = await $.tool.call(base)
+      expect(out.deny).toBe(clientErrorText({ ok: false, kind: k, message: `msg-${k}`, log: 'log tail' }))
+      expect(out.deny).toContain(`msg-${k}`)
+    }
+    kind = 'timeout'
+    expect(((await $.tool.call(base)) as any).deny).toMatch(/timed out.*Split the review/s)
+  })
+
+  test('a cut line gives the cut-output error; garbage and a non-zero exit are crashes', async ($, on) => {
+    let r: any = { exitCode: 0, stdout: line(clientOk({ reply: 'x'.repeat(100) })).slice(0, 40) }
+    await start($, on, withClient(() => r))
+    expect(((await $.tool.call(base)) as any).deny).toMatch(/output was cut; the reply was too long/)
+    r = { exitCode: 0, stdout: 'garbage', stderr: 'bun: boom' }
+    expect(((await $.tool.call(base)) as any).deny).toMatch(/crashed.*\n[\s\S]*bun: boom/)
+    r = { exitCode: 1, stdout: '', stderr: 'TypeError: x' }
+    expect(((await $.tool.call(base)) as any).deny).toMatch(/crashed \(exit 1\)\.\nTypeError: x/)
+  })
+
+  test('a long reply is clipped; an empty ok reply is an error', async ($, on) => {
+    let reply = 'x'.repeat(70_000)
+    await start($, on, withClient(() => ({ exitCode: 0, stdout: JSON.stringify(clientOk({ reply })) })))
+    const out: any = await $.tool.call(base)
+    expect(out.result.length).toBeLessThan(61_000)
+    expect(out.result).toMatch(/\[reply truncated/)
+    reply = '  \n'
+    expect(((await $.tool.call(base)) as any).deny).toMatch(/empty reply/)
+  })
+
+  test('a backstop rejection and a spawn rejection give different messages', async ($, on) => {
+    let advance = 0
+    const clock = await start($, on, async (argv: string[]) => {
+      if (!isClient(argv)) return happy(argv)
+      if (advance > 0) await clock.advance(advance)
+      throw new Error('still running at the timeout')
+    })
+    advance = (30 + 19) * 1000
+    const late: any = await $.tool.call({ ...base, timeoutSec: 30 })
+    expect(late.deny).toMatch(/^consult timed out: the codex client did not exit within 49s \(backstop\)/)
+    // A throwing test hook is skipped, so the run falls to the kit's bottom hook, which rejects at once.
+    advance = 0
+    const early: any = await $.tool.call({ ...base, timeoutSec: 30 })
+    expect(early.deny).toMatch(/^consult: could not run the codex client \(bun on PATH\?\): .+/)
+    expect(early.deny).not.toMatch(/backstop/)
   })
 
   test('the engine permission verdict gates the call: deny and an unanswerable ask run nothing', async ($, on) => {
@@ -244,14 +356,14 @@ describe('consult tool', () => {
     await start($, on, argv => (argv[0] === 'sh' ? { exitCode: 3, stderr: 'external review disabled for this repo (x)' } : happy(argv)))
     const out: any = await $.tool.call(base)
     expect(out.deny).toMatch(/external review disabled/)
-    expect(calls.filter(c => c.argv.includes('codex'))).toHaveLength(0)
+    expect(calls.filter(c => isClient(c.argv))).toHaveLength(0)
   })
 
   test('a secret-like file in the diff blocks the send', async ($, on) => {
     await start($, on, argv => (argv.includes('--name-only') ? { exitCode: 0, stdout: 'a.py\0.env\0' } : happy(argv)))
     const out: any = await $.tool.call(base)
     expect(out.deny).toMatch(/secret-like files.*\.env/)
-    expect(calls.filter(c => c.argv.includes('codex'))).toHaveLength(0)
+    expect(calls.filter(c => isClient(c.argv))).toHaveLength(0)
   })
 
   test('diff mode outside git is an error', async ($, on) => {
@@ -264,30 +376,6 @@ describe('consult tool', () => {
     expect(((await $.tool.call(base)) as any).deny).toMatch(/no changes found/)
   })
 
-  test('exit 124 is a timeout error with the log tail', async ($, on) => {
-    await start($, on, argv => (argv.includes('codex') ? { exitCode: 124, stderr: 'still thinking' } : happy(argv)))
-    const out: any = await $.tool.call({ ...base, timeoutSec: 30 })
-    expect(out.deny).toMatch(/timed out.*30s.*Split the review/s)
-    expect(out.deny).toContain('still thinking')
-  })
-
-  test('a failing CLI is an error with its log', async ($, on) => {
-    await start($, on, argv => (argv.includes('codex') ? { exitCode: 1, stderr: 'auth failed' } : happy(argv)))
-    expect(((await $.tool.call(base)) as any).deny).toMatch(/exited 1\.\nauth failed/)
-  })
-
-  test('an empty reply is an error, never an empty success', async ($, on) => {
-    await start($, on, argv => (argv.includes('codex') ? { exitCode: 0, stdout: '  \n' } : happy(argv)))
-    expect(((await $.tool.call(base)) as any).deny).toMatch(/empty reply/)
-  })
-
-  test('a long reply is clipped', async ($, on) => {
-    await start($, on, argv => (argv.includes('codex') ? { exitCode: 0, stdout: 'x'.repeat(70_000) } : happy(argv)))
-    const out: any = await $.tool.call(base)
-    expect(out.result.length).toBeLessThan(61_000)
-    expect(out.result).toMatch(/\[reply truncated/)
-  })
-
   test('agy writes its workspace, runs in it, and removes it', async ($, on) => {
     await start($, on, argv => {
       if (argv[0] === 'mktemp') return { exitCode: 0, stdout: '/tmp/second-opinion.AbC123\n' }
@@ -295,25 +383,34 @@ describe('consult tool', () => {
       if (argv.includes('agy')) return { exitCode: 0, stdout: 'finding\n' }
       return happy(argv)
     })
-    const out: any = await $.tool.call({ ...base, cli: 'agy', model: 'gemini-4-argon-high', notes: 'n' })
+    const out: any = await $.tool.call({ ...base, ...AGY, notes: 'n' })
     expect(out.result).toMatch(/^second-opinion: agy gemini-4-argon-high\/high.*\nfinding$/s)
     const writes = calls.filter(c => c.argv[0] === 'sh' && c.argv[2].includes('cat >'))
     expect(writes.map(c => c.argv[4])).toEqual(['/tmp/second-opinion.AbC123/.agents/hooks.json', '/tmp/second-opinion.AbC123/review-input.md'])
     expect(JSON.parse(writes[0].init.stdin)['second-opinion-readonly'].PreToolUse[0].hooks[0].command).toMatch(/\/scripts\/agy-gate\.sh$/)
     expect(writes[1].init.stdin).toContain('+x = 2')
-    expect(calls.find(c => c.argv.includes("agy")).init.cwd).toBe('/tmp/second-opinion.AbC123')
+    expect(calls.find(c => c.argv.includes('agy')).init.cwd).toBe('/tmp/second-opinion.AbC123')
     expect(calls.at(-1).argv).toEqual(['rm', '-rf', '/tmp/second-opinion.AbC123'])
+    expect(calls.filter(c => isClient(c.argv))).toHaveLength(0)
   })
 
-  test('agy cleans up its workspace when the review fails', async ($, on) => {
+  test('agy cleans up its workspace when the review fails, and exit 124 is a timeout', async ($, on) => {
     await start($, on, argv => {
       if (argv[0] === 'mktemp') return { exitCode: 0, stdout: '/tmp/second-opinion.AbC123\n' }
       if (argv.includes('agy')) return { exitCode: 124, stderr: 'slow' }
       return happy(argv)
     })
-    const out: any = await $.tool.call({ ...base, cli: 'agy', model: 'gemini-4-argon-high' })
-    expect(out.deny).toMatch(/timed out/)
+    const out: any = await $.tool.call({ ...base, ...AGY })
+    expect(out.deny).toMatch(/timed out.*Split the review/s)
+    expect(out.deny).toContain('slow')
     expect(calls.at(-1).argv).toEqual(['rm', '-rf', '/tmp/second-opinion.AbC123'])
   })
-})
 
+  // The test kit cannot set the plugin's options (no config.set, and register gets the manifest defaults), so the
+  // codexSocket path is covered by socketOption above and codexRequest's socket field; here, the default.
+  test('the default codexSocket option passes no socket, so the client resolves $XDG_RUNTIME_DIR', async ($, on) => {
+    await start($, on, happy)
+    await $.tool.call(base)
+    expect(JSON.parse(calls.find(c => isClient(c.argv)).init.stdin).socket).toBeUndefined()
+  })
+})

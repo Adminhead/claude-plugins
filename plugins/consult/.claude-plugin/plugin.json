@@ -5,5 +5,13 @@
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "codexSocket": {
+      "type": "string",
+      "title": "Codex app server socket",
+      "description": "Unix socket of the running codex app server (README: Run the codex app server). Empty: $XDG_RUNTIME_DIR/codex-consult.sock. Allowed characters: A-Z a-z 0-9 . _ / -",
+      "default": ""
+    }
   }
 }
