@@ -835,7 +835,7 @@
       "name": "consult",
       "source": "./plugins/consult",
       "description": "A mod that registers the mcp__consult__consult tool: a read-only diff or plan review by codex (OpenAI, the default, on the user's locked codex-consult app server) or agy (Google Gemini), with a repo opt-out marker, a secret-file block, timeouts and a read-only agy hook gate.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -1073,7 +1073,7 @@
       "name": "second-opinion",
       "source": "./plugins/second-opinion",
       "description": "Second-opinion skill: pick codex (the default) or agy, model, effort and pass size for a read-only outside review of a diff or plan through the consult tool, weigh the replies, or run a local two-reviewer gate.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
