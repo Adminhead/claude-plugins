@@ -563,6 +563,9 @@ function patternWords(v: Argv): Set<number> {
         given = true
         if (a.includes('=')) skip.add(i)
         else skip.add(++i)
+      } else if (['--exclude', '--exclude-dir', '--include', '--include-dir'].includes(name)) {
+        if (a.includes('=')) skip.add(i)
+        else skip.add(++i)
       }
     } else {
       for (let k = 1; k < a.length; k++) {
@@ -588,13 +591,32 @@ const credName = (s: string) => s === CRED_FILE || (s[0] === '.' && hasGlob(s) &
 
 // Whether a literal path is the file under a `.claude` directory (`~/.claude/...`, `/home/x/.claude/...`, a relative `.claude/...`).
 function credPath(t: string): boolean {
-  if (/\s/.test(t)) return false
+  // A word with spaces is prose (a commit message), unless it starts like a path (`/Users/John Smith/...`).
+  if (/\s/.test(t) && !/^(?:[/~$]|\.\/)/.test(t)) return false
   const comps = resolve(t.split('/'), t[0] === '~')
   return comps !== null && comps.length >= 2 && comps[comps.length - 2] === '.claude' && credName(comps[comps.length - 1])
 }
 
 // The value of a `key=VALUE` or `--option=VALUE` word, or the word.
 const valueOf = (w: string) => /^(?:--?[\w-]+|[A-Za-z_][\w.]*)=(.*)$/s.exec(w)?.[1] ?? w
+
+// A word as a path candidate: the `key=` or `--opt=` prefix and a curl-style `@` dropped, a leading $HOME read as `~`.
+function pathOf(w: string): string {
+  const s = valueOf(w)
+  return (s[0] === '@' ? s.slice(1) : s).replace(/^\$\{?HOME\}?(?=\/)/, '~')
+}
+
+// Commands that only take a path as a name: metadata readers, text printers, and git subcommands that do not read contents.
+const NAME_ONLY_GIT = new Set(['check-ignore', 'ls-files', 'log', 'status'])
+function namesOnly(v: Argv): boolean {
+  const name = baseName(v[0])
+  if (name === 'echo' || name === 'printf') return true
+  if (name === 'du') return !v.some(a => a !== null && a.startsWith('--files0-from'))
+  if (name === 'file') return !hasFlag(v, 'f', ['--files-from'])
+  if (METADATA.has(name)) return true
+  const call = gitCall(v)
+  return call !== null && (NAME_ONLY_GIT.has(call.sub) || (call.sub === 'rm' && call.rest.includes('--cached')))
+}
 
 // A directory change into a `.claude` directory (or $CLAUDE_CONFIG_DIR).
 const entersClaudeDir = (c: ShellCommand) => {
@@ -614,23 +636,27 @@ const entersClaudeDir = (c: ShellCommand) => {
 // are skipped, their file operands count.
 const credentialsRead = (v: Argv, c: ShellCommand, all: readonly ShellCommand[]): boolean => {
   const name = baseName(v[0])
-  if (METADATA.has(name)) return false
+  const exempt = namesOnly(v)
+  if (c.redirects.some(r => r.op !== '<<' && r.op !== '<<<' && r.target !== null && credPath(r.target))) return true
+  if (exempt) return false
   const words = viewText(c, v)
   const skip = GREP_FAMILY.has(name) ? patternWords(v) : new Set<number>()
+  const git = name === 'git'
   let claudeDir: boolean | undefined
   for (let i = 0; i < v.length; i++) {
     if (skip.has(i)) continue
     const a = v[i]
-    if (a !== null) {
-      const p = valueOf(a)
+    const cands = [a, words[i]].filter((w): w is string => !!w).map(pathOf)
+    // `git show REV:path` names a file at a revision.
+    if (git) for (const p of [...cands]) if (/^[^/\s:]+:./.test(p)) cands.push(p.slice(p.indexOf(':') + 1))
+    for (const p of cands) {
       if (credPath(p)) return true
-      if (/^(?:\.\/)*\.credentials\.json$/.test(p) && (claudeDir ??= all.some(entersClaudeDir))) return true
+      const m = /^\$\{?CLAUDE_CONFIG_DIR\}?\/(.*)$/s.exec(p)
+      if (m && credPath(`.claude/${m[1]}`)) return true
     }
-    const m = /^\$\{?CLAUDE_CONFIG_DIR\}?\/(.*)$/s.exec(valueOf(words[i] ?? ''))
-    if (m && credPath(`.claude/${m[1]}`)) return true
+    if (a !== null && /^(?:\.\/)*\.credentials\.json$/.test(valueOf(a)) && (claudeDir ??= all.some(entersClaudeDir))) return true
   }
   if (c.assigns.some(a => a.value !== null && credPath(a.value))) return true
-  if (c.redirects.some(r => r.op !== '<<' && r.op !== '<<<' && r.target !== null && credPath(r.target))) return true
   const inv = invocation(v)
   const code: string[] = []
   if (inv && !inv.shell && inv.code >= 0) code.push(words[inv.code] ?? '')
