@@ -1,21 +1,20 @@
 // The consult tool's pure logic: input validation, prompts, argv and output clipping. No `$` here, so
 // `claude plugin test` can exercise it directly; register.tsx runs what this builds.
+import { CODEX_EFFORTS, MAX_REPLY, MAX_TIMEOUT_SEC, MODEL } from './appserver'
+
+export { MAX_REPLY, MAX_TIMEOUT_SEC }
 
 // The engine names a registered tool mcp__<plugin>__<name>.
 export const TOOL_NAME = 'mcp__consult__consult'
 export const MAX_NOTES = 150_000
-export const MAX_REPLY = 60_000
 export const MAX_DIFF = 500_000
-export const MAX_TIMEOUT_SEC = 540
 export const DEFAULT_TIMEOUT_SEC = 480
 // How long after SIGTERM `timeout` waits before SIGKILL.
 export const KILL_GRACE_SEC = 5
 
 const LOG_LINES = 20
 const LOG_CHARS = 4000
-const CODEX_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
 const AGY_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
-const MODEL = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/
 const REV = /^[A-Za-z0-9_][A-Za-z0-9_./@^~-]{0,199}$/
 const SECRET = /(^|\/)(\.env(\.[^/]*)?|id_(rsa|ed25519|ecdsa)[^/]*|[^/]*\.(pem|key|p12|pfx)|[^/]*(secret|credential)[^/]*)$/i
 const SECRET_OK = /(^|\/)\.env\.(example|sample|template)$/i
