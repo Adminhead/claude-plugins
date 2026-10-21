@@ -1726,6 +1726,13 @@
       "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "necromancy",
+      "source": "./plugins/necromancy",
+      "description": "Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

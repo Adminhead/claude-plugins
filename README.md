@@ -77,7 +77,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Scope | Installs | Description |
 | --- | --- | --- | --- |
-| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
+| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove`, `necromancy` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
 | [`python-meta`](plugins/python-meta) | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` | Plugin set for Python projects, installed at project scope. Ships no components of its own. |
 | [`golang-meta`](plugins/golang-meta) | project | `programming-core`, `golang`, `gopls@claude-code-lsps` | Plugin set for Go projects, installed at project scope. Ships no components of its own. |
 | [`java-meta`](plugins/java-meta) | project | `programming-core`, `java`, `java-testing`, `maven`, `gradle`, `gradle-skills@gradle-skills`, `jdtls-lsp@claude-plugins-official` | Plugin set for Java projects, installed at project scope. Ships no components of its own. |
@@ -332,6 +332,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`spring-boot`](plugins/spring-boot) | skill | Writes, reviews and debugs Spring Boot 3/4 applications. Covers @ConfigurationProperties and profiles, bean wiring and auto-configuration ("No qualifying bean", condition report), MVC and WebFlux controllers, validation and ProblemDetail, Spring Data JPA and @Transactional, Spring Security SecurityFilterChain, Actuator, and the 3.x to 4 upgrade (modular starters, Jackson 3). Use for @SpringBootApplication code, application.yml or application.properties, spring-boot-starter-* dependencies, startup failures such as "required a bean of type ... that could not be found" after moving classes, and a @Transactional method that does not roll back. | - |
 | [`spring-boot-testing`](plugins/spring-boot-testing) | skill | Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context. | - |
 | [`prove`](plugins/prove) | skill | Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer. | `baseline` |
+| [`necromancy`](plugins/necromancy) | skill | Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session. | `baseline` |
 
 ### Agents
 

@@ -1,0 +1,18 @@
+necromancy
+Copyright AdminHead
+
+This plugin contains material adapted from dtiger1889-ops/claude-harness-toolbox,
+licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dtiger1889-ops/claude-harness-toolbox @ 567967b45822d2ae20a1809e11f7ba783c93ab30
+Paths: skills/necromancy/SKILL.md, skills/necromancy/necromancy.ps1
+
+Modifications: rewritten in Python 3 (standard library only) rather than copied.
+The list/digest split, the per-section caps and the regex anchors follow the
+upstream design. The CHECKPOINT logic is dropped. Structured anchors are added
+from the transcript's gitOperation, task and AskUserQuestion records, and every
+emitted string is secret-masked. The skill is manual only
+(disable-model-invocation) and writes a brief in handoff's shape.
+
+The digest idea came from ryanthedev/herderp via the toolbox. herderp has no
+license file, and nothing is taken from it.
