@@ -1,0 +1,16 @@
+Copyright AdminHead
+
+This plugin contains material adapted from an MIT-licensed source (see
+LICENSE). The files were modified.
+
+Upstream: https://github.com/decebals/claude-code-java @ 0d98fe9bd62923e819568ee1e041a1bf320f74d4
+Paths: skills/maven-dependency-audit (SKILL.md)
+
+Modifications: the audit workflow, outdated-version categories, severity table
+and report template were condensed into skills/maven/references/audit.md and
+rewritten; the dependency-tree, conflict and unused-dependency notes were
+rechecked against Maven and folded into dependencies.md. The OWASP plugin
+version was not copied; the current release is to be taken from Maven Central.
+The XML scenarios for forcing a version and excluding a transitive dependency
+were condensed into dependencies.md. Nothing else was copied from the upstream
+text.

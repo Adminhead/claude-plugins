@@ -1,7 +1,7 @@
 {
   "name": "maven",
   "version": "0.1.0",
-  "description": "Edits and debugs Maven builds: pom.xml structure, dependency management and BOM imports, plugin execution phases, multi-module reactors, and dependency conflicts.",
+  "description": "Edits and debugs Maven builds in pom.xml, .mvn and mvnw projects, including dependency management and BOM imports, NoSuchMethodError or duplicate jars from conflicting versions, multi-module reactor failures such as a sibling SNAPSHOT that won't resolve, plugin phases, annotation processors, settings.xml mirrors, and dependency audits before a release. Use when a pom.xml is being changed, a mvn or mvnw command fails, the user asks which module pulls in a library, or the user asks to check dependencies for updates or vulnerabilities.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
