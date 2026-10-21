@@ -6,6 +6,12 @@ Routing checks with the whole JVM set loaded at once: the `java`, `java-testing`
 claude plugin eval . --eval-dir evals/jvm/evals --trust-plugin --ablation none -j 4 --no-publish
 ```
 
+Setup, once, from the repo root (the suite fails without this clone):
+
+```
+git clone https://github.com/gradle/gradle-skills 3rd-party/gradle-skills && git -C 3rd-party/gradle-skills checkout 86e4ee5
+```
+
 Run it from the repo root: a case's `plugins:` entries must sit under the directory `claude plugin eval` targets. `--ablation none`: a no-plugin baseline means nothing for routing. Each case runs 3 times (`runs: 3`).
 
 ## Matching skill names

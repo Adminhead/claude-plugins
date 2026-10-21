@@ -412,7 +412,7 @@ A meta plugin can install a plugin from another marketplace. Add that marketplac
 { "name": "gopls", "marketplace": "claude-code-lsps" }
 ```
 
-A meta that depends on another marketplace needs that marketplace registered first: `claude plugin marketplace add <owner/repo>`, or the settings examples and the install script do it for you. Until it is registered, the meta reports the dependency as not installed and doesn't load. After adding it, run `/reload-plugins`.
+A meta that depends on another marketplace needs that marketplace registered first: `claude plugin marketplace add <owner/repo>`, or the settings examples and the install script do it for you. Until it is registered, the meta reports the dependency as not installed and doesn't load. After adding it, run `/reload-plugins`. `java-meta`'s `gradle-skills` dependency tracks upstream HEAD (unpinned) and is re-reviewed by hand; the clone under `docs/3rd-party/gradle-skills` is pinned only for evals.
 
 ### Checks
 

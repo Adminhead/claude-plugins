@@ -19,4 +19,4 @@ Gradle's official skills for coding agents, in the Agent Skills format. Two skil
 
 ## Use in this marketplace
 
-`java-meta` depends on the `gradle-skills` marketplace (`gradle/gradle-skills`), which the settings examples and the install script register. The skills are upstream and are not copied into `plugins/`.
+`java-meta` depends on the `gradle-skills` marketplace (`gradle/gradle-skills`), which the settings examples and the install script register. The skills are upstream and are not copied into `plugins/`. The dependency tracks upstream HEAD (unpinned) and is re-reviewed by hand; this clone is pinned only for evals.
