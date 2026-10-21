@@ -435,7 +435,7 @@
     {
       "name": "mcp-health",
       "source": "./plugins/mcp-health",
-      "description": "A mod that shows `mcp: <server> \u2717` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
+      "description": "A mod that shows `mcp: <server> ✗` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -520,7 +520,7 @@
       "name": "recommend-plugins",
       "source": "./plugins/recommend-plugins",
       "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development"
     },
     {
@@ -806,7 +806,7 @@
     {
       "name": "cache-clock",
       "source": "./plugins/cache-clock",
-      "description": "A mod that shows when the prompt cache likely expires (`cache warm \u2192 ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
+      "description": "A mod that shows when the prompt cache likely expires (`cache warm → ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1142,7 +1142,7 @@
     {
       "name": "turn-stats",
       "source": "./plugins/turn-stats",
-      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s \u00b7 41k out \u00b7 cache 92%`).",
+      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s · 41k out · cache 92%`).",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1660,63 +1660,63 @@
     {
       "name": "java",
       "source": "./plugins/java",
-      "description": "Writes, reviews and upgrades modern Java (17+) code: records, sealed types, pattern matching, streams, concurrency and virtual threads, javax to jakarta.",
+      "description": "Writes, reviews and upgrades modern Java (17+) code (records, sealed types, pattern-matching switch, streams, Optional, exceptions, equals/hashCode, executors, CompletableFuture and virtual threads), JDK upgrades and javax to jakarta. Use for any work in *.java, \"review this Java class\", a MatchException from a sealed switch, a record whose List changes after construction, a thread-pool or interrupt bug, or moving a project to a newer JDK.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "java-testing",
       "source": "./plugins/java-testing",
-      "description": "Writes and fixes Java tests with JUnit 5, Mockito and AssertJ: test structure, parameterized tests, mocks versus fakes, Testcontainers, and flaky test diagnosis.",
+      "description": "Writes, runs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers: parameterized and nested tests, strict stubs, injected clocks, filtering with -Dtest and --tests, no-tests-found diagnosis, Surefire versus Failsafe and slow container suites.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "maven",
       "source": "./plugins/maven",
-      "description": "Edits and debugs Maven builds: pom.xml structure, dependency management and BOM imports, plugin execution phases, multi-module reactors, and dependency conflicts.",
+      "description": "Edits and debugs Maven builds in pom.xml, .mvn and mvnw projects, including dependency management and BOM imports, NoSuchMethodError or duplicate jars from conflicting versions, multi-module reactor failures such as a sibling SNAPSHOT that won't resolve, plugin phases, annotation processors, settings.xml mirrors, and dependency audits before a release. Use when a pom.xml is being changed, a mvn or mvnw command fails, the user asks which module pulls in a library, or the user asks to check dependencies for updates or vulnerabilities.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "gradle",
       "source": "./plugins/gradle",
-      "description": "Edits and debugs Gradle builds: Kotlin or Groovy build scripts, version catalogs, convention plugins, task configuration, and dependency resolution failures.",
+      "description": "Diagnoses and writes Gradle build logic, including configuration cache failures, Could not resolve and no matching variant errors from conflicting versions or platforms, dependencyInsight, build cache misses, Kotlin DSL build scripts, libs.versions.toml version catalogs, convention plugins in build-logic, and toolchains. Use for symptoms such as \"invocation of Task.project at execution time is unsupported\", \"Configuration cache problems found in this build\", \"Could not resolve\" with a platform or BOM, \"Unresolved reference: libs\", or a request to add a task, dependency or convention plugin to build.gradle.kts or settings.gradle.kts.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "scala",
       "source": "./plugins/scala",
-      "description": "Writes, reviews and refactors Scala 3 code: case classes and enums, given and using, pattern matching, collections, effects, and implicit-to-given migrations.",
+      "description": "Scala skill for Scala 3 and 2.13 (follows the project's syntax): ADTs, given/using and implicits, Futures and effects, MUnit and ScalaTest, scalafmt, 2.13 to 3 migration. Also configures the Metals language server for .scala, .sc and .sbt files.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "sbt",
       "source": "./plugins/sbt",
-      "description": "Edits and debugs sbt builds: build.sbt and project/*.sbt, dependency resolution, multi-project builds, cross-building Scala versions, and sbt task failures.",
+      "description": "Writes, edits and debugs sbt builds: build.sbt, project/*.sbt and project/build.properties, sbt 1 and sbt 2 command-line runs, slash keys such as Test/compile, dependency resolution and % or %% coordinates, eviction and version conflicts, cross-built Scala versions, multi-project builds and failing sbt tasks. Use when an sbt command errors with Expected whitespace character, Not a valid command or No such setting/task, when a test does not run or rerun under sbt, or when a build.sbt needs a dependency or cross-build change.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "play-framework",
       "source": "./plugins/play-framework",
-      "description": "Builds and debugs Play Framework web apps: routes, controllers and actions, action composition, Twirl templates, and Play JSON.",
+      "description": "Builds, debugs, tests and upgrades Play Framework 2.9/3.x web apps in Java or Scala. Use for conf/routes and reverse routes, app/controllers (play.mvc, CompletionStage, Action.async), Twirl templates, Guice DI, play-json or Jackson, WSClient, evolutions, CSRF and AllowedHosts filters, sbt stage/dist packaging, blocking JDBC stalling a Play server, a \"not found: value controllers\" routes error, and the Play 2.8/2.9 to 3.0 upgrade (Akka to Pekko, com.typesafe.play to org.playframework).",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "spring-boot",
       "source": "./plugins/spring-boot",
-      "description": "Writes, reviews and configures Spring Boot applications: auto-configuration, configuration properties, dependency injection, Spring Data repositories, and web controllers.",
+      "description": "Writes, reviews and debugs Spring Boot 3/4 applications. Covers @ConfigurationProperties and profiles, bean wiring and auto-configuration (\"No qualifying bean\", condition report), MVC and WebFlux controllers, validation and ProblemDetail, Spring Data JPA and @Transactional, Spring Security SecurityFilterChain, Actuator, and the 3.x to 4 upgrade (modular starters, Jackson 3). Use for @SpringBootApplication code, application.yml or application.properties, spring-boot-starter-* dependencies, startup failures such as \"required a bean of type ... that could not be found\" after moving classes, and a @Transactional method that does not roll back.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "spring-boot-testing",
       "source": "./plugins/spring-boot-testing",
-      "description": "Writes and fixes Spring Boot tests: slice tests, application context caching, MockMvc and WebTestClient, Testcontainers, and test configuration.",
+      "description": "Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context.",
       "version": "0.1.0",
       "category": "development"
     }
