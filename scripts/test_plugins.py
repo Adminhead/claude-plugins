@@ -80,6 +80,16 @@ def test_multi_component_allows_lsp(root, monkeypatch):
     assert any("MULTI_COMPONENT allows exactly" in e for e in plugins.check(root))
 
 
+def test_multi_component_rejects_third_component(root, monkeypatch):
+    run(root, "new", "uv-lock", "--kind", "skill", "--description", "Locks deps.")
+    (root / "plugins/uv-lock/.lsp.json").write_text(json.dumps({
+        "metals": {"command": "metals", "extensionToLanguage": {".scala": "scala"}},
+        "other": {"command": "other", "extensionToLanguage": {".x": "x"}},
+    }))
+    monkeypatch.setitem(plugins.MULTI_COMPONENT, "uv-lock", {("skill", "uv-lock"), ("lsp", "metals")})
+    assert any("MULTI_COMPONENT allows exactly" in e for e in plugins.check(root))
+
+
 def test_scala_is_allowed_a_metals_lsp():
     assert plugins.MULTI_COMPONENT["scala"] == {("skill", "scala"), ("lsp", "metals")}
 
