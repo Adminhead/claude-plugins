@@ -26,7 +26,7 @@ Read `project/plugins.sbt`, `project/build.properties` and `build.sbt` before su
 
 ## Core model
 
-- `conf/routes`: one line per route, `GET /clients/:id controllers.ClientController.show(id: Long)`. The compiler generates reverse routes (`routes.ClientController.show(id)`); use them in templates and redirects instead of string URLs. Routes compile with the app, so a routes error shows as a compile error.
+- `conf/routes`: one line per route, `GET /clients/:id controllers.ClientController.show(id: Long)`. The compiler generates reverse routes (`routes.ClientController.show(id)`); use them in templates and redirects instead of string URLs. A Java action that takes `Http.Request` declares it in the route as well: `controllers.ClientController.show(request: Request, id: Long)`. Routes compile with the app, so a routes error shows as a compile error.
 - Controllers are DI-managed classes with an `@Inject` constructor, not objects or statics. Java extends `play.mvc.Controller`; Scala extends `BaseController` (or `AbstractController` with `ControllerComponents`).
 - Never block a request thread. JDBC, blocking HTTP clients and file I/O run on a dedicated dispatcher, not the default one and not `ForkJoinPool.commonPool` (see the api references).
 - Java actions return `Result` or `CompletionStage<Result>`; Scala actions use `Action { ... }` or `Action.async { ... }` returning `Future[Result]`.

@@ -22,7 +22,7 @@ public class ClientController extends Controller {
 }
 ```
 
-- Take `Http.Request request` as a method parameter. Don't use the removed static `request()`.
+- Take `Http.Request request` as a method parameter and declare it in the route with the type `Request`; the router fills it in and its position among the other parameters does not matter: `GET /clients/:id controllers.ClientController.show(request: Request, id: Long)`. Don't use the removed static `request()`.
 - Return `ok()`, `created()`, `badRequest()`, `notFound()`, `redirect(routes.ClientController.show(id))`.
 - Use `import javax.inject.Inject` or `jakarta.inject.Inject` to match the code already in the repo.
 
