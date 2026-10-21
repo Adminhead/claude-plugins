@@ -1,6 +1,6 @@
 ---
 name: spring-boot-testing
-description: Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, WebTestClient, Testcontainers with @ServiceConnection, Spring Security tests (@WithMockUser, jwt(), csrf()), and slow suites that rebuild the application context. Use for "No qualifying bean" in a test, @MockBean errors after an upgrade, a 403 on a mock POST, or a @SpringBootTest that takes minutes.
+description: Writes and fixes Spring Boot 3/4 tests that need a Spring context. Use when a controller test for a Spring Boot app fails to start because the context cannot find a service bean (an OrderService-style "No qualifying bean" or "required a bean of type" in a test class), when asked how to set up a controller test that checks JSON responses with the service mocked, for @WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest or @WebFluxTest slices, @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, WebTestClient, Testcontainers with @ServiceConnection, Spring Security tests (@WithMockUser, jwt(), csrf()), @MockBean errors after an upgrade, a 403 on a mock POST, or a @SpringBootTest that takes minutes because the application context rebuilds.
 ---
 
 # Spring Boot testing
@@ -46,7 +46,7 @@ Read [references/context-caching.md](references/context-caching.md) when the sui
 
 ## Security tests
 
-`@WebMvcTest` loads the security filter chain. Test 200, 401 and 403 for each secured route. `@WithMockUser(roles = "ADMIN")` adds the `ROLE_` prefix itself. A mock POST without `.with(csrf())` returns 403. `@PreAuthorize` only runs in a context that enables method security. Read [references/security-testing.md](references/security-testing.md) for `jwt()`, `@WithUserDetails`, OIDC login, custom `@WithSecurityContext` and the reactive `mockUser()`/`mockJwt()` variants.
+`@WebMvcTest` loads the security filter chain. Test 200, 401 (302 under form login) and 403 for each secured route. `@WithMockUser(roles = "ADMIN")` adds the `ROLE_` prefix itself. A mock POST without `.with(csrf())` returns 403. `@PreAuthorize` only runs in a context that enables method security. Read [references/security-testing.md](references/security-testing.md) for `jwt()`, `@WithUserDetails`, OIDC login, custom `@WithSecurityContext` and the reactive `mockUser()`/`mockJwt()` variants.
 
 ## Dependencies
 

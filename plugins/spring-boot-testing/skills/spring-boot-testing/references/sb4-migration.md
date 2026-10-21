@@ -4,7 +4,7 @@ Checked against the Spring Boot 4.0 migration guide and Maven Central (Boot 4.1.
 
 ## 1. Bean overrides
 
-`@MockBean` and `@SpyBean` are removed. Replace with `@MockitoBean` and `@MockitoSpyBean` (`org.springframework.test.context.bean.override.mockito`). Fields in test classes need only the annotation swap. Direct uses on `@Configuration` classes or as repeatable class-level annotations have no direct equivalent; declare a bean in a `@TestConfiguration`.
+`@MockBean` and `@SpyBean` are removed. Replace with `@MockitoBean` and `@MockitoSpyBean` (`org.springframework.test.context.bean.override.mockito`). Fields in test classes need only the annotation swap. `@MockitoBean` and `@MockitoSpyBean` are repeatable on test classes (and usable as meta-annotations), so a class-level `@MockBean({A.class, B.class})` becomes `@MockitoBean(types = {A.class, B.class})`, and several named mocks stack as repeated `@MockitoBean(name = ..., types = ...)` (`types` must hold one type when `name` is set). `@MockBean` on a `@Configuration` class has no equivalent; declare a bean in a `@TestConfiguration`.
 
 ## 2. Modular test starters
 

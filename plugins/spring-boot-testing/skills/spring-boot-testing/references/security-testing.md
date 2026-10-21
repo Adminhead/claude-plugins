@@ -1,6 +1,6 @@
 # Security and reactive tests
 
-`@WebMvcTest` auto-configures the security filter chain, so HTTP security rules are testable without `@SpringBootTest`. Boot 4 needs `spring-boot-starter-security-test` for `@WithMockUser` and `@WithUserDetails` to work. Cover three outcomes per secured route: allowed (200), unauthenticated (401), wrong role (403).
+`@WebMvcTest` auto-configures the security filter chain, so HTTP security rules are testable without `@SpringBootTest`. Boot 4 needs `spring-boot-starter-security-test` for `@WithMockUser` and `@WithUserDetails` to work. Cover three outcomes per secured route: allowed (200), unauthenticated (401, or 302 under form login), wrong role (403).
 
 ## Mock users
 
@@ -13,7 +13,7 @@ class OrderSecurityTest {
   @Test @WithMockUser(roles = "USER")
   void userCanRead() { assertThat(mvc.get().uri("/orders/1")).hasStatusOk(); }
 
-  @Test
+  @Test   // 401 here assumes httpBasic or a bearer/resource-server chain
   void anonymousIs401() { assertThat(mvc.get().uri("/orders/1")).hasStatus(HttpStatus.UNAUTHORIZED); }
 
   @Test @WithMockUser(roles = "USER")
@@ -23,6 +23,7 @@ class OrderSecurityTest {
 }
 ```
 
+- The anonymous status follows the chain's entry point: a `formLogin()` chain answers a browser-style request with a 302 redirect to `/login`, while `httpBasic()` and bearer-token chains answer 401. Assert the status the real chain produces (`HttpStatus.FOUND` plus the `Location` header for form login).
 - `roles = "ADMIN"` becomes authority `ROLE_ADMIN`; do not write `roles = "ROLE_ADMIN"`. For `hasAuthority("orders:write")` use `authorities = "orders:write"`.
 - `@WithUserDetails("alice")` loads a real principal from a `UserDetailsService`. Use it when the controller reads a custom principal type.
 - Per-request alternatives from `SecurityMockMvcRequestPostProcessors`: `.with(user("alice").roles("USER"))`, `.with(httpBasic("a","b"))`, `.with(anonymous())`. They work on `MockMvcTester` requests through `.with(...)`.
