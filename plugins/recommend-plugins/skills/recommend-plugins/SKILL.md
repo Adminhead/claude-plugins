@@ -37,12 +37,12 @@ Run `claude plugin list --json`. A plugin is effective here if it is installed a
 
 - Expand each effective meta and bundle through its dependency list. Skip every plugin already effective, directly or through a set.
 - Report disabled ones and suggest `claude plugin enable <id> --scope <scope>`.
-- Flag official LSP plugins (`pyright-lsp`, `gopls-lsp`, `typescript-lsp` and similar from `claude-plugins-official`) that would duplicate an LSP a proposed meta installs. Don't remove them.
+- Flag official LSP plugins (`pyright-lsp`, `gopls-lsp`, `typescript-lsp`, `jdtls-lsp` and similar from `claude-plugins-official`) that would duplicate an LSP a proposed meta installs. Don't remove them.
 - Report an effective plugin whose dependency isn't installed at a scope that covers it, and offer to install the missing one.
 
 ## 4. Inspect the project
 
-List files with `git ls-files --cached --others --exclude-standard`, or outside git `fd --type f --max-depth 4`. Read `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `global.json`, `*.csproj`, `Directory.Packages.props` and `project.godot` for framework and library markers. Discount `node_modules`, `vendor`, `examples`, `fixtures` and `testdata`.
+List files with `git ls-files --cached --others --exclude-standard`, or outside git `fd --type f --max-depth 4`. Read `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `global.json`, `*.csproj`, `Directory.Packages.props`, `project.godot`, `pom.xml`, `build.gradle*`, `settings.gradle*` and `build.sbt` for framework and library markers. Discount `node_modules`, `vendor`, `examples`, `fixtures` and `testdata`.
 
 Markers are hints; the catalog descriptions decide which plugin fits.
 
@@ -51,6 +51,7 @@ Markers are hints; the catalog descriptions decide which plugin fits.
 | `pyproject.toml`, `requirements*.txt`, `setup.py` | Python |
 | `go.mod` | Go |
 | `Cargo.toml` | Rust |
+| `pom.xml`, `mvnw`, `build.gradle*`, `settings.gradle*`, `gradlew`, `build.sbt` or `project/build.properties` | JVM (Java, Scala, Play and Spring; the named rules below decide) |
 | `package.json`, `tsconfig.json` | Node.js and TypeScript; web front end when React, Vue, Vite or similar is a dependency |
 | Design tokens, Figma links, component libraries, UI-only repos | design |
 | `*.tf`, Ansible playbooks, Dockerfiles, many `*.sh` | infrastructure as code |
@@ -86,6 +87,13 @@ Some stacks have named rules. Propose a named plugin only if it is in the catalo
 | `samconfig.toml`, or `template.yaml` with `Transform: AWS::Serverless` | `aws-meta` |
 | AWS SDK dependencies: `boto3`, `@aws-sdk/*`, `github.com/aws/aws-sdk-go*`, or `software.amazon.awssdk` in a build file | `aws-meta` |
 | `hashicorp/aws` in `required_providers` of `*.tf` files, where AWS is the main provider | `aws-meta` |
+| `pom.xml`, `mvnw`, `build.gradle(.kts)`, `settings.gradle(.kts)` or `gradlew` with `*.java` sources | `java-meta` |
+| `build.sbt` or `project/build.properties` | `scala-meta` |
+| `conf/routes`, or the `org.playframework` or `com.typesafe.play` `sbt-plugin` | also `play-framework` |
+| `build.sbt` with only `app/**/*.java` (no Scala sources) | `java-meta` + `sbt`, not `scala-meta` |
+| `spring-boot-starter-parent`, the `org.springframework.boot` plugin, or `spring-boot-starter-*` dependencies | also `spring-boot` + `spring-boot-testing` |
+
+A Gradle-only repo with Kotlin or Android sources and no `*.java` files gets no JVM proposal. `java-meta` depends on the `gradle-skills` marketplace (`gradle/gradle-skills`), which isn't part of `adminhead`. When `java-meta` is selected and that marketplace isn't registered, report it and show `claude plugin marketplace add gradle/gradle-skills`. Never run it yourself; step 7 covers this.
 
 Package names come from `<PackageReference Include=...>` in csproj files and `<PackageVersion Include=...>` in `Directory.Packages.props`; the SDK from the `<Project Sdk=...>` attribute. A `.csproj` that only sits beside `project.godot` is the Godot game itself: it means `godot-csharp`, not `dotnet-meta`, unless the repo also has other .NET projects.
 
@@ -110,7 +118,7 @@ Ask with AskUserQuestion, multiSelect, at most 4 options per question and 4 ques
 
 ## 7. Install
 
-1. If a selected plugin, or any set it pulls in, depends on another marketplace that `claude plugin marketplace list --json` doesn't show, say which before installing and give the add command (`claude plugin marketplace add boostvolt/claude-code-lsps` for `claude-code-lsps`). Never add a marketplace yourself. Ask whether to install anyway or wait.
+1. If a selected plugin, or any set it pulls in, depends on another marketplace that `claude plugin marketplace list --json` doesn't show, say which before installing and give the add command (`claude plugin marketplace add boostvolt/claude-code-lsps` for `claude-code-lsps`, `claude plugin marketplace add gradle/gradle-skills` for `gradle-skills`). Never add a marketplace yourself. Ask whether to install anyway or wait.
 2. From the target directory, run `claude plugin install <p>@adminhead --scope <s>` for each selection. Dependencies install automatically at the same scope and stay marked as dependencies, so `claude plugin prune` can remove them later. Don't install them by hand.
 
 ## 8. Report

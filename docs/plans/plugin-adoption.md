@@ -28,10 +28,10 @@ This overrides the wshobson reviewer's `port` rows for `terraform`, `helm`, `git
 
 ### 2. Cross-marketplace dependencies stay minimal
 
-- **Keep `claude-code-lsps` as the only allowlisted marketplace.** The stack metas depend on its LSP plugins, as the archived coding plugins did: `pyright`, `gopls`, `rust-analyzer`, `vtsls`, `bash-language-server`.
+- **Allowlisted marketplaces are `claude-code-lsps`, `claude-plugins-official` (for `csharp-lsp`, `context7` and `jdtls-lsp`) and `gradle-skills` (decision 12).** The stack metas depend on `claude-code-lsps`' LSP plugins, as the archived coding plugins did: `pyright`, `gopls`, `rust-analyzer`, `vtsls`, `bash-language-server`.
 - **`avoid-ai-writing@conorbronsdon-skills` is a direct user-scope install**, not a dependency. It wins the writing-style comparison (single skill, MIT, maintained, deterministic detector). wshobson's marketplace only mirrors it. It is already in `examples/claude-settings/settings.global.json`.
 - **Don't allowlist `claude-code-workflows` (wshobson).** Only 2 of its 92 plugins are single-component, and allowlisting exposes the other 90. Port `file-conversion` if wanted.
-- **`claude-plugins-official` is allowlisted for `csharp-lsp` and `context7`.** `csharp-lsp` (csharp-ls) is a `dotnet-meta` dependency (user decision, 2026-10-17; claude-code-lsps' `omnisharp` runs the legacy server and a `brew install` hook). `context7` is a `programming-core` dependency (user decision, 2026-10-18); it runs anonymously, or with OAuth via `/mcp`, because the official config sends no API-key header. `exa@claude-plugins-official` is a direct user-scope install, not a dependency, and is off by default (user decision, 2026-10-18; a dependency can't default to off): it is for sessions without the built-in `WebSearch` (Bedrock, older Vertex models, a `WebSearch` deny rule). Don't add other dependencies on it: the official pr-review-toolkit and feature-dev agents stay direct installs.
+- **`claude-plugins-official` is allowlisted for `csharp-lsp`, `context7` and `jdtls-lsp`.** `jdtls-lsp` is a `java-meta` dependency (decision 12). `csharp-lsp` (csharp-ls) is a `dotnet-meta` dependency (user decision, 2026-10-17; claude-code-lsps' `omnisharp` runs the legacy server and a `brew install` hook). `context7` is a `programming-core` dependency (user decision, 2026-10-18); it runs anonymously, or with OAuth via `/mcp`, because the official config sends no API-key header. `exa@claude-plugins-official` is a direct user-scope install, not a dependency, and is off by default (user decision, 2026-10-18; a dependency can't default to off): it is for sessions without the built-in `WebSearch` (Bedrock, older Vertex models, a `WebSearch` deny rule). Don't add other dependencies on it: the official pr-review-toolkit and feature-dev agents stay direct installs.
 - **Never depend on a mega-plugin:** ECC, mattpocock, agent-skills, taste-skill, claude-skills, claude-seo, ponytail. Port the pieces instead, or install upstream directly for SEO and game-dev work.
 
 ### 3. Meta layout
@@ -47,6 +47,8 @@ All of these metas and the bundle exist now, with empty dependency lists.
 | `python-meta` | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` |
 | `golang-meta` | project | `programming-core`, `golang`, `gopls@claude-code-lsps` |
 | `rust-meta` | project | `programming-core`, `rust`, `rust-analyzer@claude-code-lsps` |
+| `java-meta` | project | `programming-core`, `java`, `java-testing`, `maven`, `gradle`, `gradle-skills@gradle-skills`, `jdtls-lsp@claude-plugins-official`. See decision 12. |
+| `scala-meta` | project | `programming-core`, `scala` (skill plus Metals `.lsp.json`), `sbt`. See decision 12. |
 | `node-typescript-meta` | project | `programming-core`, `javascript`, `typescript`, `dependency-vetting`, `vtsls@claude-code-lsps` |
 | `design-core` (bundle) | via metas | `ui-direction`, `ui-critic` (A), `web-design`, `screen-reader-testing`, `accessibility-review`, `ux-copy`. See decision 9. |
 | `web-meta` | project | `programming-core`, `design-core`, `web-development`, `react`, `vite`, `e2e-testing`, `playwright-cli`, `browser-tester` (A), `web-perf-auditor` (A) |
@@ -191,6 +193,27 @@ The user added C#/.NET and Godot plus engine-agnostic game development. Designs:
 - **Status, 2026-10-17:** implemented in a third round of 14 batches: 15 .NET plugins and 25 Godot and game-dev plugins, registered into `dotnet-meta`, `godot-meta` and `gamedev-core`, plus four Godot extras from the GodotPrompter review (`godot-addons`, `godot-xr`, `godot-gdextension`, `godot-editor-tools`, all direct installs). Reports: `docs/research/implementation-2026-10-17/round-3/`.
 - **Bundles are explicit:** `aspnet-core` and `ef-core` collided with the `-core` bundle suffix, so a core bundle is now a marketplace entry with `category: "bundle"`; `-core` stays only a naming convention.
 
+### 12. JVM (added 2026-10-20)
+
+Plan: [`docs/plans/jvm-meta.md`](jvm-meta.md). Shape approved 2026-10-20.
+
+- **Metas (project scope).** `java-meta` = `programming-core`, `java`, `java-testing`, `maven`, `gradle`, `gradle-skills@gradle-skills`, `jdtls-lsp@claude-plugins-official`. `scala-meta` = `programming-core`, `scala`, `sbt`. There is no `jvm-core` bundle, because the metas share only `programming-core`. `dependency-vetting` stays out: it covers only npm and PyPI.
+- **Direct installs.** `play-framework` (Play 2.9/3.x, Java API first, Scala reference). `spring-boot` and `spring-boot-testing` are two separate installs, not a meta: most Maven repos aren't Spring, and a meta's members can't be turned off one by one. A named rule in `recommend-plugins` proposes both on `org.springframework.boot`.
+- **`gradle-skills`** (`gradle/gradle-skills`, Apache-2.0; the only plugin in its marketplace, with no hooks, MCP or agents). It is allowlisted in `allowCrossMarketplaceDependenciesOn` and registered through the settings examples. Reviewed at SHA `86e4ee5` (2026-09-30). **Unpinned tracking:** the entry uses `source: "./"`, and its tags don't follow the `<name>--v<ver>` convention, so a version range can't pin it. Re-review when upstream changes. Removing it from `java-meta` is a one-line change. The marketplace must be registered by hand (`claude plugin marketplace add gradle/gradle-skills`); `java-meta` won't load until it is.
+- **`scala` MULTI_COMPONENT exception** (user decision, 2026-10-20). `scala` ships a skill plus its Metals `.lsp.json`, so `scripts/plugins.py` allows `("skill", "scala")` and `("lsp", "metals")`. No adminhead or allowlisted marketplace has a Metals plugin. The LSP has no SessionStart install hook and no launcher, and Veske/scala-lsp is an idea source only.
+- **Rejected marketplaces** (GitHub and skills.sh, 2026-10-20):
+
+| Repo (marketplace) | License | Decision |
+| --- | --- | --- |
+| zio/zio-skills (`ziogenetics`) | Apache-2.0 repo; `plugin.json` says MIT | Don't: a SessionStart hook `cat`s the whole skill into every session. `scala` names it for ZIO repos. |
+| jabrena/plinth (`cursor-rules-java`) | Apache-2.0 | Don't: 61 one-skill plugins, and allowlisting exposes all of them. Idea source for `maven`. |
+| rrezartprebreza/spring-boot-skills | MIT | Don't: two mega-plugins of about 33 skills each (decision 2). Idea source only. |
+| a-pavithraa/springboot-skills-marketplace | MIT | Skip: one plugin, 4 skills, last push 2026-08-25. |
+| VirtusLab/scala-skill | no LICENSE | Skip: no license, and it collides with `scala`. |
+| giuseppe-trisciuoglio/developer-kit | MIT | Skip: 11 multi-skill plugins. |
+
+  No marketplace was found for decebals/claude-code-java, sanssushi/skills, majk-p/scala-skills, alexandru/skills, JetBrains/skills, LambdaTest/agent-skills, personamanagmentlayer/pcl or spring-ai-community/spring-testing-skills. No official Spring, Play or scalameta skill repo exists, and `claude-plugins-official` has no Gradle, Spring or Scala plugin. The sources those repos supply are ported as described in the plan's skill-sources table.
+
 ## Adoption list
 
 Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disable-model-invocation`, so the skill costs nothing in the listing.
@@ -231,6 +254,12 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | `cloud-ops-guard` | H | archive infra hook | iac-meta | Needs bun. |
 | `devops` | A | archive crew/devops | iac-meta | Read-only by default; points at the terraform, docker and kubernetes skills. |
 | `kubernetes`, `helm`, `gitops` | S | archive deploy | kubernetes-meta or direct | + Pod Security Admission reference. |
+| `java` | S | ECC java-coding-standards (MIT); decebals java-code-review and concurrency-review; awesome-copilot java-upgrade and javax-to-jakarta-migration | java-meta | Shared sections only; upgrade and jakarta material in references. Decision 12. |
+| `java-testing` | S | awesome-copilot java-junit; decebals test-quality | java-meta | JUnit 5.x/6.x and Mockito. Spring-context tests go to `spring-boot-testing`. |
+| `maven` | S | decebals maven-dependency-audit; plinth ideas only | java-meta | Reactor, BOMs and dependency conflicts. |
+| `gradle` | S | original text | java-meta | Slimmed; audits and wrapper upgrades route to `gradle-skills`. |
+| `scala` | S + LSP | original text; sanssushi scala3-syntax parts; Metals `.lsp.json` written fresh | scala-meta | The `MULTI_COMPONENT` exception (decision 12). |
+| `sbt` | S | sanssushi sbt2-cli (MIT) | scala-meta | sbt 1.x and 2.x. |
 
 ### GitHub and web
 
@@ -263,6 +292,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | Security | `security-scan` (manual; + SBOM and security-auditor checklist), `threat-model`, `privacy-review`, `mcp-server-audit` (new) |
 | MCP authoring | `mcp-server` (+ design), `mcp-server-review` |
 | Go and Python extras | `golang-cli`, `golang-performance`, `fastapi` |
+| JVM frameworks | `play-framework`, `spring-boot`, `spring-boot-testing` (decision 12) |
 | Auth | `app-auth`, `better-auth` (confirm it was rewritten from docs; upstream has no license) |
 | Review and critique | `poka-yoke`, `review-loop`, `second-opinion` + `consult` (M), `the-fool` (new), `doubt-review` (new) |
 | Design and docs | `codebase-design` (new, mattpocock + improve-codebase-architecture), `domain-modeling`, `adr-writing`, `docs-audit`, `agent-instructions`, `deprecation-migration` (new) |
@@ -287,7 +317,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | Upstream ponytail plugin | Ruleset merged into `coding`; its 5 extra skills, per-prompt node hook and band mod cost too much. |
 | Language and framework "pro" skills from claude-skills, ECC and wshobson | Generic, often stale, and weaker than the archived versions. |
 | All wshobson and ECC persona agents and commands | Auto-delegating "Use PROACTIVELY" personas with mis-graded severities; overlap built-ins. |
-| Vendor-specific sets (Azure, Power Platform, Java, SEO; Unity, Unreal and web game engines) | Off-stack. Install claude-seo or upstream game-engine bundles directly when needed. .NET and Godot are now adopted (decision 11). |
+| Vendor-specific sets (Azure, Power Platform, SEO; Unity, Unreal and web game engines) | Off-stack. Install claude-seo or upstream game-engine bundles directly when needed. .NET and Godot are adopted (decision 11); Java, Scala, Play and Spring are adopted (decision 12). |
 | Offensive and SOC content in the cybersecurity set | Unsafe to ship by default, or enterprise tooling. |
 
 ## Phases
