@@ -1,0 +1,17 @@
+Copyright AdminHead
+
+This plugin contains material adapted from sanssushi/skills
+(https://github.com/sanssushi/skills), Copyright (c) 2026 sanssushi,
+licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/sanssushi/skills @ 02a3a9362ab9abda0222abd3d437a24b104e6c29
+Paths: skills/sbt2-cli/SKILL.md, skills/sbt2-cli/references/commands.md, skills/sbt2-cli/references/client-server.md, skills/sbt2-cli/references/caching-and-ci.md
+
+Modifications: the sbt2-cli SKILL.md mistakes table, command rules, test family,
+query, server lifecycle, caching and CI recipes were condensed into
+skills/sbt/references/sbt2.md. Each fact was checked against scala-sbt.org on
+2026-10-20 or marked as observed on sbt 2.0.3, as in the reference itself. The
+upstream README, the sbt 1.x-only items, and the upstream "when to read" routing
+were not included.
+
+Ideas only, no text copied: majk-p/scala-skills (no license file upstream).

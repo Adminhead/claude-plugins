@@ -1,7 +1,7 @@
 {
   "name": "sbt",
   "version": "0.1.0",
-  "description": "Edits and debugs sbt builds: build.sbt and project/*.sbt, dependency resolution, multi-project builds, cross-building Scala versions, and sbt task failures.",
+  "description": "Writes, edits and debugs sbt builds: build.sbt, project/*.sbt and project/build.properties, sbt 1 and sbt 2 command-line runs, slash keys such as Test/compile, dependency resolution and % or %% coordinates, eviction and version conflicts, cross-built Scala versions, multi-project builds and failing sbt tasks. Use when an sbt command errors with Expected whitespace character, Not a valid command or No such setting/task, when a test does not run or rerun under sbt, or when a build.sbt needs a dependency or cross-build change.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
