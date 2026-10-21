@@ -20,7 +20,10 @@ export const MAX_LINE_BYTES = 48_000
 export const MAX_REQUEST_BYTES = 1_000_000
 export const MAX_FRAME_BYTES = 8 * 1024 * 1024
 export const LOG_CHARS = 4000
-export const LOCKED_FEATURES = ['plugins', 'hooks', 'apps', 'browser_use', 'computer_use', 'code_mode_host', 'multi_agent', 'image_generation']
+// Not code_mode_host: every codex 0.162.1 model is `tool_mode: "code_mode_only"`, so the shell and every other tool
+// run through the code-mode host, and disabling it leaves the reviewer with no tools (live L2, 2026-10-21). With
+// the host on, config/read omits the key, so it is neither required nor sent.
+export const LOCKED_FEATURES = ['plugins', 'hooks', 'apps', 'browser_use', 'computer_use', 'multi_agent', 'image_generation']
 export const PROJECT_KEYS_ALLOWED = ['model', 'model_reasoning_effort']
 export const DEFAULT_SOCKET_NAME = 'codex-consult.sock'
 export const UNIT_NAME = 'codex-consult'

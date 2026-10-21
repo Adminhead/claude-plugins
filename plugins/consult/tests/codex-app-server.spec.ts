@@ -642,6 +642,8 @@ describe('13 README unit drift', () => {
     const tokens = exec.split(/\s+/)
     const disabled = tokens.flatMap((t, i) => (t === '--disable' ? [tokens[i + 1]] : []))
     for (const f of CLIENT_LOCKED_FEATURES) expect(disabled, `--disable ${f}`).toContain(f)
+    // The reviewer's shell runs through the code-mode host; the unit must leave it on.
+    expect(disabled).not.toContain('code_mode_host')
     for (const [key, value] of [['web_search', 'disabled'], ['sandbox_mode', 'read-only'], ['approval_policy', 'never'], ['approvals_reviewer', 'user']]) {
       expect(exec, key).toContain(`-c '${key}="${value}"'`)
     }

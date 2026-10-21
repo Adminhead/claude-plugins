@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-export const LOCKED_FEATURES = ['plugins', 'hooks', 'apps', 'browser_use', 'computer_use', 'code_mode_host', 'multi_agent', 'image_generation']
+export const LOCKED_FEATURES = ['plugins', 'hooks', 'apps', 'browser_use', 'computer_use', 'multi_agent', 'image_generation']
 export const lockedConfig = (over: Record<string, unknown> = {}) => ({
   model: 'cfg-model',
   review_model: null,

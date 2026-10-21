@@ -163,6 +163,10 @@ describe('params', () => {
 describe('stage 1 asserts', () => {
   test('checkServerLocked accepts the probed config', () => {
     expect(checkServerLocked(LOCKED)).toBeNull()
+    // The code-mode host stays on (the reviewer's tools run through it); config/read omits its key then.
+    expect(LOCKED_FEATURES).not.toContain('code_mode_host')
+    expect(checkServerLocked({ ...LOCKED, features: { ...LOCKED.features, code_mode_host: true } })).toBeNull()
+    expect((threadStartParams({ cwd: REPO }, []) as any).config.features.code_mode_host).toBeUndefined()
     expect(checkServerLocked({ ...LOCKED, tools: undefined })).toBeNull()
     expect(checkServerLocked({ ...LOCKED, tools: { web_search: null } })).toBeNull()
   })
