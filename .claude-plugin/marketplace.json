@@ -1719,6 +1719,13 @@
       "description": "Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context.",
       "version": "0.1.1",
       "category": "development"
+    },
+    {
+      "name": "prove",
+      "source": "./plugins/prove",
+      "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

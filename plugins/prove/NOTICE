@@ -1,0 +1,14 @@
+prove
+Copyright AdminHead
+
+This plugin contains material adapted from dtiger1889-ops/claude-harness-toolbox,
+licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dtiger1889-ops/claude-harness-toolbox @ 567967b45822d2ae20a1809e11f7ba783c93ab30
+Paths: skills/prove/SKILL.md
+
+Modifications: rewritten rather than copied. The procedure is restated in
+AdminHead's wording and cites the same source classes (project records, the
+artifact itself, external primary sources). The two upstream rules about memory
+and absence of contradiction are kept. The description and argument hint are
+AdminHead's, and the skill is manual only (disable-model-invocation).

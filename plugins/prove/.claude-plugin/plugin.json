@@ -1,0 +1,9 @@
+{
+  "name": "prove",
+  "version": "0.1.0",
+  "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
