@@ -333,6 +333,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`spring-boot-testing`](plugins/spring-boot-testing) | skill | Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context. | - |
 | [`prove`](plugins/prove) | skill | Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer. | `baseline` |
 | [`necromancy`](plugins/necromancy) | skill | Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session. | `baseline` |
+| [`vet`](plugins/vet) | skill | Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted. | - |
 
 ### Agents
 

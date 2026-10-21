@@ -1733,6 +1733,13 @@
       "description": "Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "vet",
+      "source": "./plugins/vet",
+      "description": "Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

@@ -1,0 +1,17 @@
+vet
+Copyright AdminHead
+
+This plugin contains material adapted from dtiger1889-ops/claude-harness-toolbox,
+licensed under the MIT License (see LICENSE).
+
+Upstream: https://github.com/dtiger1889-ops/claude-harness-toolbox @ 567967b45822d2ae20a1809e11f7ba783c93ab30
+Paths: skills/vet/SKILL.md
+
+Modifications: steps 2, 3 and 5, the verdict table, step 7 and the Rules are kept
+verbatim, except that the dedupe and G1 searches use `command grep -rin` (Claude's
+grep honors .gitignore), step 2 names this repository's search paths, and the
+`/outside` reference is dropped. Steps 1, 4 and 6 are adapted: links come from the
+user or the research inbox, helper agents are told to compare against this
+marketplace, and the ledger is one line per repo in the research ledger of
+docs/README.md with a hand-off to plugin-vetter for anything adopted. The
+description, the setup note and the workspace state files are AdminHead's.
