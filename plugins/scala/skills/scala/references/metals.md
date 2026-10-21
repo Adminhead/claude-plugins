@@ -24,7 +24,9 @@ Checked against the Metals docs on 2026-10-20 (latest stable 1.6.9, released 202
 
 Metals imports the build and indexes it before diagnostics and symbol search work, so the first start in a project can take minutes (the plugin allows 120 seconds for startup). `statusBarProvider: "log-message"` makes Metals send its status to the log instead of the editor status bar. `isHttpEnabled` stays at its default (off).
 
-Claude Code's LSP client does not implement `window/showMessageRequest`. Metals asks "New sbt workspace detected, would you like to import the build?" through that request, and the resulting error made Metals 1.6.9 abort its startup (`Unexpected error initializing server: ... Unhandled method window/showMessageRequest`, then shutdown). The plugin therefore sets `"settings": {"metals": {"autoImportBuilds": "all"}}` in `.lsp.json`; Claude Code pushes it with `workspace/didChangeConfiguration`, and Metals imports the build without asking (values `off`, `initial`, `all`; default `off`). Verified on 2026-10-21 with Metals 1.6.9, sbt 1.11.7 and Scala 3.3.6: the import ran (`sbt bloopInstall`), and a session received the type error (`Found: ("text" : String) Required: Int`) and the syntax errors from Bloop.
+Claude Code's LSP client does not implement `window/showMessageRequest`. Metals asks "New sbt workspace detected, would you like to import the build?" through that request, and the resulting error made Metals 1.6.9 abort its startup (`Unexpected error initializing server: ... Unhandled method window/showMessageRequest`, then shutdown). The plugin therefore sets `"settings": {"metals": {"autoImportBuilds": "initial"}}` in `.lsp.json`; Claude Code pushes it with `workspace/didChangeConfiguration`. The values: `off` (default) always asks, which aborts startup here; `initial` imports without asking the first time Metals sees the workspace; `all` also re-imports without asking on every build-file change. `initial` was chosen because `all` would silently run new build code each time `build.sbt` or `project/*.sbt` is edited, including by a prompt-injected edit. Verified on 2026-10-21 with Metals 1.6.9, sbt 1.11.7 and Scala 3.3.6: the import ran (`sbt bloopInstall`), a session received the type error (`Found: ("text" : String) Required: Int`) and the syntax errors from Bloop, and a later edit of `build.sbt` caused no re-import, no prompt and no crash.
+
+With `initial`, build changes made after the first import are not picked up, so the imported build goes stale (new dependencies or modules are missing). Re-import by running the import by hand (see below) and restarting the session.
 
 Notes from that test:
 
@@ -32,7 +34,7 @@ Notes from that test:
 - Metals still sends two harmless prompts (start the HTTP server for the Doctor, and a "mis-configuration" warning). Claude Code answers them with an error; Metals carries on. They did not stop startup or diagnostics.
 - The import needs `sbt` to run from the environment Claude Code inherits. A `mise` shim without an active version fails there; check `sbt --version` in the project directory first. A second sbt on the same machine can hold `~/.ivy2/.sbt.ivy.lock` and stall the import (`waiting for lock`).
 - To import by hand instead (for example for a build that needs special flags), run `sbt -Dbloop.export-jar-classifiers=sources bloopInstall` once (needs the sbt-bloop plugin; checked against scalameta.org/metals/docs/build-tools/sbt on 2026-10-20) and Metals connects to Bloop on its next start.
-- To disable the auto import, use a local copy of the plugin loaded with `claude --plugin-dir <path>`; edits to the installed copy are overwritten on the next plugin update.
+- To change the setting (for example `all`), use a local copy of the plugin loaded with `claude --plugin-dir <path>`; edits to the installed copy are overwritten on the next plugin update.
 
 ## Troubleshooting
 
@@ -49,3 +51,5 @@ Metals writes `.metals/`, `.bloop/` and `project/metals.sbt` into the project. M
 ## Security
 
 A build import runs sbt, Bloop or the project's other build tool, which executes the project's build definition (`build.sbt`, plugins, `build.mill`). Only open projects you trust, as with any IDE import. Claude Code also starts Metals itself as soon as it touches a `.scala` or `.sbt` file, so opening an untrusted repository with this plugin enabled can run its build definition or a `.bsp/*.json` build server command without any prompt. Enable the plugin only in projects you trust.
+
+The import is triggered by Claude Code reading or editing a `.scala` or `.sbt` file, not by a Bash call, so Claude Code's permission system (Bash deny rules, prompts, the sandbox) does not apply to the build it runs. Installing `scala` at user scope, rather than through `scala-meta` at project scope, applies this to every repository you open.

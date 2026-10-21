@@ -1,1 +1,21 @@
-{"metals":{"command":"metals","transport":"stdio","extensionToLanguage":{".scala":"scala",".sc":"scala",".sbt":"sbt"},"initializationOptions":{"statusBarProvider":"log-message"},"settings":{"metals":{"autoImportBuilds":"all"}},"startupTimeout":120000,"maxRestarts":3}}
+{
+  "metals": {
+    "command": "metals",
+    "transport": "stdio",
+    "extensionToLanguage": {
+      ".scala": "scala",
+      ".sc": "scala",
+      ".sbt": "sbt"
+    },
+    "initializationOptions": {
+      "statusBarProvider": "log-message"
+    },
+    "settings": {
+      "metals": {
+        "autoImportBuilds": "initial"
+      }
+    },
+    "startupTimeout": 120000,
+    "maxRestarts": 3
+  }
+}
