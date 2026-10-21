@@ -1,0 +1,20 @@
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see
+LICENSE). The files were modified.
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+Paths: skills/java-springboot, instructions/springboot-4-migration.instructions.md
+
+Upstream: https://github.com/affaan-m/everything-claude-code @ 76aaa77df6adc5b889e689007bf99b9a4f74af34
+Paths: skills/springboot-patterns, skills/springboot-security
+
+Modifications: the four sources were merged into one skill (SKILL.md plus six
+references) and condensed; Kotlin and Gradle-only migration examples dropped;
+the 3.x to 4 guide was rechecked against the Spring Boot 4.0 Migration Guide and
+4.1 Release Notes, and 4.1 changes, the Boot 4 OAuth2 and Flyway starter names,
+and the Framework 7 behavior notes added; ProblemDetail, RestClient,
+SecurityFilterChain lambda DSL, transaction-proxy pitfalls, Actuator and
+virtual-thread guidance written from the Spring reference documentation. The
+ECC springboot-tdd and springboot-verification skills were read for ideas only;
+no text was copied.

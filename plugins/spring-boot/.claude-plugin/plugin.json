@@ -1,7 +1,7 @@
 {
   "name": "spring-boot",
   "version": "0.1.0",
-  "description": "Writes, reviews and configures Spring Boot applications: auto-configuration, configuration properties, dependency injection, Spring Data repositories, and web controllers.",
+  "description": "Writes, reviews and debugs Spring Boot 3/4 applications. Covers @ConfigurationProperties and profiles, bean wiring and auto-configuration (\"No qualifying bean\", condition report), MVC and WebFlux controllers, validation and ProblemDetail, Spring Data JPA and @Transactional, Spring Security SecurityFilterChain, Actuator, and the 3.x to 4 upgrade (modular starters, Jackson 3). Use for @SpringBootApplication code, application.yml or application.properties, spring-boot-starter-* dependencies, startup failures such as \"required a bean of type ... that could not be found\" after moving classes, and a @Transactional method that does not roll back.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
