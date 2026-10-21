@@ -1696,28 +1696,28 @@
       "name": "sbt",
       "source": "./plugins/sbt",
       "description": "Writes, edits and debugs sbt builds: build.sbt, project/*.sbt and project/build.properties, sbt 1 and sbt 2 command-line runs, slash keys such as Test/compile, dependency resolution and % or %% coordinates, eviction and version conflicts, cross-built Scala versions, multi-project builds and failing sbt tasks. Use when an sbt command errors with Expected whitespace character, Not a valid command or No such setting/task, when a test does not run or rerun under sbt, or when a build.sbt needs a dependency or cross-build change.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "play-framework",
       "source": "./plugins/play-framework",
       "description": "Builds, debugs, tests and upgrades Play Framework 2.9/3.x web apps in Java or Scala. Use for conf/routes and reverse routes, app/controllers (play.mvc, CompletionStage, Action.async), Twirl templates, Guice DI, play-json or Jackson, WSClient, evolutions, CSRF and AllowedHosts filters, sbt stage/dist packaging, blocking JDBC stalling a Play server, a \"not found: value controllers\" routes error, and the Play 2.8/2.9 to 3.0 upgrade (Akka to Pekko, com.typesafe.play to org.playframework).",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "spring-boot",
       "source": "./plugins/spring-boot",
       "description": "Writes, reviews and debugs Spring Boot 3/4 applications. Covers @ConfigurationProperties and profiles, bean wiring and auto-configuration (\"No qualifying bean\", condition report), MVC and WebFlux controllers, validation and ProblemDetail, Spring Data JPA and @Transactional, Spring Security SecurityFilterChain, Actuator, and the 3.x to 4 upgrade (modular starters, Jackson 3). Use for @SpringBootApplication code, application.yml or application.properties, spring-boot-starter-* dependencies, startup failures such as \"required a bean of type ... that could not be found\" after moving classes, and a @Transactional method that does not roll back.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "spring-boot-testing",
       "source": "./plugins/spring-boot-testing",
       "description": "Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     }
   ]
