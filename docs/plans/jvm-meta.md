@@ -1,6 +1,6 @@
 # Plan: JVM plugin set (`java-meta`, `scala-meta`, `play-framework`, `spring-boot`)
 
-Status: shape approved, 2026-10-20 (see Resolved).
+Status: implemented, 2026-10-20 (shape approved the same day; see Resolved). Eval and smoke-install results are in `docs/research/evals-2026-10-20.md`. Not yet shipped or pushed.
 
 Research (2026-10-20): local `3rd-party/` clones (surveyed 2026-10-17); the skills.sh search API (`https://skills.sh/api/search?q=<term>&limit=100`, which rate-limits, so wait about 4 s between calls); `gh api` for licenses, HEADs and marketplace manifests; Maven Central, services.gradle.org, openjdk.org and spring.io for versions; code.claude.com for dependencies and `.lsp.json`.
 
@@ -299,4 +299,4 @@ Commands:
 
 ## Open questions
 
-1. If the smoke test shows `java-meta` stays disabled while `gradle-skills` is missing, should `gradle-skills` move out of the meta into a recommend-plugins suggestion? **Recommend** keeping it in the meta, since the settings examples register the marketplace. Revisit only if users hit the error.
+1. If the smoke test shows `java-meta` stays disabled while `gradle-skills` is missing, should `gradle-skills` move out of the meta into a recommend-plugins suggestion? **Recommend** keeping it in the meta, since the settings examples register the marketplace. Revisit only if users hit the error. **Answered by the smoke install:** only `java-meta` itself fails to load, and the leaves stay enabled, so it stays in the meta.
