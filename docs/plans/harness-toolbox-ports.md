@@ -428,6 +428,6 @@ Self-run: `mcp__consult__consult` is not available in this session. Each point w
 2. ~~Run vet's 6 trigger evals once after S7?~~ Resolved 2026-10-21: the user said yes; S7 step 6 runs them.
 
 ## Status
-- Done: none.
+- Done: S0-S6; S7 steps 1, 2 and 6 (bumps, catalog/check/validate, vet evals: see docs/research/evals-2026-10-21.md). Review fixes landed as eeeb640, 1222d9c (bash-rules), 91b65f1 (necromancy) and abdf3c0 (docs).
 - In progress: none.
-- Left: S0, S1, S2, S3, S4, S5, S6, S7.
+- Left: S7 steps 3-5 (push + ship-plugin x5, enable vet at project scope, live checks), waiting on the user's go-ahead to push.
