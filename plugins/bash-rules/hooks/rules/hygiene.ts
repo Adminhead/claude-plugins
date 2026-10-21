@@ -1,5 +1,5 @@
 // Tool-hygiene verdicts for bash-rules: Bash that shows file contents (Read does that), authors or edits files (Write,
-// Edit do that), or hides a payload (encoded text or a variable run as a script). Searching stays in the shell: Claude
+// Edit do that), hides a payload (encoded text or a variable run as a script), or passes `grep` a ripgrep-only flag. Searching stays in the shell: Claude
 // Code has no Grep or Glob tool, and its Bash `grep` and `find` are the bundled search tools. Each command gets `deny` (a clear hit),
 // `pass` (no read, write or smuggle shape at all) or `unsure` (a shape the parser cannot settle, which the caller hands
 // to a model). Like the danger rules these target model habits, not a determined adversary. Nothing here touches `$`.
@@ -8,8 +8,8 @@ import { baseName, dynamicProgram, invocation, stdinReader, viewsOf } from '../d
 import { fedBodies, prevStage } from '../danger/rules'
 import type { ShellCommand } from '../shell/walk'
 
-export type Category = 'read' | 'write' | 'smuggle'
-export type Tool = 'Read' | 'Write' | 'Edit' | 'script'
+export type Category = 'read' | 'write' | 'smuggle' | 'flag'
+export type Tool = 'Read' | 'Write' | 'Edit' | 'script' | 'shell'
 export type Verdict =
   | { kind: 'deny'; category: Category; tool: Tool; message: string }
   | { kind: 'pass' }
@@ -25,6 +25,7 @@ export const INSTEAD: Record<Tool, string> = {
   Write: 'Use the Write tool to create or overwrite the file.',
   Edit: 'Use the Edit tool instead (replace_all for every occurrence).',
   script: 'Write the script as plain text to a scratch file with the Write tool and run that, or use a built-in tool.',
+  shell: 'Fix the flag and run it again.',
 }
 
 const LEAD: Record<Tool, string> = {
@@ -32,6 +33,7 @@ const LEAD: Record<Tool, string> = {
   Write: 'writes file content through the shell',
   Edit: 'edits a file in place through the shell',
   script: 'hides what it runs',
+  shell: 'passes a flag the command does not have',
 }
 
 // Appended to the Bash tool's description (register.tsx), so the model, and its subagents, know the rules before the first
@@ -422,6 +424,18 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
     const argv = argvOf(c)
     const vs = viewsOf(argv)
     let viaXargs = false
+
+    // flag: Claude Code's `grep` is a shell function running ugrep, which rejects ripgrep's --no-ignore (exit 2, empty
+    // stdout). Only the literal `grep` word at the top level reaches that function.
+    if (c.depth === 0 && c.argv[0] === 'grep') {
+      const bad = split(c.argv, 'efmABCdD', ['--regexp', '--file']).flags.find(f => f === '--no-ignore' || /^--no-ignore-(?:vcs|dot|parent|global|exclude|messages)$/.test(f))
+      if (bad) {
+        hits.push({
+          category: 'flag', tool: 'shell', what: `grep ${bad}`,
+          note: "In Claude Code, grep runs the bundled ugrep, which rejects --no-ignore (a ripgrep flag): it exits 2 and prints nothing on stdout, so a scan that never ran looks clean. This grep already skips gitignored files; add --no-ignore-files to include them, or use rg --no-ignore. ",
+        })
+      }
+    }
     for (const v of vs) {
       const words = textOf(c, v)
       const name = baseName(v[0] ?? null)
@@ -528,7 +542,7 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
     }
   }
 
-  const order: Category[] = ['smuggle', 'write', 'read']
+  const order: Category[] = ['smuggle', 'write', 'read', 'flag']
   for (const cat of order) {
     const h = hits.find(x => x.category === cat)
     if (h) return { kind: 'deny', category: h.category, tool: h.tool, message: cat === 'read' ? readNudge(h) : nudge(h.tool, h.what, h.note) }

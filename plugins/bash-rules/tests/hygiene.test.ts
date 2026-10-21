@@ -536,3 +536,40 @@ describe('verdict shape', () => {
     expect(v).toEqual({ kind: 'unsure', reasons: ['sed transforms a file and prints the result'] })
   })
 })
+
+describe('flag', () => {
+  test('a direct grep with a ripgrep-only ignore flag is denied', () => {
+    expectAll(
+      [
+        'grep --no-ignore -rn foo .',
+        'grep -rn foo . --no-ignore',
+        "grep '--no-ignore' -rn x .",
+        'grep --no-ignore-vcs -r foo .',
+        'git ls-files | grep --no-ignore x',
+        'out=$(grep --no-ignore -r x . 2>/dev/null)',
+        '(cd src && grep --no-ignore -r x .)',
+      ],
+      'flag/shell',
+    )
+    const v = verdict('grep --no-ignore -rn foo .')
+    expect(v.kind === 'deny' ? v.message : '').toMatch(/ugrep.*--no-ignore-files.*rg --no-ignore/)
+  })
+
+  test('the flag as a pattern, ugrep flags, rg and other grep commands pass', () => {
+    expectAll(
+      [
+        "grep -rn -e '--no-ignore' plugins/",
+        'grep -rn -- --no-ignore docs/',
+        'rg --no-ignore foo',
+        'grep --no-ignore-files -r foo .',
+        'grep --no-ignore-case foo f',
+        'command grep --no-ignore x f',
+        '/usr/bin/grep --no-ignore x f',
+        'xargs grep --no-ignore x',
+        'egrep --no-ignore x f',
+        "bash -c 'grep --no-ignore x f'",
+      ],
+      'pass',
+    )
+  })
+})

@@ -20,6 +20,9 @@ Searching is left to the shell. Claude Code no longer has Grep or Glob tools: it
 | write | `cat > f <<EOF`, `echo x >> f`, `echo x \| tee f`, `sed -i`, `perl -pi`, `python -c "open(...,'w')"` | Write, Edit |
 | smuggle | `echo … \| base64 -d \| sh`, `X='…'; bash -c "$X"`, `python -c "exec(b64decode(…))"` | a scratch script written with Write |
 | destructive | `rm -rf /`, `rm` of system files, `~/.ssh` or shell rc files, disk wipes, `sudo`, `terraform destroy`, `kubectl delete ns`, `helm uninstall`, `docker system prune -a`, `docker compose down -v`, `dropdb`, `DROP TABLE` via a client or in a `psql -f`/`mysql <` script file | hand it to the user |
+| kill by name | `pkill -f vite`, `killall node`, `kill $(pgrep -f node)`, `pgrep x \| xargs kill`, `kill -1`; `kill 1234`, `kill $(cat app.pid)` and `kill $(lsof -t -i:5173)` pass | `pgrep -a <name>`, then `kill <pid>` of the process you started |
+| credentials | any command that touches `~/.claude/.credentials.json` (`cat`, `jq`, `cp`, a `python -c` that opens it, `rm`); `ls`, `stat` and `test` on it pass | read `rate_limits` from the JSON Claude Code passes to a statusline command |
+| flag | `grep --no-ignore` (Claude Code's `grep` is ugrep, which rejects it with exit 2 and no output) | `grep --no-ignore-files`, or `rg --no-ignore` |
 
 It asks before `curl … | sh`, force-pushes and hard resets, and `git clean -fdx` outside a linked worktree.
 

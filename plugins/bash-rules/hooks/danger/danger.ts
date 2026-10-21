@@ -1,4 +1,5 @@
-// Danger rules for bash-rules: commands that destroy a system, infrastructure or data, or escalate privilege (deny),
+// Danger rules for bash-rules: commands that destroy a system, infrastructure or data, escalate privilege, kill processes by
+// name or touch Claude's credentials file (deny),
 // and commands that run downloaded code, rewrite git history or delete ignored files (ask). Ported from
 // bash-danger-guard, plus the infra-destroy, container-prune, db-drop and git-clean rules. They target model
 // accidents, not a determined adversary, so variable indirection, download-then-run and `cd / && rm -rf *` are out of scope. Nothing here touches `$`.
@@ -6,7 +7,7 @@
 import { nestedScript, reparse } from '../shell/walk'
 import type { ShellCommand } from '../shell/walk'
 
-export type DangerRule = 'priv-escalation' | 'rm-root' | 'rm-critical' | 'disk-wipe' | 'system-perms' | 'infra-destroy' | 'container-prune' | 'db-drop'
+export type DangerRule = 'priv-escalation' | 'rm-root' | 'rm-critical' | 'disk-wipe' | 'system-perms' | 'infra-destroy' | 'container-prune' | 'db-drop' | 'kill-by-name' | 'credentials-read'
 export type AskRule = 'remote-exec' | 'git-rewrite' | 'git-clean' | 'sql-unchecked'
 
 type Argv = readonly (string | null)[]
@@ -20,6 +21,8 @@ export const DANGER_MESSAGES: Record<DangerRule, string> = {
   'infra-destroy': 'bash-rules: refusing a command that destroys infrastructure (terraform/tofu destroy, apply -destroy, kubectl delete of a namespace or --all, helm uninstall). Hand it to the user to run.',
   'container-prune': 'bash-rules: refusing a docker or podman command that removes all images or volumes (system prune -a, volume prune, compose down -v). Hand it to the user to run.',
   'db-drop': 'bash-rules: refusing a command that drops or truncates a database or table (dropdb, DROP DATABASE/SCHEMA/TABLE, TRUNCATE, FLUSHALL). Hand it to the user to run.',
+  'kill-by-name': 'bash-rules: refusing to kill processes by name or pattern (pkill, killall, kill $(pgrep ...), pgrep | xargs kill, kill -1). It can end work that other sessions and agents run on this machine. Find the PID with pgrep -a <name> or ps, then kill <pid> the one you started; hand a broad kill to the user.',
+  'credentials-read': "bash-rules: refusing a command that touches ~/.claude/.credentials.json, Claude Code's OAuth token cache. Reading it exposes the token, and outside an interactive session it is often stale. For usage or rate-limit numbers, read the JSON Claude Code passes to a statusline command (rate_limits.five_hour / seven_day: used_percentage, resets_at).",
 }
 
 export const ASK_MESSAGES: Record<AskRule, string> = {
@@ -476,7 +479,170 @@ const dbDrop = (v: Argv, c: ShellCommand): boolean => {
   return clientText(v, c).some(t => DESTROY_SQL.test(t))
 }
 
-const DANGER: [DangerRule, (v: Argv, c: ShellCommand) => boolean][] = [
+const PID_FINDERS = ['pgrep', 'pidof', 'ps']
+
+// Whether any command in the list, or what its wrappers run, is one of `names`.
+const runsAny = (cs: readonly ShellCommand[], names: readonly string[]) => cs.some(x => viewsOf(x.argv).some(w => names.includes(baseName(w[0]))))
+
+// Whether a view is what `xargs` (anywhere before it in the wrapper chain) runs, so its operands come from stdin.
+function viaXargs(v: Argv, c: ShellCommand): boolean {
+  const vs = viewsOf(c.argv)
+  const at = vs.findIndex(w => w.length === v.length && w.every((a, i) => a === v[i]))
+  return vs.slice(0, Math.max(at, 0)).some(w => baseName(w[0]) === 'xargs')
+}
+
+// The targets of a `kill`: its operands, plus any option-looking word after the signal (`kill -9 -1`). The first
+// option word is the signal; `-s SIG` and `-n NUM` name it in the next word. Null for a listing (`kill -l`, `--help`).
+function killTargets(v: Argv): (string | null)[] | null {
+  const out: (string | null)[] = []
+  const rest = args(v)
+  let signal = false
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i]
+    if (a === null || a === '-' || a[0] !== '-') out.push(a)
+    else if (a === '--') {
+      out.push(...rest.slice(i + 1))
+      break
+    } else if (a === '-l' || a === '-L' || /^--(?:list|table|help|version)$/.test(a)) return null
+    else if (a === '-s' || a === '-n' || a === '--signal') {
+      signal = true
+      i++
+    } else if (a.startsWith('--') || !signal) signal = true
+    else out.push(a)
+  }
+  return out
+}
+
+// Kills by name or pattern, and kills of a PID list that a search produced: other sessions and agents run on this machine.
+// `pkill`, `killall`, `kill -1` (every process the user may signal), and `kill` whose targets are unknown (an expansion, or
+// what xargs feeds it) while a PID finder is reachable: in its own substitutions or earlier pipeline stages, or a `pgrep`
+// or `pidof` anywhere in the scan (`for p in $(pgrep x); do kill $p; done`). `ps` stays out of the scan-wide check, so
+// `ps -p "$PID" >/dev/null && kill "$PID"` passes.
+const killByName = (v: Argv, c: ShellCommand, all: readonly ShellCommand[]): boolean => {
+  const name = baseName(v[0])
+  if (name === 'pkill' || name === 'killall') {
+    if (hasFlag(v, 'V', ['--version', '--help'])) return false
+    return !(name === 'killall' && hasFlag(v, 'l', ['--list']))
+  }
+  if (name !== 'kill') return false
+  const targets = killTargets(v)
+  if (targets === null) return false
+  if (targets.includes('-1')) return true
+  if (!targets.includes(null) && !viaXargs(v, c)) return false
+  return runsAny(c.subs, PID_FINDERS) || (c.pipeline !== null && runsAny(c.pipeline.earlier, PID_FINDERS)) || runsAny(all, ['pgrep', 'pidof'])
+}
+
+// The view's words as written (quotes removed, expansions kept): the slice of `c.text` that `v` came from.
+function viewText(c: ShellCommand, v: Argv): string[] {
+  for (let k = 0; k + v.length <= c.argv.length; k++) {
+    if (v.every((a, i) => c.argv[k + i] === a)) return c.text.slice(k, k + v.length)
+  }
+  return v.map(a => a ?? '')
+}
+
+const METADATA = new Set(['ls', 'stat', 'test', '[', 'file', 'du', 'realpath', 'readlink', 'basename', 'dirname'])
+const GREP_FAMILY = new Set(['grep', 'egrep', 'fgrep', 'rg', 'ag', 'ack', 'ugrep'])
+const CRED_FILE = '.credentials.json'
+
+// The indexes of a search command's pattern words: the first operand when no -e/-f/--regexp/--file is given, and the
+// values of those options.
+function patternWords(v: Argv): Set<number> {
+  const skip = new Set<number>()
+  let given = false
+  let first = -1
+  for (let i = 1; i < v.length; i++) {
+    const a = v[i]
+    if (a === null || a === '-' || a[0] !== '-') {
+      if (first < 0) first = i
+    } else if (a === '--') {
+      if (first < 0 && i + 1 < v.length) first = i + 1
+      break
+    } else if (a.startsWith('--')) {
+      const name = a.split('=')[0]
+      if (name === '--regexp' || name === '--file') {
+        given = true
+        if (a.includes('=')) skip.add(i)
+        else skip.add(++i)
+      }
+    } else {
+      for (let k = 1; k < a.length; k++) {
+        if ('ef'.includes(a[k])) {
+          given = true
+          if (k === a.length - 1) skip.add(++i)
+          else skip.add(i)
+          break
+        }
+        if ('mABCdD'.includes(a[k])) {
+          if (k === a.length - 1) i++
+          break
+        }
+      }
+    }
+  }
+  if (!given && first >= 0) skip.add(first)
+  return skip
+}
+
+// Whether a path component names the credentials file: the name, or a glob that starts with a dot and can match it.
+const credName = (s: string) => s === CRED_FILE || (s[0] === '.' && hasGlob(s) && globMatches(s, CRED_FILE))
+
+// Whether a literal path is the file under a `.claude` directory (`~/.claude/...`, `/home/x/.claude/...`, a relative `.claude/...`).
+function credPath(t: string): boolean {
+  if (/\s/.test(t)) return false
+  const comps = resolve(t.split('/'), t[0] === '~')
+  return comps !== null && comps.length >= 2 && comps[comps.length - 2] === '.claude' && credName(comps[comps.length - 1])
+}
+
+// The value of a `key=VALUE` or `--option=VALUE` word, or the word.
+const valueOf = (w: string) => /^(?:--?[\w-]+|[A-Za-z_][\w.]*)=(.*)$/s.exec(w)?.[1] ?? w
+
+// A directory change into a `.claude` directory (or $CLAUDE_CONFIG_DIR).
+const entersClaudeDir = (c: ShellCommand) => {
+  const name = baseName(c.argv[0] ?? null)
+  if (name !== 'cd' && name !== 'pushd') return false
+  const t = c.text.slice(1).find(w => w[0] !== '-')
+  if (t === undefined) return false
+  if (/^\$\{?CLAUDE_CONFIG_DIR\}?\/*$/.test(t)) return true
+  const comps = resolve(t.split('/'), t[0] === '~')
+  return comps !== null && comps[comps.length - 1] === '.claude'
+}
+
+// Any touch of ~/.claude/.credentials.json, Claude Code's OAuth token cache, outside commands that only read metadata.
+// A word counts when it is the path (or the value of `key=PATH`), an assignment or literal redirect target holds it, a
+// word names `$CLAUDE_CONFIG_DIR/.credentials.json`, a bare `.credentials.json` follows a `cd` into a `.claude` directory,
+// or interpreter code (inline, heredoc, here-string) mentions both `.claude` and `.credentials.json`. Search patterns
+// are skipped, their file operands count.
+const credentialsRead = (v: Argv, c: ShellCommand, all: readonly ShellCommand[]): boolean => {
+  const name = baseName(v[0])
+  if (METADATA.has(name)) return false
+  const words = viewText(c, v)
+  const skip = GREP_FAMILY.has(name) ? patternWords(v) : new Set<number>()
+  let claudeDir: boolean | undefined
+  for (let i = 0; i < v.length; i++) {
+    if (skip.has(i)) continue
+    const a = v[i]
+    if (a !== null) {
+      const p = valueOf(a)
+      if (credPath(p)) return true
+      if (/^(?:\.\/)*\.credentials\.json$/.test(p) && (claudeDir ??= all.some(entersClaudeDir))) return true
+    }
+    const m = /^\$\{?CLAUDE_CONFIG_DIR\}?\/(.*)$/s.exec(valueOf(words[i] ?? ''))
+    if (m && credPath(`.claude/${m[1]}`)) return true
+  }
+  if (c.assigns.some(a => a.value !== null && credPath(a.value))) return true
+  if (c.redirects.some(r => r.op !== '<<' && r.op !== '<<<' && r.target !== null && credPath(r.target))) return true
+  const inv = invocation(v)
+  const code: string[] = []
+  if (inv && !inv.shell && inv.code >= 0) code.push(words[inv.code] ?? '')
+  if (stdinReader(v) === 'script') {
+    code.push(...c.heredocs.map(h => h.body), ...c.redirects.filter(r => r.op === '<<<').map(r => r.text))
+    const p = c.pipeline
+    if (p) for (const e of p.prev) if (e.pipeline?.stage === p.stage - 1) code.push(...e.heredocs.map(h => h.body))
+  }
+  return code.some(t => t.includes('.claude') && t.includes(CRED_FILE))
+}
+
+const DANGER: [DangerRule, (v: Argv, c: ShellCommand, all: readonly ShellCommand[]) => boolean][] = [
   ['priv-escalation', privEscalation],
   ['rm-root', rmRoot],
   ['rm-critical', rmCritical],
@@ -485,6 +651,8 @@ const DANGER: [DangerRule, (v: Argv, c: ShellCommand) => boolean][] = [
   ['infra-destroy', infraDestroy],
   ['container-prune', containerPrune],
   ['db-drop', dbDrop],
+  ['kill-by-name', killByName],
+  ['credentials-read', credentialsRead],
 ]
 
 // The first danger rule that any command, or anything its wrappers and `find -exec` run, trips. Rules are tried in
@@ -492,7 +660,7 @@ const DANGER: [DangerRule, (v: Argv, c: ShellCommand) => boolean][] = [
 export function dangerHit(commands: readonly ShellCommand[]): { rule: DangerRule; message: string } | null {
   const all = commands.map(c => ({ c, vs: viewsOf(c.argv) }))
   for (const [rule, test] of DANGER) {
-    if (all.some(({ c, vs }) => vs.some(v => test(v, c)))) return { rule, message: DANGER_MESSAGES[rule] }
+    if (all.some(({ c, vs }) => vs.some(v => test(v, c, commands)))) return { rule, message: DANGER_MESSAGES[rule] }
   }
   return null
 }
