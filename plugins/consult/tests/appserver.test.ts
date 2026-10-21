@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 import {
-  answerServerRequest, checkAccount, checkClientRequest, checkCwd, checkLockdown, checkProbeRequest, checkProjectLayers, checkProvider,
+  answerServerRequest, checkAccount, checkClientRequest, checkDaemonLink, checkCwd, checkLockdown, checkProbeRequest, checkProjectLayers, checkProvider,
   checkReadOnly, checkServerLocked, checkSocketPath, checkSocketStat, checkVersion, classifyTurnError, clientErrorText, finalReply, fitLine,
   initializeParams, LOCKED_FEATURES, MAX_LINE_BYTES, Matcher, mcpServerNames, newTurnState, observedModel, parseClientResult,
   parseServerVersion, projectLayers, reduce, requestThreadId, resolveSocket, reviewStartParams, threadStartParams, timeoutMessage,
@@ -73,6 +73,24 @@ describe('socket', () => {
     expect(checkSocketStat(sock, { mode: FILE, uid: UID }, UID)?.kind).toBe('socket-unsafe')
     expect(checkSocketStat(sock, { mode: DIR, uid: UID }, UID)).toBeNull()
     expect(checkSocketStat(sock, { mode: 0o040755, uid: UID }, UID)).toBeNull()
+  })
+})
+
+describe('codex daemon socket link', () => {
+  const H = 'a'.repeat(64)
+  const P = '/run/user/1000/codex-consult.sock'
+  const link = { mode: LINK, uid: UID }
+  const parent = { mode: DIR, uid: UID }
+  test("checkDaemonLink accepts only codex's own link: ours, in a safe dir, to codex-daemon-<uid>/<sha256 of the path>", () => {
+    expect(checkDaemonLink(link, parent, UID, P, `/tmp/codex-daemon-1000/${H}`, H)).toBeNull()
+    expect(checkDaemonLink(link, parent, UID, P, `/tmp/codex-daemon-1001/${H}`, H)?.kind).toBe('socket-unsafe')
+    expect(checkDaemonLink(link, parent, UID, P, `/tmp/codex-daemon-1000/${'b'.repeat(64)}`, H)?.kind).toBe('socket-unsafe')
+    expect(checkDaemonLink(link, parent, UID, P, `codex-daemon-1000/${H}`, H)?.kind).toBe('socket-unsafe')
+    expect(checkDaemonLink(link, parent, UID, P, `/tmp/x/../codex-daemon-1000/${H}`, H)?.kind).toBe('socket-unsafe')
+    expect(checkDaemonLink(link, parent, UID, P, '/tmp/other.sock', H)?.message).toMatch(/symlink to \/tmp\/other\.sock/)
+    expect(checkDaemonLink({ mode: LINK, uid: 0 }, parent, UID, P, `/tmp/codex-daemon-1000/${H}`, H)?.message).toMatch(/link is owned by uid 0/)
+    expect(checkDaemonLink(link, { mode: 0o040777, uid: UID }, UID, P, `/tmp/codex-daemon-1000/${H}`, H)?.message).toMatch(/writable/)
+    expect(checkDaemonLink({ mode: SOCK, uid: UID }, parent, UID, P, `/tmp/codex-daemon-1000/${H}`, H)?.kind).toBe('socket-unsafe')
   })
 })
 

@@ -78,19 +78,39 @@ const S_IFDIR = 0o040000
 export const socketUnsafe = (path: string, why: string): Fail =>
   fail('socket-unsafe', `${why} (${snippet(path, 100)}); consult refuses sockets it cannot trust`)
 
-export function checkSocketStat(sock: PlainStat, parent: PlainStat, uid: number, path = 'the socket'): Fail | null {
-  const type = (s: PlainStat) => s.mode & S_IFMT
-  if (type(sock) === S_IFLNK) return socketUnsafe(path, 'the socket is a symlink')
-  if (type(sock) !== S_IFSOCK) return socketUnsafe(path, 'the path is not a socket')
-  if (sock.uid !== uid) return socketUnsafe(path, `the socket is owned by uid ${sock.uid}, not ${uid}`)
-  if (type(parent) === S_IFLNK) return socketUnsafe(path, 'the socket directory is a symlink')
-  if (type(parent) !== S_IFDIR) return socketUnsafe(path, 'the socket directory is not a directory')
+const fileType = (s: PlainStat) => s.mode & S_IFMT
+
+function checkSocketDir(parent: PlainStat, uid: number, path: string): Fail | null {
+  if (fileType(parent) === S_IFLNK) return socketUnsafe(path, 'the socket directory is a symlink')
+  if (fileType(parent) !== S_IFDIR) return socketUnsafe(path, 'the socket directory is not a directory')
   if (parent.uid !== uid) return socketUnsafe(path, `the socket directory is owned by uid ${parent.uid}, not ${uid}`)
   if ((parent.mode & 0o022) !== 0) return socketUnsafe(path, `the socket directory is group- or world-writable (mode ${(parent.mode & 0o777).toString(8)})`)
   return null
 }
 
-export function noServerMessage(path: string, why: 'missing' | 'refused' | 'no answer in 5s'): string {
+export function checkSocketStat(sock: PlainStat, parent: PlainStat, uid: number, path = 'the socket'): Fail | null {
+  if (fileType(sock) === S_IFLNK) return socketUnsafe(path, 'the socket is a symlink')
+  if (fileType(sock) !== S_IFSOCK) return socketUnsafe(path, 'the path is not a socket')
+  if (sock.uid !== uid) return socketUnsafe(path, `the socket is owned by uid ${sock.uid}, not ${uid}`)
+  return checkSocketDir(parent, uid, path)
+}
+
+export const isSymlink = (s: PlainStat) => fileType(s) === S_IFLNK
+
+// codex 0.162.1 binds `--listen unix://PATH` at <tmp>/codex-daemon-<uid>/<sha256 hex of PATH> and makes PATH a
+// symlink to it (probed in S2). The only symlink consult follows is that one: the link is ours, in a safe
+// directory, and points at exactly that name. The client then checks the target with checkSocketStat.
+export function checkDaemonLink(link: PlainStat, parent: PlainStat, uid: number, path: string, target: string, pathSha256: string): Fail | null {
+  if (!isSymlink(link)) return socketUnsafe(path, 'the path is not a symlink')
+  if (link.uid !== uid) return socketUnsafe(path, `the socket link is owned by uid ${link.uid}, not ${uid}`)
+  const bad = checkSocketDir(parent, uid, path)
+  if (bad) return bad
+  const dir = socketDir(target)
+  const ok = target.startsWith('/') && !target.split('/').includes('..') && target.slice(dir.length + 1) === pathSha256 && dir.slice(dir.lastIndexOf('/') + 1) === `codex-daemon-${uid}`
+  return ok ? null : socketUnsafe(path, `the socket is a symlink to ${snippet(target, 120)}, not to codex's own codex-daemon-${uid}/<sha256 of the path>`)
+}
+
+export function noServerMessage(path: string, why: 'missing' | 'refused' | 'no answer in 2s' | 'no answer in 5s'): string {
   return `no codex app server at ${snippet(path, 100)} (${why}). Start it with systemctl --user start ${UNIT_NAME}; check it with systemctl --user status ${UNIT_NAME}. Setup: ${README_UNIT}.`
 }
 

@@ -16,9 +16,20 @@ Checked against:
 Harness-toolbox ports are out of scope.
 
 ## Status
-- Done: none.
+- Done: S1 (bb1f80e), S2 (the `feat(consult): add codex app-server client with fake-server spec` commit).
 - In progress: none.
-- Left: S1, S2, S3, S4, S5.
+- Left: S3, S4, S5.
+- S2 step 1 (2026-10-21, codex-cli 0.162.1, throwaway foreground servers with the unit's flags on short `/tmp` sockets, no turn; all stopped and removed):
+  1. `thread/start.config.{model, review_model, model_reasoning_effort}` is accepted (scratch `CODEX_HOME`, no auth). The response echoes `model: "probe-model"`, `reasoningEffort: "low"`; `review_model` raises no error but is not observable without a turn, so `observedModel` stays.
+  2. `config.tools` is `null` under the unit's flags, with the real `~/.codex` (`config/read {}` only) and with a scratch home. `checkServerLocked` keeps "absent or null".
+  3. Both `ExecCommandApprovalParams` and `ApplyPatchApprovalParams` require `conversationId` (schema).
+  4. `thread/delete` on an ephemeral thread fails `-32600 "thread is not persisted and cannot be deleted"`, and the thread stays in `thread/loaded/list` after `thread/unsubscribe` (checked again after 3 s). The client does not call `thread/delete`; L2(g) still applies.
+  5. No config key turns off the warmup: `config/read` has no key matching `warm`, and the binary's strings name `startup_prewarm*` internals only. The warmup reached `wss://api.openai.com/v1/responses` (401 under the scratch home). Follow-up stays open.
+  - **New: `--listen unix://PATH` makes PATH a symlink.** codex binds the real socket at `/tmp/codex-daemon-<uid>/<sha256 hex of PATH>` (directory `0700`, socket `0600`, both ours) and symlinks PATH to it, also under `/run/user/1000`. The plan's "not a symlink" check would refuse every real server, so the client follows exactly that one link (`checkDaemonLink`: the link is ours in a safe directory and points at `codex-daemon-<uid>/<sha256(PATH)>`), checks the target and its directory with `checkSocketStat` and `realpath`, and connects to the target. Any other symlink stays `socket-unsafe`. S4: the README unit's `rm -f %t/codex-consult.sock` removes the link only.
+- S2 step 2 (scratch `CODEX_HOME`, no auth, trusting one `/tmp` repo by exact path; both repos planted `web_search`, `multi_agent`, `notify` and an MCP server writing a marker), through the built client:
+  - trusted repo: `--probe` and the plan request both gave `not-locked` ("…/.codex sets web_search, features, mcp_servers"); the log shows `initialize`, `config/read` ×2 and no `thread/start`;
+  - untrusted repo: `--probe` passed with the layer `enabled: false` (keys `web_search, features, mcp_servers`), signed out, read-only/`never`/`user`/`openai`, 0 MCP, 0 hooks; the plan request stopped at `auth` after stage 1, before `thread/start`;
+  - no marker was written. The SKILL warning may be reworded as S4 describes.
 - Commits: one commit per slice, after its checks and review pass, in the main tree. Slices run one after another; there are no worktrees.
 - Reviews: revision 2 was reviewed "changes needed" and every item is addressed in revision 3 (critique log rows 35-53). The L2 smoke test is approved by the user (synthetic repo only).
 
