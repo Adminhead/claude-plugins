@@ -5,7 +5,7 @@ Claude Code plugin marketplace `adminhead`. It has three kinds of plugin:
 - `baseline`, a meta plugin you install once at user scope. It pulls in the plugins every session should have.
 - Project meta plugins (`python-meta`, `golang-meta`, `rust-meta`, `node-typescript-meta`, `dotnet-meta`, `web-meta`, `design-meta`, `godot-meta`, `iac-meta`, `kubernetes-meta`, `github-meta`, `forgejo-meta`) that you install at project scope. Each pulls in the plugins for one kind of project. `orchestration-meta` adds a main orchestration agent and a set of general-purpose agents. It leaves out the costly `coder-max` tier, which you install per repo at local scope.
 - Core bundles shared by several metas: `programming-core` (general programming, installed by the language, web and game metas), `design-core` (UI and UX design, installed by `web-meta` and `design-meta`) and `gamedev-core` (engine-agnostic game development, installed by `godot-meta`). A project with two such metas gets one copy.
-- Focused plugins. Each ships exactly one component: one skill, agent, hook config, or MCP server. Install them through a meta plugin or on their own.
+- Focused plugins. Each ships exactly one component: one skill, agent, hook config, or MCP server (exceptions: `MULTI_COMPONENT`). Install them through a meta plugin or on their own.
 
 Small plugins keep context cost down. You load only the skills and servers a project uses, and each skill's description competes with fewer others in the skill listing.
 
@@ -389,7 +389,7 @@ examples/claude-settings/   settings examples for each scope
 
 - A meta plugin is `baseline` or a name ending in `-meta`. It ships only `plugin.json`, plus an optional `README.md`. Its `dependencies` name focused plugins and core bundles from this marketplace, never another meta plugin.
 - A core bundle is a plugin whose marketplace entry has `"category": "bundle"`, named `*-core` by convention (`programming-core`). The suffix alone doesn't make a bundle: `ef-core` and `aspnet-core` are ordinary plugins. A bundle has the same shape as a meta plugin, lists only focused plugins, and only meta plugins may depend on it. Use one when several metas share the same set.
-- Every other plugin ships exactly one component. Supporting files such as `scripts/` or a skill's `references/` don't count.
+- Every other plugin ships exactly one component (exceptions: `MULTI_COMPONENT`). Supporting files such as `scripts/` or a skill's `references/` don't count.
 - A focused plugin may depend on another focused plugin it calls, such as a skill that uses an MCP server plugin. A dependency from another marketplace must be listed in `allowCrossMarketplaceDependenciesOn`, which today allows `claude-code-lsps` (language servers), `claude-plugins-official` (only for `csharp-lsp`, `context7` and `jdtls-lsp`) and `gradle-skills` (Gradle's official skills).
 - Names are lowercase kebab-case. `name`, `version`, and `description` match between `plugin.json` and `marketplace.json`.
 - The catalog in this README is generated. Edit descriptions in `plugin.json` and `marketplace.json`, then run `scripts/plugins.py catalog`.

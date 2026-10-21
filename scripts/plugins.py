@@ -35,7 +35,11 @@ SCOPES = {"baseline": "user", "orchestration-meta": "user or project"}
 KINDS = ("skill", "agent", "hook", "mcp")
 # Leaves allowed more than one component, with the exact components they may ship.
 # orchestration's SessionStart hook keeps ~/.local/bin/claude-orchestrate linked to the live install.
-MULTI_COMPONENT = {"orchestration": {("agent", "orchestration"), ("hook", "hooks/hooks.json")}}
+# scala ships its Metals LSP config; no adminhead or allowlisted marketplace has a Metals plugin (user decision 2026-10-20).
+MULTI_COMPONENT = {
+    "orchestration": {("agent", "orchestration"), ("hook", "hooks/hooks.json")},
+    "scala": {("skill", "scala"), ("lsp", "metals")},
+}
 # Pairs of metas whose plugin sets must not overlap, except through baseline.
 EXCLUSIVE_METAS = [("github-meta", "forgejo-meta")]
 

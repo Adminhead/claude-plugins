@@ -1,0 +1,18 @@
+scala
+Copyright AdminHead
+
+This plugin contains material adapted from sanssushi/skills, licensed under the
+MIT License (see LICENSE).
+
+Upstream: https://github.com/sanssushi/skills @ 02a3a9362ab9abda0222abd3d437a24b104e6c29
+Paths: skills/scala3-syntax/references/adts-and-deriving.md, skills/scala3-syntax/references/givens.md, skills/scala3-syntax/references/context-bounds-and-using.md
+
+Modifications: condensed into skills/scala/references/scala3.md and rewritten to
+follow the project's own syntax instead of forcing upstream's strict profile
+(-source:future, -preview, strictEquality, -Yexplicit-nulls); the SIP-64 given
+and context-bound forms are marked as 3.6+ with the older 3.0-3.5 forms beside
+them. Not ported: the type-system, metaprogramming, explicit-nulls,
+compiler-flags and extension references.
+
+The Metals .lsp.json, references/metals.md, scala2-to-3.md, effects.md and
+testing.md are original text written from the Scala and Metals documentation.

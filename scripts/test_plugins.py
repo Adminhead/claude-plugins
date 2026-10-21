@@ -69,6 +69,21 @@ def test_multi_component_allowlist(root, monkeypatch):
     assert any("MULTI_COMPONENT allows exactly" in e for e in plugins.check(root))
 
 
+def test_multi_component_allows_lsp(root, monkeypatch):
+    run(root, "new", "uv-lock", "--kind", "skill", "--description", "Locks deps.")
+    lsp = root / "plugins/uv-lock/.lsp.json"
+    lsp.write_text(json.dumps({"metals": {"command": "metals", "extensionToLanguage": {".scala": "scala"}}}))
+    assert any("exactly one component, found 2" in e for e in plugins.check(root))
+    monkeypatch.setitem(plugins.MULTI_COMPONENT, "uv-lock", {("skill", "uv-lock"), ("lsp", "metals")})
+    assert not [e for e in plugins.check(root) if e.startswith("uv-lock:")]
+    lsp.unlink()
+    assert any("MULTI_COMPONENT allows exactly" in e for e in plugins.check(root))
+
+
+def test_scala_is_allowed_a_metals_lsp():
+    assert plugins.MULTI_COMPONENT["scala"] == {("skill", "scala"), ("lsp", "metals")}
+
+
 def test_supporting_files_do_not_count(root):
     run(root, "new", "uv-lock", "--kind", "hook", "--description", "Locks deps.")
     script = root / "plugins/uv-lock/scripts/run.sh"
