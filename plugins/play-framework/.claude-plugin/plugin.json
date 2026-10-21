@@ -1,7 +1,7 @@
 {
   "name": "play-framework",
   "version": "0.1.0",
-  "description": "Builds and debugs Play Framework web apps: routes, controllers and actions, action composition, Twirl templates, and Play JSON.",
+  "description": "Builds, debugs, tests and upgrades Play Framework 2.9/3.x web apps in Java or Scala. Use for conf/routes and reverse routes, app/controllers (play.mvc, CompletionStage, Action.async), Twirl templates, Guice DI, play-json or Jackson, WSClient, evolutions, CSRF and AllowedHosts filters, sbt stage/dist packaging, blocking JDBC stalling a Play server, a \"not found: value controllers\" routes error, and the Play 2.8/2.9 to 3.0 upgrade (Akka to Pekko, com.typesafe.play to org.playframework).",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
