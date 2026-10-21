@@ -1,6 +1,6 @@
 ---
 name: unit-testing
-description: Writes, updates and runs focused unit or regression tests for changed behavior or a confirmed bug, in any language, including test-first (red-green) work, and decides which tests to run after a change. Use for "add a test for this", "write a regression test for this fix", "do this TDD", "which tests should I run?" or "is this change covered?".
+description: Writes, updates and runs focused unit or regression tests for changed behavior or a confirmed bug, in any language, including test-first (red-green) work, and decides which tests to run after a change. Also answers general test-strategy questions in any language, such as what belongs in a unit test versus a broader test, when to test private helpers or a real database, and how to make a test suite consistent. Use for "add a test for this", "write a regression test for this fix", "do this TDD", "which tests should I run?" or "is this change covered?", "what should we unit test?" or "what counts as a unit test here?".
 ---
 
 # Unit testing

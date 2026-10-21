@@ -638,8 +638,8 @@
     {
       "name": "unit-testing",
       "source": "./plugins/unit-testing",
-      "description": "Focused unit and regression tests for changed behavior or a confirmed bug, in any language: smallest proving test, test-first slices, seams and boundary-only mocks, plus pytest and Vitest/Jest references. No coverage quotas.",
-      "version": "0.1.0",
+      "description": "Focused unit and regression tests and test-strategy guidance for changed behavior or a confirmed bug, in any language: smallest proving test, test-first slices, seams and boundary-only mocks, plus pytest and Vitest/Jest references. No coverage quotas.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
