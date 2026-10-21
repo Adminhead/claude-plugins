@@ -1,6 +1,6 @@
 ---
 name: sbt
-description: Writes, edits and debugs sbt builds: build.sbt, project/*.sbt and project/build.properties, sbt 1 and sbt 2 command-line runs, slash keys such as Test/compile, dependency resolution and % or %% coordinates, eviction and version conflicts, cross-built Scala versions, multi-project builds and failing sbt tasks. Use when an sbt command errors with Expected whitespace character, Not a valid command or No such setting/task, when a test does not run or rerun under sbt, or when a build.sbt needs a dependency or cross-build change.
+description: "Writes, edits and debugs sbt builds: build.sbt, project/*.sbt and project/build.properties, sbt 1 and sbt 2 command-line runs, slash keys such as Test/compile, dependency resolution and % or %% coordinates, eviction and version conflicts, cross-built Scala versions, multi-project builds and failing sbt tasks. Use when an sbt command errors with Expected whitespace character, Not a valid command or No such setting/task, when a test does not run or rerun under sbt, or when a build.sbt needs a dependency or cross-build change."
 ---
 
 # sbt
@@ -40,7 +40,7 @@ Pick the form by the version. Verified on 2026-10-20 against scala-sbt.org; deta
 Read `references/dependencies.md` when adding, upgrading, excluding or resolving a library, or when `update` fails. Essentials:
 
 - `%%` appends the binary Scala version (`_2.13`, `_3`); `%` does not; `%%%` covers Scala.js and Native.
-- Diagnose conflicts with `evicted` and `dependencyTree`, not by reading the edited line.
+- Diagnose conflicts with `evicted` and `dependencyTree`, not by reading the edited line. On sbt 1.4+, `dependencyTree` needs `addDependencyTreePlugin` in `project/plugins.sbt`; see `references/dependencies.md` for sbt 2.
 - Don't disable checksums or insecure-protocol checks to get past a resolver error. Report it.
 
 ## Cross-building

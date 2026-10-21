@@ -18,7 +18,7 @@ libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "2.8.0"    // Scala.js
 ## Eviction and conflicts
 
 - `evicted` lists the versions sbt dropped and why. Run it on the project that shows the wrong version: `sbt "core/evicted"`.
-- `dependencyTree` prints the resolved graph. The sbt 2 change summary says it is now a single input task.
+- `dependencyTree` prints the resolved graph. On sbt 1.4+ it is a built-in but opt-in plugin: add `addDependencyTreePlugin` to `project/plugins.sbt`, or the task is missing (the old `sbt-dependency-graph` plugin line is deprecated). The sbt 2 change summary says the `dependencyTree` tasks are unified into one input task but does not say whether the plugin line is still needed; run `dependencyTree`, and if sbt reports no such task, add the same line.
 - Pin a version with `dependencyOverrides ++= Seq(...)` only when eviction cannot be fixed by upgrading the library that pulls in the old one.
 - Declare the intended conflict policy with `libraryDependencySchemes`:
 

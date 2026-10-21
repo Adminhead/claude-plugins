@@ -70,7 +70,7 @@ Official form: `[query /] [Config /] [task /] key`.
 Example CI step (one step, then free the server):
 
 ```bash
-sbt "clean ; compile ; test ; shutdown"
+sbt "clean ; compile ; testFull ; shutdown"   # full run; plain test would skip cached green suites
 sbt "testFull"                          # sbt 1-style full run
 sbt -Dsbt.ci=true "compile ; testFull"  # non-interactive output
 ```
