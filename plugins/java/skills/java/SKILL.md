@@ -1,6 +1,6 @@
 ---
 name: java
-description: Writes, reviews and upgrades modern Java (17+) code (records, sealed types, pattern-matching switch, streams, Optional, exceptions, equals/hashCode, executors, CompletableFuture and virtual threads), JDK upgrades and javax to jakarta. Use for any work in *.java, "review this Java class", a MatchException from a sealed switch, a record whose List changes after construction, a thread-pool or interrupt bug, or moving a project to a newer JDK.
+description: 'Writes, reviews, debugs and upgrades modern Java (17+) code: records, sealed types, pattern-matching switch, streams, Optional, exceptions, equals/hashCode, executors, CompletableFuture, virtual threads, JDK upgrades and javax.* to jakarta.* migration. Use whenever editing or debugging Java source (*.java), such as a switch over a sealed interface or enum that throws MatchException or is not exhaustive after a new subtype was added, javax.servlet or javax.persistence imports that no longer compile on Tomcat 10 or Jakarta EE 9+, a record whose List changes after construction, a thread-pool or interrupt bug, "review this Java class", or moving a project to a newer JDK.'
 ---
 
 # Java

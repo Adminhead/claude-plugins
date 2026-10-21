@@ -31,7 +31,7 @@
 - Standard: pattern-matching `switch` and record patterns, virtual threads, sequenced collections (`getFirst`, `getLast`, `reversed()` on `List`, `Deque`, `LinkedHashSet`).
 - Sequenced collections add methods to existing interfaces; custom implementations or a library that declares a conflicting `getFirst` may need changes.
 - Dynamic agent loading now warns. Libraries that attach an agent at runtime (Mockito's inline mock maker, some profilers) print a warning; configure the agent at startup or add the flag the library documents.
-- Finalization is deprecated for removal. `Thread.stop` and related methods throw. Security Manager is deprecated for removal, and removed in 24.
+- Finalization is deprecated for removal. `Thread.stop` and related methods throw. Security Manager is deprecated for removal, and permanently disabled in 24 (JEP 486).
 - Default charset is UTF-8 from 18 (JEP 400). Code that relied on the platform charset can change behavior on Windows; pass charsets explicitly.
 - Preview in 21 and not for production: string templates, unnamed patterns, structured concurrency, scoped values.
 
