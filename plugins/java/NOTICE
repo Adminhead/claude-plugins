@@ -1,0 +1,23 @@
+java plugin (AdminHead)
+
+Parts of this plugin are condensed and rewritten from the MIT-licensed
+sources below (see LICENSE). The text was reorganized and shortened;
+framework-specific (Spring, Quarkus) material and agent-prompt boilerplate
+were dropped.
+
+Upstream: https://github.com/affaan-m/ECC @ 76aaa77df6adc5b889e689007bf99b9a4f74af34
+  skills/java-coding-standards/SKILL.md
+  -> shared sections in skills/java/SKILL.md (records, Optional, streams,
+     exceptions, generics, immutability)
+
+Upstream: https://github.com/github/awesome-copilot @ cb64ad12e32737ae764becd6885462e9b4c7cb00
+  skills/java-upgrade/SKILL.md and skills/java-upgrade/references/java-*-to-*.md
+  -> skills/java/references/upgrade.md
+  skills/javax-to-jakarta-migration/SKILL.md
+  -> skills/java/references/jakarta.md
+
+Upstream: https://github.com/decebals/claude-code-java @ 0d98fe9bd62923e819568ee1e041a1bf320f74d4
+  skills/java-code-review/SKILL.md
+  -> skills/java/references/review.md
+  skills/concurrency-review/SKILL.md
+  -> skills/java/references/concurrency.md
