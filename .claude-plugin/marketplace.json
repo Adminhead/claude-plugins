@@ -1660,14 +1660,14 @@
     {
       "name": "java",
       "source": "./plugins/java",
-      "description": "Writes, reviews and upgrades modern Java (17+) code (records, sealed types, pattern-matching switch, streams, Optional, exceptions, equals/hashCode, executors, CompletableFuture and virtual threads), JDK upgrades and javax to jakarta. Use for any work in *.java, \"review this Java class\", a MatchException from a sealed switch, a record whose List changes after construction, a thread-pool or interrupt bug, or moving a project to a newer JDK.",
+      "description": "Writes, reviews, debugs and upgrades modern Java (17+) code: records, sealed types, pattern-matching switch, streams, Optional, exceptions, equals/hashCode, executors, CompletableFuture, virtual threads, JDK upgrades and javax.* to jakarta.* migration. Use whenever editing or debugging Java source (*.java), such as a switch over a sealed interface or enum that throws MatchException or is not exhaustive after a new subtype was added, javax.servlet or javax.persistence imports that no longer compile on Tomcat 10 or Jakarta EE 9+, a record whose List changes after construction, a thread-pool or interrupt bug, \"review this Java class\", or moving a project to a newer JDK.",
       "version": "0.1.0",
       "category": "development"
     },
     {
       "name": "java-testing",
       "source": "./plugins/java-testing",
-      "description": "Writes, runs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers: parameterized and nested tests, strict stubs, injected clocks, filtering with -Dtest and --tests, no-tests-found diagnosis, Surefire versus Failsafe and slow container suites.",
+      "description": "Writes, runs, debugs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers. Use whenever editing or debugging JUnit test code (*Test.java, *IT.java): rewriting copy-pasted cases as one @ParameterizedTest with @CsvSource or @MethodSource, @Nested tests, Mockito UnnecessaryStubbingException or a when(...) stub that is never used, strict stubs, \"No tests found for given includes\", filtering with -Dtest or --tests, Surefire versus Failsafe, flaky tests that sleep or depend on the clock, a slow suite that starts a container per class, and Mockito agent warnings on Java 21+.",
       "version": "0.1.0",
       "category": "development"
     },

@@ -1,6 +1,6 @@
 ---
 name: gradle
-description: Diagnoses and writes Gradle build logic, including configuration cache failures, Could not resolve and no matching variant errors from conflicting versions or platforms, dependencyInsight, build cache misses, Kotlin DSL build scripts, libs.versions.toml version catalogs, convention plugins in build-logic, and toolchains. Use for symptoms such as "invocation of Task.project at execution time is unsupported", "Configuration cache problems found in this build", "Could not resolve" with a platform or BOM, "Unresolved reference: libs", or a request to add a task, dependency or convention plugin to build.gradle.kts or settings.gradle.kts.
+description: 'Diagnoses and writes Gradle build logic, including configuration cache failures, Could not resolve and no matching variant errors from conflicting versions or platforms, dependencyInsight, build cache misses, Kotlin DSL build scripts, libs.versions.toml version catalogs, convention plugins in build-logic, and toolchains. Use for symptoms such as "invocation of Task.project at execution time is unsupported", "Configuration cache problems found in this build", "Could not resolve" with a platform or BOM, "Unresolved reference: libs", or a request to add a task, dependency or convention plugin to build.gradle.kts or settings.gradle.kts.'
 ---
 
 # Gradle
