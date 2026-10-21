@@ -1,0 +1,9 @@
+{
+  "name": "sbt",
+  "version": "0.1.0",
+  "description": "Edits and debugs sbt builds: build.sbt and project/*.sbt, dependency resolution, multi-project builds, cross-building Scala versions, and sbt task failures.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

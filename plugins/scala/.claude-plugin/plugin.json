@@ -1,0 +1,9 @@
+{
+  "name": "scala",
+  "version": "0.1.0",
+  "description": "Writes, reviews and refactors Scala 3 code: case classes and enums, given and using, pattern matching, collections, effects, and implicit-to-given migrations.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

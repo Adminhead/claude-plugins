@@ -1,0 +1,24 @@
+{
+  "name": "java-meta",
+  "version": "0.1.0",
+  "description": "Plugin set for Java projects, installed at project scope. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "programming-core",
+    "java",
+    "java-testing",
+    "maven",
+    "gradle",
+    {
+      "name": "gradle-skills",
+      "marketplace": "gradle-skills"
+    },
+    {
+      "name": "jdtls-lsp",
+      "marketplace": "claude-plugins-official"
+    }
+  ]
+}

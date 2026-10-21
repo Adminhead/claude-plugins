@@ -1,0 +1,9 @@
+{
+  "name": "maven",
+  "version": "0.1.0",
+  "description": "Edits and debugs Maven builds: pom.xml structure, dependency management and BOM imports, plugin execution phases, multi-module reactors, and dependency conflicts.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

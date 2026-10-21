@@ -1,0 +1,9 @@
+{
+  "name": "play-framework",
+  "version": "0.1.0",
+  "description": "Builds and debugs Play Framework web apps: routes, controllers and actions, action composition, Twirl templates, and Play JSON.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

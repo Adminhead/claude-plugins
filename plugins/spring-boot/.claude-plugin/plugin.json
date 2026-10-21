@@ -1,0 +1,9 @@
+{
+  "name": "spring-boot",
+  "version": "0.1.0",
+  "description": "Writes, reviews and configures Spring Boot applications: auto-configuration, configuration properties, dependency injection, Spring Data repositories, and web controllers.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

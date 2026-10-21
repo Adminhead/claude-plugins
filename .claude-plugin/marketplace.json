@@ -8,7 +8,8 @@
   },
   "allowCrossMarketplaceDependenciesOn": [
     "claude-code-lsps",
-    "claude-plugins-official"
+    "claude-plugins-official",
+    "gradle-skills"
   ],
   "plugins": [
     {
@@ -50,6 +51,20 @@
       "name": "golang-meta",
       "source": "./plugins/golang-meta",
       "description": "Plugin set for Go projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "java-meta",
+      "source": "./plugins/java-meta",
+      "description": "Plugin set for Java projects, installed at project scope. Ships no components of its own.",
+      "version": "0.1.0",
+      "category": "meta"
+    },
+    {
+      "name": "scala-meta",
+      "source": "./plugins/scala-meta",
+      "description": "Plugin set for Scala projects, installed at project scope. Ships no components of its own.",
       "version": "0.1.0",
       "category": "meta"
     },
@@ -1639,6 +1654,69 @@
       "name": "forgejo-release",
       "source": "./plugins/forgejo-release",
       "description": "Cut, edit and publish Forgejo or Codeberg releases with fj: tags, release notes, drafts and prereleases, and release assets.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "java",
+      "source": "./plugins/java",
+      "description": "Writes, reviews and upgrades modern Java (17+) code: records, sealed types, pattern matching, streams, concurrency and virtual threads, javax to jakarta.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "java-testing",
+      "source": "./plugins/java-testing",
+      "description": "Writes and fixes Java tests with JUnit 5, Mockito and AssertJ: test structure, parameterized tests, mocks versus fakes, Testcontainers, and flaky test diagnosis.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "maven",
+      "source": "./plugins/maven",
+      "description": "Edits and debugs Maven builds: pom.xml structure, dependency management and BOM imports, plugin execution phases, multi-module reactors, and dependency conflicts.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "gradle",
+      "source": "./plugins/gradle",
+      "description": "Edits and debugs Gradle builds: Kotlin or Groovy build scripts, version catalogs, convention plugins, task configuration, and dependency resolution failures.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "scala",
+      "source": "./plugins/scala",
+      "description": "Writes, reviews and refactors Scala 3 code: case classes and enums, given and using, pattern matching, collections, effects, and implicit-to-given migrations.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "sbt",
+      "source": "./plugins/sbt",
+      "description": "Edits and debugs sbt builds: build.sbt and project/*.sbt, dependency resolution, multi-project builds, cross-building Scala versions, and sbt task failures.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "play-framework",
+      "source": "./plugins/play-framework",
+      "description": "Builds and debugs Play Framework web apps: routes, controllers and actions, action composition, Twirl templates, and Play JSON.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "spring-boot",
+      "source": "./plugins/spring-boot",
+      "description": "Writes, reviews and configures Spring Boot applications: auto-configuration, configuration properties, dependency injection, Spring Data repositories, and web controllers.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "spring-boot-testing",
+      "source": "./plugins/spring-boot-testing",
+      "description": "Writes and fixes Spring Boot tests: slice tests, application context caching, MockMvc and WebTestClient, Testcontainers, and test configuration.",
       "version": "0.1.0",
       "category": "development"
     }

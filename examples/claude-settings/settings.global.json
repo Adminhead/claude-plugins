@@ -78,6 +78,9 @@
     },
     "conorbronsdon-skills": {
       "source": { "source": "github", "repo": "conorbronsdon/avoid-ai-writing" }
+    },
+    "gradle-skills": {
+      "source": { "source": "github", "repo": "gradle/gradle-skills" }
     }
   },
   "enabledPlugins": {

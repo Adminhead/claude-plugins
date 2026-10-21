@@ -1,0 +1,9 @@
+{
+  "name": "spring-boot-testing",
+  "version": "0.1.0",
+  "description": "Writes and fixes Spring Boot tests: slice tests, application context caching, MockMvc and WebTestClient, Testcontainers, and test configuration.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

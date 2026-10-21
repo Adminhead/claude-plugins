@@ -1,0 +1,9 @@
+{
+  "name": "java",
+  "version": "0.1.0",
+  "description": "Writes, reviews and upgrades modern Java (17+) code: records, sealed types, pattern matching, streams, concurrency and virtual threads, javax to jakarta.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

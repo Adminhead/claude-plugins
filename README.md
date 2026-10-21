@@ -80,6 +80,8 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
 | [`python-meta`](plugins/python-meta) | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` | Plugin set for Python projects, installed at project scope. Ships no components of its own. |
 | [`golang-meta`](plugins/golang-meta) | project | `programming-core`, `golang`, `gopls@claude-code-lsps` | Plugin set for Go projects, installed at project scope. Ships no components of its own. |
+| [`java-meta`](plugins/java-meta) | project | `programming-core`, `java`, `java-testing`, `maven`, `gradle`, `gradle-skills@gradle-skills`, `jdtls-lsp@claude-plugins-official` | Plugin set for Java projects, installed at project scope. Ships no components of its own. |
+| [`scala-meta`](plugins/scala-meta) | project | `programming-core`, `scala`, `sbt` | Plugin set for Scala projects, installed at project scope. Ships no components of its own. |
 | [`rust-meta`](plugins/rust-meta) | project | `programming-core`, `rust`, `rust-analyzer@claude-code-lsps` | Plugin set for Rust projects, installed at project scope. Ships no components of its own. |
 | [`node-typescript-meta`](plugins/node-typescript-meta) | project | `programming-core`, `javascript`, `typescript`, `dependency-vetting`, `vtsls@claude-code-lsps` | Plugin set for Node.js and TypeScript projects, installed at project scope. Ships no components of its own. |
 | [`dotnet-meta`](plugins/dotnet-meta) | project | `programming-core`, `csharp-lsp@claude-plugins-official`, `csharp`, `msbuild`, `dotnet-testing`, `nuget` | Plugin set for C# and .NET projects, installed at project scope. Ships no components of its own. |
@@ -97,7 +99,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Installs | Used by | Description |
 | --- | --- | --- | --- |
-| [`programming-core`](plugins/programming-core) | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run`, `grep-app`, `context7@claude-plugins-official`, `feature-flags` | `dotnet-meta`, `godot-meta`, `golang-meta`, `node-typescript-meta`, `python-meta`, `rust-meta`, `web-meta` | Core bundle of general programming plugins that the language and web metas install. Ships no components of its own. |
+| [`programming-core`](plugins/programming-core) | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run`, `grep-app`, `context7@claude-plugins-official`, `feature-flags` | `dotnet-meta`, `godot-meta`, `golang-meta`, `java-meta`, `node-typescript-meta`, `python-meta`, `rust-meta`, `scala-meta`, `web-meta` | Core bundle of general programming plugins that the language and web metas install. Ships no components of its own. |
 | [`design-core`](plugins/design-core) | `ui-direction`, `ui-critic`, `web-design`, `screen-reader-testing`, `accessibility-review`, `ux-copy` | `design-meta`, `web-meta` | Core bundle of UI and UX design plugins that the web and design metas install. Ships no components of its own. |
 | [`gamedev-core`](plugins/gamedev-core) | `game-design`, `game-architecture`, `game-feel`, `level-design`, `game-ui`, `game-audio`, `game-performance`, `game-playtest` | `godot-meta` | Core bundle of engine-agnostic game-development plugins that the game-engine metas install. Ships no components of its own. |
 
@@ -320,6 +322,15 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`renovate`](plugins/renovate) | skill | Configure and troubleshoot Renovate (renovate.json, presets, packageRules, schedules, automerge), run it for Forgejo (platform=forgejo), and sweep open Renovate PRs, merging only green ones. | `forgejo-meta` |
 | [`forgejo-readme`](plugins/forgejo-readme) | skill | README skill for Forgejo and Codeberg repos: write, restructure, audit and beautify README.md from facts in the repo, with templates by project type, a scored audit, honest badges and Forgejo rendering rules. | `forgejo-meta` |
 | [`forgejo-release`](plugins/forgejo-release) | skill | Cut, edit and publish Forgejo or Codeberg releases with fj: tags, release notes, drafts and prereleases, and release assets. | - |
+| [`java`](plugins/java) | skill | Writes, reviews and upgrades modern Java (17+) code: records, sealed types, pattern matching, streams, concurrency and virtual threads, javax to jakarta. | `java-meta` |
+| [`java-testing`](plugins/java-testing) | skill | Writes and fixes Java tests with JUnit 5, Mockito and AssertJ: test structure, parameterized tests, mocks versus fakes, Testcontainers, and flaky test diagnosis. | `java-meta` |
+| [`maven`](plugins/maven) | skill | Edits and debugs Maven builds: pom.xml structure, dependency management and BOM imports, plugin execution phases, multi-module reactors, and dependency conflicts. | `java-meta` |
+| [`gradle`](plugins/gradle) | skill | Edits and debugs Gradle builds: Kotlin or Groovy build scripts, version catalogs, convention plugins, task configuration, and dependency resolution failures. | `java-meta` |
+| [`scala`](plugins/scala) | skill | Writes, reviews and refactors Scala 3 code: case classes and enums, given and using, pattern matching, collections, effects, and implicit-to-given migrations. | `scala-meta` |
+| [`sbt`](plugins/sbt) | skill | Edits and debugs sbt builds: build.sbt and project/*.sbt, dependency resolution, multi-project builds, cross-building Scala versions, and sbt task failures. | `scala-meta` |
+| [`play-framework`](plugins/play-framework) | skill | Builds and debugs Play Framework web apps: routes, controllers and actions, action composition, Twirl templates, and Play JSON. | - |
+| [`spring-boot`](plugins/spring-boot) | skill | Writes, reviews and configures Spring Boot applications: auto-configuration, configuration properties, dependency injection, Spring Data repositories, and web controllers. | - |
+| [`spring-boot-testing`](plugins/spring-boot-testing) | skill | Writes and fixes Spring Boot tests: slice tests, application context caching, MockMvc and WebTestClient, Testcontainers, and test configuration. | - |
 
 ### Agents
 
@@ -379,7 +390,7 @@ examples/claude-settings/   settings examples for each scope
 - A meta plugin is `baseline` or a name ending in `-meta`. It ships only `plugin.json`, plus an optional `README.md`. Its `dependencies` name focused plugins and core bundles from this marketplace, never another meta plugin.
 - A core bundle is a plugin whose marketplace entry has `"category": "bundle"`, named `*-core` by convention (`programming-core`). The suffix alone doesn't make a bundle: `ef-core` and `aspnet-core` are ordinary plugins. A bundle has the same shape as a meta plugin, lists only focused plugins, and only meta plugins may depend on it. Use one when several metas share the same set.
 - Every other plugin ships exactly one component. Supporting files such as `scripts/` or a skill's `references/` don't count.
-- A focused plugin may depend on another focused plugin it calls, such as a skill that uses an MCP server plugin. A dependency from another marketplace must be listed in `allowCrossMarketplaceDependenciesOn`, which today allows `claude-code-lsps` (language servers) and `claude-plugins-official` (only for `csharp-lsp`).
+- A focused plugin may depend on another focused plugin it calls, such as a skill that uses an MCP server plugin. A dependency from another marketplace must be listed in `allowCrossMarketplaceDependenciesOn`, which today allows `claude-code-lsps` (language servers), `claude-plugins-official` (only for `csharp-lsp`, `context7` and `jdtls-lsp`) and `gradle-skills` (Gradle's official skills).
 - Names are lowercase kebab-case. `name`, `version`, and `description` match between `plugin.json` and `marketplace.json`.
 - The catalog in this README is generated. Edit descriptions in `plugin.json` and `marketplace.json`, then run `scripts/plugins.py catalog`.
 
@@ -400,6 +411,8 @@ A meta plugin can install a plugin from another marketplace. Add that marketplac
 ```json
 { "name": "gopls", "marketplace": "claude-code-lsps" }
 ```
+
+A meta that depends on another marketplace needs that marketplace registered first: `claude plugin marketplace add <owner/repo>`, or the settings examples and the install script do it for you. Until it is registered, the meta reports the dependency as not installed and doesn't load. After adding it, run `/reload-plugins`.
 
 ### Checks
 
