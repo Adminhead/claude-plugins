@@ -47,7 +47,7 @@ Verified on 2026-10-20: Maven 3.9.16 is the latest 3.x release on Maven Central.
 ## Credentials and mirrors
 
 - Mirrors, servers and proxies live in `~/.m2/settings.xml`. Refer to secrets by environment variable, as `<password>${env.REPO_TOKEN}</password>`, and never write a literal token into a pom or the repository.
-- Never print or paste `settings.xml`, and do not run `help:effective-settings`, because it prints server passwords.
+- Never print or paste `settings.xml`, and do not run `help:effective-settings` with `-DshowPasswords=true`, which prints server passwords (they are masked by default); the effective settings still expose usernames and server layout, so share them only when asked.
 - Maven 3.8.1 and later block plain-HTTP repositories, so use `https` URLs for mirrors.
 - A change to the mirror URL or to which credentials a build uses is a team decision; ask first.
 
