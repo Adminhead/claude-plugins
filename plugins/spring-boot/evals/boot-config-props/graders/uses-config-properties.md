@@ -1,5 +1,5 @@
 ---
-type: regex
-pattern: '@ConfigurationProperties'
-target: trace
+type: tool_used
+tool: Write
+input_match: '@ConfigurationProperties'
 ---

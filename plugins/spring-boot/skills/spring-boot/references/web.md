@@ -5,7 +5,6 @@
 ```java
 @RestController
 @RequestMapping("/api/orders")
-@Validated
 class OrderController {
   private final OrderService orders;
   OrderController(OrderService orders) { this.orders = orders; }
@@ -20,7 +19,7 @@ class OrderController {
 
 - Use request and response records as DTOs. Put Jakarta constraints (`@NotBlank`, `@Size`, `@Email`, `@Min`) on the request record; use `@Valid` on nested objects and on collections' elements.
 - Cap page sizes (`@PageableDefault`, `spring.data.web.pageable.max-page-size`) so a client cannot request everything.
-- A `@Validated` class with `@RequestParam`/`@PathVariable` constraints throws `HandlerMethodValidationException` (Framework 6.1+), not `ConstraintViolationException`; handle both if the project mixes styles.
+- Leave `@Validated` off controller classes. Without it, constraints such as `@Min` on `@RequestParam`/`@PathVariable` parameters use Framework 6.1+ built-in method validation and raise `HandlerMethodValidationException` (a 400 that `ResponseEntityExceptionHandler` handles). A class-level `@Validated` switches to AOP proxy validation, which raises `ConstraintViolationException` and answers 500 unless a handler maps it. Handle `MethodArgumentNotValidException` too, since a single `@Valid @RequestBody` still raises it.
 
 ## Errors as ProblemDetail
 

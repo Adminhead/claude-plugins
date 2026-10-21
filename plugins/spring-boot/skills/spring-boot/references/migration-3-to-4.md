@@ -1,6 +1,6 @@
 # Migrating Spring Boot 3.x to 4
 
-Baselines: Java 17+ (25 recommended LTS), Spring Framework 7, Jakarta EE 11 with a Servlet 6.1 container, Kotlin 2.2+, GraalVM 25+ for native images, Gradle 8.5+. Boot 4.1 removes whatever 4.0 deprecated, so go 3.5 to 4.0 first if the project has many deprecation warnings, then to 4.1.
+Baselines: Java 17+ (25 recommended LTS), Spring Framework 7, Jakarta EE 11 with a Servlet 6.1 container, Kotlin 2.2+, GraalVM 25+ for native images, Gradle 8.14+ (8.x) or 9.x. Boot 4.1 removes whatever 4.0 deprecated, so go 3.5 to 4.0 first if the project has many deprecation warnings, then to 4.1.
 
 ## Steps
 

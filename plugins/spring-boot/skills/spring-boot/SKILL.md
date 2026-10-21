@@ -34,7 +34,7 @@ Verified on 2026-10-20 against spring.io and docs.spring.io: Boot 4.1 is the cur
 ## Web
 
 - Controllers stay thin: map the request DTO, call the service, map the response DTO. Never return JPA entities.
-- Validate with `@Valid @RequestBody` and `@Validated` on the class for parameters. Return errors as `ProblemDetail` from one `@RestControllerAdvice`; enable `spring.mvc.problemdetails.enabled=true`.
+- Validate with `@Valid @RequestBody`, and put constraints such as `@Min` straight on `@RequestParam`/`@PathVariable` parameters without `@Validated` on the controller class (built-in method validation, `HandlerMethodValidationException`). Return errors as `ProblemDetail` from one `@RestControllerAdvice`; enable `spring.mvc.problemdetails.enabled=true`.
 - Read [references/web.md](references/web.md) when writing controllers, exception handling, RestClient calls, or WebFlux handlers.
 
 ## Data
@@ -48,7 +48,7 @@ Verified on 2026-10-20 against spring.io and docs.spring.io: Boot 4.1 is the cur
 - Declare a `SecurityFilterChain` bean with the lambda DSL (`http.authorizeHttpRequests(...)`); `WebSecurityConfigurerAdapter` is gone. Deny by default, then open specific matchers.
 - Disable CSRF only for stateless token APIs. Keep it on for browser sessions.
 - Expose few Actuator endpoints (`management.endpoints.web.exposure.include`) and secure the rest.
-- `spring.threads.virtual.enabled=true` on Java 21+ moves request handling to virtual threads; check for `synchronized` pinning around blocking I/O first.
+- `spring.threads.virtual.enabled=true` on Java 21+ moves request handling to virtual threads. On Java 21 to 23, check for `synchronized` pinning around blocking I/O first; Java 24 (JEP 491) removes that pinning.
 - Read [references/security.md](references/security.md) for authn/authz, CORS, headers, rate limiting and secrets, and [references/observability.md](references/observability.md) for Actuator, health probes, metrics, tracing and logging.
 
 ## Validate
@@ -60,7 +60,7 @@ Verified on 2026-10-20 against spring.io and docs.spring.io: Boot 4.1 is the cur
 
 - Boot 4 uses Jackson 3 (`tools.jackson.*`, except `jackson-annotations`), so Jackson 2 imports fail to compile; `@JsonComponent` is now `@JacksonComponent`.
 - Boot 4 liveness and readiness probes are on by default.
-- Property names are validated by relaxed binding; `spring-boot-properties-migrator` reports renamed keys on an upgrade.
+- Relaxed binding matches `app.payments.base-url`, `appPayments.baseUrl` and `APP_PAYMENTS_BASEURL`-style env names to the same field, but it ignores unknown keys, so a typo or renamed key silently leaves the default. `spring-boot-properties-migrator` reports renamed keys on an upgrade.
 
 ## References
 
