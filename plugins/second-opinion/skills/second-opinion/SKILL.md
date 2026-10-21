@@ -17,7 +17,7 @@ Not for routine small diffs you are already confident about, or for making chang
 
 ## 2. Pick the reviewer: one by default
 
-- **codex** for diff review. It reads git ranges and hunts code-level bugs well.
+- **codex** (the default) for diff review. It reads git ranges and hunts code-level bugs well. It runs on the user's codex-consult server; if consult says `no codex app server`, use agy for this review.
 - **agy** for plan critique and for long specs. It sees only the diff and notes you send, not the repo, so put the context it needs in `notes`. Gemini differs from both Claude and GPT, which gives the most independent view.
 - **Both** only when stakes are high (security, data loss, irreversible migration, an architecture choice with several viable options), or when the first reply conflicts with your analysis or leaves you unsure. Run the second after reading the first, as a tiebreaker, not in parallel.
 
@@ -35,7 +35,7 @@ Start from this matrix. Move one step up or down when the task warrants it, and 
 
 Model names as of October 2026 (codex CLI 0.162, agy 1.4). The tiers are what matter: codex `luna` is fast and cheap, `sol` the workhorse, `astra` the frontier model; agy `flash` is fast, `argon` the strongest Gemini, and its model name carries a `-low|-medium|-high` suffix. Model names change often, so if one is refused, list current ones with `codex debug models` or `agy models` and pick the nearest tier.
 
-Efforts are `low|medium|high|xhigh|max` for both CLIs. codex `ultra` is refused because it spawns its own agents. agy accepts only `gemini-*` models, so the reviewer stays a different family from Claude.
+Efforts are `low|medium|high|xhigh|max` for both CLIs. codex `ultra` is refused because it spawns its own agents. agy accepts only `gemini-*` models, so the reviewer stays a different family from Claude. For codex, `model` and `effort` are optional: leave both out to use the codex-consult server's config. agy requires both.
 
 ## 4. Split the review into passes
 
@@ -67,9 +67,9 @@ Call `mcp__consult__consult`. It is a tool, not a shell command. The engine's pe
 
 | Input | Meaning |
 |---|---|
-| `cli` | `codex` or `agy` |
+| `cli` | `codex` (default) or `agy` |
 | `mode` | `diff` reviews changes in a git repo. `plan` critiques the plan in `notes` |
-| `model`, `effort` | From the matrix above |
+| `model`, `effort` | From the matrix above. codex: optional, the server config applies when omitted. agy: required |
 | `notes` | Plan mode: the plan and what to attack (required). Diff mode: the dimension or file group for this pass |
 | `repo` | Directory to review, inside the session's git repo. Defaults to that repo's toplevel. Pass it explicitly when you work in a git worktree |
 | `base` or `commit` | Diff mode. Default is the uncommitted changes. `base: "main"` reviews `main...HEAD`. `commit` reviews one commit |
@@ -82,7 +82,13 @@ mcp__consult__consult { cli: "codex", mode: "diff", model: "gpt-6-astra", effort
   base: "main", notes: "Pass: security only. Files: auth/session.py, auth/tokens.py." }
 ```
 
-Both reviewers run read-only. codex runs inside the repo, so a checked-out PR's `.codex/config.toml` can start MCP servers in a repo you trust by path: review untrusted PRs with agy, or check `.codex/` first. codex uses its read-only sandbox. agy runs in an empty scratch workspace, without the reviewed repo (a repo's own `.agents/hooks.json` would run as code), and its hook allows only file-reading tools. The tool kills the reviewer when `timeoutSec` passes.
+Without `cli`, the reviewer is codex, on the server's own model and effort:
+
+```
+mcp__consult__consult { mode: "plan", notes: "Plan: <the plan>. Attack: the rollback path." }
+```
+
+Both reviewers run read-only. codex runs on the user's codex-consult server, which the user starts with the flags in the consult README: read-only sandbox, approvals refused, web search off, and the locked features and MCP servers off. consult refuses a server that is not locked, and a trusted repo whose `.codex/` config sets anything beyond model and effort. A checked-out PR's `.codex/config.toml` cannot change codex's run: consult refuses such a repo when it is trusted, and codex does not apply the file in an untrusted one. AGENTS.md still applies. agy runs in an empty scratch workspace, without the reviewed repo (a repo's own `.agents/hooks.json` would run as code), and its hook allows only file-reading tools. For codex, the client interrupts the review at `timeoutSec` and the server keeps running. For agy, the tool kills the reviewer at `timeoutSec`.
 
 A failed call returns a tool error and never an empty reply:
 
@@ -91,8 +97,13 @@ A failed call returns a tool error and never an empty reply:
 | `external review disabled` | The repo opted out. Skip external review and say so |
 | `secret-like files` | Don't work around it. Say which file blocked the call |
 | `consult: ...` input error, `needs a git repo`, `no changes found` | Fix the call |
-| `timed out` | Split the pass again (step 4) |
-| `exited N` | The log tail is in the message. Switch reviewer once, then report |
+| `consult: no codex app server` | The codex-consult server is not running. The user starts it (consult README, "Run the codex app server"). Until then, use agy for this review |
+| `consult failed (socket-unsafe)`, `(not-locked)`, `(lockdown)`, `(sandbox)` | Don't retry. Report the message |
+| `consult failed (auth)` | The user runs `codex login` and restarts codex-consult |
+| `consult failed (too-old)` | The user upgrades codex and restarts codex-consult |
+| `consult failed (limit)` | Usage or rate limit. Switch reviewer once, then report |
+| `consult timed out` | Split the pass again (step 4) |
+| `consult failed: agy exited N` | The log tail is in the message. Switch reviewer once, then report |
 
 ## 6. Weigh the reply
 

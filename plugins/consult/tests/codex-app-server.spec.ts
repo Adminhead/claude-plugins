@@ -4,11 +4,11 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer, type Server as NetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { MAX_LINE_BYTES, SIGNAL_MESSAGE, utf8Bytes } from '../hooks/consult/appserver'
+import { DEFAULT_SOCKET_NAME, LOCKED_FEATURES as CLIENT_LOCKED_FEATURES, MAX_LINE_BYTES, SIGNAL_MESSAGE, utf8Bytes } from '../hooks/consult/appserver'
 import { FakeAppServer, lockedConfig, LOCKED_FEATURES, REPLY, type Scenario, type Turn } from './fixtures/fake-app-server'
 
 const ROOT = resolve(import.meta.dir, '..')
@@ -552,6 +552,26 @@ describe('12 request validation and the opt-out marker', () => {
     writeFileSync(join(main, '.claude', 'no-external-review'), '')
     expect((await client(plan(f, { cwd: wt }))).out.kind).toBe('input')
   }, 20000)
+})
+
+describe('13 README unit drift', () => {
+  test('the README example unit carries the flags, socket and settings that the client checks', () => {
+    const readme = readFileSync(join(ROOT, 'README.md'), 'utf8')
+    const section = readme.slice(readme.indexOf('## Run the codex app server'))
+    const block = /```ini\n([\s\S]*?)```/.exec(section)?.[1]
+    expect(block, 'an ini block under "Run the codex app server"').toBeDefined()
+    const unit = block!.replace(/\\\n\s*/g, ' ')
+    const exec = /^ExecStart=(.*)$/m.exec(unit)?.[1] ?? ''
+    expect(exec).toContain(`codex app-server --listen unix://%t/${DEFAULT_SOCKET_NAME}`)
+    const tokens = exec.split(/\s+/)
+    const disabled = tokens.flatMap((t, i) => (t === '--disable' ? [tokens[i + 1]] : []))
+    for (const f of CLIENT_LOCKED_FEATURES) expect(disabled, `--disable ${f}`).toContain(f)
+    for (const [key, value] of [['web_search', 'disabled'], ['sandbox_mode', 'read-only'], ['approval_policy', 'never'], ['approvals_reviewer', 'user']]) {
+      expect(exec, key).toContain(`-c '${key}="${value}"'`)
+    }
+    expect(unit).toContain(`ExecStopPost=-/usr/bin/rm -f %t/${DEFAULT_SOCKET_NAME}`)
+    expect(unit).not.toMatch(/^\s*PrivateTmp\s*=\s*(yes|true|1)\s*$/im)
+  })
 })
 
 describe('14 notifications before the response', () => {

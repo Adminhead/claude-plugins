@@ -1,7 +1,7 @@
 {
   "name": "second-opinion",
   "version": "0.1.0",
-  "description": "Second-opinion skill: pick codex or agy, model, effort and pass size for a read-only outside review of a diff or plan through the consult tool, weigh the replies, or run a local two-reviewer gate.",
+  "description": "Second-opinion skill: pick codex (the default) or agy, model, effort and pass size for a read-only outside review of a diff or plan through the consult tool, weigh the replies, or run a local two-reviewer gate.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
