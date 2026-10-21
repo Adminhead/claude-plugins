@@ -1,7 +1,7 @@
 {
   "name": "bash-rules",
-  "version": "0.3.0",
-  "description": "Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, or destroy systems, infra and data. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku.",
+  "version": "0.4.0",
+  "description": "Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, destroy systems, infra and data, kill processes by name, touch Claude Code's credentials file, or pass grep --no-ignore. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
