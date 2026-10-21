@@ -3,7 +3,6 @@ name: coder
 description: Default coder tier (haiku): most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.
 model: haiku
 effort: medium
-autoCompactWindow: 300000
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding

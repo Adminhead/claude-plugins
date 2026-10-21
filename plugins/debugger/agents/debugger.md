@@ -3,7 +3,6 @@ name: debugger
 description: Read-only root-cause diagnosis for failing or flaky tests, regressions and unexplained errors, before anyone edits code. Not for fixes with a known cause (coder). For high-stakes failures (concurrency, data loss, security, production) the caller passes a stronger model. Returns root cause, repro, hypotheses and a fix.
 model: sonnet
 effort: high
-autoCompactWindow: 400000
 tools: Read, Glob, Grep, LSP, Bash, WebFetch, WebSearch, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
 skills:
   - problem-solving:problem-solving

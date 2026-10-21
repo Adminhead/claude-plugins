@@ -79,7 +79,7 @@ Keep the body under about 150 lines. Use XML tags only when the body mixes instr
 | Lean start | `omitClaudeMd` | `true` for an agent that takes everything from the delegation prompt. |
 | Parallel edits | `isolation: worktree` | Workers that edit files while the main session also edits. |
 | Cost | `effort` | Lower for mechanical work. |
-| Context budget | `autoCompactWindow` | Always set it in this repo: `100000` for haiku agents, `200000` for light focused agents, `300000` for agents that read a lot or run long. It can only lower the window the subagent inherits (the session's, 300k in the settings example), so a larger value does nothing; it has no effect on an agent run as the main session. Plain integer only. |
+| Context budget | `autoCompactWindow` | Don't set it in this repo; subagents inherit the session's window. The field only lowers the inherited window and has no effect on an agent run as the main session. Plain integer only, if ever needed. |
 | UI | `color` | Cosmetic. |
 
 Field names are camelCase and must match the table exactly. An unknown field is ignored without any error. `allowedTools` and `allowed-tools` are not agent fields (the second is a skill field): an agent using them inherits every tool.

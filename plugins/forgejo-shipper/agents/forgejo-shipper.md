@@ -3,7 +3,6 @@ name: forgejo-shipper
 description: Commits finished work, pushes it, and optionally opens a Forgejo or Codeberg PR with fj, watches checks and merges, on a cheap model. The `forgejo-ship` skill forks into it with the level and context as arguments. Callers delegate to it only when the user explicitly asked in this conversation for that level (push, pr or merge). Not for writing code, fixing failed checks, rewriting history or GitHub repos (`shipper`). Returns commit SHAs, branch, PR URL, check and merge results.
 model: haiku
 effort: medium
-autoCompactWindow: 300000
 tools: Read, Grep, Glob, Bash
 skills:
   - git-commit:git-commit

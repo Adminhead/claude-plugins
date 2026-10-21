@@ -336,27 +336,27 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and effort are defaults; a caller can pass another model per call. An agent without Edit/Write tools can still change state through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash and limits their file-writing tools to scratch paths (`architect` has Write/Edit for scratch docs).
 
-| Agent | Plugin | Model | Effort | Context | Edit/Write tools | In |
-| --- | --- | --- | --- | --- | --- | --- |
-| `architect:architect` | [`architect`](plugins/architect) | opus | high | 500k | yes | `orchestration-meta` |
-| `browser-tester:browser-tester` | [`browser-tester`](plugins/browser-tester) | sonnet | medium | 400k | no | `web-meta` |
-| `coder:coder` | [`coder`](plugins/coder) | haiku | medium | 300k | yes | `orchestration-meta` |
-| `coder-critical:coder-critical` | [`coder-critical`](plugins/coder-critical) | opus | high | 500k | yes | `orchestration-meta` |
-| `coder-high:coder-high` | [`coder-high`](plugins/coder-high) | sonnet | medium | 400k | yes | `orchestration-meta` |
-| `coder-max:coder-max` | [`coder-max`](plugins/coder-max) | fable | high | 300k | yes | - |
-| `dba:dba` | [`dba`](plugins/dba) | opus | medium | 500k | yes | - |
-| `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | 400k | no | `orchestration-meta` |
-| `devops:devops` | [`devops`](plugins/devops) | opus | medium | 500k | yes | `iac-meta` |
-| `forgejo-shipper:forgejo-shipper` | [`forgejo-shipper`](plugins/forgejo-shipper) | haiku | medium | 300k | no | `forgejo-meta` |
-| `open-source-release-audit:open-source-release-audit` | [`open-source-release-audit`](plugins/open-source-release-audit) | sonnet | high | 400k | no | - |
-| `orchestration:orchestration` | [`orchestration`](plugins/orchestration) | inherit | - | - | yes | `orchestration-meta` |
-| `plugin-vetter:plugin-vetter` | [`plugin-vetter`](plugins/plugin-vetter) | sonnet | medium | 400k | no | - |
-| `reviewer:reviewer` | [`reviewer`](plugins/reviewer) | sonnet | high | 400k | no | `orchestration-meta` |
-| `scribe:scribe` | [`scribe`](plugins/scribe) | haiku | medium | 300k | yes | `orchestration-meta` |
-| `security-auditor:security-auditor` | [`security-auditor`](plugins/security-auditor) | opus | high | 500k | no | - |
-| `shipper:shipper` | [`shipper`](plugins/shipper) | haiku | medium | 300k | no | `github-meta` |
-| `ui-critic:ui-critic` | [`ui-critic`](plugins/ui-critic) | inherit | medium | 200k | no | `design-core` |
-| `web-perf-auditor:web-perf-auditor` | [`web-perf-auditor`](plugins/web-perf-auditor) | sonnet | medium | 400k | no | `web-meta` |
+| Agent | Plugin | Model | Effort | Edit/Write tools | In |
+| --- | --- | --- | --- | --- | --- |
+| `architect:architect` | [`architect`](plugins/architect) | opus | high | yes | `orchestration-meta` |
+| `browser-tester:browser-tester` | [`browser-tester`](plugins/browser-tester) | sonnet | medium | no | `web-meta` |
+| `coder:coder` | [`coder`](plugins/coder) | haiku | medium | yes | `orchestration-meta` |
+| `coder-critical:coder-critical` | [`coder-critical`](plugins/coder-critical) | opus | high | yes | `orchestration-meta` |
+| `coder-high:coder-high` | [`coder-high`](plugins/coder-high) | sonnet | medium | yes | `orchestration-meta` |
+| `coder-max:coder-max` | [`coder-max`](plugins/coder-max) | fable | high | yes | - |
+| `dba:dba` | [`dba`](plugins/dba) | opus | medium | yes | - |
+| `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | no | `orchestration-meta` |
+| `devops:devops` | [`devops`](plugins/devops) | opus | medium | yes | `iac-meta` |
+| `forgejo-shipper:forgejo-shipper` | [`forgejo-shipper`](plugins/forgejo-shipper) | haiku | medium | no | `forgejo-meta` |
+| `open-source-release-audit:open-source-release-audit` | [`open-source-release-audit`](plugins/open-source-release-audit) | sonnet | high | no | - |
+| `orchestration:orchestration` | [`orchestration`](plugins/orchestration) | inherit | - | yes | `orchestration-meta` |
+| `plugin-vetter:plugin-vetter` | [`plugin-vetter`](plugins/plugin-vetter) | sonnet | medium | no | - |
+| `reviewer:reviewer` | [`reviewer`](plugins/reviewer) | sonnet | high | no | `orchestration-meta` |
+| `scribe:scribe` | [`scribe`](plugins/scribe) | haiku | medium | yes | `orchestration-meta` |
+| `security-auditor:security-auditor` | [`security-auditor`](plugins/security-auditor) | opus | high | no | - |
+| `shipper:shipper` | [`shipper`](plugins/shipper) | haiku | medium | no | `github-meta` |
+| `ui-critic:ui-critic` | [`ui-critic`](plugins/ui-critic) | inherit | medium | no | `design-core` |
+| `web-perf-auditor:web-perf-auditor` | [`web-perf-auditor`](plugins/web-perf-auditor) | sonnet | medium | no | `web-meta` |
 
 <!-- catalog:end -->
 

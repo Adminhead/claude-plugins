@@ -387,7 +387,7 @@ def upstream(root, names, fetch):
 
 
 def agent_rows(root, entries, manifests, included_in):
-    """One catalog row per agent file: invoke name, plugin, model, effort, window, read-only, metas."""
+    """One catalog row per agent file: invoke name, plugin, model, effort, read-only, metas."""
     rows = []
     for f in sorted((root / "plugins").glob("*/agents/*.md")):
         plugin = f.parent.parent.name
@@ -404,11 +404,9 @@ def agent_rows(root, entries, manifests, included_in):
         name = fm.get("name", f.stem)
         tools = fm.get("tools", "")
         edits = "no" if tools and not re.search(r"\b(Edit|Write|MultiEdit|NotebookEdit)\b", tools) else "yes"
-        window = fm.get("autoCompactWindow", "")
-        window = f"{int(window) // 1000}k" if window.isdigit() else "-"
         metas = ", ".join(included_in.get(plugin, [])) or "-"
         rows.append(f"| `{plugin}:{name}` | [`{plugin}`](plugins/{plugin}) | {fm.get('model', 'inherit')} | "
-                    f"{fm.get('effort', '-')} | {window} | {edits} | {metas} |")
+                    f"{fm.get('effort', '-')} | {edits} | {metas} |")
     return rows
 
 
@@ -454,8 +452,8 @@ def catalog_section(root, entries, manifests):
                   "a caller can pass another model per call. An agent without Edit/Write tools can still change state "
                   "through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash and "
                   "limits their file-writing tools to scratch paths (`architect` has Write/Edit for scratch docs).", "",
-                  "| Agent | Plugin | Model | Effort | Context | Edit/Write tools | In |",
-                  "| --- | --- | --- | --- | --- | --- | --- |", *agents]
+                  "| Agent | Plugin | Model | Effort | Edit/Write tools | In |",
+                  "| --- | --- | --- | --- | --- | --- |", *agents]
     lines += ["", CATALOG_END]
     return "\n".join(lines)
 

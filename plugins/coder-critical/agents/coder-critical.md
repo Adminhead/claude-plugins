@@ -3,7 +3,6 @@ name: coder-critical
 description: Coder tier for costly mistakes (opus): concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails.
 model: opus
 effort: high
-autoCompactWindow: 500000
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding

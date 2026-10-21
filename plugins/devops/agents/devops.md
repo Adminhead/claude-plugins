@@ -3,7 +3,6 @@ name: devops
 description: Infrastructure specialist for Terraform/OpenTofu, Ansible, Docker, Kubernetes, Helm, GitOps and CI deploy config. Read-only by default; edits only when the brief asks and never touches live infrastructure unless the brief names the action and environment. Not for app code (coder), schema (dba) or docs (scribe).
 model: opus
 effort: medium
-autoCompactWindow: 500000
 tools: Read, Grep, Glob, Bash, Skill, Edit, Write, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
 color: yellow
 ---

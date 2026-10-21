@@ -283,11 +283,11 @@ def test_godot_descriptions_name_no_minor_version(root):
 def test_catalog_lists_agents_with_their_plugin(root):
     run(root, "new", "helper", "--kind", "agent", "--description", "Helps.", "--meta", "python-meta")
     path = root / "plugins/helper/agents/helper.md"
-    path.write_text(path.read_text().replace("tools: Read, Grep, Glob", "model: haiku\neffort: medium\nautoCompactWindow: 100000\ntools: Read, Grep, Glob"))
+    path.write_text(path.read_text().replace("tools: Read, Grep, Glob", "model: haiku\neffort: medium\ntools: Read, Grep, Glob"))
     plugins.write_catalog(root)
     readme = (root / "README.md").read_text()
     assert "### Agents" in readme
-    assert "| `helper:helper` | [`helper`](plugins/helper) | haiku | medium | 100k | no | `python-meta` |" in readme
+    assert "| `helper:helper` | [`helper`](plugins/helper) | haiku | medium | no | `python-meta` |" in readme
 
 
 def test_subagents_cannot_spawn_agents(root):

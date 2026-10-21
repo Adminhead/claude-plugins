@@ -4,7 +4,6 @@ description: Renders a built web page or local HTML file headless at 1440/768/39
 tools: Bash, Read, Glob, Grep
 model: inherit
 effort: medium
-autoCompactWindow: 200000
 maxTurns: 40
 color: pink
 ---
