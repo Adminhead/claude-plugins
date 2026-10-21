@@ -74,7 +74,7 @@ NoNewPrivileges=yes
 WantedBy=default.target
 ```
 
-- **The code-mode host stays on.** In codex 0.162.1 every model runs its tools (the shell, `apply_patch` and the rest) through the code-mode host, so `--disable code_mode_host` leaves the reviewer unable to run even `git diff`. The residual risk: the host process, a child of the app server, runs outside the sandbox and is protected only by its V8 isolate. The shell commands it starts are sandboxed (read-only, no network).
+- **The code-mode host stays on.** In codex 0.162.1 every model runs its tools (the shell, `apply_patch` and the rest) through the code-mode host, so `--disable code_mode_host` leaves the reviewer unable to run even `git diff`. The residual risk: the host process, a child of the app server, runs outside the sandbox and is protected only by its V8 isolate, and the code that runs in that isolate is written by the model. The shell commands it starts are sandboxed (read-only, no network).
 - **Where codex lives.** Replace `%h/.local/bin/codex` with the output of `command -v codex`.
 - **PATH.** The user manager's PATH (`systemctl --user show-environment`) has no `~/.local/bin` and no mise shims, and the reviewer's sandboxed shell inherits that PATH. So `git`, `rg` and the other tools the review uses must be on the system PATH, or set `Environment=PATH=…` in the unit.
 - **Socket.** codex 0.162.1 binds the real socket at `/tmp/codex-daemon-<uid>/<sha256 of the listen path>` (directory `0700`, socket `0600`) and makes `%t/codex-consult.sock` a symlink to it. consult follows exactly that one link and refuses any other symlink. So:
