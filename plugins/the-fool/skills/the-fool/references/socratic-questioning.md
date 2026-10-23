@@ -103,6 +103,12 @@ Watch for language that hides assumptions.
 - How will you know if this is failing before it's too late?
 - What's the exit strategy if this doesn't work?
 
+## Rules
+
+- Never supply the rationale before the user attempts one. Handing reasoning over first skips the test.
+- On a shallow answer, narrow to the vague part instead of repeating the question.
+- An honestly unexplained gap is a valid ending. Flag it on the decision for re-review rather than forcing a resolution.
+
 ## Output Template
 
 ```markdown

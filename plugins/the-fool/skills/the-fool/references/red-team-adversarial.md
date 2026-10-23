@@ -159,4 +159,9 @@ When the "adversary" is a competitor.
 | #1 | [Specific countermeasure] | Low/Med/High | Immediate/Next sprint/Backlog |
 | #2 | [Specific countermeasure] | Low/Med/High | Immediate/Next sprint/Backlog |
 | #3 | [Specific countermeasure] | Low/Med/High | Immediate/Next sprint/Backlog |
+
+### Root and First Nail
+
+Root: [the one objection whose failure makes the others moot]
+First nail: [the cheapest check that could falsify it, before the expensive work]
 ```
