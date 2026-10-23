@@ -192,6 +192,15 @@ Cross-model critique was not run, because consult itself is the thing that's bro
 1. **plugins is S (user, 2026-10-23).** `--disable plugins` stays a required flag whatever S1 finds, so S1 doesn't probe plugins. The user's unit must add it, and the S4 live check expects exactly that `not-locked` until it does.
 2. **web_search may be enabled on the server (user, 2026-10-23).** Its target class is T, or O. S1 must cover `"cached"` and `"live"`, from both sessionFlags and the user layer, on both `turn/start` and `review/start`, with a positive control. If the probes show the per-thread `web_search: "disabled"` loses to an enabled server value on any path, **stop and report to the user** rather than shipping S for it, because that contradicts this decision. `tools.web_search` follows the same rule.
 3. **Default policy:** `thread`, with `strict` opt-in. This is the plan's default and the user didn't flip it.
+4. **S1 decision gate (2026-10-23, codex-cli 0.163.0; evidence in `docs/research/consult-lock-probes-2026-10-23.md`):**
+   - **T:** `sandbox_mode`, `approval_policy` and `approvals_reviewer` (read back from the `thread/start` response); `hooks`, `apps`, `browser_use`, `computer_use`, `multi_agent` and `image_generation`. The readback is `experimentalFeature/list {threadId}`. It is paged (about 175 entries), so the check pages to the end or fails closed. Each key must read `false` on the consult thread.
+   - **O, version `0.163.0` only:**
+     - `web_search`. Covered pairs: (absent, -), ("disabled", sessionFlags), ("cached", sessionFlags), ("cached", user), ("live", sessionFlags), ("live", user). Any project-layer origin is uncovered, and so is any other value.
+     - `tools.web_search`. Covered: `{context_size: "high"}` from sessionFlags or user. Any other content fails closed.
+   - **O depends on T:** the review path searches through `codex_apps/search_service.web_run`, which only `features.apps: false` stops. So the web_search O pairs are trusted only when `apps` reads back `false` on the thread in the same call. If apps fails, web_search fails with it. Absent is not safe without the override (default search is on), so consult keeps sending `web_search: "disabled"` per thread.
+   - **S:** `plugins` (Decision 1).
+   - **Done-when live check, concrete:** against the user's unchanged unit, `--probe` and both call modes return `not-locked` naming only `features.plugins` and the `--disable plugins` flag. After the user adds `--disable plugins` and restarts the service, the same checks pass, with web search still enabled at the server.
+   - **Untested, so fail closed:** project-layer origins for every O key; versions other than 0.163.0; whether `review/start` runs under the thread's sandbox (the existing stage 2 sandbox check is unchanged).
 
 ## Open questions
 None left.
