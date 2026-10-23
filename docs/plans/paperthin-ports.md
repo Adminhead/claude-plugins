@@ -245,6 +245,14 @@ Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin valid
 1. **Push:** push to origin when `ship-plugin` asks in S6? This is asked at that point, not before.
 
 ## Status
-- Done: none.
-- In progress: none.
-- Left: S0-S6, after the open questions are answered.
+- Done (2026-10-23): S0-S6.
+  - The review passed, with the fixes in 0e5a726.
+  - Evals: 21/21 with the plugin (`docs/research/evals-2026-10-23.md`).
+  - Pushed to origin.
+  - Installed and updated:
+    - baseline 0.3.0 and prove 0.2.0 at user scope;
+    - the nine new baseline plugins installed at user scope;
+    - programming-core 0.4.0 and leakage-audit 0.1.0 in all nine project and local scopes where programming-core was installed.
+  - the-fool and session-retro were not installed anywhere, so they were only published.
+- Note: the project-scope installs edited `.claude/settings.json` in voidrot/isktel, voidrot/orbital-runtime, eve-online/portal and eve-online/platform. Those edits are left uncommitted there.
+- Left: none.
