@@ -64,7 +64,10 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 | `re0-upgrade` | Reject | none | `npx skills` installer that also writes hooks into agent configs and fetches remote scripts. Not applicable to a marketplace, and the vetter flagged it. |
 | `autobahn` | Reject (recommendation) | none | See Open question 1. Hiding risky input from the executing subagent so that it "has nothing to refuse" is a guardrail-routing pattern, whatever the ledger. |
 
-Result: 10 new plugins, 4 folds into 3 existing plugins (two land in the-fool), 14 not ported.
+Result: 28 upstream skills split three ways:
+- 10 ported as new plugins;
+- 5 folded: `nba` into the new catchup, and 4 into the existing prove, the-fool (two of them) and session-retro;
+- 13 not ported.
 
 ## Decisions (defaults taken)
 1. **Rewrite, don't vendor.** Each ported skill is rewritten in house style with `skill-authoring`, and every load-bearing upstream rule is kept, listed per plugin under "Keep" below.
@@ -210,7 +213,7 @@ Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin valid
 6. Run `ship-plugin` for each new plugin, the three folded plugins, baseline and programming-core. The marketplace installs from GitHub, so the first run asks to push (Open question 1). A baseline update doesn't install new dependencies, so install the ten new plugins at user scope by hand, as was done for prove and necromancy.
 
 ## Rejected alternatives
-- **Install paperthin as-is** (`npx skills add` or the clone as a plugin): it brings 28 skills, 15 model-invoked, with upstream names and the `re0-upgrade` hook writer. That is listing cost and overlap we already pay for elsewhere.
+- **Install paperthin as-is** (`npx skills add` or the clone as a plugin): it brings 28 skills, 16 model-invoked, with upstream names and the `re0-upgrade` hook writer. That is listing cost and overlap we already pay for elsewhere.
 - **One `paperthin` plugin holding all ported skills:** the repo rule is one component per plugin (`MULTI_COMPONENT` is for code-bound exceptions only).
 - **A `hygiene-core` bundle** instead of baseline: no meta besides baseline wants doc hygiene, and a bundle with a single consumer adds a layer for nothing. Revisit if a project-scope meta needs these.
 - **Verbatim vendoring:** it imports em-dash-heavy prose, sibling cross-references to unported skills and Python-script edit-safety advice. Rewriting with listed Keep rules preserves the substance.
