@@ -1,0 +1,17 @@
+leakage-audit
+Copyright AdminHead
+
+This plugin contains material adapted from LilMGenius/paperthin, licensed
+under the MIT License (see LICENSE).
+
+Upstream: https://github.com/LilMGenius/paperthin @ 7d5dc62
+Paths: skills/depth/mandela/SKILL.md (ported as leakage-audit)
+
+Modifications: rewritten rather than copied, with a descriptive name in place
+of the upstream one, our section order, no em-dashes and no references to
+sibling skills. Kept rules: name the components and ask whether outside ground
+truth enters independently; the eight leakage patterns, reporting only those
+that fire, each with an independence fix; blinding the value does not blind the
+collection recipe; read-only; an optional single fresh-context auditor for high
+stakes; the self-check on tautology, verifier-is-designer and shared
+hallucination. Added "Not for" lines naming skill-evals and the-fool.

@@ -77,7 +77,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Scope | Installs | Description |
 | --- | --- | --- | --- |
-| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove`, `necromancy`, `cold-read`, `ssot-consolidate`, `v0-rewrite`, `debloat`, `reorder`, `macrothink`, `prism`, `v0-restart` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
+| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove`, `necromancy`, `cold-read`, `ssot-consolidate`, `v0-rewrite`, `debloat`, `reorder`, `macrothink`, `prism`, `v0-restart`, `catchup` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
 | [`python-meta`](plugins/python-meta) | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` | Plugin set for Python projects, installed at project scope. Ships no components of its own. |
 | [`golang-meta`](plugins/golang-meta) | project | `programming-core`, `golang`, `gopls@claude-code-lsps` | Plugin set for Go projects, installed at project scope. Ships no components of its own. |
 | [`java-meta`](plugins/java-meta) | project | `programming-core`, `java`, `java-testing`, `maven`, `gradle`, `gradle-skills@gradle-skills`, `jdtls-lsp@claude-plugins-official` | Plugin set for Java projects, installed at project scope. Ships no components of its own. |
@@ -99,7 +99,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Installs | Used by | Description |
 | --- | --- | --- | --- |
-| [`programming-core`](plugins/programming-core) | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run`, `grep-app`, `context7@claude-plugins-official`, `feature-flags` | `dotnet-meta`, `godot-meta`, `golang-meta`, `java-meta`, `node-typescript-meta`, `python-meta`, `rust-meta`, `scala-meta`, `web-meta` | Core bundle of general programming plugins that the language and web metas install. Ships no components of its own. |
+| [`programming-core`](plugins/programming-core) | `coding`, `problem-solving`, `planning`, `unit-testing`, `test-run`, `grep-app`, `context7@claude-plugins-official`, `feature-flags`, `leakage-audit` | `dotnet-meta`, `godot-meta`, `golang-meta`, `java-meta`, `node-typescript-meta`, `python-meta`, `rust-meta`, `scala-meta`, `web-meta` | Core bundle of general programming plugins that the language and web metas install. Ships no components of its own. |
 | [`design-core`](plugins/design-core) | `ui-direction`, `ui-critic`, `web-design`, `screen-reader-testing`, `accessibility-review`, `ux-copy` | `design-meta`, `web-meta` | Core bundle of UI and UX design plugins that the web and design metas install. Ships no components of its own. |
 | [`gamedev-core`](plugins/gamedev-core) | `game-design`, `game-architecture`, `game-feel`, `level-design`, `game-ui`, `game-audio`, `game-performance`, `game-playtest` | `godot-meta` | Core bundle of engine-agnostic game-development plugins that the game-engine metas install. Ships no components of its own. |
 
@@ -342,6 +342,8 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`macrothink`](plugins/macrothink) | skill | Manual command that strips the session's framing and fans out fresh reads to check whether the current direction is tunnel-visioned. | `baseline` |
 | [`prism`](plugins/prism) | skill | Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement. | `baseline` |
 | [`v0-restart`](plugins/v0-restart) | skill | Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failure notes the previous attempt proved, and dropping its accidental architecture. | `baseline` |
+| [`catchup`](plugins/catchup) | skill | Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and an optional single next move. | `baseline` |
+| [`leakage-audit`](plugins/leakage-audit) | skill | Audits an eval, metric, experiment or benchmark for leakage and reports which independence checks fail, each with a fix. | `programming-core` |
 
 ### Agents
 

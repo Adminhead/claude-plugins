@@ -17,6 +17,7 @@
       "name": "context7",
       "marketplace": "claude-plugins-official"
     },
-    "feature-flags"
+    "feature-flags",
+    "leakage-audit"
   ]
 }

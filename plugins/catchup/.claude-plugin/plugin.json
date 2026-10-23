@@ -1,0 +1,9 @@
+{
+  "name": "catchup",
+  "version": "0.1.0",
+  "description": "Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and an optional single next move.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
