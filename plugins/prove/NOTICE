@@ -12,3 +12,9 @@ AdminHead's wording and cites the same source classes (project records, the
 artifact itself, external primary sources). The two upstream rules about memory
 and absence of contradiction are kept. The description and argument hint are
 AdminHead's, and the skill is manual only (disable-model-invocation).
+
+paperthin (MIT, Copyright (c) 2026 LilMGenius; see LICENSE.paperthin)
+Upstream: https://github.com/LilMGenius/paperthin @ 7d5dc62
+Paths: skills/depth/factchk/SKILL.md
+
+Modifications: the both-directions check, the exclusion of fiction and declared choices, and the feeling-triggered note were adapted from factchk and reworded inside the existing procedure.
