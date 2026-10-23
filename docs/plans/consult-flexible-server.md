@@ -206,6 +206,14 @@ Cross-model critique was not run, because consult itself is the thing that's bro
 None left.
 
 ## Status
-- Done: none.
-- In progress: none.
-- Left: S1-S4.
+- Done (2026-10-23):
+  - S1: probes and Decision 4.
+  - S2: code in 99f8796, plus fixes in 49b14db after a thorough review (opus). The review found 2 major and 2 minor issues, all fixed, and the re-check passed.
+  - S3: docs in 32e6be7.
+  - S4: consult 0.3.0 pushed and updated at user scope.
+- Live check against the user's unchanged unit, as predicted:
+  - with the default policy, `--probe` returns `not-locked` naming only `features.plugins` and `--disable plugins`;
+  - with `strict`, it also names `web_search`.
+- Left:
+  - After the user adds `--disable plugins` to the unit and restarts it: the passing probe, one plan-mode and one diff-mode call, then the paperthin critique (S4 step 4).
+  - A separate bug the review found: the agy path's read-only gate allows `view_file` but agy calls `read_file`.
