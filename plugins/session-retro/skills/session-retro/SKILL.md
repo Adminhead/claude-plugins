@@ -11,6 +11,8 @@ Review a Claude Code session and propose changes to the agent's **environment** 
 
 Adapted from mattpocock/skills `retro` (MIT, Copyright (c) 2026 Matt Pocock); see LICENSE.
 
+The clustering rule under step 4 is adapted from the `re0-memo` skill in LilMGenius/paperthin (MIT).
+
 ## Steps
 
 1. **Find the transcript.** With no argument, review this session (`${CLAUDE_SESSION_ID}`). Otherwise take the session id or path from `$ARGUMENTS`, or search recent transcripts by topic. Read `references/transcripts.md` for where transcripts live and the `jq` recipes to pull tool calls, errors, user corrections and token usage without loading a whole transcript into context. Done when you have the transcript path and a list of the session's tool calls, failures and corrections.
@@ -20,6 +22,8 @@ Adapted from mattpocock/skills `retro` (MIT, Copyright (c) 2026 Matt Pocock); se
 3. **Find candidates** in the categories below. Each needs evidence: quote the transcript line, tool call or file it rests on.
 
 4. **Present them in order of severity**, highest first. For each: the evidence, the proposed change (file and rough content), the category, and the cost of not doing it. Then ask which to apply.
+
+   Cluster before proposing. When the session holds many specific complaints or failures, group them up to the class of failure they share and propose a fix for the class. Keep the specifics as evidence under it. A fix that only covers the reported case is not enough, because the same class of failure returns wherever no one points at it.
 
 5. **Apply only what the user picks.** For skill, agent, hook or mod changes, follow the repo's own authoring guidance where it has some (for example `.claude/skills/skill-authoring/`, `hook-authoring`, `agent-authoring`, `mod-authoring`), otherwise Anthropic's `skill-creator` if available. Validate what you change.
 
