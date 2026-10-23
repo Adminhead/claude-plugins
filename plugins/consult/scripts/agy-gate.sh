@@ -9,7 +9,8 @@ deny() { printf '{"decision":"deny","reason":"read-only second opinion: %s"}\n' 
 command -v jq >/dev/null 2>&1 || deny "jq is not installed"
 name=$(jq -er '.toolCall.name | select(type == "string" and . != "")' 2>/dev/null) || deny "unreadable tool call"
 case $name in
-  view_file | grep_search | find_by_name | list_dir)
+  # read_file is agy 1.4's reader; the rest are the names older agy builds used.
+  read_file | view_file | grep_search | find_by_name | list_dir)
     echo '{"decision":"allow"}'
     ;;
   *)

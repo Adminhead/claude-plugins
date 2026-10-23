@@ -218,7 +218,7 @@ export function agyInputText(c: Consult, diff: string): string {
 }
 
 export function agyCall(c: Consult, repo: string, ws: string): { argv: string[]; cwd: string } {
-  const prompt = `${preamble(c, repo, false)}\n\nBefore anything else, read ${ws}/${AGY_INPUT} in full (use as many view_file calls as it takes). It holds the requester's notes and any diff under review. Shell commands are disabled. The repository itself is not in your workspace, so judge from that file alone.`
+  const prompt = `${preamble(c, repo, false)}\n\nBefore anything else, read ${ws}/${AGY_INPUT} in full (use as many file-read calls as it takes). It holds the requester's notes and any diff under review. Shell commands are disabled. The repository itself is not in your workspace, so judge from that file alone.`
   return { argv: guarded(c, ['agy', '--model', c.model, '--effort', c.effort, '-p', prompt]), cwd: ws }
 }
 

@@ -6,10 +6,10 @@ G=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/agy-gate.sh
 fails=0
 
 gate() { jq -nc --arg n "$1" '{toolCall: {name: $n, args: {}}}' | "$G" | jq -r .decision; }
-for t in view_file grep_search find_by_name list_dir; do
+for t in read_file view_file grep_search find_by_name list_dir; do
   if [[ $(gate "$t") == allow ]]; then echo "ok   gate allows $t"; else echo "FAIL gate allows $t"; fails=$((fails + 1)); fi
 done
-for t in write_to_file replace_file_content run_command read_url_content mcp_github_create_issue; do
+for t in write_to_file replace_file_content run_command call_mcp_tool read_url_content mcp_github_create_issue; do
   if [[ $(gate "$t") == deny ]]; then echo "ok   gate denies $t"; else echo "FAIL gate denies $t"; fails=$((fails + 1)); fi
 done
 

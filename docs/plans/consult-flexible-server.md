@@ -218,4 +218,4 @@ None left.
   - `--probe` passes, with web_search O, plugins and sandbox S, and the six features T;
   - a plan-mode call (the paperthin critique, S4 step 4) returned 5 findings;
   - a diff-mode call on 31fb36a returned a review.
-- Left: a separate bug the review found. The agy path's read-only gate allows `view_file` but agy calls `read_file`.
+- Fixed in consult 0.3.1: a separate bug the review found. The agy path's read-only gate allowed `view_file`, but agy 1.4.4 reads with `read_file`. A probe with a logging gate showed `read_file` is its only native read tool; listing and grep go through `run_command` and MCP through `call_mcp_tool`, which stay denied. The gate now allows `read_file` and keeps the older names.
