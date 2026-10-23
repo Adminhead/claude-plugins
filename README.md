@@ -77,7 +77,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Scope | Installs | Description |
 | --- | --- | --- | --- |
-| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove`, `necromancy` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
+| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove`, `necromancy`, `cold-read`, `ssot-consolidate` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
 | [`python-meta`](plugins/python-meta) | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` | Plugin set for Python projects, installed at project scope. Ships no components of its own. |
 | [`golang-meta`](plugins/golang-meta) | project | `programming-core`, `golang`, `gopls@claude-code-lsps` | Plugin set for Go projects, installed at project scope. Ships no components of its own. |
 | [`java-meta`](plugins/java-meta) | project | `programming-core`, `java`, `java-testing`, `maven`, `gradle`, `gradle-skills@gradle-skills`, `jdtls-lsp@claude-plugins-official` | Plugin set for Java projects, installed at project scope. Ships no components of its own. |
@@ -334,6 +334,8 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`prove`](plugins/prove) | skill | Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer. | `baseline` |
 | [`necromancy`](plugins/necromancy) | skill | Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session. | `baseline` |
 | [`vet`](plugins/vet) | skill | Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted. | - |
+| [`cold-read`](plugins/cold-read) | skill | Cold-reads an artifact through a fresh subagent that sees only its contents and reports where a stranger would stall. | `baseline` |
+| [`ssot-consolidate`](plugins/ssot-consolidate) | skill | Finds every copy of one scattered fact, proposes a canonical home and a consolidation plan, and edits only after approval. | `baseline` |
 
 ### Agents
 

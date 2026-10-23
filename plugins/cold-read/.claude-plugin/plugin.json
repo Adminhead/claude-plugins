@@ -1,0 +1,9 @@
+{
+  "name": "cold-read",
+  "version": "0.1.0",
+  "description": "Cold-reads an artifact through a fresh subagent that sees only its contents and reports where a stranger would stall.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

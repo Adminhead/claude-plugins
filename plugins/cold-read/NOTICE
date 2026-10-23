@@ -1,0 +1,18 @@
+cold-read
+Copyright AdminHead
+
+This plugin contains material adapted from LilMGenius/paperthin, licensed
+under the MIT License (see LICENSE).
+
+Upstream: https://github.com/LilMGenius/paperthin @ 7d5dc62
+Paths: skills/depth/shower/SKILL.md (ported as cold-read)
+
+Modifications: rewritten rather than copied, with a descriptive name in place
+of the upstream one, our section order, no em-dashes and no references to
+sibling skills. Kept rules: the read comes from a separate context-free
+subagent and is never self-assessed; the artifact's contents are passed, never
+a path or the intent; "I had to assume" counts as a finding; read end to end,
+never report clean from a grep; one read by default and several when stakes
+justify it; defects ordered by how badly they block a fresh reader with a
+stands-alone, minor-gaps or needs-work verdict; diagnose only, fixes happen in
+the main session. Added "Not for" lines naming doubt-review and docs-audit.

@@ -16,6 +16,8 @@
     "mcp-health",
     "bash-rules",
     "prove",
-    "necromancy"
+    "necromancy",
+    "cold-read",
+    "ssot-consolidate"
   ]
 }

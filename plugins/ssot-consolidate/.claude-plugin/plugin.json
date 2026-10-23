@@ -1,0 +1,9 @@
+{
+  "name": "ssot-consolidate",
+  "version": "0.1.0",
+  "description": "Finds every copy of one scattered fact, proposes a canonical home and a consolidation plan, and edits only after approval.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

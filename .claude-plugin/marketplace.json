@@ -435,7 +435,7 @@
     {
       "name": "mcp-health",
       "source": "./plugins/mcp-health",
-      "description": "A mod that shows `mcp: <server> ✗` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
+      "description": "A mod that shows `mcp: <server> \u2717` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -806,7 +806,7 @@
     {
       "name": "cache-clock",
       "source": "./plugins/cache-clock",
-      "description": "A mod that shows when the prompt cache likely expires (`cache warm → ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
+      "description": "A mod that shows when the prompt cache likely expires (`cache warm \u2192 ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1142,7 +1142,7 @@
     {
       "name": "turn-stats",
       "source": "./plugins/turn-stats",
-      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s · 41k out · cache 92%`).",
+      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s \u00b7 41k out \u00b7 cache 92%`).",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1738,6 +1738,20 @@
       "name": "vet",
       "source": "./plugins/vet",
       "description": "Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "cold-read",
+      "source": "./plugins/cold-read",
+      "description": "Cold-reads an artifact through a fresh subagent that sees only its contents and reports where a stranger would stall.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "ssot-consolidate",
+      "source": "./plugins/ssot-consolidate",
+      "description": "Finds every copy of one scattered fact, proposes a canonical home and a consolidation plan, and edits only after approval.",
       "version": "0.1.0",
       "category": "development"
     }
