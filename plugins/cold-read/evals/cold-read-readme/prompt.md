@@ -1,6 +1,6 @@
 ---
 name: cold-read-readme
-description: "A "would someone new follow this README" check routes to cold-read."
+description: 'A "would someone new follow this README" check routes to cold-read.'
 tags: [routing]
 runs: 1
 max_turns: 6
