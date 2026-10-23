@@ -109,9 +109,14 @@ describe('version', () => {
     expect(TESTED_CODEX).toBe('0.163.0')
     expect((checkVersion('consult/0.161.0') as any).kind).toBe('too-old')
     expect((checkVersion('nothing') as any).kind).toBe('protocol')
-    expect(checkVersion('consult/0.162.1')).toEqual({ version: '0.162.1', untested: false })
-    expect(checkVersion('consult/0.163.0')).toEqual({ version: '0.163.0', untested: false })
-    expect(checkVersion('consult/0.164.0')).toEqual({ version: '0.164.0', untested: true })
+    expect(checkVersion('consult/0.162.1')).toEqual({ version: '0.162.1', raw: '0.162.1', untested: false })
+    expect(checkVersion('consult/0.163.0 (Linux 7.2; x86_64)')).toEqual({ version: '0.163.0', raw: '0.163.0', untested: false })
+    expect(checkVersion('consult/0.164.0')).toEqual({ version: '0.164.0', raw: '0.164.0', untested: true })
+    // The raw token keeps a prerelease or build suffix, so the exact O version gate never mistakes it for 0.163.0.
+    expect(checkVersion('consult/0.163.0-alpha.2 (Linux)')).toEqual({ version: '0.163.0', raw: '0.163.0-alpha.2', untested: false })
+    expect(checkVersion('consult/0.163.0+build.7')).toMatchObject({ raw: '0.163.0+build.7' })
+    expect(checkVersion('consult/0.163.0(x)')).toMatchObject({ raw: '0.163.0' })
+    expect((checkVersion(`consult/0.163.0${'x'.repeat(500)}`) as any).raw.length).toBeLessThanOrEqual(64)
   })
 })
 
@@ -182,8 +187,8 @@ describe('params', () => {
 
 // The Fail of a stage 1 check, or null when it passed.
 const failOf = (r: ServerLocks | Fail): Fail | null => ('kind' in r ? r : null)
-const required = (config: unknown, policy: LockPolicy = 'strict', o: { origins?: Record<string, string>; version?: string } = {}) =>
-  checkServerRequired(config, Object.fromEntries(Object.entries(o.origins ?? {}).map(([k, type]) => [k, { name: { type }, version: '1' }])), policy, o.version ?? '0.163.0')
+const required = (config: unknown, policy: LockPolicy = 'strict', o: { origins?: Record<string, string>; version?: string; mode?: 'diff' | 'plan' } = {}) =>
+  checkServerRequired(config, Object.fromEntries(Object.entries(o.origins ?? {}).map(([k, type]) => [k, { name: { type }, version: '1' }])), policy, o.version ?? '0.163.0', o.mode ?? 'plan')
 const strict = (config: unknown) => failOf(required(config))
 
 describe('lock classes', () => {
@@ -214,6 +219,14 @@ describe('lock classes', () => {
     expect(originOf({ 'tools.web_search.context_size': meta('sessionFlags'), 'tools.web_search.location': meta('user') }, 'tools.web_search')).toBe('(mixed)')
     expect(originOf({ web_search: { name: 'user' } }, 'web_search')).toBe('(unknown)')
     expect(originOf({ web_search: meta(3) }, 'web_search')).toBe('(unknown)')
+    // A profile-v2 layer was never probed: it gets its own origin, which no covered pair names.
+    expect(originOf({ web_search: { name: { type: 'user', file: '/h/.codex/config.toml', profile: 'work' }, version: '1' } }, 'web_search')).toBe('user:work')
+    expect(originOf({ web_search: { name: { type: 'user', profile: '' }, version: '1' } }, 'web_search')).toBe('user')
+    expect(originOf({ web_search: { name: { type: 'user', profile: null }, version: '1' } }, 'web_search')).toBe('user')
+    expect(originOf({ web_search: { name: { type: 'user', profile: { x: 1 } }, version: '1' } }, 'web_search')).toBe('(unknown)')
+    const profiled = checkServerRequired({ ...LOCKED, web_search: 'live' }, { web_search: { name: { type: 'user', profile: 'work' }, version: '1' } }, 'thread', '0.163.0', 'plan') as Fail
+    expect(profiled.kind).toBe('not-locked')
+    expect(profiled.message).toMatch(/web_search is "live" \(origin user:work\) \(want "disabled"\): consult has not verified/)
     expect(originOf(null, 'web_search')).toBeNull()
     expect(originOf({}, 'web_search')).toBeNull()
   })
@@ -299,6 +312,32 @@ describe('stage 1 asserts', () => {
     for (const [value, origin] of [['cached', 'sessionFlags'], ['cached', 'user'], ['live', 'sessionFlags']]) {
       expect(failOf(required({ ...LOCKED, web_search: value }, 'thread', { origins: { web_search: origin! } })), `${value} ${origin}`).toBeNull()
     }
+  })
+
+  test('thread: diff mode keeps the sandbox keys server-required; plan mode reads them back', () => {
+    const loose = { ...LOCKED, sandbox_mode: 'danger-full-access', approval_policy: 'on-request', approvals_reviewer: 'auto_review' }
+    expect(failOf(required(loose, 'thread', { mode: 'plan' }))).toBeNull()
+    const r = failOf(required(loose, 'thread', { mode: 'diff' }))
+    expect(r?.kind).toBe('not-locked')
+    for (const [key, value, want] of [['sandbox_mode', 'danger-full-access', 'read-only'], ['approval_policy', 'on-request', 'never'], ['approvals_reviewer', 'auto_review', 'user']]) {
+      expect(r?.message).toContain(`${key} is "${value}" (want "${want}"): a diff review runs through review/start, which takes no sandbox setting, and consult has not verified that it keeps the thread's setting`)
+      expect(r?.message).toContain(`Fix: add -c '${key}="${want}"' to the codex-consult unit`)
+    }
+    expect(r?.message).not.toMatch(/web_search|features\./)
+    expect(failOf(required({ ...loose, sandbox_mode: 'read-only' }, 'thread', { mode: 'diff' }))?.message).not.toMatch(/sandbox_mode/)
+    const diff = required(LOCKED, 'thread', { mode: 'diff', origins: { web_search: 'sessionFlags' } }) as ServerLocks
+    const plan = required(LOCKED, 'thread', { mode: 'plan', origins: { web_search: 'sessionFlags' } }) as ServerLocks
+    for (const k of ['sandbox_mode', 'approval_policy', 'approvals_reviewer']) {
+      expect(diff.classes[k], k).toBe('S')
+      expect(plan.classes[k], k).toBe('T')
+    }
+    expect(diff.classes['features.apps']).toBe('T')
+  })
+
+  test('thread: a prerelease of the verified version does not pass the exact O version gate', () => {
+    const r = failOf(required({ ...LOCKED, web_search: 'live' }, 'thread', { origins: { web_search: 'sessionFlags' }, version: '0.163.0-alpha.2' }))
+    expect(r?.kind).toBe('not-locked')
+    expect(r?.message).toMatch(/consult verified its per-thread override only on codex 0\.163\.0, and this server runs 0\.163\.0-alpha\.2/)
   })
 
   test('thread: an O key outside the covered pairs, or on another version, behaves as S and names why', () => {
@@ -450,7 +489,20 @@ describe('stage 2 asserts', () => {
   test('checkThreadLocks fails closed on an error, a page without data and paging that did not end', () => {
     const err = checkThreadLocks({ pages: [], ended: false, error: 'codex refused experimentalFeature/list: unknown method' })
     expect(err?.kind).toBe('not-locked')
-    expect(err?.message).toMatch(/^the consult thread is not locked down: consult could not read back the consult thread's features \(codex refused experimentalFeature\/list: unknown method\), so it cannot confirm that features\.hooks, features\.apps, features\.browser_use, features\.computer_use, features\.multi_agent, features\.image_generation are off for the thread\. Fix: run codex 0\.163\.0, or set codexLockPolicy to strict/)
+    expect(err?.message).toMatch(/^the consult thread is not locked down: consult could not read back the consult thread's features \(codex refused experimentalFeature\/list: unknown method\), so consult cannot confirm that features\.hooks, features\.apps, features\.browser_use, features\.computer_use, features\.multi_agent, features\.image_generation are off for the thread\. Fix: run codex 0\.163\.0, or set codexLockPolicy to strict/)
+    // An incomplete read names every T key and the fix, once, without a missing clause per key.
+    const fixAll = 'Fix: run codex 0.163.0, or set codexLockPolicy to strict and run the codex-consult unit with --disable hooks --disable apps --disable browser_use --disable computer_use --disable multi_agent --disable image_generation'
+    const names = 'features.hooks, features.apps, features.browser_use, features.computer_use, features.multi_agent, features.image_generation are off for the thread'
+    for (const read of [ended([pagesWith()[0], { nextCursor: null }]), { pages: [pagesWith()[0]], ended: false }]) {
+      const m = checkThreadLocks(read)!.message
+      expect(m).toContain(names)
+      expect(m).toContain(fixAll)
+      expect(m).not.toMatch(/is missing from/)
+    }
+    expect(checkThreadLocks(ended([pagesWith()[0], { nextCursor: null }]))?.message).toMatch(/^the consult thread is not locked down: experimentalFeature\/list returned a page with no data for the consult thread, so consult cannot confirm/)
+    expect(checkThreadLocks({ pages: [], ended: false, error: 'boom' })?.message).toContain(fixAll)
+    // A feature read as on is still named when the read is incomplete.
+    expect(checkThreadLocks({ pages: pagesWith({ hooks: true }), ended: false })?.message).toMatch(/features\.hooks is true on the consult thread/)
     expect(checkThreadLocks(ended([...pagesWith(), { nextCursor: null }]))?.message).toMatch(/returned a page with no data/)
     expect(checkThreadLocks(ended([...pagesWith(), 'x']))?.kind).toBe('not-locked')
     expect(checkThreadLocks({ pages: pagesWith(), ended: false })?.message).toMatch(new RegExp(`did not end within ${MAX_FEATURE_PAGES} pages`))

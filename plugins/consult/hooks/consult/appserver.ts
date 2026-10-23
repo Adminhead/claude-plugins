@@ -134,12 +134,20 @@ export function versionAtLeast(v: string, min: string): boolean {
   return true
 }
 
-// From `initialize`'s userAgent: the server version, and whether it is newer than the one consult was tested with.
-export function checkVersion(userAgent: unknown): { version: string; untested: boolean } | Fail {
+// The whole version token of the userAgent, up to whitespace or "(": "0.163.0-alpha.2" where parseServerVersion
+// gives "0.163.0". The O version gate matches this exactly, so a prerelease or build is never taken for a release.
+export function rawServerVersion(userAgent: unknown): string | null {
+  if (typeof userAgent !== 'string') return null
+  return /^[^/]{1,200}\/([^\s(]{1,64})/.exec(userAgent.slice(0, 300))?.[1] ?? null
+}
+
+// From `initialize`'s userAgent: the server version, its raw token, and whether it is newer than the one consult
+// was tested with.
+export function checkVersion(userAgent: unknown): { version: string; raw: string; untested: boolean } | Fail {
   const version = parseServerVersion(userAgent)
   if (version === null) return fail('protocol', `the codex app server sent no version in its userAgent (${snippet(userAgent, 80)})`)
   if (!versionAtLeast(version, MIN_CODEX)) return fail('too-old', `the consult server runs codex ${version}; consult needs ${MIN_CODEX} or newer. Upgrade codex, then systemctl --user restart ${UNIT_NAME}`)
-  return { version, untested: !versionAtLeast(TESTED_CODEX, version) }
+  return { version, raw: rawServerVersion(userAgent) ?? version, untested: !versionAtLeast(TESTED_CODEX, version) }
 }
 
 // Appended to protocol errors from a server newer than TESTED_CODEX.
@@ -298,6 +306,9 @@ export type LockKey = {
   fix: string
   // T keys: where the thread's effective value is read back.
   readback?: 'thread/start' | 'experimentalFeature/list'
+  // S in diff mode: review/start takes no sandbox setting, and a review under a looser server sandbox was never
+  // probed, so the thread/start readback does not cover the review.
+  serverForReview?: true
   covered?: CoveredPair[]
 }
 
@@ -336,9 +347,9 @@ export const LOCK_CLASSES: Record<string, LockKey> = {
       { value: { context_size: 'high' }, origin: 'user' },
     ],
   },
-  sandbox_mode: { class: 'T', readback: 'thread/start', want: 'read-only', guarantee: 'the reviewer cannot change files', fix: unitFlag(`-c 'sandbox_mode="read-only"'`) },
-  approval_policy: { class: 'T', readback: 'thread/start', want: 'never', guarantee: 'the reviewer cannot ask to leave the sandbox', fix: unitFlag(`-c 'approval_policy="never"'`) },
-  approvals_reviewer: { class: 'T', readback: 'thread/start', want: 'user', guarantee: 'no automatic reviewer can approve a sandbox escape', fix: unitFlag(`-c 'approvals_reviewer="user"'`) },
+  sandbox_mode: { class: 'T', readback: 'thread/start', serverForReview: true, want: 'read-only', guarantee: 'the reviewer cannot change files', fix: unitFlag(`-c 'sandbox_mode="read-only"'`) },
+  approval_policy: { class: 'T', readback: 'thread/start', serverForReview: true, want: 'never', guarantee: 'the reviewer cannot ask to leave the sandbox', fix: unitFlag(`-c 'approval_policy="never"'`) },
+  approvals_reviewer: { class: 'T', readback: 'thread/start', serverForReview: true, want: 'user', guarantee: 'no automatic reviewer can approve a sandbox escape', fix: unitFlag(`-c 'approvals_reviewer="user"'`) },
   'features.plugins': featureKey('plugins', 'no plugin adds tools, skills or hooks to the reviewer', 'S'),
   'features.hooks': featureKey('hooks', 'no codex hook runs during the review'),
   'features.apps': featureKey('apps', "no app connector reaches the reviewer, including codex_apps web search, which the per-thread web_search override does not block"),
@@ -366,15 +377,24 @@ function serverValue(c: Record<string, any>, key: string): unknown {
 
 const meetsS = (spec: LockKey, v: unknown) => (spec.want === null ? absent(v) : v === spec.want)
 
-// The layer that set a key, from config/read's `origins` (dotted key -> {name: {type}}), counting its sub-keys
-// (tools.web_search.context_size). null: no origin at all; '(mixed)' or '(unknown)' never match a covered pair.
+// One origin's layer: its type, or "<type>:<profile>" for a profile-v2 layer (never probed, so it matches no
+// covered pair), or '(unknown)'.
+function layerOf(meta: unknown): string {
+  if (!isObj(meta) || !isObj(meta.name) || typeof meta.name.type !== 'string') return '(unknown)'
+  const profile = meta.name.profile
+  if (profile === undefined || profile === null || profile === '') return meta.name.type
+  return typeof profile === 'string' ? `${meta.name.type}:${snippet(profile, 60)}` : '(unknown)'
+}
+
+// The layer that set a key, from config/read's `origins` (dotted key -> {name: {type, profile?}}), counting its
+// sub-keys (tools.web_search.context_size). null: no origin at all; '(mixed)', '(unknown)' and a profile layer
+// never match a covered pair.
 export function originOf(origins: unknown, key: string): string | null {
   if (!isObj(origins)) return null
   const types = new Set<string>()
   for (const [k, meta] of Object.entries(origins)) {
     if (k !== key && !k.startsWith(`${key}.`)) continue
-    const t = isObj(meta) && isObj(meta.name) && typeof meta.name.type === 'string' ? meta.name.type : '(unknown)'
-    types.add(t)
+    types.add(layerOf(meta))
   }
   if (types.size === 0) return null
   return types.size === 1 ? [...types][0]! : '(mixed)'
@@ -399,16 +419,18 @@ export type TrustedKey = { key: string; got: string }
 export type ServerLocks = { policy: LockPolicy; classes: Record<string, LockClass>; trusted: TrustedKey[] }
 
 // Stage 1, on both config/read {} and config/read {cwd, includeLayers}, each with its own `origins`: the S keys,
-// the O keys whose version or (value, origin) gate misses, and under strict every key. Returns the class each key
-// resolved to for this call and the O keys trusted on their override.
-export function checkServerRequired(config: unknown, origins: unknown, policy: LockPolicy, version: string): ServerLocks | Fail {
+// the O keys whose version or (value, origin) gate misses, the sandbox keys in diff mode, and under strict every
+// key. `version` is the raw userAgent token, matched exactly against O_VERIFIED_ON. Returns the class each key
+// resolved to for this call and the O keys trusted on their override. The probe passes 'diff', the stricter mode.
+export function checkServerRequired(config: unknown, origins: unknown, policy: LockPolicy, version: string, mode: 'diff' | 'plan'): ServerLocks | Fail {
   const c = isObj(config) ? config : {}
   const bad: string[] = []
   const classes: Record<string, LockClass> = {}
   const trusted: TrustedKey[] = []
   for (const [key, spec] of Object.entries(LOCK_CLASSES)) {
     const v = serverValue(c, key)
-    const cls: LockClass = policy === 'strict' ? 'S' : spec.class
+    const forReview = policy === 'thread' && mode === 'diff' && spec.serverForReview === true
+    const cls: LockClass = policy === 'strict' || forReview ? 'S' : spec.class
     if (cls === 'T') {
       classes[key] = 'T'
       continue
@@ -427,11 +449,16 @@ export function checkServerRequired(config: unknown, origins: unknown, policy: L
       if (meetsS(spec, v)) continue
       bad.push(clause(key, got, spec, versionOk
         ? 'consult has not verified that its per-thread override beats that value from that origin'
-        : `consult verified its per-thread override only on codex ${O_VERIFIED_ON.join(', ')}, and this server runs ${snippet(version, 20)}`))
+        : `consult verified its per-thread override only on codex ${O_VERIFIED_ON.join(', ')}, and this server runs ${snippet(version, 64)}`))
       continue
     }
     classes[key] = 'S'
-    if (!meetsS(spec, v)) bad.push(clause(key, show(v), spec, policy === 'strict' ? 'codexLockPolicy is strict, so consult requires it of the server' : 'consult cannot override it per thread'))
+    const why = policy === 'strict'
+      ? 'codexLockPolicy is strict, so consult requires it of the server'
+      : forReview
+        ? "a diff review runs through review/start, which takes no sandbox setting, and consult has not verified that it keeps the thread's setting"
+        : 'consult cannot override it per thread'
+    if (!meetsS(spec, v)) bad.push(clause(key, show(v), spec, why))
   }
   if (bad.length > 0) return fail('not-locked', `the codex app server is not locked down for consult: ${bad.join('. ')}.`)
   return { policy, classes, trusted }
@@ -455,17 +482,19 @@ export type FeatureRead = { pages: unknown[]; ended: boolean; error?: string }
 // confirmed off, every trusted O key (web_search) fails with it: codex_apps can search the web.
 export function checkThreadLocks(read: FeatureRead, trusted: TrustedKey[] = []): Fail | null {
   const keys = Object.entries(LOCK_CLASSES).filter(([, s]) => s.readback === 'experimentalFeature/list')
-  const unread = 'set codexLockPolicy to strict and keep the flag in the unit'
+  // A readback that failed or is incomplete confirms none of the keys: one clause names them all and the fix.
+  const unverified = (why: string) =>
+    `${why}, so consult cannot confirm that ${keys.map(([k]) => k).join(', ')} are off for the thread. Fix: run codex ${O_VERIFIED_ON.join(', ')}, or set codexLockPolicy to strict and run the ${UNIT_NAME} unit with ${keys.map(([k]) => `--disable ${featureName(k)}`).join(' ')}`
   const bad: string[] = []
   let appsOff = false
   if (read.error !== undefined) {
-    const names = keys.map(([k]) => k).join(', ')
-    bad.push(`consult could not read back the consult thread's features (${snippet(read.error, 300)}), so it cannot confirm that ${names} are off for the thread. Fix: run codex ${O_VERIFIED_ON.join(', ')}, or ${unread}`)
+    bad.push(unverified(`consult could not read back the consult thread's features (${snippet(read.error, 300)})`))
   } else {
     const seen = new Map<string, unknown[]>()
+    let noData = false
     for (const page of read.pages) {
       if (!isObj(page) || !Array.isArray(page.data)) {
-        bad.push('experimentalFeature/list returned a page with no data')
+        noData = true
         continue
       }
       for (const f of page.data) {
@@ -475,13 +504,17 @@ export function checkThreadLocks(read: FeatureRead, trusted: TrustedKey[] = []):
         else seen.set(f.name, [f.enabled])
       }
     }
-    if (!read.ended) bad.push(`experimentalFeature/list did not end within ${MAX_FEATURE_PAGES} pages`)
-    appsOff = bad.length === 0
+    if (noData) bad.push(unverified('experimentalFeature/list returned a page with no data for the consult thread'))
+    if (!read.ended) bad.push(unverified(`experimentalFeature/list did not end within ${MAX_FEATURE_PAGES} pages for the consult thread`))
+    const complete = bad.length === 0
+    appsOff = complete
     for (const [key, spec] of keys) {
       const vals = seen.get(featureName(key))
       let failed = true
-      if (vals === undefined) bad.push(`${key} is missing from the consult thread's feature list (want false): consult cannot confirm its per-thread override, and consult needs it so that ${spec.guarantee}. Fix: ${unread}`)
-      else if (vals.some(v => v !== false)) bad.push(clause(key, `${show(vals.find(v => v !== false))} on the consult thread`, spec, "codex did not apply consult's per-thread override"))
+      if (vals === undefined) {
+        // An incomplete read already named every key.
+        if (complete) bad.push(`${key} is missing from the consult thread's feature list (want false): consult cannot confirm its per-thread override, and consult needs it so that ${spec.guarantee}. Fix: set codexLockPolicy to strict and ${spec.fix}`)
+      } else if (vals.some(v => v !== false)) bad.push(clause(key, `${show(vals.find(v => v !== false))} on the consult thread`, spec, "codex did not apply consult's per-thread override"))
       else failed = false
       if (key === 'features.apps' && failed) appsOff = false
     }

@@ -66,11 +66,14 @@ const noTurn = (f: FakeAppServer) => {
 }
 const NO_ITEMS = { commandExecution: { completed: 0, failed: 0, declined: 0 }, fileChange: { completed: 0, failed: 0, declined: 0 } }
 const T_FEATURES = LOCKED_FEATURES.filter(x => x !== 'plugins')
-// The classes under thread when every O key's gate holds (Decision 4 of docs/plans/consult-flexible-server.md).
+// The classes the probe reports under thread when every O key's gate holds (Decision 4 of
+// docs/plans/consult-flexible-server.md). The probe checks diff mode, the stricter one, where review/start's lack of
+// a sandbox setting keeps the sandbox keys server-required (S); plan mode reads them back (T).
 const THREAD_CLASSES = {
-  web_search: 'O', 'tools.web_search': 'O', sandbox_mode: 'T', approval_policy: 'T', approvals_reviewer: 'T', 'features.plugins': 'S',
+  web_search: 'O', 'tools.web_search': 'O', sandbox_mode: 'S', approval_policy: 'S', approvals_reviewer: 'S', 'features.plugins': 'S',
   ...Object.fromEntries(T_FEATURES.map(x => [`features.${x}`, 'T'])),
 }
+const SANDBOX_KEYS = ['sandbox_mode', 'approval_policy', 'approvals_reviewer']
 
 describe('1-2 happy paths', () => {
   test('1 plan-ok: the thread carries cwd, lock keys, MCP disables and openai; the turn runs in the repo', async () => {
@@ -795,8 +798,8 @@ describe('16 lock policy', () => {
     expect((await probe(f)).out).toMatchObject({ ok: true, classes: { web_search: 'S' } })
   }, 60000)
 
-  test('thread: on 0.162.1 and 0.164.0 the O keys fall back to S and the message names the version', async () => {
-    for (const v of ['0.162.1', '0.164.0']) {
+  test('thread: on 0.162.1, 0.164.0 and a 0.163.0 prerelease the O keys fall back to S and the message names the version', async () => {
+    for (const v of ['0.162.1', '0.164.0', '0.163.0-alpha.2']) {
       const f = fake({ userAgent: `consult/${v} (Linux)`, config: withPlugins({ web_search: 'live' }) })
       const r = await client(plan(f))
       expect(r.out.kind, v).toBe('not-locked')
@@ -807,9 +810,55 @@ describe('16 lock policy', () => {
       expect((await client(plan(absentWs))).out.message).toMatch(new RegExp(`web_search is null .*this server runs ${v.replaceAll('.', '\\.')}`))
       // Disabled at the server, the S check holds on any version.
       const ok = fake({ userAgent: `consult/${v} (Linux)` })
-      expect((await probe(ok)).out).toMatchObject({ ok: true, version: v, classes: { ...THREAD_CLASSES, web_search: 'S', 'tools.web_search': 'S' } })
+      // The probe's version is the numeric one; the O gate matched the raw token exactly.
+      expect((await probe(ok)).out).toMatchObject({ ok: true, version: v.split('-')[0], classes: { ...THREAD_CLASSES, web_search: 'S', 'tools.web_search': 'S' } })
     }
   }, 60000)
+
+  test('thread: a loose server sandbox passes in plan mode (read back) and fails in diff mode (review/start takes no sandbox)', async () => {
+    const loose = withPlugins({ sandbox_mode: 'danger-full-access', approval_policy: 'on-request', approvals_reviewer: 'auto_review' })
+    const p = fake({ config: loose })
+    expect((await client(plan(p))).out).toMatchObject({ ok: true, reply: REPLY })
+    expect(p.sent('turn/start')[0]!.msg.params.sandboxPolicy).toEqual({ type: 'readOnly', networkAccess: false })
+    const d = fake({ config: loose })
+    for (const r of [await client(diff(d)), await probe(d)]) {
+      expect(r.out.kind).toBe('not-locked')
+      for (const [key, want] of [['sandbox_mode', 'read-only'], ['approval_policy', 'never'], ['approvals_reviewer', 'user']]) {
+        expect(r.out.message).toMatch(new RegExp(`${key} is "[a-z_-]+" \\(want "${want}"\\): a diff review runs through review/start, which takes no sandbox setting`))
+        expect(r.out.message).toContain(`Fix: add -c '${key}="${want}"' to the codex-consult unit`)
+      }
+      expect(r.out.message).not.toMatch(/web_search|features\./)
+    }
+    expect(d.sent('thread/start')).toHaveLength(0)
+    // One loose key alone fails diff mode too, naming only it.
+    const one = fake({ config: withPlugins({ approvals_reviewer: 'auto_review' }) })
+    const r1 = await client(diff(one))
+    expect(r1.out.message).toMatch(/approvals_reviewer is "auto_review"/)
+    for (const k of SANDBOX_KEYS.filter(k => k !== 'approvals_reviewer')) expect(r1.out.message).not.toContain(k)
+    noTurn(one)
+  }, 30000)
+
+  test('thread: the predicted live state (web search absent, apps on at the server) passes while apps reads back false', async () => {
+    const live = () => withPlugins({ features: { ...(lockedConfig().features as Record<string, boolean>), apps: true } })
+    const f = fake({ config: live() })
+    expect((await client(plan(f))).out).toMatchObject({ ok: true, reply: REPLY })
+    f.scenario.turn = t => {
+      t.respond()
+      t.item({ type: 'exitedReviewMode', review: 'ok' })
+      t.complete()
+    }
+    expect((await client(diff(f))).out).toMatchObject({ ok: true, reply: 'ok' })
+    expect((await probe(f)).out).toMatchObject({ ok: true, classes: { web_search: 'O', 'features.apps': 'T' } })
+    // Had codex ignored the apps override, the readback shows apps on: apps and web_search both fail, before any turn.
+    for (const req of [plan, diff]) {
+      const g = fake({ config: live(), features: withFeature('apps', true) })
+      const r = await client(req(g))
+      expect(r.out.kind).toBe('not-locked')
+      expect(r.out.message).toMatch(/features\.apps is true on the consult thread \(want false\).*Fix: add --disable apps/)
+      expect(r.out.message).toMatch(/web_search is null \(want "disabled"\): consult trusts its per-thread override only while features\.apps reads back false on the consult thread, which it did not.*Fix: add -c 'web_search="disabled"'/)
+      noTurn(g)
+    }
+  }, 30000)
 
   test('thread: a T feature that reads back on, not false or missing is not-locked, with neither turn/start nor review/start sent', async () => {
     const cases: [Scenario, RegExp][] = [
@@ -870,7 +919,7 @@ describe('16 lock policy', () => {
     for (const req of [plan, diff]) {
       const r = await client(req(refused))
       expect(r.out.kind).toBe('not-locked')
-      expect(r.out.message).toMatch(/could not read back the consult thread's features \(codex refused experimentalFeature\/list: unknown method experimentalFeature\/list\), so it cannot confirm that features\.hooks, features\.apps, .* are off for the thread\. Fix: run codex 0\.163\.0, or set codexLockPolicy to strict/)
+      expect(r.out.message).toMatch(/could not read back the consult thread's features \(codex refused experimentalFeature\/list: unknown method experimentalFeature\/list\), so consult cannot confirm that features\.hooks, features\.apps, .* are off for the thread\. Fix: run codex 0\.163\.0, or set codexLockPolicy to strict/)
     }
     noTurn(refused)
     // strict requires the features of the server instead and never reads them back.

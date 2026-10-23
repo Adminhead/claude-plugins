@@ -339,7 +339,8 @@ async function readFeatures(threadId: string): Promise<FeatureRead> {
   return { pages, ended: false }
 }
 
-async function prepare(cwd: string, socketOption: string | undefined, o: { probe: boolean; policy?: LockPolicyOption; model?: string; effort?: string }): Promise<Ready> {
+// `mode` picks the stage 1 requirements; the probe passes 'diff', the stricter one, so a passing probe covers both.
+async function prepare(cwd: string, socketOption: string | undefined, o: { probe: boolean; mode: 'diff' | 'plan'; policy?: LockPolicyOption; model?: string; effort?: string }): Promise<Ready> {
   const policy: LockPolicy = effectivePolicy(o.policy)
   checkRepo(cwd)
   const resolved = resolveSocket(socketOption, process.env.XDG_RUNTIME_DIR)
@@ -365,12 +366,12 @@ async function prepare(cwd: string, socketOption: string | undefined, o: { probe
   // Stage 1: config only; nothing has gone to OpenAI yet.
   const read0 = await rpc('config/read', {})
   const cfg0 = read0?.config
-  const locks0 = checkServerRequired(cfg0, read0?.origins, policy, version)
+  const locks0 = checkServerRequired(cfg0, read0?.origins, policy, v.raw, o.mode)
   if ('kind' in locks0) throw new Stop(locks0)
   const provider0 = checkProvider(cfg0)
   if (provider0) throw new Stop(provider0)
   const withCwd = await rpc('config/read', { cwd, includeLayers: true })
-  const locksCwd = checkServerRequired(withCwd?.config, withCwd?.origins, policy, version)
+  const locksCwd = checkServerRequired(withCwd?.config, withCwd?.origins, policy, v.raw, o.mode)
   if ('kind' in locksCwd) throw new Stop(locksCwd)
   const lockedCwd = checkProjectLayers(withCwd?.layers) ?? checkProvider(withCwd?.config)
   if (lockedCwd) throw new Stop(lockedCwd)
@@ -572,7 +573,7 @@ async function main(): Promise<string> {
   if (probe) {
     const checked = checkProbeRequest(raw)
     if ('kind' in checked) throw new Stop(checked)
-    const r = await prepare(checked.ok.cwd ?? process.cwd(), checked.ok.socket, { probe: true, policy: checked.ok.policy })
+    const r = await prepare(checked.ok.cwd ?? process.cwd(), checked.ok.socket, { probe: true, mode: 'diff', policy: checked.ok.policy })
     // Server-supplied values are bounded one by one; the asserts already pinned the ones that matter.
     const ts = r.threadStart
     const sb = ts.sandbox
@@ -602,7 +603,7 @@ async function main(): Promise<string> {
   const checked = checkClientRequest(raw)
   if ('kind' in checked) throw new Stop(checked)
   deadline = started + checked.ok.timeoutSec * 1000
-  const r = await prepare(checked.ok.cwd, checked.ok.socket, { probe: false, policy: checked.ok.policy, model: checked.ok.model, effort: checked.ok.effort })
+  const r = await prepare(checked.ok.cwd, checked.ok.socket, { probe: false, mode: checked.ok.mode, policy: checked.ok.policy, model: checked.ok.model, effort: checked.ok.effort })
   return fitLine(await review(checked.ok, r))
 }
 
