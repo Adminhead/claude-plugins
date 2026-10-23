@@ -214,6 +214,8 @@ None left.
 - Live check against the user's unchanged unit, as predicted:
   - with the default policy, `--probe` returns `not-locked` naming only `features.plugins` and `--disable plugins`;
   - with `strict`, it also names `web_search`.
-- Left:
-  - After the user adds `--disable plugins` to the unit and restarts it: the passing probe, one plan-mode and one diff-mode call, then the paperthin critique (S4 step 4).
-  - A separate bug the review found: the agy path's read-only gate allows `view_file` but agy calls `read_file`.
+- After `--disable plugins` was added to the user's unit (web search still enabled at the server) and the service restarted:
+  - `--probe` passes, with web_search O, plugins and sandbox S, and the six features T;
+  - a plan-mode call (the paperthin critique, S4 step 4) returned 5 findings;
+  - a diff-mode call on 31fb36a returned a review.
+- Left: a separate bug the review found. The agy path's read-only gate allows `view_file` but agy calls `read_file`.
