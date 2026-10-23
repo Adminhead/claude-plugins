@@ -18,6 +18,12 @@
     "prove",
     "necromancy",
     "cold-read",
-    "ssot-consolidate"
+    "ssot-consolidate",
+    "v0-rewrite",
+    "debloat",
+    "reorder",
+    "macrothink",
+    "prism",
+    "v0-restart"
   ]
 }

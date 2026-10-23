@@ -1,0 +1,9 @@
+{
+  "name": "debloat",
+  "version": "0.1.0",
+  "description": "Manual command that compresses correct but accreted prose to its load-bearing density, cutting words and never rules.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

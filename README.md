@@ -77,7 +77,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 | Plugin | Scope | Installs | Description |
 | --- | --- | --- | --- |
-| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove`, `necromancy`, `cold-read`, `ssot-consolidate` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
+| [`baseline`](plugins/baseline) | user | `git-commit`, `recommend-plugins`, `handoff`, `check-bypass-guard`, `git-statusline`, `usage-band`, `mcp-health`, `bash-rules`, `prove`, `necromancy`, `cold-read`, `ssot-consolidate`, `v0-rewrite`, `debloat`, `reorder`, `macrothink`, `prism`, `v0-restart` | The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own. |
 | [`python-meta`](plugins/python-meta) | project | `programming-core`, `python`, `python-packaging`, `dependency-vetting`, `pyright@claude-code-lsps` | Plugin set for Python projects, installed at project scope. Ships no components of its own. |
 | [`golang-meta`](plugins/golang-meta) | project | `programming-core`, `golang`, `gopls@claude-code-lsps` | Plugin set for Go projects, installed at project scope. Ships no components of its own. |
 | [`java-meta`](plugins/java-meta) | project | `programming-core`, `java`, `java-testing`, `maven`, `gradle`, `gradle-skills@gradle-skills`, `jdtls-lsp@claude-plugins-official` | Plugin set for Java projects, installed at project scope. Ships no components of its own. |
@@ -336,6 +336,12 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`vet`](plugins/vet) | skill | Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted. | - |
 | [`cold-read`](plugins/cold-read) | skill | Cold-reads an artifact through a fresh subagent that sees only its contents and reports where a stranger would stall. | `baseline` |
 | [`ssot-consolidate`](plugins/ssot-consolidate) | skill | Finds every copy of one scattered fact, proposes a canonical home and a consolidation plan, and edits only after approval. | `baseline` |
+| [`v0-rewrite`](plugins/v0-rewrite) | skill | Rewrites a drifted document as a clean v0 that says what is true now, with no trace of the edits that produced it. | `baseline` |
+| [`debloat`](plugins/debloat) | skill | Manual command that compresses correct but accreted prose to its load-bearing density, cutting words and never rules. | `baseline` |
+| [`reorder`](plugins/reorder) | skill | Manual command that realigns an arbitrarily ordered list, table or section set under one stated principle, moving items only. | `baseline` |
+| [`macrothink`](plugins/macrothink) | skill | Manual command that strips the session's framing and fans out fresh reads to check whether the current direction is tunnel-visioned. | `baseline` |
+| [`prism`](plugins/prism) | skill | Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement. | `baseline` |
+| [`v0-restart`](plugins/v0-restart) | skill | Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failure notes the previous attempt proved, and dropping its accidental architecture. | `baseline` |
 
 ### Agents
 

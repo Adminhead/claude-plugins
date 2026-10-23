@@ -1,0 +1,9 @@
+{
+  "name": "macrothink",
+  "version": "0.1.0",
+  "description": "Manual command that strips the session's framing and fans out fresh reads to check whether the current direction is tunnel-visioned.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

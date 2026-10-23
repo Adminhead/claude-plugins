@@ -1,0 +1,18 @@
+macrothink
+Copyright AdminHead
+
+This plugin contains material adapted from LilMGenius/paperthin, licensed
+under the MIT License (see LICENSE).
+
+Upstream: https://github.com/LilMGenius/paperthin @ 7d5dc62
+Paths: skills/depth/macrothink/SKILL.md (ported as macrothink)
+
+Modifications: rewritten rather than copied, with our section order, no
+em-dashes and no references to unported sibling skills. Kept rules: the session
+bait is stripped to goal, constraints and facts; 2 to 5 fresh reads, default 3;
+reads are classified as divergent-incompatible, divergent-compatible or
+convergent and shared roots are clustered; divergence is reported first; no
+majority vote or averaging; same-model convergence is reassurance, never proof;
+advisory and read-only; user-invoked fan-out only. Added "Not for" lines naming
+second-opinion, the-fool and prism, and a pointer to second-opinion for
+cross-model reads.

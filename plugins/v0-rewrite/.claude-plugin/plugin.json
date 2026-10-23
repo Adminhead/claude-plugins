@@ -1,0 +1,9 @@
+{
+  "name": "v0-rewrite",
+  "version": "0.1.0",
+  "description": "Rewrites a drifted document as a clean v0 that says what is true now, with no trace of the edits that produced it.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

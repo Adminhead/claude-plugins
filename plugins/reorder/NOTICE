@@ -1,0 +1,16 @@
+reorder
+Copyright AdminHead
+
+This plugin contains material adapted from LilMGenius/paperthin, licensed
+under the MIT License (see LICENSE).
+
+Upstream: https://github.com/LilMGenius/paperthin @ 7d5dc62
+Paths: skills/depth/reorder/SKILL.md (ported as reorder)
+
+Modifications: rewritten rather than copied, with our section order, no
+em-dashes and no references to unported sibling skills. Kept rules: move items
+only and never reword, add, remove, split or merge; one principle a reader can
+name; finish a latent order rather than impose a new one; mirrored copies keep
+the same order; report a MISS for any item that is not found. Dropped the
+upstream Python unicode-safety advice. Added a "Not for" line stating that the
+generated README catalog is never edited.

@@ -1,0 +1,9 @@
+{
+  "name": "prism",
+  "version": "0.1.0",
+  "description": "Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
