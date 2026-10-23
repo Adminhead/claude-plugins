@@ -467,3 +467,4 @@ Some skills in this marketplace adapt ideas, structure, or text from these open-
 | [mattpocock/skills](https://github.com/mattpocock/skills) | MIT |
 | [wshobson/agents](https://github.com/wshobson/agents) | MIT |
 | [dtiger1889-ops/claude-harness-toolbox](https://github.com/dtiger1889-ops/claude-harness-toolbox) | MIT |
+| [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) | MIT |

@@ -11,7 +11,7 @@ Adapted from the `mandela` skill in LilMGenius/paperthin (MIT).
 
 ## Not for
 
-- Writing or running evals: use the skill-evals skill.
+- Writing or running evals: not this skill.
 - Stress-testing a plan or claim with a pre-mortem or evidence audit: use `the-fool`.
 
 ## Workflow

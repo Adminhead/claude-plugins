@@ -1,6 +1,6 @@
 ---
 name: v0-rewrite
-description: Rewrites a drifted document as a clean v0 that says what is true now, with no trace of the edits that produced it. Use when asked to clean up, refresh, sync up or de-noise a doc after several rounds of edits, or when related docs have drifted apart. Not for changelogs, ADRs, plans, or density-only tightening.
+description: Rewrites a drifted document as a clean v0 that says what is true now, with no trace of the edits that produced it. Use when asked to clean up, refresh, sync up or de-noise a doc after several rounds of edits, or when related docs have drifted apart. Not for changelogs, ADRs, plans, density-only tightening, or docs-vs-code drift (docs-audit).
 ---
 
 # V0 rewrite

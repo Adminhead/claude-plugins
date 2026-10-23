@@ -29,7 +29,7 @@ Adapted from the `reorder` skill in LilMGenius/paperthin (MIT).
 - One principle a reader can name. Do not blend incompatible sorts into one listing.
 - Respect a deliberate order. If the current sequence already encodes a real principle, complete and tidy it, and surface the call when it is unclear.
 - Keep mirrored copies in lockstep.
-- Confirm each item exists before moving it and report a MISS when it does not, never a silent drop. Script a large structural move instead of sweeping by hand.
+- Confirm each item exists before moving it and report a MISS when it does not, never a silent drop.
 
 ## Before finishing
 

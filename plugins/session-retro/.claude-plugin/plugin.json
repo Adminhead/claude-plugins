@@ -1,6 +1,6 @@
 {
   "name": "session-retro",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, or why a session went badly.",
   "author": {
     "name": "AdminHead",

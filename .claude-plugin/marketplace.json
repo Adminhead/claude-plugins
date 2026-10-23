@@ -16,14 +16,14 @@
       "name": "baseline",
       "source": "./plugins/baseline",
       "description": "The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "meta"
     },
     {
       "name": "programming-core",
       "source": "./plugins/programming-core",
       "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "category": "bundle"
     },
     {
@@ -1108,7 +1108,7 @@
       "name": "session-retro",
       "source": "./plugins/session-retro",
       "description": "Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, or why a session went badly.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -1129,7 +1129,7 @@
       "name": "the-fool",
       "source": "./plugins/the-fool",
       "description": "Devil's advocate skill that steelmans an idea or decision, then challenges it in one chosen mode (Socratic, dialectic, pre-mortem, red team, evidence audit) and drives to a stronger position.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -1724,7 +1724,7 @@
       "name": "prove",
       "source": "./plugins/prove",
       "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {

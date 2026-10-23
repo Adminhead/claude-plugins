@@ -1,6 +1,6 @@
 {
   "name": "baseline",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
