@@ -1,10 +1,13 @@
 import type { Register } from 'claude-code'
-import { clientErrorText, parseClientResult } from './consult/appserver'
+import { clientErrorText, parseClientResult, type LockPolicy } from './consult/appserver'
 import {
   agyCall, agyHooksJson, agyInputText, AGY_INPUT, blockedFiles, clientArgv, CLIENT_SLACK_SEC, clip, codexRequest, diffArgv, failure,
-  fileListArgvs, header, KILL_GRACE_SEC, MAX_REPLY, PREFLIGHT, socketOption, tail, TOOL, TOOL_NAME, UNTRACKED_DIFF, validate, WRITE_FILE,
+  fileListArgvs, header, KILL_GRACE_SEC, lockPolicyOption, MAX_REPLY, PREFLIGHT, socketOption, tail, TOOL, TOOL_NAME, UNTRACKED_DIFF, validate, WRITE_FILE,
   type Consult,
 } from './consult/consult'
+
+// The codex options, checked at register: the socket and the lock policy.
+type CodexOptions = { socket?: string; policy?: LockPolicy }
 
 // consult: the engine follows `$` only through functions in this file, so the run flow lives here and
 // consult/consult.ts holds the pure parts.
@@ -23,7 +26,7 @@ async function sh($: any, script: string, args: string[], init: Record<string, u
 }
 
 // Runs the review and returns the reply text. Throws a plain Error with the tool-error text.
-async function consult($: any, c: Consult, socket: string | undefined): Promise<string> {
+async function consult($: any, c: Consult, codex: CodexOptions): Promise<string> {
   const cwd: string = await $.session.cwd()
   const pre = await sh($, PREFLIGHT, [c.repo ?? '', cwd], { cwd })
   if (pre.exitCode !== 0) throw new Error(pre.stderr.trim() || `repo check exited ${pre.exitCode}`)
@@ -42,7 +45,7 @@ async function consult($: any, c: Consult, socket: string | undefined): Promise<
     if (blocked.length > 0) throw new Error(`diff touches secret-like files, not sending: ${blocked.join(' ')}`)
   }
 
-  if (c.cli === 'codex') return runCodex($, c, repo, socket)
+  if (c.cli === 'codex') return runCodex($, c, repo, codex)
   const out = await runAgy($, c, repo, top)
   if (out.exitCode !== 0 || out.stdout.trim() === '') throw new Error(failure(c, out.exitCode, out.stdout, out.stderr))
   return `${header(c, repo)}\n${clip(out.stdout.trim(), MAX_REPLY, 'reply')}`
@@ -50,14 +53,14 @@ async function consult($: any, c: Consult, socket: string | undefined): Promise<
 
 // One run of the hook-side client against the user's codex app server. It prints one JSON line and exits 0; its
 // own deadline is timeoutSec, so process.run's timeout only backstops it.
-async function runCodex($: any, c: Consult, repo: string, socket: string | undefined): Promise<string> {
+async function runCodex($: any, c: Consult, repo: string, codex: CodexOptions): Promise<string> {
   const root = String($.plugin.root)
   const backstopSec = c.timeoutSec + CLIENT_SLACK_SEC
   const timeoutMs = backstopSec * 1000
   const startedAt: number = await $.clock.now()
   let out: any
   try {
-    out = await $.process.run(clientArgv(root), { cwd: root, stdin: JSON.stringify(codexRequest(c, repo, socket)), timeoutMs })
+    out = await $.process.run(clientArgv(root), { cwd: root, stdin: JSON.stringify(codexRequest(c, repo, codex.socket, codex.policy)), timeoutMs })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     if ((await $.clock.now()) - startedAt >= timeoutMs - 1000) throw new Error(`consult timed out: the codex client did not exit within ${backstopSec}s (backstop). Split the review into smaller passes.`)
@@ -105,6 +108,7 @@ async function runAgy($: any, c: Consult, repo: string, top: string) {
 export const register: Register = (on, options) => {
   // Checked per call, so a bad value is a tool error naming the option rather than a failed load.
   const socket = socketOption(options?.codexSocket)
+  const policy = lockPolicyOption(options?.codexLockPolicy)
   on('session.start', async ($, e, next) => {
     try {
       const { tool } = await $.tool.register(TOOL)
@@ -119,6 +123,7 @@ export const register: Register = (on, options) => {
     const checked = validate(e)
     if ('error' in checked) return fail(`consult: ${checked.error}`)
     if (checked.ok.cli === 'codex' && 'error' in socket) return fail(`consult: ${socket.error}`)
+    if (checked.ok.cli === 'codex' && 'error' in policy) return fail(`consult: ${policy.error}`)
     // Answering the call here skips the engine's own permission step, so ask for its verdict first.
     try {
       const { tool, tool_use_id, ...args } = e
@@ -135,7 +140,8 @@ export const register: Register = (on, options) => {
       return fail(`consult: permission check failed: ${err instanceof Error ? err.message : String(err)}`)
     }
     try {
-      return { result: await consult($, checked.ok, 'socket' in socket ? socket.socket : undefined) }
+      const codex: CodexOptions = { socket: 'socket' in socket ? socket.socket : undefined, policy: 'policy' in policy ? policy.policy : undefined }
+      return { result: await consult($, checked.ok, codex) }
     } catch (err) {
       return fail(err instanceof Error ? err.message : String(err))
     }

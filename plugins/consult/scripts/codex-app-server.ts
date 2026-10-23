@@ -9,11 +9,11 @@
 import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, statSync } from 'node:fs'
 import {
   answerServerRequest, checkAccount, checkDaemonLink, checkSocketPath, isSymlink, checkClientRequest, checkCwd, checkLockdown, checkProbeRequest, checkProjectLayers, checkProvider,
-  checkReadOnly, checkServerLocked, checkSocketStat, checkVersion, CLOSE_MS, CONNECT_MS, INIT_MS, initializeParams, INTERRUPT_GRACE_SEC,
-  LOG_CHARS, Matcher, MAX_FRAME_BYTES, MAX_LINE_BYTES, MAX_REQUEST_BYTES, mcpServerNames, newTurnState, noServerMessage, observedModel, projectLayers,
-  reduce, resolveSocket, reviewStartParams, SIGNAL_MESSAGE, snippet, socketDir, socketUnsafe, threadStartParams, timeoutMessage,
-  TURN_ID_WAIT_MS, turnOutcome, turnStartParams, UNIT_NAME, untestedHint, utf8Bytes, fitLine, type ClientRequest, type ClientResult,
-  type Fail, type Items, type Msg,
+  checkReadOnly, checkServerRequired, checkSocketStat, checkThreadLocks, checkVersion, CLOSE_MS, CONNECT_MS, effectivePolicy, FEATURE_PAGE_LIMIT, INIT_MS, initializeParams,
+  INTERRUPT_GRACE_SEC, LOG_CHARS, Matcher, MAX_FEATURE_PAGES, MAX_FRAME_BYTES, MAX_LINE_BYTES, MAX_REQUEST_BYTES, mcpServerNames, mergeServerLocks, newTurnState,
+  noServerMessage, observedModel, projectLayers, reduce, resolveSocket, reviewStartParams, SIGNAL_MESSAGE, snippet, socketDir, socketUnsafe, threadStartParams,
+  timeoutMessage, TURN_ID_WAIT_MS, turnOutcome, turnStartParams, UNIT_NAME, untestedHint, utf8Bytes, fitLine, type ClientRequest, type ClientResult,
+  type Fail, type FeatureRead, type Items, type LockPolicy, type LockPolicyOption, type Msg, type ServerLocks,
 } from '../hooks/consult/appserver'
 
 const PROBE_SEC = 60
@@ -25,6 +25,8 @@ class Stop extends Error {
     super(fail.message)
   }
 }
+// The server answered a call with a JSON-RPC error.
+class Refused extends Stop {}
 class CallTimeout extends Error {}
 const stop = (kind: Fail['kind'], message: string): never => {
   throw new Stop({ kind, message })
@@ -140,7 +142,7 @@ class Conn {
       clearTimeout(p.timer)
       if (m.error !== undefined) {
         const msg = snippet(typeof m.error === 'object' && m.error !== null ? m.error.message : m.error, 300)
-        p.reject(new Stop({ kind: 'protocol', message: `codex refused ${p.method}: ${msg}${untestedHint(version || '0.0.0')}` }))
+        p.reject(new Refused({ kind: 'protocol', message: `codex refused ${p.method}: ${msg}${untestedHint(version || '0.0.0')}` }))
       } else p.resolve(m.result)
     }
     poke()
@@ -289,6 +291,7 @@ type Ready = {
   conn: Conn
   socket: string
   untested: boolean
+  locks: ServerLocks
   account: { signedIn: boolean; accountType: string | null }
   layers: ReturnType<typeof projectLayers>
   cfgCwd: any
@@ -316,7 +319,28 @@ async function rpc(method: string, params: unknown, cap = Infinity): Promise<any
   }
 }
 
-async function prepare(cwd: string, socketOption: string | undefined, o: { probe: boolean; model?: string; effort?: string }): Promise<Ready> {
+// experimentalFeature/list {threadId}, paged to the end or to MAX_FEATURE_PAGES. A JSON-RPC error is kept for
+// checkThreadLocks, which fails closed on it; a lost connection or a timeout stops the call as usual.
+async function readFeatures(threadId: string): Promise<FeatureRead> {
+  const pages: unknown[] = []
+  let cursor: string | undefined
+  for (let i = 0; i < MAX_FEATURE_PAGES; i++) {
+    let page: any
+    try {
+      page = await rpc('experimentalFeature/list', { threadId, limit: FEATURE_PAGE_LIMIT, ...(cursor ? { cursor } : {}) })
+    } catch (e) {
+      if (e instanceof Refused) return { pages, ended: false, error: e.fail.message }
+      throw e
+    }
+    pages.push(page)
+    cursor = typeof page?.nextCursor === 'string' && page.nextCursor !== '' ? page.nextCursor : undefined
+    if (!cursor) return { pages, ended: true }
+  }
+  return { pages, ended: false }
+}
+
+async function prepare(cwd: string, socketOption: string | undefined, o: { probe: boolean; policy?: LockPolicyOption; model?: string; effort?: string }): Promise<Ready> {
+  const policy: LockPolicy = effectivePolicy(o.policy)
   checkRepo(cwd)
   const resolved = resolveSocket(socketOption, process.env.XDG_RUNTIME_DIR)
   if ('kind' in resolved) throw new Stop(resolved)
@@ -339,12 +363,18 @@ async function prepare(cwd: string, socketOption: string | undefined, o: { probe
   conn.notify('initialized')
 
   // Stage 1: config only; nothing has gone to OpenAI yet.
-  const cfg0 = (await rpc('config/read', {}))?.config
-  const locked0 = checkServerLocked(cfg0) ?? checkProvider(cfg0)
-  if (locked0) throw new Stop(locked0)
+  const read0 = await rpc('config/read', {})
+  const cfg0 = read0?.config
+  const locks0 = checkServerRequired(cfg0, read0?.origins, policy, version)
+  if ('kind' in locks0) throw new Stop(locks0)
+  const provider0 = checkProvider(cfg0)
+  if (provider0) throw new Stop(provider0)
   const withCwd = await rpc('config/read', { cwd, includeLayers: true })
-  const lockedCwd = checkServerLocked(withCwd?.config) ?? checkProjectLayers(withCwd?.layers) ?? checkProvider(withCwd?.config)
+  const locksCwd = checkServerRequired(withCwd?.config, withCwd?.origins, policy, version)
+  if ('kind' in locksCwd) throw new Stop(locksCwd)
+  const lockedCwd = checkProjectLayers(withCwd?.layers) ?? checkProvider(withCwd?.config)
   if (lockedCwd) throw new Stop(lockedCwd)
+  const locks = mergeServerLocks(locks0, locksCwd)
   const acct = checkAccount(await rpc('account/read', { refreshToken: false }))
   let account: Ready['account']
   if ('kind' in acct) {
@@ -361,6 +391,11 @@ async function prepare(cwd: string, socketOption: string | undefined, o: { probe
   onOurs = m => matcher.push(m)
   const asserted = checkReadOnly(ts) ?? checkCwd(ts, cwd) ?? checkProvider(cfg0, ts)
   if (asserted) throw new Stop(asserted)
+  // The T keys of the feature list, read back for this thread; strict requires them of the server instead.
+  if (policy === 'thread') {
+    const threadLocks = checkThreadLocks(await readFeatures(id), locks.trusted)
+    if (threadLocks) throw new Stop(threadLocks)
+  }
   const pages: any[] = []
   let cursor: string | undefined
   for (let i = 0; i < MAX_MCP_PAGES; i++) {
@@ -382,6 +417,7 @@ async function prepare(cwd: string, socketOption: string | undefined, o: { probe
     conn,
     socket,
     untested: v.untested,
+    locks,
     account,
     layers: projectLayers(withCwd?.layers),
     cfgCwd: withCwd?.config,
@@ -536,7 +572,7 @@ async function main(): Promise<string> {
   if (probe) {
     const checked = checkProbeRequest(raw)
     if ('kind' in checked) throw new Stop(checked)
-    const r = await prepare(checked.ok.cwd ?? process.cwd(), checked.ok.socket, { probe: true })
+    const r = await prepare(checked.ok.cwd ?? process.cwd(), checked.ok.socket, { probe: true, policy: checked.ok.policy })
     // Server-supplied values are bounded one by one; the asserts already pinned the ones that matter.
     const ts = r.threadStart
     const sb = ts.sandbox
@@ -547,7 +583,8 @@ async function main(): Promise<string> {
       untested: r.untested,
       signedIn: r.account.signedIn,
       accountType: r.account.accountType,
-      locked: true,
+      policy: r.locks.policy,
+      classes: r.locks.classes,
       projectLayers: r.layers.slice(0, 20).map(l => ({ folder: snippet(l.folder, 300), enabled: l.enabled, keys: l.keys.slice(0, 30).map(k => snippet(k, 60)) })),
       sandbox: { type: snippet(sb.type, 40), networkAccess: sb.networkAccess === true },
       approvalPolicy: snippet(ts.approvalPolicy, 40),
@@ -565,7 +602,7 @@ async function main(): Promise<string> {
   const checked = checkClientRequest(raw)
   if ('kind' in checked) throw new Stop(checked)
   deadline = started + checked.ok.timeoutSec * 1000
-  const r = await prepare(checked.ok.cwd, checked.ok.socket, { probe: false, model: checked.ok.model, effort: checked.ok.effort })
+  const r = await prepare(checked.ok.cwd, checked.ok.socket, { probe: false, policy: checked.ok.policy, model: checked.ok.model, effort: checked.ok.effort })
   return fitLine(await review(checked.ok, r))
 }
 

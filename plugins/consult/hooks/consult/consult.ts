@@ -1,6 +1,6 @@
 // The consult tool's pure logic: input validation, prompts, argv and output clipping. No `$` here, so
 // `claude plugin test` can exercise it directly; register.tsx runs what this builds.
-import { checkSocketPath, CODEX_EFFORTS, MAX_REPLY, MAX_TIMEOUT_SEC, MODEL, type ClientOk, type ClientRequest } from './appserver'
+import { checkSocketPath, CODEX_EFFORTS, MAX_REPLY, MAX_TIMEOUT_SEC, MODEL, snippet, type ClientOk, type ClientRequest, type LockPolicy } from './appserver'
 
 export { MAX_REPLY, MAX_TIMEOUT_SEC }
 
@@ -109,6 +109,13 @@ export function socketOption(value: unknown): { socket?: string } | { error: str
   return bad ? { error: `the consult codexSocket option is invalid: ${bad.message} (set it in /config)` } : { socket: value as string }
 }
 
+// The consult `codexLockPolicy` option: '' (unset, meaning thread), thread or strict. Only a set value is passed on.
+export function lockPolicyOption(value: unknown): { policy?: LockPolicy } | { error: string } {
+  if (value === undefined || value === '') return {}
+  if (value === 'thread' || value === 'strict') return { policy: value }
+  return { error: `the consult codexLockPolicy option must be empty, "thread" or "strict", not ${snippet(JSON.stringify(value) ?? String(value), 40)} (set it in /config)` }
+}
+
 // Hardened git: the repo's config cannot run a pager, fsmonitor, external diff, textconv or signature
 // check. Clean/smudge filter drivers can still run, since the diff reads the worktree.
 const HARDEN = ['-c', 'core.fsmonitor=false', '-c', 'core.pager=cat', '-c', 'diff.external=', '-c', 'log.showSignature=false', '-c', 'core.quotePath=false']
@@ -186,11 +193,12 @@ export const CLIENT_SCRIPT = 'scripts/codex-app-server.ts'
 export const clientArgv = (root: string) => ['bun', '--no-env-file', '--config=/dev/null', `${root}/${CLIENT_SCRIPT}`]
 
 // The codex client's stdin: the prompt (preamble plus notes) for the repo, and only the options the caller set.
-export function codexRequest(c: Consult, repo: string, socket?: string): ClientRequest {
+export function codexRequest(c: Consult, repo: string, socket?: string, policy?: LockPolicy): ClientRequest {
   const req: ClientRequest = { mode: c.mode, cwd: repo, prompt: withNotes(preamble(c, repo), c.notes), timeoutSec: c.timeoutSec }
   if (c.model !== undefined) req.model = c.model
   if (c.effort !== undefined) req.effort = c.effort
   if (socket !== undefined) req.socket = socket
+  if (policy !== undefined) req.policy = policy
   return req
 }
 

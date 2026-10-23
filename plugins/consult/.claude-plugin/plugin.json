@@ -12,6 +12,12 @@
       "title": "Codex app server socket",
       "description": "Unix socket of the running codex app server (README: Run the codex app server). Empty: $XDG_RUNTIME_DIR/codex-consult.sock. Allowed characters: A-Z a-z 0-9 . _ / -",
       "default": ""
+    },
+    "codexLockPolicy": {
+      "type": "string",
+      "title": "Codex lock policy",
+      "description": "How consult checks the codex app server's lockdown. Empty or thread: check each guarantee on the consult thread, and require of the server only what consult cannot set per thread. strict: require every lock flag of the server itself, as consult 0.2 did. Allowed values: empty, thread, strict",
+      "default": ""
     }
   }
 }

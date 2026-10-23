@@ -1,7 +1,7 @@
 // The codex app-server protocol, pure: request checks, socket and config asserts, JSON-RPC params, server-request
 // answers, notification matching, the turn reducer and the client's one-line result. No `$`, no `node:` and no
 // `process`, so the mod (through consult.ts) and the hook-side client (scripts/codex-app-server.ts) share it.
-// Method and field names follow the codex-cli 0.162.1 app-server JSON schema (stable surface).
+// Method and field names follow the codex-cli 0.163.0 app-server JSON schema (stable surface).
 
 export const MAX_REPLY = 60_000
 export const MAX_TIMEOUT_SEC = 540
@@ -9,7 +9,10 @@ export const CODEX_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
 export const MODEL = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/
 
 export const MIN_CODEX = '0.162.0'
-export const TESTED_CODEX = '0.162.1'
+export const TESTED_CODEX = '0.163.0'
+// The exact codex versions on which the class O per-thread overrides were probed with a positive control
+// (docs/research/consult-lock-probes-2026-10-23.md). Any other version, older or newer, makes an O key behave as S.
+export const O_VERIFIED_ON = ['0.163.0']
 export const CONNECT_MS = 2000
 export const INIT_MS = 5000
 export const TURN_ID_WAIT_MS = 2000
@@ -145,6 +148,13 @@ export const untestedHint = (version: string) =>
 
 // --- client request -----------------------------------------------------------------------------------------
 
+// The codexLockPolicy option: '' (the default) means thread.
+export const LOCK_POLICIES = ['', 'thread', 'strict'] as const
+export type LockPolicyOption = (typeof LOCK_POLICIES)[number]
+export type LockPolicy = 'thread' | 'strict'
+export const isLockPolicy = (v: unknown): v is LockPolicyOption => (LOCK_POLICIES as readonly unknown[]).includes(v)
+export const effectivePolicy = (p: LockPolicyOption | undefined): LockPolicy => (p === 'strict' ? 'strict' : 'thread')
+
 export type ClientRequest = {
   mode: 'diff' | 'plan'
   cwd: string
@@ -153,17 +163,22 @@ export type ClientRequest = {
   effort?: string
   timeoutSec: number
   socket?: string
+  policy?: LockPolicyOption
 }
-export type ProbeRequest = { cwd?: string; socket?: string }
+export type ProbeRequest = { cwd?: string; socket?: string; policy?: LockPolicyOption }
 
 function checkCwdField(cwd: unknown): Fail | null {
   if (typeof cwd !== 'string' || !cwd.startsWith('/') || cwd.length > 1024 || /[\0\r\n]/.test(cwd)) return fail('input', 'cwd must be an absolute path of at most 1024 characters without NUL or newlines')
   return null
 }
 
+function checkPolicyField(policy: unknown): Fail | null {
+  return policy === undefined || isLockPolicy(policy) ? null : fail('input', 'policy must be "", "thread" or "strict"')
+}
+
 export function checkClientRequest(raw: unknown): { ok: ClientRequest } | Fail {
   if (!isObj(raw)) return fail('input', 'the request must be a JSON object')
-  const { mode, cwd, prompt, model, effort, timeoutSec, socket } = raw
+  const { mode, cwd, prompt, model, effort, timeoutSec, socket, policy } = raw
   if (mode !== 'diff' && mode !== 'plan') return fail('input', 'mode must be diff or plan')
   const badCwd = checkCwdField(cwd)
   if (badCwd) return badCwd
@@ -175,10 +190,13 @@ export function checkClientRequest(raw: unknown): { ok: ClientRequest } | Fail {
     const bad = checkSocketPath(socket)
     if (bad) return bad
   }
+  const badPolicy = checkPolicyField(policy)
+  if (badPolicy) return badPolicy
   const ok: ClientRequest = { mode, cwd, prompt, timeoutSec }
   if (model !== undefined) ok.model = model
   if (effort !== undefined) ok.effort = effort
   if (socket !== undefined) ok.socket = socket
+  if (policy !== undefined) ok.policy = policy
   return { ok }
 }
 
@@ -195,6 +213,9 @@ export function checkProbeRequest(raw: unknown): { ok: ProbeRequest } | Fail {
     if (bad) return bad
     ok.socket = raw.socket
   }
+  const badPolicy = checkPolicyField(raw.policy)
+  if (badPolicy) return badPolicy
+  if (raw.policy !== undefined) ok.policy = raw.policy
   return { ok }
 }
 
@@ -254,29 +275,224 @@ export function reviewStartParams(req: Pick<ClientRequest, 'prompt'>, threadId: 
 
 // --- asserts ------------------------------------------------------------------------------------------------
 
-const show = (v: unknown) => (v === undefined ? 'missing' : snippet(JSON.stringify(v) ?? String(v), 40))
+const show = (v: unknown, max = 40) => (v === undefined ? 'missing' : snippet(JSON.stringify(v) ?? String(v), max))
 
-// Stage 1, on both config/read {} and config/read {cwd, includeLayers}: the server runs with the README unit's flags.
-export function checkServerLocked(config: unknown): Fail | null {
+// --- lock keys ----------------------------------------------------------------------------------------------
+//
+// Every lock key has a class (docs/plans/consult-flexible-server.md, Decision 4; evidence in
+// docs/research/consult-lock-probes-2026-10-23.md):
+//   T  consult sets it per thread and reads the effective value back for the thread before any turn or review;
+//   O  consult sets it per thread; the override was probed to win, but only for the covered (server value, origin)
+//      pairs and only on the O_VERIFIED_ON versions. Outside them the key behaves as S;
+//   S  the server itself must hold the required value.
+// Under codexLockPolicy "strict" every key is S, as in consult 0.2.
+
+export type LockClass = 'T' | 'O' | 'S'
+// A covered server state of an O key: `value` null means the key is absent, and then `origin` is null too.
+export type CoveredPair = { value: unknown; origin: string | null }
+export type LockKey = {
+  class: LockClass
+  // The server value S requires: a string or false, or null for "absent".
+  want: string | false | null
+  guarantee: string
+  fix: string
+  // T keys: where the thread's effective value is read back.
+  readback?: 'thread/start' | 'experimentalFeature/list'
+  covered?: CoveredPair[]
+}
+
+const unitFlag = (flag: string) => `add ${flag} to the ${UNIT_NAME} unit`
+const featureKey = (f: string, guarantee: string, cls: LockClass = 'T'): LockKey => ({
+  class: cls,
+  want: false,
+  guarantee,
+  fix: unitFlag(`--disable ${f}`),
+  ...(cls === 'T' ? { readback: 'experimentalFeature/list' as const } : {}),
+})
+
+export const LOCK_CLASSES: Record<string, LockKey> = {
+  web_search: {
+    class: 'O',
+    want: 'disabled',
+    guarantee: 'the reviewer cannot search the web, which could leak the code under review',
+    fix: unitFlag(`-c 'web_search="disabled"'`),
+    covered: [
+      { value: null, origin: null },
+      { value: 'disabled', origin: 'sessionFlags' },
+      { value: 'cached', origin: 'sessionFlags' },
+      { value: 'cached', origin: 'user' },
+      { value: 'live', origin: 'sessionFlags' },
+      { value: 'live', origin: 'user' },
+    ],
+  },
+  'tools.web_search': {
+    class: 'O',
+    want: null,
+    guarantee: 'no web search tool is configured for the reviewer',
+    fix: `remove tools.web_search from the ${UNIT_NAME} unit's -c flags and from ~/.codex/config.toml`,
+    covered: [
+      { value: null, origin: null },
+      { value: { context_size: 'high' }, origin: 'sessionFlags' },
+      { value: { context_size: 'high' }, origin: 'user' },
+    ],
+  },
+  sandbox_mode: { class: 'T', readback: 'thread/start', want: 'read-only', guarantee: 'the reviewer cannot change files', fix: unitFlag(`-c 'sandbox_mode="read-only"'`) },
+  approval_policy: { class: 'T', readback: 'thread/start', want: 'never', guarantee: 'the reviewer cannot ask to leave the sandbox', fix: unitFlag(`-c 'approval_policy="never"'`) },
+  approvals_reviewer: { class: 'T', readback: 'thread/start', want: 'user', guarantee: 'no automatic reviewer can approve a sandbox escape', fix: unitFlag(`-c 'approvals_reviewer="user"'`) },
+  'features.plugins': featureKey('plugins', 'no plugin adds tools, skills or hooks to the reviewer', 'S'),
+  'features.hooks': featureKey('hooks', 'no codex hook runs during the review'),
+  'features.apps': featureKey('apps', "no app connector reaches the reviewer, including codex_apps web search, which the per-thread web_search override does not block"),
+  'features.browser_use': featureKey('browser_use', 'the reviewer cannot drive a browser'),
+  'features.computer_use': featureKey('computer_use', 'the reviewer cannot control the computer'),
+  'features.multi_agent': featureKey('multi_agent', 'the reviewer cannot start sub-agents'),
+  'features.image_generation': featureKey('image_generation', 'the reviewer cannot generate images'),
+}
+
+// The feature name of a features.* key, as experimentalFeature/list names it.
+const featureName = (key: string) => key.slice('features.'.length)
+const showWant = (w: LockKey['want']) => (w === null ? 'absent' : JSON.stringify(w))
+const absent = (v: unknown) => v === undefined || v === null
+
+// The server value of a dotted key. A non-table parent is returned as the value, so it never reads as absent.
+function serverValue(c: Record<string, any>, key: string): unknown {
+  const [head, ...rest] = key.split('.')
+  let v: unknown = c[head!]
+  for (const part of rest) {
+    if (absent(v) || !isObj(v)) return v
+    v = v[part]
+  }
+  return v
+}
+
+const meetsS = (spec: LockKey, v: unknown) => (spec.want === null ? absent(v) : v === spec.want)
+
+// The layer that set a key, from config/read's `origins` (dotted key -> {name: {type}}), counting its sub-keys
+// (tools.web_search.context_size). null: no origin at all; '(mixed)' or '(unknown)' never match a covered pair.
+export function originOf(origins: unknown, key: string): string | null {
+  if (!isObj(origins)) return null
+  const types = new Set<string>()
+  for (const [k, meta] of Object.entries(origins)) {
+    if (k !== key && !k.startsWith(`${key}.`)) continue
+    const t = isObj(meta) && isObj(meta.name) && typeof meta.name.type === 'string' ? meta.name.type : '(unknown)'
+    types.add(t)
+  }
+  if (types.size === 0) return null
+  return types.size === 1 ? [...types][0]! : '(mixed)'
+}
+
+// A covered value matches when both are absent, equal scalars, or tables with the same non-null fields.
+function sameValue(want: unknown, got: unknown): boolean {
+  if (absent(want)) return absent(got)
+  if (!isObj(want)) return got === want
+  if (!isObj(got)) return false
+  const set = Object.entries(got).filter(([, v]) => !absent(v))
+  return set.length === Object.keys(want).length && set.every(([k, v]) => v === want[k])
+}
+
+const isCovered = (spec: LockKey, v: unknown, origin: string | null) => (spec.covered ?? []).some(p => sameValue(p.value, v) && p.origin === origin)
+
+const clause = (key: string, got: string, spec: LockKey, why: string) =>
+  `${key} is ${got} (want ${showWant(spec.want)}): ${why}, and consult needs it so that ${spec.guarantee}. Fix: ${spec.fix}`
+
+// An O key consult relies on its per-thread override for, only while features.apps reads back false on the thread.
+export type TrustedKey = { key: string; got: string }
+export type ServerLocks = { policy: LockPolicy; classes: Record<string, LockClass>; trusted: TrustedKey[] }
+
+// Stage 1, on both config/read {} and config/read {cwd, includeLayers}, each with its own `origins`: the S keys,
+// the O keys whose version or (value, origin) gate misses, and under strict every key. Returns the class each key
+// resolved to for this call and the O keys trusted on their override.
+export function checkServerRequired(config: unknown, origins: unknown, policy: LockPolicy, version: string): ServerLocks | Fail {
   const c = isObj(config) ? config : {}
   const bad: string[] = []
-  const want = (key: string, value: string) => {
-    if (c[key] !== value) bad.push(`${key} is ${show(c[key])} (want "${value}")`)
+  const classes: Record<string, LockClass> = {}
+  const trusted: TrustedKey[] = []
+  for (const [key, spec] of Object.entries(LOCK_CLASSES)) {
+    const v = serverValue(c, key)
+    const cls: LockClass = policy === 'strict' ? 'S' : spec.class
+    if (cls === 'T') {
+      classes[key] = 'T'
+      continue
+    }
+    if (cls === 'O') {
+      const origin = originOf(origins, key)
+      // Long enough to show which field of a tools.web_search table is outside the covered pairs.
+      const got = `${show(v, 120)}${origin === null ? '' : ` (origin ${snippet(origin, 40)})`}`
+      const versionOk = O_VERIFIED_ON.includes(version)
+      if (versionOk && isCovered(spec, v, origin)) {
+        classes[key] = 'O'
+        if (!meetsS(spec, v)) trusted.push({ key, got })
+        continue
+      }
+      classes[key] = 'S'
+      if (meetsS(spec, v)) continue
+      bad.push(clause(key, got, spec, versionOk
+        ? 'consult has not verified that its per-thread override beats that value from that origin'
+        : `consult verified its per-thread override only on codex ${O_VERIFIED_ON.join(', ')}, and this server runs ${snippet(version, 20)}`))
+      continue
+    }
+    classes[key] = 'S'
+    if (!meetsS(spec, v)) bad.push(clause(key, show(v), spec, policy === 'strict' ? 'codexLockPolicy is strict, so consult requires it of the server' : 'consult cannot override it per thread'))
   }
-  want('web_search', 'disabled')
-  want('sandbox_mode', 'read-only')
-  want('approval_policy', 'never')
-  want('approvals_reviewer', 'user')
-  // tools.web_search configures a web search tool; any value at all fails closed.
-  const tools = c.tools
-  if (tools !== undefined && tools !== null && (!isObj(tools) || (tools.web_search !== undefined && tools.web_search !== null))) {
-    bad.push(`tools.web_search is ${show(isObj(tools) ? tools.web_search : tools)} (want absent)`)
+  if (bad.length > 0) return fail('not-locked', `the codex app server is not locked down for consult: ${bad.join('. ')}.`)
+  return { policy, classes, trusted }
+}
+
+// The two stage 1 views together: a key either view relies on an override for counts as O, and its trust is kept.
+export function mergeServerLocks(a: ServerLocks, b: ServerLocks): ServerLocks {
+  const classes = { ...b.classes }
+  for (const [k, cls] of Object.entries(a.classes)) if (cls === 'O') classes[k] = 'O'
+  const trusted = [...b.trusted, ...a.trusted.filter(t => !b.trusted.some(u => u.key === t.key))]
+  return { policy: b.policy, classes, trusted }
+}
+
+export const FEATURE_PAGE_LIMIT = 100
+export const MAX_FEATURE_PAGES = 20
+export type FeatureRead = { pages: unknown[]; ended: boolean; error?: string }
+
+// Stage 2 under thread, after thread/start and before turn/start or review/start: every T feature reads back
+// false for the consult thread in experimentalFeature/list {threadId}, paged to the end. A key that is missing,
+// not false, an error, a malformed page or paging that did not end fails closed. When features.apps is not
+// confirmed off, every trusted O key (web_search) fails with it: codex_apps can search the web.
+export function checkThreadLocks(read: FeatureRead, trusted: TrustedKey[] = []): Fail | null {
+  const keys = Object.entries(LOCK_CLASSES).filter(([, s]) => s.readback === 'experimentalFeature/list')
+  const unread = 'set codexLockPolicy to strict and keep the flag in the unit'
+  const bad: string[] = []
+  let appsOff = false
+  if (read.error !== undefined) {
+    const names = keys.map(([k]) => k).join(', ')
+    bad.push(`consult could not read back the consult thread's features (${snippet(read.error, 300)}), so it cannot confirm that ${names} are off for the thread. Fix: run codex ${O_VERIFIED_ON.join(', ')}, or ${unread}`)
+  } else {
+    const seen = new Map<string, unknown[]>()
+    for (const page of read.pages) {
+      if (!isObj(page) || !Array.isArray(page.data)) {
+        bad.push('experimentalFeature/list returned a page with no data')
+        continue
+      }
+      for (const f of page.data) {
+        if (!isObj(f) || typeof f.name !== 'string') continue
+        const vals = seen.get(f.name)
+        if (vals) vals.push(f.enabled)
+        else seen.set(f.name, [f.enabled])
+      }
+    }
+    if (!read.ended) bad.push(`experimentalFeature/list did not end within ${MAX_FEATURE_PAGES} pages`)
+    appsOff = bad.length === 0
+    for (const [key, spec] of keys) {
+      const vals = seen.get(featureName(key))
+      let failed = true
+      if (vals === undefined) bad.push(`${key} is missing from the consult thread's feature list (want false): consult cannot confirm its per-thread override, and consult needs it so that ${spec.guarantee}. Fix: ${unread}`)
+      else if (vals.some(v => v !== false)) bad.push(clause(key, `${show(vals.find(v => v !== false))} on the consult thread`, spec, "codex did not apply consult's per-thread override"))
+      else failed = false
+      if (key === 'features.apps' && failed) appsOff = false
+    }
   }
-  // features is not a declared Config field; it arrives through additionalProperties.
-  const features = isObj(c.features) ? c.features : {}
-  for (const f of LOCKED_FEATURES) if (features[f] !== false) bad.push(`features.${f} is ${show(features[f])} (want false)`)
+  if (!appsOff) {
+    for (const t of trusted) {
+      bad.push(clause(t.key, t.got, LOCK_CLASSES[t.key]!, 'consult trusts its per-thread override only while features.apps reads back false on the consult thread, which it did not'))
+    }
+  }
   if (bad.length === 0) return null
-  return fail('not-locked', `the codex app server is not locked down: ${bad.join(', ')}. consult refuses a server started without the flags of the example unit in ${README_UNIT}`)
+  return fail('not-locked', `the consult thread is not locked down: ${bad.slice(0, 20).join('. ')}.`)
 }
 
 export type ProjectLayer = { folder: string; enabled: boolean; keys: string[] }

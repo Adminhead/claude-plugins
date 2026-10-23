@@ -1,4 +1,4 @@
-// An in-process fake of `codex app-server --listen unix://…` (codex-cli 0.162.1) for codex-app-server.spec.ts:
+// An in-process fake of `codex app-server --listen unix://…` (codex-cli 0.163.0) for codex-app-server.spec.ts:
 // JSON-RPC objects, one per WebSocket text frame, no `jsonrpc` field. Every notification is broadcast to every
 // connection, as the real server does, and server requests go to every connection too. Each scenario overrides
 // the parts it needs; every frame in both directions is recorded. Not a *.test.* file: `claude plugin test`
@@ -9,6 +9,32 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 export const LOCKED_FEATURES = ['plugins', 'hooks', 'apps', 'browser_use', 'computer_use', 'multi_agent', 'image_generation']
+// experimentalFeature/list had 175 entries on 0.163.0 (S1 probes); the rest are fillers here.
+export const FEATURE_COUNT = 175
+export const FEATURE_PAGE_DEFAULT = 50
+
+// config/read's `origins`: dotted key -> {name: {type: <layer>}, version}.
+export const originsOf = (m: Record<string, string>) => Object.fromEntries(Object.entries(m).map(([k, type]) => [k, { name: { type }, version: '1' }]))
+
+// The default origins: every lock key the served config sets came from the unit's flags (sessionFlags).
+function defaultOrigins(config: any): Record<string, string> {
+  const o: Record<string, string> = {}
+  for (const k of ['web_search', 'sandbox_mode', 'approval_policy', 'approvals_reviewer']) if (config?.[k] != null) o[k] = 'sessionFlags'
+  for (const f of LOCKED_FEATURES) if (config?.features?.[f] != null) o[`features.${f}`] = 'sessionFlags'
+  const ws = config?.tools?.web_search
+  if (ws && typeof ws === 'object') for (const [k, v] of Object.entries(ws)) if (v != null) o[`tools.web_search.${k}`] = 'sessionFlags'
+  return o
+}
+
+export type Feature = { name: string; enabled: unknown; defaultEnabled: boolean; stage: string }
+
+// One page of experimentalFeature/list, as the server pages it: `cursor` is an offset, `limit` the page size.
+export function featurePage(all: Feature[], p: any) {
+  const offset = typeof p.cursor === 'string' ? Number(p.cursor) : 0
+  const limit = typeof p.limit === 'number' ? p.limit : FEATURE_PAGE_DEFAULT
+  const end = offset + limit
+  return { data: all.slice(offset, end), nextCursor: end < all.length ? String(end) : null }
+}
 export const lockedConfig = (over: Record<string, unknown> = {}) => ({
   model: 'cfg-model',
   review_model: null,
@@ -50,11 +76,17 @@ export type Scenario = {
   userAgent?: string
   config?: Record<string, unknown>
   configCwd?: Record<string, unknown>
+  // Layer type per dotted key, for both config/read views (default: sessionFlags for every lock key set).
+  origins?: Record<string, string>
   layers?: unknown[]
   account?: unknown
   threadStart?: (params: any, threadId: string) => Record<string, unknown>
   mcpPages?: (threadId: string, names: string[]) => unknown[]
   hooks?: unknown
+  // experimentalFeature/list: the thread's whole feature list (default: the thread's features overrides, else the
+  // server's, else on, plus fillers), and the answer to one call (default: featurePage; throw for an error).
+  features?: (threadConfig: any, serverConfig: any) => Feature[]
+  featureList?: (params: any, all: Feature[]) => unknown
   // Runs the turn. Default: respond, started, one final answer, completed.
   turn?: (t: Turn) => Promise<void> | void
   // Default true: turn/interrupt completes the turn as interrupted.
@@ -64,6 +96,19 @@ export type Scenario = {
 }
 
 export const REPLY = 'No significant findings.'
+
+// As 0.163.0 computes it for a thread: the thread's features override wins, then the server's value; unset is on.
+export function defaultFeatures(threadConfig: any, serverConfig: any): Feature[] {
+  const enabled = (name: string) => {
+    const t = threadConfig?.features?.[name]
+    if (typeof t === 'boolean') return t
+    return serverConfig?.features?.[name] !== false
+  }
+  // The lock features spread over the list (every 25th entry), so they land on several pages.
+  const names = Array.from({ length: FEATURE_COUNT - LOCKED_FEATURES.length }, (_, i) => `filler_${i}`)
+  LOCKED_FEATURES.forEach((f, k) => names.splice(k * 25 + 10, 0, f))
+  return names.map(name => ({ name, enabled: enabled(name), defaultEnabled: false, stage: 'stable' }))
+}
 
 const defaultTurn = (t: Turn) => {
   t.respond()
@@ -184,10 +229,13 @@ export class FakeAppServer {
         if (s.silentInit) return undefined
         if (this.initialized.has(conn)) throw Object.assign(new Error('Already initialized'), { code: -32600 })
         this.initialized.add(conn)
-        return { userAgent: s.userAgent ?? `${p.clientInfo?.name}/0.162.1 (Linux; x86_64) fake`, codexHome: '/home/u/.codex', platformFamily: 'unix', platformOs: 'linux' }
-      case 'config/read':
-        if (p.cwd) return { config: s.configCwd ?? s.config ?? lockedConfig(), layers: p.includeLayers ? (s.layers ?? [{ name: { type: 'user', file: '/home/u/.codex/config.toml' }, config: {}, version: '1' }]) : null, origins: {} }
-        return { config: s.config ?? lockedConfig(), origins: {} }
+        return { userAgent: s.userAgent ?? `${p.clientInfo?.name}/0.163.0 (Linux; x86_64) fake`, codexHome: '/home/u/.codex', platformFamily: 'unix', platformOs: 'linux' }
+      case 'config/read': {
+        const config = p.cwd ? (s.configCwd ?? s.config ?? lockedConfig()) : (s.config ?? lockedConfig())
+        const origins = originsOf(s.origins ?? defaultOrigins(config))
+        if (p.cwd) return { config, layers: p.includeLayers ? (s.layers ?? [{ name: { type: 'user', file: '/home/u/.codex/config.toml' }, config: {}, version: '1' }]) : null, origins }
+        return { config, origins }
+      }
       case 'account/read':
         return s.account ?? { account: { type: 'chatgpt', email: 'secret-user@example.com', planType: 'pro' }, requiresOpenaiAuth: true }
       case 'thread/start': {
@@ -216,6 +264,11 @@ export class FakeAppServer {
       }
       case 'hooks/list':
         return s.hooks ?? { data: (p.cwds ?? []).map((cwd: string) => ({ cwd, hooks: [], errors: [], warnings: [] })) }
+      case 'experimentalFeature/list': {
+        const server = s.configCwd ?? s.config ?? lockedConfig()
+        const all = (s.features ?? defaultFeatures)(this.lastThreadConfig(conn), server)
+        return s.featureList ? s.featureList(p, all) : featurePage(all, p)
+      }
       case 'turn/start':
       case 'review/start':
         this.startTurn(ws, method, p, id)

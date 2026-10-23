@@ -9,7 +9,7 @@ import { createServer, type Server as NetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { DEFAULT_SOCKET_NAME, LOCKED_FEATURES as CLIENT_LOCKED_FEATURES, MAX_LINE_BYTES, SIGNAL_MESSAGE, utf8Bytes } from '../hooks/consult/appserver'
-import { FakeAppServer, lockedConfig, LOCKED_FEATURES, REPLY, type Scenario, type Turn } from './fixtures/fake-app-server'
+import { defaultFeatures, FakeAppServer, featurePage, lockedConfig, LOCKED_FEATURES, REPLY, type Feature, type Scenario, type Turn } from './fixtures/fake-app-server'
 
 const ROOT = resolve(import.meta.dir, '..')
 const CLIENT = join(ROOT, 'scripts', 'codex-app-server.ts')
@@ -65,6 +65,12 @@ const noTurn = (f: FakeAppServer) => {
   expect(f.sent('review/start')).toHaveLength(0)
 }
 const NO_ITEMS = { commandExecution: { completed: 0, failed: 0, declined: 0 }, fileChange: { completed: 0, failed: 0, declined: 0 } }
+const T_FEATURES = LOCKED_FEATURES.filter(x => x !== 'plugins')
+// The classes under thread when every O key's gate holds (Decision 4 of docs/plans/consult-flexible-server.md).
+const THREAD_CLASSES = {
+  web_search: 'O', 'tools.web_search': 'O', sandbox_mode: 'T', approval_policy: 'T', approvals_reviewer: 'T', 'features.plugins': 'S',
+  ...Object.fromEntries(T_FEATURES.map(x => [`features.${x}`, 'T'])),
+}
 
 describe('1-2 happy paths', () => {
   test('1 plan-ok: the thread carries cwd, lock keys, MCP disables and openai; the turn runs in the repo', async () => {
@@ -80,7 +86,7 @@ describe('1-2 happy paths', () => {
     })
     const r = await client(plan(f, { model: 'gpt-6-sol', effort: 'high' }))
     expect(r.code).toBe(0)
-    expect(r.out).toMatchObject({ ok: true, reply: REPLY, model: 'gpt-6-sol', effort: 'high', modelSource: 'observed', provider: 'openai', version: '0.162.1' })
+    expect(r.out).toMatchObject({ ok: true, reply: REPLY, model: 'gpt-6-sol', effort: 'high', modelSource: 'observed', provider: 'openai', version: '0.163.0' })
     expect(r.out.items).toEqual({ ...NO_ITEMS, commandExecution: { completed: 1, failed: 1, declined: 0 } })
     expect(r.out.notices).toContain('AGENTS.md loaded: /home/u/.codex/AGENTS.md')
     const ts = f.sent('thread/start')[0]!.msg.params
@@ -89,7 +95,9 @@ describe('1-2 happy paths', () => {
     for (const feat of LOCKED_FEATURES) expect(ts.config.features[feat]).toBe(false)
     const turn = f.sent('turn/start')[0]!.msg.params
     expect(turn).toMatchObject({ cwd: REPO, approvalPolicy: 'never', sandboxPolicy: { type: 'readOnly', networkAccess: false }, input: [{ type: 'text', text: 'Critique: add 1+1.' }], model: 'gpt-6-sol', effort: 'high' })
-    expect(methods(f)).toEqual(['initialize', 'config/read', 'config/read', 'account/read', 'thread/start', 'mcpServerStatus/list', 'hooks/list', 'turn/start', 'thread/unsubscribe'])
+    // The 175-entry feature list takes two pages of 100.
+    expect(methods(f)).toEqual(['initialize', 'config/read', 'config/read', 'account/read', 'thread/start', 'experimentalFeature/list', 'experimentalFeature/list', 'mcpServerStatus/list', 'hooks/list', 'turn/start', 'thread/unsubscribe'])
+    expect(f.sent('experimentalFeature/list').map(x => x.msg.params)).toEqual([{ threadId: turn.threadId, limit: 100 }, { threadId: turn.threadId, limit: 100, cursor: '100' }])
     expect(f.sent('config/read')[1]!.msg.params).toEqual({ cwd: REPO, includeLayers: true })
     expect(f.sent('mcpServerStatus/list')[0]!.msg.params).toMatchObject({ detail: 'toolsAndAuthOnly', threadId: ts && f.sent('turn/start')[0]!.msg.params.threadId })
   }, 20000)
@@ -243,31 +251,32 @@ describe('3 no server, unsafe sockets', () => {
 describe('4-5 refusals before any turn', () => {
   const layer = (keys: Record<string, unknown>, disabledReason: string | null = null) => ({ name: { type: 'project', dotCodexFolder: `${REPO}/.codex` }, config: keys, version: '1', disabledReason })
 
-  test('4 not-locked: config/read {} drift, an enabled project layer, a foreign provider; never a thread/start', async () => {
+  test('4 not-locked under strict: config/read {} drift, an enabled project layer, a foreign provider; never a thread/start', async () => {
     const feats = (over: Record<string, boolean>) => ({ ...Object.fromEntries(LOCKED_FEATURES.map(x => [x, false])), ...over })
     const cases: [Scenario, RegExp][] = [
-      [{ config: lockedConfig({ features: feats({ plugins: true }) }) }, /features\.plugins is true/],
-      [{ config: lockedConfig({ web_search: 'cached' }) }, /web_search is "cached"/],
-      [{ config: lockedConfig({ approvals_reviewer: 'auto_review' }) }, /approvals_reviewer is "auto_review"/],
-      [{ config: lockedConfig({ tools: { web_search: { context_size: 'low' } } }) }, /tools\.web_search/],
-      [{ configCwd: lockedConfig({ web_search: 'live' }) }, /web_search is "live"/],
+      [{ config: lockedConfig({ features: feats({ plugins: true }) }) }, /features\.plugins is true \(want false\): codexLockPolicy is strict.*Fix: add --disable plugins to the codex-consult unit/],
+      [{ config: lockedConfig({ web_search: 'cached' }) }, /web_search is "cached" \(want "disabled"\): codexLockPolicy is strict.*Fix: add -c 'web_search="disabled"'/],
+      [{ config: lockedConfig({ approvals_reviewer: 'auto_review' }) }, /approvals_reviewer is "auto_review" \(want "user"\).*Fix: add -c 'approvals_reviewer="user"'/],
+      [{ config: lockedConfig({ tools: { web_search: { context_size: 'low' } } }) }, /tools\.web_search is .*low.* \(want absent\).*Fix: remove tools\.web_search/],
+      [{ configCwd: lockedConfig({ web_search: 'live' }) }, /web_search is "live" \(want "disabled"\)/],
       [{ layers: [layer({ web_search: 'live' })] }, /\.codex sets web_search; consult refuses trusted repos/],
       [{ config: lockedConfig({ model_provider: 'bedrock' }) }, /bedrock.*OpenAI only/],
     ]
     for (const [s, msg] of cases) {
       const f = fake(s)
-      const r = await client(plan(f))
+      const r = await client(plan(f, { policy: 'strict' }))
       expect(r.out.kind, JSON.stringify(s)).toBe('not-locked')
       expect(r.out.message).toMatch(msg)
       expect(f.sent('thread/start')).toHaveLength(0)
       expect(f.sent('account/read')).toHaveLength(0)
     }
-    // A disabled (untrusted) layer with the same keys passes.
+    // A disabled (untrusted) layer with the same keys passes; strict reads no thread features.
     const ok = fake({ layers: [layer({ web_search: 'live', mcp_servers: { evil: {} } }, 'add it as a trusted project')] })
-    expect((await client(plan(ok))).out.ok).toBe(true)
+    expect((await client(plan(ok, { policy: 'strict' }))).out.ok).toBe(true)
+    expect(ok.sent('experimentalFeature/list')).toHaveLength(0)
   }, 60000)
 
-  test('5 sandbox, cwd, provider and lockdown mismatches after thread/start send no turn', async () => {
+  test('5 sandbox, cwd, provider and lockdown mismatches after thread/start send no turn, under both policies', async () => {
     const cases: [Scenario, string, RegExp][] = [
       [{ threadStart: () => ({ sandbox: { type: 'workspaceWrite', writableRoots: [] } }) }, 'sandbox', /not read-only.*workspaceWrite/],
       [{ threadStart: () => ({ approvalsReviewer: 'auto_review' }) }, 'sandbox', /approvalsReviewer/],
@@ -276,15 +285,17 @@ describe('4-5 refusals before any turn', () => {
       [{ mcpPages: () => [{ data: [{ name: 'github', runtimeStatus: 'connected' }], nextCursor: null }] }, 'lockdown', /github is "connected"/],
       [{ hooks: { data: [{ cwd: REPO, hooks: [{ eventName: 'preToolUse' }], errors: [], warnings: [] }] } }, 'lockdown', /1 hook loaded/],
     ]
-    for (const [s, kind, msg] of cases) {
-      const f = fake(s)
-      const r = await client(diff(f))
-      expect(r.out.kind, JSON.stringify(s)).toBe(kind)
-      expect(r.out.message).toMatch(msg)
-      noTurn(f)
-      expect(f.sent('thread/unsubscribe')).toHaveLength(1)
+    for (const policy of ['', 'strict']) {
+      for (const [s, kind, msg] of cases) {
+        const f = fake(s)
+        const r = await client(diff(f, { policy }))
+        expect(r.out.kind, `${policy} ${JSON.stringify(s)}`).toBe(kind)
+        expect(r.out.message).toMatch(msg)
+        noTurn(f)
+        expect(f.sent('thread/unsubscribe')).toHaveLength(1)
+      }
     }
-  }, 60000)
+  }, 90000)
 })
 
 describe('6-7 server requests', () => {
@@ -558,8 +569,9 @@ describe('11 bounds and --probe', () => {
   test('--probe runs stages 0-2, starts no turn, and leaks no email', async () => {
     const f = fake()
     const r = await client({ cwd: REPO, socket: f.socket }, { probe: true })
+    expect(r.out.locked).toBeUndefined()
     expect(r.out).toMatchObject({
-      ok: true, socket: f.socket, version: '0.162.1', signedIn: true, accountType: 'chatgpt', locked: true, projectLayers: [],
+      ok: true, socket: f.socket, version: '0.163.0', signedIn: true, accountType: 'chatgpt', policy: 'thread', classes: THREAD_CLASSES, projectLayers: [],
       sandbox: { type: 'readOnly', networkAccess: false }, approvalPolicy: 'never', modelProvider: 'openai', cwd: REPO,
       instructionSources: ['/home/u/.codex/AGENTS.md'], mcp: [{ name: 'github', runtimeStatus: 'disabled' }, { name: 'notes', runtimeStatus: 'disabled' }], hooks: 0,
     })
@@ -582,11 +594,16 @@ describe('12 request validation and the opt-out marker', () => {
     const bad: Record<string, unknown>[] = [
       { mode: 'review' }, { cwd: 'relative/dir' }, { model: '--x' }, { timeoutSec: 999 },
       { socket: 'relative.sock' }, { socket: '/' + 'x'.repeat(199) }, { socket: '/tmp/a\nb.sock' }, { socket: '/tmp/x?y.sock' }, { socket: '/tmp/a b.sock' }, { socket: '/tmp/a#b.sock' },
-      { cwd: join(REPO, 'missing') },
+      { cwd: join(REPO, 'missing') }, { policy: 'loose' }, { policy: 'STRICT' }, { policy: null }, { policy: 1 },
     ]
     for (const over of bad) {
       const r = await client(plan(f, over))
       expect(r.out.kind, JSON.stringify(over)).toBe('input')
+    }
+    expect((await client(plan(f, { policy: 'off' }))).out.message).toMatch(/policy must be "", "thread" or "strict"/)
+    for (const policy of ['off', 'Strict', 0]) {
+      const p = await client({ cwd: REPO, socket: f.socket, policy }, { probe: true })
+      expect(p.out.kind, String(policy)).toBe('input')
     }
     expect((await client('not json')).out.kind).toBe('input')
     expect(f.frames).toHaveLength(0)
@@ -707,4 +724,173 @@ describe('15 signals', () => {
     expect(r.code).toBe(0)
     expect(exitedAfter).toBeLessThan(3000)
   }, 20000)
+})
+
+// docs/plans/consult-flexible-server.md, S2: the lock classes, the policy option and the thread readback.
+describe('16 lock policy', () => {
+  // The user's codex-consult unit: the README unit without --disable plugins and without web_search="disabled".
+  const userUnit = (over: Record<string, unknown> = {}) => {
+    const { plugins: _, ...features } = lockedConfig().features as Record<string, boolean>
+    return lockedConfig({ web_search: null, features, ...over })
+  }
+  const withPlugins = (over: Record<string, unknown> = {}) => userUnit({ features: lockedConfig().features, ...over })
+  const probe = (f: FakeAppServer, policy?: unknown) => client({ cwd: REPO, socket: f.socket, ...(policy === undefined ? {} : { policy }) }, { probe: true })
+  const withFeature = (name: string, enabled: unknown) => (t: any, s: any): Feature[] => defaultFeatures(t, s).map(x => (x.name === name ? { ...x, enabled } : x))
+  const OTHER_KEYS = /web_search|sandbox_mode|approval_policy|approvals_reviewer|features\.(hooks|apps|browser_use|computer_use|multi_agent|image_generation)/
+
+  test("thread: the user's current unit fails naming only features.plugins and --disable plugins, before thread/start", async () => {
+    const f = fake({ config: userUnit() })
+    for (const r of [await client(plan(f)), await client(diff(f)), await probe(f, '')]) {
+      expect(r.out.kind).toBe('not-locked')
+      expect(r.out.message).toMatch(/features\.plugins is missing \(want false\): consult cannot override it per thread, and consult needs it so that no plugin adds tools.*Fix: add --disable plugins to the codex-consult unit\.$/)
+      expect(r.out.message).not.toMatch(OTHER_KEYS)
+      expect(r.out.message).not.toMatch(/example unit|README/)
+    }
+    expect(f.sent('thread/start')).toHaveLength(0)
+    expect(f.sent('account/read')).toHaveLength(0)
+  }, 30000)
+
+  test('thread: with --disable plugins added the unit passes with web search on at the server; the thread still disables it', async () => {
+    const servers: Scenario[] = [
+      { config: withPlugins() },
+      { config: withPlugins({ web_search: 'cached' }) },
+      { config: withPlugins({ web_search: 'live', tools: { web_search: { context_size: 'high', allowed_domains: null, location: null } } }), origins: { web_search: 'user', 'tools.web_search.context_size': 'user' } },
+      { config: withPlugins({ tools: { web_search: { context_size: 'high' } } }) },
+    ]
+    for (const s of servers) {
+      const f = fake(s)
+      const p = await client(plan(f))
+      expect(p.out, JSON.stringify(s)).toMatchObject({ ok: true, reply: REPLY })
+      expect(f.sent('thread/start')[0]!.msg.params.config.web_search).toBe('disabled')
+      for (const x of LOCKED_FEATURES) expect(f.sent('thread/start')[0]!.msg.params.config.features[x]).toBe(false)
+      f.scenario.turn = t => {
+        t.respond()
+        t.item({ type: 'exitedReviewMode', review: 'ok' })
+        t.complete()
+      }
+      expect((await client(diff(f))).out).toMatchObject({ ok: true, reply: 'ok' })
+      expect((await probe(f)).out).toMatchObject({ ok: true, policy: 'thread', classes: THREAD_CLASSES })
+    }
+  }, 60000)
+
+  test('thread: an O key outside its covered (value, origin) pairs fails naming the value and origin', async () => {
+    const cases: [Scenario, RegExp][] = [
+      [{ config: withPlugins({ web_search: 'indexed' }) }, /web_search is "indexed" \(origin sessionFlags\) \(want "disabled"\): consult has not verified that its per-thread override beats that value from that origin.*Fix: add -c 'web_search="disabled"' to the codex-consult unit/],
+      [{ config: withPlugins({ web_search: 'live' }), origins: { web_search: 'enterpriseManaged' } }, /web_search is "live" \(origin enterpriseManaged\)/],
+      [{ config: withPlugins({ web_search: 'live' }), origins: {} }, /web_search is "live" \(want "disabled"\): consult has not verified/],
+      [{ config: withPlugins({ tools: { web_search: { context_size: 'low' } } }) }, /tools\.web_search is \{"context_size":"low"\} \(origin sessionFlags\) \(want absent\).*Fix: remove tools\.web_search/],
+      [{ config: withPlugins({ tools: { web_search: { context_size: 'high', allowed_domains: ['example.com'] } } }) }, /tools\.web_search is .*example\.com/],
+      [{ config: withPlugins({ tools: { web_search: { context_size: 'high' } } }), origins: { 'tools.web_search.context_size': 'project' } }, /tools\.web_search is .* \(origin project\)/],
+      [{ config: withPlugins({ tools: 'on' }) }, /tools\.web_search is "on"/],
+    ]
+    for (const [s, msg] of cases) {
+      const f = fake(s)
+      const r = await client(plan(f))
+      expect(r.out.kind, JSON.stringify(s)).toBe('not-locked')
+      expect(r.out.message).toMatch(msg)
+      expect(f.sent('thread/start')).toHaveLength(0)
+    }
+    // Uncovered but disabled at the server: the key falls back to S, which holds.
+    const f = fake({ config: withPlugins({ web_search: 'disabled' }), origins: { web_search: 'user' } })
+    expect((await probe(f)).out).toMatchObject({ ok: true, classes: { web_search: 'S' } })
+  }, 60000)
+
+  test('thread: on 0.162.1 and 0.164.0 the O keys fall back to S and the message names the version', async () => {
+    for (const v of ['0.162.1', '0.164.0']) {
+      const f = fake({ userAgent: `consult/${v} (Linux)`, config: withPlugins({ web_search: 'live' }) })
+      const r = await client(plan(f))
+      expect(r.out.kind, v).toBe('not-locked')
+      expect(r.out.message).toMatch(new RegExp(`web_search is "live" \\(origin sessionFlags\\) \\(want "disabled"\\): consult verified its per-thread override only on codex 0\\.163\\.0, and this server runs ${v.replaceAll('.', '\\.')}`))
+      expect(f.sent('thread/start')).toHaveLength(0)
+      // Absent is covered only on 0.163.0 too.
+      const absentWs = fake({ userAgent: `consult/${v} (Linux)`, config: withPlugins() })
+      expect((await client(plan(absentWs))).out.message).toMatch(new RegExp(`web_search is null .*this server runs ${v.replaceAll('.', '\\.')}`))
+      // Disabled at the server, the S check holds on any version.
+      const ok = fake({ userAgent: `consult/${v} (Linux)` })
+      expect((await probe(ok)).out).toMatchObject({ ok: true, version: v, classes: { ...THREAD_CLASSES, web_search: 'S', 'tools.web_search': 'S' } })
+    }
+  }, 60000)
+
+  test('thread: a T feature that reads back on, not false or missing is not-locked, with neither turn/start nor review/start sent', async () => {
+    const cases: [Scenario, RegExp][] = [
+      [{ features: withFeature('hooks', true) }, /features\.hooks is true on the consult thread \(want false\): codex did not apply consult's per-thread override.*Fix: add --disable hooks to the codex-consult unit/],
+      [{ features: withFeature('image_generation', 'yes') }, /features\.image_generation is "yes" on the consult thread/],
+      [{ features: (t, s) => defaultFeatures(t, s).filter(x => x.name !== 'browser_use') }, /features\.browser_use is missing from the consult thread's feature list.*Fix: set codexLockPolicy to strict/],
+      [{ features: (t, s) => [...defaultFeatures(t, s), { name: 'multi_agent', enabled: true, defaultEnabled: false, stage: 'stable' }] }, /features\.multi_agent is true on the consult thread/],
+    ]
+    for (const [s, msg] of cases) {
+      for (const req of [plan, diff]) {
+        const f = fake(s)
+        const r = await client(req(f))
+        expect(r.out.kind, String(msg)).toBe('not-locked')
+        expect(r.out.message).toMatch(msg)
+        expect(f.sent('thread/start')).toHaveLength(1)
+        noTurn(f)
+        expect(f.sent('thread/unsubscribe')).toHaveLength(1)
+      }
+    }
+  }, 60000)
+
+  test('thread: web_search on at the server is trusted only while features.apps reads back false', async () => {
+    const live = { config: withPlugins({ web_search: 'live' }), origins: { web_search: 'user' }, features: withFeature('apps', true) }
+    for (const req of [plan, diff]) {
+      const f = fake(live)
+      const r = await client(req(f))
+      expect(r.out.kind).toBe('not-locked')
+      expect(r.out.message).toMatch(/features\.apps is true on the consult thread.*Fix: add --disable apps/)
+      expect(r.out.message).toMatch(/web_search is "live" \(origin user\) \(want "disabled"\): consult trusts its per-thread override only while features\.apps reads back false on the consult thread, which it did not.*Fix: add -c 'web_search="disabled"'/)
+      noTurn(f)
+    }
+    // With web search disabled at the server, only apps is named.
+    const off = fake({ features: withFeature('apps', true) })
+    const r = await client(plan(off))
+    expect(r.out.message).toMatch(/features\.apps is true/)
+    expect(r.out.message).not.toMatch(/web_search is/)
+  }, 30000)
+
+  test('thread: experimentalFeature/list is paged to the end; endless paging, an error or a page without data fail closed', async () => {
+    // A server that ignores the limit and pages by 30.
+    const small = fake({ featureList: (p, all) => featurePage(all, { ...p, limit: 30 }) })
+    expect((await client(plan(small))).out).toMatchObject({ ok: true })
+    expect(small.sent('experimentalFeature/list').map(x => x.msg.params.cursor)).toEqual([undefined, '30', '60', '90', '120', '150'])
+    // The last page is the one that carries image_generation (entry 160).
+    const lastOn = fake({ featureList: (p, all) => featurePage(all, { ...p, limit: 30 }), features: withFeature('image_generation', true) })
+    expect((await client(plan(lastOn))).out.message).toMatch(/features\.image_generation is true/)
+
+    const endless = fake({ featureList: (p, all) => ({ data: p.cursor ? [] : all, nextCursor: 'again' }) })
+    const e = await client(plan(endless))
+    expect(e.out.kind).toBe('not-locked')
+    expect(e.out.message).toMatch(/experimentalFeature\/list did not end within 20 pages/)
+    expect(endless.sent('experimentalFeature/list')).toHaveLength(20)
+    noTurn(endless)
+
+    const refused = fake({ featureList: () => {
+      throw Object.assign(new Error('unknown method experimentalFeature/list'), { code: -32601 })
+    } })
+    for (const req of [plan, diff]) {
+      const r = await client(req(refused))
+      expect(r.out.kind).toBe('not-locked')
+      expect(r.out.message).toMatch(/could not read back the consult thread's features \(codex refused experimentalFeature\/list: unknown method experimentalFeature\/list\), so it cannot confirm that features\.hooks, features\.apps, .* are off for the thread\. Fix: run codex 0\.163\.0, or set codexLockPolicy to strict/)
+    }
+    noTurn(refused)
+    // strict requires the features of the server instead and never reads them back.
+    expect((await client(plan(refused, { policy: 'strict' }))).out).toMatchObject({ ok: true })
+
+    const noData = fake({ featureList: (p, all) => (p.cursor ? { nextCursor: null } : featurePage(all, p)) })
+    const d = await client(plan(noData))
+    expect(d.out.message).toMatch(/returned a page with no data/)
+    noTurn(noData)
+  }, 60000)
+
+  test("strict: the user's unit fails naming each server-required key and its flag; the README unit passes", async () => {
+    const f = fake({ config: userUnit() })
+    const r = await client(plan(f, { policy: 'strict' }))
+    expect(r.out.kind).toBe('not-locked')
+    expect(r.out.message).toMatch(/web_search is null \(want "disabled"\): codexLockPolicy is strict, so consult requires it of the server.*Fix: add -c 'web_search="disabled"' to the codex-consult unit\. features\.plugins is missing \(want false\): codexLockPolicy is strict.*Fix: add --disable plugins to the codex-consult unit\.$/)
+    expect(r.out.message).not.toMatch(/sandbox_mode|features\.hooks/)
+    const strictProbe = await probe(fake(), 'strict')
+    expect(strictProbe.out).toMatchObject({ ok: true, policy: 'strict' })
+    expect(Object.values(strictProbe.out.classes)).toEqual(Array(Object.keys(THREAD_CLASSES).length).fill('S'))
+    expect((await probe(fake(), 'thread')).out).toMatchObject({ ok: true, policy: 'thread', classes: THREAD_CLASSES })
+  }, 30000)
 })

@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'claude-code/testing'
 import {
   answerServerRequest, checkAccount, checkClientRequest, checkDaemonLink, checkCwd, checkLockdown, checkProbeRequest, checkProjectLayers, checkProvider,
-  checkReadOnly, checkServerLocked, checkSocketPath, checkSocketStat, checkVersion, classifyTurnError, clientErrorText, finalReply, fitLine,
-  initializeParams, LOCKED_FEATURES, MAX_LINE_BYTES, Matcher, mcpServerNames, newTurnState, observedModel, parseClientResult,
-  parseServerVersion, projectLayers, reduce, requestThreadId, resolveSocket, reviewStartParams, threadStartParams, timeoutMessage,
-  turnOutcome, turnStartParams, utf8Bytes, versionAtLeast, type ClientOk, type Msg,
+  checkReadOnly, checkServerRequired, checkSocketPath, checkSocketStat, checkThreadLocks, checkVersion, classifyTurnError, clientErrorText, effectivePolicy,
+  finalReply, fitLine, initializeParams, LOCK_CLASSES, LOCKED_FEATURES, MAX_FEATURE_PAGES, MAX_LINE_BYTES, Matcher, mcpServerNames, mergeServerLocks, MIN_CODEX,
+  newTurnState, O_VERIFIED_ON, observedModel, originOf, parseClientResult, parseServerVersion, projectLayers, reduce, requestThreadId, resolveSocket,
+  reviewStartParams, TESTED_CODEX, threadStartParams, timeoutMessage, turnOutcome, turnStartParams, utf8Bytes, versionAtLeast, type ClientOk, type Fail,
+  type LockPolicy, type Msg, type ServerLocks,
 } from '../hooks/consult/appserver'
 import { MAX_REPLY, MAX_TIMEOUT_SEC } from '../hooks/consult/consult'
 
@@ -104,10 +105,13 @@ describe('version', () => {
   })
 
   test('checkVersion gives too-old, protocol, or the version with an untested flag', () => {
+    expect(MIN_CODEX).toBe('0.162.0')
+    expect(TESTED_CODEX).toBe('0.163.0')
     expect((checkVersion('consult/0.161.0') as any).kind).toBe('too-old')
     expect((checkVersion('nothing') as any).kind).toBe('protocol')
     expect(checkVersion('consult/0.162.1')).toEqual({ version: '0.162.1', untested: false })
-    expect(checkVersion('consult/0.163.0')).toEqual({ version: '0.163.0', untested: true })
+    expect(checkVersion('consult/0.163.0')).toEqual({ version: '0.163.0', untested: false })
+    expect(checkVersion('consult/0.164.0')).toEqual({ version: '0.164.0', untested: true })
   })
 })
 
@@ -126,6 +130,22 @@ describe('client request', () => {
     expect(checkProbeRequest({})).toEqual({ ok: {} })
     expect(checkProbeRequest({ cwd: REPO, socket: '/tmp/s.sock' })).toEqual({ ok: { cwd: REPO, socket: '/tmp/s.sock' } })
     expect((checkProbeRequest({ socket: '/tmp/a b' }) as any).kind).toBe('input')
+  })
+  test('policy is "", thread or strict on both requests; anything else is an input error', () => {
+    for (const policy of ['', 'thread', 'strict']) {
+      expect(checkClientRequest({ ...req, policy })).toEqual({ ok: { ...req, policy } as any })
+      expect(checkProbeRequest({ policy })).toEqual({ ok: { policy } as any })
+    }
+    for (const policy of ['off', 'Strict', 'thread ', null, 0, true, {}, ['strict']]) {
+      const c = checkClientRequest({ ...req, policy }) as Fail
+      expect(c.kind, JSON.stringify(policy)).toBe('input')
+      expect(c.message).toBe('policy must be "", "thread" or "strict"')
+      expect((checkProbeRequest({ policy }) as Fail).kind, JSON.stringify(policy)).toBe('input')
+    }
+    expect(effectivePolicy(undefined)).toBe('thread')
+    expect(effectivePolicy('')).toBe('thread')
+    expect(effectivePolicy('thread')).toBe('thread')
+    expect(effectivePolicy('strict')).toBe('strict')
   })
 })
 
@@ -160,18 +180,59 @@ describe('params', () => {
   })
 })
 
-describe('stage 1 asserts', () => {
-  test('checkServerLocked accepts the probed config', () => {
-    expect(checkServerLocked(LOCKED)).toBeNull()
-    // The code-mode host stays on (the reviewer's tools run through it); config/read omits its key then.
-    expect(LOCKED_FEATURES).not.toContain('code_mode_host')
-    expect(checkServerLocked({ ...LOCKED, features: { ...LOCKED.features, code_mode_host: true } })).toBeNull()
-    expect((threadStartParams({ cwd: REPO }, []) as any).config.features.code_mode_host).toBeUndefined()
-    expect(checkServerLocked({ ...LOCKED, tools: undefined })).toBeNull()
-    expect(checkServerLocked({ ...LOCKED, tools: { web_search: null } })).toBeNull()
+// The Fail of a stage 1 check, or null when it passed.
+const failOf = (r: ServerLocks | Fail): Fail | null => ('kind' in r ? r : null)
+const required = (config: unknown, policy: LockPolicy = 'strict', o: { origins?: Record<string, string>; version?: string } = {}) =>
+  checkServerRequired(config, Object.fromEntries(Object.entries(o.origins ?? {}).map(([k, type]) => [k, { name: { type }, version: '1' }])), policy, o.version ?? '0.163.0')
+const strict = (config: unknown) => failOf(required(config))
+
+describe('lock classes', () => {
+  test('Decision 4: T, O and S keys, every feature locked, the O pairs and versions probed', () => {
+    const cls = (c: string) => Object.keys(LOCK_CLASSES).filter(k => LOCK_CLASSES[k]!.class === c).sort()
+    expect(cls('T')).toEqual(['approval_policy', 'approvals_reviewer', 'features.apps', 'features.browser_use', 'features.computer_use', 'features.hooks', 'features.image_generation', 'features.multi_agent', 'sandbox_mode'])
+    expect(cls('O')).toEqual(['tools.web_search', 'web_search'])
+    expect(cls('S')).toEqual(['features.plugins'])
+    expect(Object.keys(LOCK_CLASSES).filter(k => k.startsWith('features.')).map(k => k.slice(9)).sort()).toEqual([...LOCKED_FEATURES].sort())
+    expect(O_VERIFIED_ON).toEqual(['0.163.0'])
+    expect(LOCK_CLASSES.web_search!.covered).toEqual([
+      { value: null, origin: null }, { value: 'disabled', origin: 'sessionFlags' }, { value: 'cached', origin: 'sessionFlags' }, { value: 'cached', origin: 'user' },
+      { value: 'live', origin: 'sessionFlags' }, { value: 'live', origin: 'user' },
+    ])
+    expect(LOCK_CLASSES['tools.web_search']!.covered).toEqual([{ value: null, origin: null }, { value: { context_size: 'high' }, origin: 'sessionFlags' }, { value: { context_size: 'high' }, origin: 'user' }])
+    for (const [k, spec] of Object.entries(LOCK_CLASSES)) {
+      expect(spec.guarantee, k).not.toBe('')
+      expect(spec.fix, k).toMatch(/codex-consult unit/)
+      expect(spec.fix, k).not.toMatch(/example unit|README/)
+    }
   })
 
-  test('checkServerLocked refuses each lock key wrong or missing, naming it', () => {
+  test('originOf reads the layer type, counting sub-keys, and refuses mixed or malformed origins', () => {
+    const meta = (type: unknown) => ({ name: { type }, version: '1' })
+    expect(originOf({ web_search: meta('user') }, 'web_search')).toBe('user')
+    expect(originOf({ web_search_x: meta('user') }, 'web_search')).toBeNull()
+    expect(originOf({ 'tools.web_search.context_size': meta('sessionFlags') }, 'tools.web_search')).toBe('sessionFlags')
+    expect(originOf({ 'tools.web_search.context_size': meta('sessionFlags'), 'tools.web_search.location': meta('user') }, 'tools.web_search')).toBe('(mixed)')
+    expect(originOf({ web_search: { name: 'user' } }, 'web_search')).toBe('(unknown)')
+    expect(originOf({ web_search: meta(3) }, 'web_search')).toBe('(unknown)')
+    expect(originOf(null, 'web_search')).toBeNull()
+    expect(originOf({}, 'web_search')).toBeNull()
+  })
+})
+
+describe('stage 1 asserts', () => {
+  test('checkServerRequired accepts the probed config under both policies', () => {
+    for (const policy of ['strict', 'thread'] as const) {
+      expect(failOf(required(LOCKED, policy, { origins: { web_search: 'sessionFlags' } }))).toBeNull()
+      // The code-mode host stays on (the reviewer's tools run through it); config/read omits its key then.
+      expect(failOf(required({ ...LOCKED, features: { ...LOCKED.features, code_mode_host: true } }, policy))).toBeNull()
+      expect(failOf(required({ ...LOCKED, tools: undefined }, policy))).toBeNull()
+      expect(failOf(required({ ...LOCKED, tools: { web_search: null } }, policy))).toBeNull()
+    }
+    expect(LOCKED_FEATURES).not.toContain('code_mode_host')
+    expect((threadStartParams({ cwd: REPO }, []) as any).config.features.code_mode_host).toBeUndefined()
+  })
+
+  test('strict: checkServerRequired refuses each lock key wrong or missing, naming it, its guarantee and its flag', () => {
     const cases: [Record<string, unknown>, RegExp][] = [
       [{ web_search: 'cached' }, /web_search is "cached"/],
       [{ web_search: undefined }, /web_search is missing/],
@@ -189,17 +250,99 @@ describe('stage 1 asserts', () => {
       [{ features: undefined }, /features\.plugins is missing.*features\.image_generation is missing/],
     ]
     for (const [over, msg] of cases) {
-      const r = checkServerLocked({ ...LOCKED, ...over })
+      const r = strict({ ...LOCKED, ...over })
       expect(r?.kind, JSON.stringify(over)).toBe('not-locked')
       expect(r?.message, JSON.stringify(over)).toMatch(msg)
+      expect(r?.message, JSON.stringify(over)).toMatch(/codexLockPolicy is strict, so consult requires it of the server, and consult needs it so that .*\. Fix: /)
     }
     for (const f of LOCKED_FEATURES) {
-      expect(checkServerLocked({ ...LOCKED, features: { ...LOCKED.features, [f]: true } })?.message).toContain(`features.${f} is true`)
+      expect(strict({ ...LOCKED, features: { ...LOCKED.features, [f]: true } })?.message).toContain(`features.${f} is true (want false)`)
       const { [f]: _, ...rest } = LOCKED.features
-      expect(checkServerLocked({ ...LOCKED, features: rest })?.message).toContain(`features.${f} is missing`)
+      expect(strict({ ...LOCKED, features: rest })?.message).toContain(`features.${f} is missing (want false): codexLockPolicy is strict`)
+      expect(strict({ ...LOCKED, features: rest })?.message).toContain(`Fix: add --disable ${f} to the codex-consult unit`)
     }
-    expect(checkServerLocked(null)?.kind).toBe('not-locked')
-    expect(checkServerLocked(LOCKED.features)?.message).toContain('README')
+    expect(strict(null)?.kind).toBe('not-locked')
+    // Every key wrong: one clause per key, each with its own fix, and no pointer at the example unit.
+    const all = strict(LOCKED.features)!.message
+    expect(all).toMatch(/^the codex app server is not locked down for consult: web_search is missing/)
+    // tools.web_search is absent there, which is what it requires.
+    expect(all.match(/Fix: /g)).toHaveLength(Object.keys(LOCK_CLASSES).length - 1)
+    expect(all).toContain(`Fix: add -c 'sandbox_mode="read-only"' to the codex-consult unit`)
+    expect(all).not.toMatch(/example unit|README/)
+    // Strict never looks at the version or origins.
+    expect(failOf(required(LOCKED, 'strict', { version: '0.164.0', origins: { web_search: 'project' } }))).toBeNull()
+    expect(required(LOCKED, 'strict')).toEqual({ policy: 'strict', classes: Object.fromEntries(Object.keys(LOCK_CLASSES).map(k => [k, 'S'])), trusted: [] })
+  })
+
+  // The user's unit (S1, 2026-10-23): the README unit without --disable plugins and web_search="disabled".
+  const { plugins: _plugins, ...noPlugins } = LOCKED.features
+  const USER_UNIT = { ...LOCKED, web_search: null, features: noPlugins }
+
+  test("thread: the user's unit fails only on features.plugins; T keys are not checked at the server", () => {
+    const r = failOf(required(USER_UNIT, 'thread'))
+    expect(r?.kind).toBe('not-locked')
+    expect(r?.message).toBe('the codex app server is not locked down for consult: features.plugins is missing (want false): consult cannot override it per thread, and consult needs it so that no plugin adds tools, skills or hooks to the reviewer. Fix: add --disable plugins to the codex-consult unit.')
+    const loose = { ...LOCKED, sandbox_mode: 'danger-full-access', approval_policy: 'on-request', approvals_reviewer: 'auto_review', features: { ...LOCKED.features, hooks: true, apps: true, browser_use: true, computer_use: true, multi_agent: true, image_generation: true } }
+    const ok = required(loose, 'thread', { origins: { web_search: 'sessionFlags' } }) as ServerLocks
+    expect(failOf(ok)).toBeNull()
+    expect(ok.classes).toMatchObject({ sandbox_mode: 'T', approval_policy: 'T', approvals_reviewer: 'T', 'features.hooks': 'T', 'features.apps': 'T', 'features.plugins': 'S', web_search: 'O', 'tools.web_search': 'O' })
+    expect(ok.trusted).toEqual([])
+  })
+
+  test('thread: O keys pass on covered pairs at 0.163.0 and are trusted on their override when not disabled', () => {
+    const live = required({ ...LOCKED, web_search: 'live', tools: { web_search: { context_size: 'high', allowed_domains: null, location: null } } }, 'thread', { origins: { web_search: 'user', 'tools.web_search.context_size': 'user' } }) as ServerLocks
+    expect(live.classes).toMatchObject({ web_search: 'O', 'tools.web_search': 'O' })
+    expect(live.trusted).toEqual([{ key: 'web_search', got: '"live" (origin user)' }, { key: 'tools.web_search', got: '{"context_size":"high","allowed_domains":null,"location":null} (origin user)' }])
+    const absent = required({ ...LOCKED, web_search: null }, 'thread') as ServerLocks
+    expect(absent.classes.web_search).toBe('O')
+    expect(absent.trusted.map(t => t.key)).toEqual(['web_search'])
+    for (const [value, origin] of [['cached', 'sessionFlags'], ['cached', 'user'], ['live', 'sessionFlags']]) {
+      expect(failOf(required({ ...LOCKED, web_search: value }, 'thread', { origins: { web_search: origin! } })), `${value} ${origin}`).toBeNull()
+    }
+  })
+
+  test('thread: an O key outside the covered pairs, or on another version, behaves as S and names why', () => {
+    const cases: [unknown, Record<string, string>, string, RegExp][] = [
+      [{ web_search: 'indexed' }, { web_search: 'sessionFlags' }, '0.163.0', /web_search is "indexed" \(origin sessionFlags\) \(want "disabled"\): consult has not verified that its per-thread override beats that value from that origin/],
+      [{ web_search: 'live' }, { web_search: 'project' }, '0.163.0', /web_search is "live" \(origin project\)/],
+      [{ web_search: 'live' }, { web_search: 'enterpriseManaged' }, '0.163.0', /\(origin enterpriseManaged\)/],
+      [{ web_search: 'disabled' }, { web_search: 'sessionFlags' }, '0.163.0', /^$/],
+      [{ web_search: 'live' }, { web_search: 'sessionFlags' }, '0.162.1', /web_search is "live" \(origin sessionFlags\) \(want "disabled"\): consult verified its per-thread override only on codex 0\.163\.0, and this server runs 0\.162\.1/],
+      [{ web_search: 'live' }, { web_search: 'sessionFlags' }, '0.164.0', /this server runs 0\.164\.0/],
+      [{ web_search: null }, {}, '0.164.0', /web_search is null \(want "disabled"\): consult verified its per-thread override only on codex 0\.163\.0/],
+      [{ tools: { web_search: { context_size: 'high' } } }, { 'tools.web_search.context_size': 'user' }, '0.162.1', /tools\.web_search is \{"context_size":"high"\} \(origin user\) \(want absent\): consult verified/],
+      [{ tools: { web_search: { context_size: 'low' } } }, { 'tools.web_search.context_size': 'user' }, '0.163.0', /tools\.web_search is \{"context_size":"low"\}/],
+      [{ tools: { web_search: {} } }, {}, '0.163.0', /tools\.web_search is \{\} \(want absent\)/],
+      [{ tools: { web_search: { context_size: 'high', location: { country: 'US' } } } }, { 'tools.web_search.context_size': 'user' }, '0.163.0', /tools\.web_search is \{"context_size":"high","location":\{"country":"US"\}\} \(origin user\)/],
+      [{ tools: { web_search: { context_size: 'high' } } }, { 'tools.web_search.context_size': 'sessionFlags', 'tools.web_search.location': 'user' }, '0.163.0', /\(origin \(mixed\)\)/],
+      [{ tools: 'on' }, {}, '0.163.0', /tools\.web_search is "on" \(want absent\)/],
+    ]
+    for (const [over, origins, version, msg] of cases) {
+      const r = failOf(required({ ...LOCKED, ...(over as object) }, 'thread', { origins, version }))
+      const label = `${JSON.stringify(over)} ${JSON.stringify(origins)} ${version}`
+      if (String(msg) === '/^$/') {
+        expect(r, label).toBeNull()
+        continue
+      }
+      expect(r?.kind, label).toBe('not-locked')
+      expect(r?.message, label).toMatch(msg)
+      expect(r?.message, label).toContain('Fix: ')
+    }
+    // Disabled at the server: S holds on any version and origin, and the class says so.
+    for (const version of ['0.162.1', '0.164.0']) {
+      const r = required(LOCKED, 'thread', { origins: { web_search: 'user' }, version }) as ServerLocks
+      expect(r.classes).toMatchObject({ web_search: 'S', 'tools.web_search': 'S' })
+      expect(r.trusted).toEqual([])
+    }
+  })
+
+  test('mergeServerLocks keeps an O class and the trust of either view', () => {
+    const a = required({ ...LOCKED, web_search: 'live' }, 'thread', { origins: { web_search: 'user' } }) as ServerLocks
+    const b = required(LOCKED, 'thread', { origins: { web_search: 'user' } }) as ServerLocks
+    const m = mergeServerLocks(a, b)
+    expect(m.classes.web_search).toBe('O')
+    expect(m.trusted.map(t => t.key)).toEqual(['web_search'])
+    expect(mergeServerLocks(a, a).trusted).toHaveLength(1)
   })
 
   const layer = (keys: Record<string, unknown>, disabledReason?: string) => ({ name: { type: 'project', dotCodexFolder: '/r/.codex' }, config: keys, version: 'v', disabledReason })
@@ -274,6 +417,57 @@ describe('stage 2 asserts', () => {
     expect(checkLockdown([page(off('a'))], { data: [{ cwd: REPO, hooks: [{}], errors: [], warnings: [] }] })?.message).toMatch(/1 hook loaded/)
     expect(checkLockdown([], noHooks)?.kind).toBe('lockdown')
     expect(checkLockdown([page(off('a'))], {})?.kind).toBe('lockdown')
+  })
+
+  const T_FEATURES = LOCKED_FEATURES.filter(f => f !== 'plugins')
+  const feat = (name: string, enabled: unknown = false) => ({ name, enabled, defaultEnabled: false, stage: 'stable' })
+  // The consult thread's list on 0.163.0: every lock feature false, among others, over two pages.
+  const pagesWith = (over: Record<string, unknown> = {}) => {
+    const all = [feat('skill_search', true), ...LOCKED_FEATURES.map(f => feat(f, f in over ? over[f] : false)), feat('tool_search_always_defer_mcp_tools', true)]
+    return [{ data: all.slice(0, 4), nextCursor: '4' }, { data: all.slice(4), nextCursor: null }]
+  }
+  const ended = (pages: unknown[]) => ({ pages, ended: true })
+
+  test('checkThreadLocks accepts every T feature false across pages, and ignores plugins and other features', () => {
+    expect(checkThreadLocks(ended(pagesWith()))).toBeNull()
+    expect(checkThreadLocks(ended(pagesWith({ plugins: true })))).toBeNull()
+  })
+
+  test('checkThreadLocks refuses a T feature on, not false, missing or listed twice with a true', () => {
+    for (const f of T_FEATURES) {
+      const on = checkThreadLocks(ended(pagesWith({ [f]: true })))
+      expect(on?.kind, f).toBe('not-locked')
+      expect(on?.message).toContain(`features.${f} is true on the consult thread (want false): codex did not apply consult's per-thread override`)
+      expect(on?.message).toContain(`Fix: add --disable ${f} to the codex-consult unit`)
+      expect(checkThreadLocks(ended(pagesWith({ [f]: null })))?.message).toContain(`features.${f} is null on the consult thread`)
+      const missing = pagesWith().map(p => ({ ...p, data: p.data.filter(x => x.name !== f) }))
+      expect(checkThreadLocks(ended(missing))?.message).toContain(`features.${f} is missing from the consult thread's feature list (want false)`)
+    }
+    const twice = [...pagesWith(), { data: [feat('apps', true)], nextCursor: null }]
+    expect(checkThreadLocks(ended(twice))?.message).toMatch(/features\.apps is true/)
+  })
+
+  test('checkThreadLocks fails closed on an error, a page without data and paging that did not end', () => {
+    const err = checkThreadLocks({ pages: [], ended: false, error: 'codex refused experimentalFeature/list: unknown method' })
+    expect(err?.kind).toBe('not-locked')
+    expect(err?.message).toMatch(/^the consult thread is not locked down: consult could not read back the consult thread's features \(codex refused experimentalFeature\/list: unknown method\), so it cannot confirm that features\.hooks, features\.apps, features\.browser_use, features\.computer_use, features\.multi_agent, features\.image_generation are off for the thread\. Fix: run codex 0\.163\.0, or set codexLockPolicy to strict/)
+    expect(checkThreadLocks(ended([...pagesWith(), { nextCursor: null }]))?.message).toMatch(/returned a page with no data/)
+    expect(checkThreadLocks(ended([...pagesWith(), 'x']))?.kind).toBe('not-locked')
+    expect(checkThreadLocks({ pages: pagesWith(), ended: false })?.message).toMatch(new RegExp(`did not end within ${MAX_FEATURE_PAGES} pages`))
+    expect(checkThreadLocks(ended([]))?.message).toMatch(/features\.hooks is missing/)
+  })
+
+  test('checkThreadLocks fails a trusted O key with apps, and only then', () => {
+    const trusted = [{ key: 'web_search', got: '"live" (origin user)' }]
+    expect(checkThreadLocks(ended(pagesWith()), trusted)).toBeNull()
+    expect(checkThreadLocks(ended(pagesWith({ hooks: true })), trusted)?.message).not.toMatch(/web_search/)
+    for (const read of [ended(pagesWith({ apps: true })), ended(pagesWith().map(p => ({ ...p, data: p.data.filter(x => x.name !== 'apps') }))), { pages: pagesWith(), ended: false }]) {
+      const r = checkThreadLocks(read, trusted)
+      expect(r?.kind).toBe('not-locked')
+      expect(r?.message).toContain(`web_search is "live" (origin user) (want "disabled"): consult trusts its per-thread override only while features.apps reads back false on the consult thread, which it did not, and consult needs it so that the reviewer cannot search the web`)
+      expect(r?.message).toContain(`Fix: add -c 'web_search="disabled"' to the codex-consult unit`)
+    }
+    expect(checkThreadLocks({ pages: [], ended: false, error: 'x' }, trusted)?.message).toMatch(/could not read back.*web_search is "live" \(origin user\)/)
   })
 })
 

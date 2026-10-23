@@ -2,8 +2,9 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import { clientErrorText, fitLine, KINDS, type ClientResult } from '../hooks/consult/appserver'
 import {
   agyCall, agyHooksJson, agyInputText, blockedFiles, clientArgv, CLIENT_SLACK_SEC, clip, codexRequest, diffArgv, failure, fileListArgvs, header,
-  MAX_NOTES, preamble, socketOption, tail, validate, type Consult,
+  lockPolicyOption, MAX_NOTES, preamble, socketOption, tail, validate, type Consult,
 } from '../hooks/consult/consult'
+import { checkClientRequest } from '../hooks/consult/appserver'
 
 const REPO = '/home/u/repo'
 const ok = (over: Record<string, unknown> = {}): Consult => {
@@ -87,6 +88,17 @@ describe('validate', () => {
     expect(socketOption('/run/user/1000/codex-consult.sock')).toEqual({ socket: '/run/user/1000/codex-consult.sock' })
     for (const bad of ['/tmp/a b.sock', '/tmp/x?y.sock', '/tmp/a#b.sock', 'rel.sock', '/a/../b.sock', 7]) expect((socketOption(bad) as any).error).toMatch(/codexSocket option is invalid/)
   })
+
+  test('the codexLockPolicy option is unset, thread or strict', () => {
+    expect(lockPolicyOption(undefined)).toEqual({})
+    expect(lockPolicyOption('')).toEqual({})
+    expect(lockPolicyOption('thread')).toEqual({ policy: 'thread' })
+    expect(lockPolicyOption('strict')).toEqual({ policy: 'strict' })
+    for (const bad of ['off', 'Strict', ' strict', 1, null, {}]) {
+      expect((lockPolicyOption(bad) as any).error, JSON.stringify(bad)).toMatch(/^the consult codexLockPolicy option must be empty, "thread" or "strict", not .* \(set it in \/config\)$/)
+    }
+    expect((lockPolicyOption('x'.repeat(5000)) as any).error.length).toBeLessThan(200)
+  })
 })
 
 describe('blockedFiles', () => {
@@ -112,6 +124,15 @@ describe('argv building', () => {
     const req = codexRequest(ok({ model: undefined, effort: undefined }), REPO)
     expect(Object.keys(req).sort()).toEqual(['cwd', 'mode', 'prompt', 'timeoutSec'])
     expect(codexRequest(ok(), REPO, '/tmp/s.sock').socket).toBe('/tmp/s.sock')
+  })
+
+  test('the codex request carries the lock policy only when set, and the client accepts it', () => {
+    expect(codexRequest(ok(), REPO).policy).toBeUndefined()
+    for (const policy of ['thread', 'strict'] as const) {
+      const req = codexRequest(ok(), REPO, undefined, policy)
+      expect(req.policy).toBe(policy)
+      expect(checkClientRequest(JSON.parse(JSON.stringify(req)))).toEqual({ ok: req })
+    }
   })
 
   test('the codex client argv runs bun without env file or config', () => {
