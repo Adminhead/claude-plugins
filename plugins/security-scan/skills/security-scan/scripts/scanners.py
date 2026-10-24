@@ -71,6 +71,10 @@ class Context:
 # --- processes ---
 
 
+# The scanned project can carry a uv.toml or [tool.uv] that redirects the package index.
+UV_ENV = {**os.environ, "UV_NO_CONFIG": "1"}
+
+
 def run(
     cmd: list[str],
     cwd: Path,
@@ -308,8 +312,14 @@ def pip_audit_jobs(
         exported = tmp / f"{len(list(tmp.iterdir()))}-requirements.txt"
         cmd = ["uv", "export", "--frozen", "--format", "requirements-txt"]
         cmd += ["--no-hashes", "--no-emit-project", "--all-extras", "--all-groups"]
+        cmd += ["--no-config"]
         checked(
-            run([*cmd, "-o", str(exported)], here, TOOL_TIMEOUT_SECONDS["pip-audit"])
+            run(
+                [*cmd, "-o", str(exported)],
+                here,
+                TOOL_TIMEOUT_SECONDS["pip-audit"],
+                UV_ENV,
+            )
         )
         target = str(Path(directory, "uv.lock"))
         reason, pinned, _ = inspect_requirements(exported.read_text(encoding="utf-8"))
@@ -340,7 +350,8 @@ def pip_audit_jobs(
 def scan_pip_audit(ctx: Context, directories: list[str], out: Outcome) -> None:
     started, timeout = time.monotonic(), TOOL_TIMEOUT_SECONDS["pip-audit"]
     base = ["uvx", PIP_AUDIT]
-    version = checked(run([*base, "--version"], ctx.root, timeout)).stdout.split()[-1]
+    version = checked(run([*base, "--version"], ctx.root, timeout, UV_ENV)).stdout
+    version = version.split()[-1]
     flags = ["--format", "json", "--progress-spinner", "off", "--desc", "off"]
     with tempfile.TemporaryDirectory(prefix="audit-pip-") as tmp:
         for directory in directories:
@@ -352,7 +363,7 @@ def scan_pip_audit(ctx: Context, directories: list[str], out: Outcome) -> None:
             out.gaps += [f"pip-audit in {directory}: {gap}" for gap in gaps]
             for job in jobs:
                 try:
-                    proc = run([*base, *job.args, *flags], ctx.root, timeout)
+                    proc = run([*base, *job.args, *flags], ctx.root, timeout, UV_ENV)
                     data = json.loads(checked(proc, ok=(0, 1)).stdout)
                 except (ToolFailure, json.JSONDecodeError) as exc:
                     reason = (

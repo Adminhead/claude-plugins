@@ -1087,7 +1087,7 @@
       "name": "security-scan",
       "source": "./plugins/security-scan",
       "description": "Manual security audit of a branch: gitleaks, semgrep, trivy, govulncheck and pip-audit in one script, subagent verification, a ranked findings table, plus CI and supply-chain trust checks and SBOM guidance.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {

@@ -473,6 +473,26 @@ def test_uv_export_is_audited_with_both_flags(
     assert "--no-deps" in jobs[0].args and "--disable-pip" in jobs[0].args
 
 
+def test_uv_runs_ignore_project_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls: list[tuple[list[str], dict | None]] = []
+
+    def fake_run(
+        cmd: list[str], cwd: Path, timeout: float, env: dict | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        del cwd, timeout
+        calls.append((cmd, env))
+        if "-o" in cmd:
+            option(cmd, "-o").write_text("requests==2.31.0\n")
+        return done()
+
+    monkeypatch.setattr(scanners, "run", fake_run)
+    jobs_for(tmp_path, uv__lock="")
+    assert "--no-config" in calls[0][0]
+    assert all(env and env["UV_NO_CONFIG"] == "1" for _, env in calls)
+
+
 def test_unpinned_requirements_skip_pip_audit_with_a_gap(
     repo: Path, handlers: dict, capsys: pytest.CaptureFixture[str]
 ) -> None:
