@@ -29,10 +29,13 @@ const MAX_OPTION = 4096
 const MAX_NAME = 128
 
 // The `extra_agents` and `plan_writers` options: names separated by commas or whitespace. A JSON array of strings
-// is accepted too, in case the value arrives as a list. Invalid names are ignored.
-export function parseExtra(raw: string | undefined): string[] {
+// is accepted too, in case the value arrives as a list. Invalid names are ignored. A value longer
+// than MAX_OPTION gives null rather than a cut list, which could drop or change names: the gate
+// then blocks every subagent for extra_agents and lists no extra plan writers for plan_writers.
+export function parseExtra(raw: string | undefined): string[] | null {
   if (!raw) return []
-  const text = raw.slice(0, MAX_OPTION).trim()
+  if (raw.length > MAX_OPTION) return null
+  const text = raw.trim()
   let parts: unknown[] = text.split(/[\s,]+/)
   if (text.startsWith('[')) {
     try {

@@ -37,6 +37,11 @@ describe('agents', () => {
     expect(parseExtra('ok, $bad, a:, :b, ' + 'n'.repeat(200))).toEqual(['ok'])
   })
 
+  test('an over-long option is refused whole, not cut', () => {
+    expect(parseExtra(`${'a,'.repeat(2047)}ab`)).toEqual(Array(2047).fill('a').concat('ab'))   // 4096 chars
+    expect(parseExtra(`${'a,'.repeat(2048)}dba`)).toBe(null)
+  })
+
   test('only architect writes plans by default; plan_writers adds names like extra_agents', () => {
     expect(DEFAULT_PLAN_WRITERS).toEqual(['architect', 'architect:architect'])
     expect(isPlanWriter('architect')).toBe(true)
@@ -67,26 +72,28 @@ describe('plan options', () => {
     expect(parsePlanDirs('..')).toEqual([])
     expect(parsePlanDirs('x'.repeat(600))).toEqual([])
     expect(parsePlanDirs(Array.from({ length: 40 }, (_, i) => `d${i}`).join(',')).length).toBe(16)
+    // Cutting this at 4096 would leave docs/plans; the whole value is refused instead.
+    expect(parsePlanDirs(`${' '.repeat(4086)}docs/plans/private`)).toEqual([])
   })
 
-  test('the project root is CLAUDE_PROJECT_DIR, else the payload cwd', () => {
-    expect(projectRoot('/home/u/proj', '/home/u/other')).toBe('/home/u/proj')
-    expect(projectRoot('/home/u/proj/', undefined)).toBe('/home/u/proj')
-    expect(projectRoot(undefined, '/home/u/other')).toBe('/home/u/other')
-    expect(projectRoot('', '/home/u/other')).toBe('/home/u/other')
-    expect(projectRoot('relative', '/home/u/other')).toBe(null)   // set but unusable: no fallback
-    expect(projectRoot('/', '/home/u/other')).toBe(null)
-    expect(projectRoot(undefined, 5)).toBe(null)
-    expect(projectRoot(`/${'x'.repeat(5000)}`, '/home/u/other')).toBe(null)
+  test('the project root is CLAUDE_PROJECT_DIR only', () => {
+    expect(projectRoot('/home/u/proj')).toBe('/home/u/proj')
+    expect(projectRoot('/home/u/proj/')).toBe('/home/u/proj')
+    expect(projectRoot(undefined)).toBe(null)
+    expect(projectRoot('')).toBe(null)
+    expect(projectRoot('relative')).toBe(null)
+    expect(projectRoot('/')).toBe(null)
+    expect(projectRoot(`/${'x'.repeat(5000)}`)).toBe(null)
   })
 })
 
 const GATE = join(import.meta.dir, '..', 'readonly-gate.ts')
 const SP = '/home/u/.claude/scratch/abc'
 
-// The options and the project root are the hook's, never inherited from the shell running the spec.
+// The options and the project root are the hook's, never inherited from the shell running the
+// spec. The root matches the payload cwd, as at the start of a session.
 const BASE_ENV = {
-  TMPDIR: '', CLAUDE_PROJECT_DIR: '', CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS: '',
+  TMPDIR: '', CLAUDE_PROJECT_DIR: '/home/u/repo', CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS: '',
   CLAUDE_PLUGIN_OPTION_PLAN_WRITERS: '', CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '',
 }
 
@@ -181,7 +188,7 @@ describe('file tools', () => {
 })
 
 // Plan files under a project root that does not exist: missing parts resolve lexically, so these
-// cases need no filesystem. The root is the payload cwd unless CLAUDE_PROJECT_DIR is set.
+// cases need no filesystem. The root is CLAUDE_PROJECT_DIR (BASE_ENV sets it to R).
 const as = (agent_type: string, tool_name: string, tool_input: unknown, env: Record<string, string> = {}, extra: Record<string, unknown> = {}) =>
   gate({ agent_type, agent_id: 'a1', tool_name, tool_input, cwd: '/home/u/repo', scratchpad_dir: SP, ...extra }, env)
 
@@ -202,7 +209,7 @@ describe('plan files', () => {
     for (const command of ['echo x > docs/plans/a.md', 'tee docs/plans/a.md < /tmp/x', 'cp /tmp/a.md docs/plans/a.md', 'mkdir -p docs/plans/x']) {
       const r = ro('Bash', { command })
       expect(r.code).toBe(2)
-      expect(r.err).toContain('To save a plan, use Write or Edit on a .md file under docs/plans/')
+      expect(r.err).toContain(`To save a plan, use Write or Edit on a .md file under ${R}/docs/plans/;`)
     }
   })
 
@@ -228,14 +235,48 @@ describe('plan files', () => {
     }
   })
 
-  test('CLAUDE_PROJECT_DIR sets the root over the payload cwd', () => {
+  test('CLAUDE_PROJECT_DIR sets the root, and without it there is no plan allowance', () => {
     const env = { CLAUDE_PROJECT_DIR: R }
     expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, env, { cwd: '/home/u/elsewhere' }).code).toBe(0)
     expect(as('architect', 'Write', { file_path: '/home/u/elsewhere/docs/plans/a.md' }, env, { cwd: '/home/u/elsewhere' }).code).toBe(2)
     expect(as('architect', 'Write', { file_path: 'a.md' }, env, { cwd: `${R}/docs/plans` }).code).toBe(0)
     expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, { CLAUDE_PROJECT_DIR: 'repo' }).code).toBe(2)
     expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, { CLAUDE_PROJECT_DIR: '/' }).code).toBe(2)
-    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, {}, { cwd: undefined }).code).toBe(2)
+    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, {}, { cwd: undefined }).code).toBe(0)
+    const unset = as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, { CLAUDE_PROJECT_DIR: '' })
+    expect(unset.code).toBe(2)
+    expect(unset.err).toContain('CLAUDE_PROJECT_DIR is not set')
+    expect(as('architect', 'Write', { file_path: 'docs/plans/a.md' }, { CLAUDE_PROJECT_DIR: '' }).code).toBe(2)
+  })
+
+  test('dot-directories, dotfiles and instruction files below the plan directory are blocked', () => {
+    for (const rel of ['.claude/skills/x/SKILL.md', '.claude/rules/x.md', '.claude/commands/x.md', '.claude/agents/x.md',
+      '.CLAUDE/x.md', '.git/x.md', '.github/copilot-instructions.md', '.agents/x.md', '.cursor/rules/x.md',
+      'sub/.claude/agents/x.md', '.hidden.md', 'sub/.x/a.md', 'CLAUDE.md', 'sub/Agents.md']) {
+      const r = ro('Write', { file_path: `${R}/docs/plans/${rel}` })
+      expect(r.code).toBe(2)
+      expect(r.err).toContain('read-only apart from plans')
+      expect(ro('Edit', { file_path: `docs/plans/${rel}` }).code).toBe(2)
+    }
+    // A dot-directory above the plan directory, in a configured entry, is fine.
+    const env = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '.agents/plans' }
+    expect(as('architect', 'Write', { file_path: `${R}/.agents/plans/a.md` }, env).code).toBe(0)
+    expect(as('architect', 'Write', { file_path: `${R}/.agents/plans/.claude/a.md` }, env).code).toBe(2)
+  })
+
+  test('over-long options are refused whole', () => {
+    const longDirs = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: `${' '.repeat(4086)}docs/plans/private` }
+    const r = as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, longDirs)
+    expect(r.code).toBe(2)
+    expect(r.err).toContain('no plan directories')
+    const longWriters = { CLAUDE_PLUGIN_OPTION_PLAN_WRITERS: `${'a,'.repeat(2048)}reviewer` }
+    expect(as('reviewer:reviewer', 'Write', { file_path: `${R}/docs/plans/a.md` }, longWriters).code).toBe(2)
+    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, longWriters).code).toBe(0)
+    const longExtra = { CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS: `${'a,'.repeat(2048)}dba` }
+    const blocked = as('coder:coder', 'Write', { file_path: `${R}/src/a.ts` }, longExtra)
+    expect(blocked.code).toBe(2)
+    expect(blocked.err).toContain('extra_agents option is longer')
+    expect(gate({ tool_name: 'Write', tool_input: { file_path: `${R}/src/a.ts` } }, longExtra).code).toBe(0)   // main thread
   })
 
   test('custom plan_dirs replace the default, and bad entries are ignored', () => {
@@ -244,7 +285,7 @@ describe('plan files', () => {
     expect(as('architect', 'Write', { file_path: `${R}/design/x/a.md` }, env).code).toBe(0)
     const r = as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, env)
     expect(r.code).toBe(2)
-    expect(r.err).toContain('notes/plans/, design/')
+    expect(r.err).toContain(`under ${R}/notes/plans/, ${R}/design/ (`)
     expect(as('architect', 'Write', { file_path: `${R}/rfcs/a.md` }, { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '["rfcs"]' }).code).toBe(0)
     const bad = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: `${R}/abs, ../up, a/../b, , ., .claude/agents, ~/p, good` }
     for (const file_path of [`${R}/abs/a.md`, `${R}${R}/abs/a.md`, '/home/u/up/a.md', `${R}/b/a.md`, `${R}/a/b/a.md`, `${R}/a.md`,
@@ -276,6 +317,7 @@ describe('plan files on the filesystem', () => {
   let pLink = ''    // a symlink to the project
   let pOut = ''     // a project whose docs/plans is a symlink out of it
   let pIn = ''      // a project whose docs/plans is a symlink to another of its directories
+  let wtLink = ''   // a symlink to a worktree of p
   const w = (root: string, file_path: string, tool = 'Write', cwd = root) =>
     as('architect:architect', tool, { file_path }, { CLAUDE_PROJECT_DIR: root }, { cwd })
   beforeAll(() => {
@@ -304,9 +346,37 @@ describe('plan files on the filesystem', () => {
     mkdirSync(`${pIn}/docs`)
     mkdirSync(`${pIn}/notes`)
     symlinkSync(`${pIn}/notes`, `${pIn}/docs/plans`)
+    symlinkSync('sub', `${p}/docs/plans/.claude`)   // a dot name for a plain directory
+    mkdirSync(`${p}/docs/plans/sub/.config/agents`, { recursive: true })
+    symlinkSync('sub/.config', `${p}/docs/plans/cfg`)   // a plain name for a dot-directory
+    // Worktrees the way git lays them out: <wt>/.git names <root>/.git/worktrees/<name>, whose
+    // gitdir file names <wt>/.git back.
+    const worktree = (name: string, pointer: string, back: string | null) => {
+      const dir = `${p}/.claude/worktrees/${name}`
+      mkdirSync(`${dir}/docs/plans/sub`, { recursive: true })
+      mkdirSync(`${dir}/src`, { recursive: true })
+      writeFileSync(`${dir}/.git`, `gitdir: ${pointer}\n`)
+      if (back !== null) {
+        mkdirSync(`${p}/.git/worktrees/${name}`, { recursive: true })
+        writeFileSync(`${p}/.git/worktrees/${name}/gitdir`, `${back}\n`)
+      }
+      return dir
+    }
+    const wt = worktree('wt', `${p}/.git/worktrees/wt`, `${p}/.claude/worktrees/wt/.git`)
+    worktree('rel', '../../../.git/worktrees/rel', '../../../.claude/worktrees/rel/.git')
+    worktree('fake', `${p}/.git/worktrees/wt`, null)   // claims wt's entry, which points back at wt
+    mkdirSync(`${out}/.git/worktrees/foreign`, { recursive: true })
+    worktree('foreign', `${out}/.git/worktrees/foreign`, null)
+    writeFileSync(`${out}/.git/worktrees/foreign/gitdir`, `${p}/.claude/worktrees/foreign/.git\n`)
+    worktree('nogit', `${p}/.git/worktrees/nogit`, null)   // no entry in the repo
+    const linked = worktree('linked', `${p}/.git/worktrees/linked`, `${p}/.claude/worktrees/linked/.git`)
+    rmSync(`${linked}/.git`)
+    symlinkSync(`${wt}/.git`, `${linked}/.git`)   // a .git symlink is not a worktree file
+    wtLink = `${p}-wtlink`
+    symlinkSync(wt, wtLink)
   })
   afterAll(() => {
-    for (const d of [p, out, pOut, pIn, pLink]) rmSync(d, { recursive: true, force: true })
+    for (const d of [p, out, pOut, pIn, pLink, wtLink]) rmSync(d, { recursive: true, force: true })
   })
 
   test('new and existing plan files pass, nested or through a link that stays inside', () => {
@@ -322,10 +392,49 @@ describe('plan files on the filesystem', () => {
     expect(w(p, '../docs/plans/new.md', 'Write', `${p}/src`).code).toBe(0)
   })
 
-  test('a project root that is itself a symlink works either way round', () => {
+  test('a project root that is itself a symlink works by either of its paths', () => {
     expect(w(pLink, `${pLink}/docs/plans/new.md`).code).toBe(0)
     expect(w(pLink, `${p}/docs/plans/new.md`).code).toBe(0)
-    expect(w(p, `${pLink}/docs/plans/new.md`).code).toBe(0)
+    // An alias the root does not name hides what lies above the target, so it is not used.
+    expect(w(p, `${pLink}/docs/plans/new.md`).code).toBe(2)
+  })
+
+  test('a link to or through a dot-directory inside the plan directory is blocked', () => {
+    const r = w(p, `${p}/docs/plans/cfg/agents/x.md`)   // cfg -> sub/.config
+    expect(r.code).toBe(2)
+    expect(r.err).toContain('dot-directory')
+    expect(w(p, `${p}/docs/plans/.claude/x.md`).code).toBe(2)   // .claude -> sub, a plain directory
+    expect(w(p, `${p}/docs/plans/sub/x.md`).code).toBe(0)
+  })
+
+  test('a git worktree of the project holding cwd is a second root', () => {
+    const wt = `${p}/.claude/worktrees/wt`
+    const env = { CLAUDE_PROJECT_DIR: p }
+    const at = (file_path: string, cwd: string, e: Record<string, string> = env) =>
+      as('architect:architect', 'Write', { file_path }, e, { cwd })
+    expect(at(`${wt}/docs/plans/a.md`, wt).code).toBe(0)
+    expect(at('docs/plans/a.md', wt).code).toBe(0)
+    expect(at(`${wt}/docs/plans/sub/a.md`, `${wt}/src`).code).toBe(0)
+    expect(at(`${p}/docs/plans/a.md`, wt).code).toBe(0)
+    expect(at(`${wtLink}/docs/plans/a.md`, wtLink).code).toBe(0)   // cwd through a symlink
+    expect(at(`${p}/.claude/worktrees/rel/docs/plans/a.md`, `${p}/.claude/worktrees/rel`).code).toBe(0)   // relative pointers
+    const r = at(`${wt}/README.md`, wt)
+    expect(r.code).toBe(2)
+    expect(r.err).toContain(`under ${p}/docs/plans/, ${wt}/docs/plans/ (`)
+    expect(at(`${wt}/docs/plans/.claude/x.md`, wt).code).toBe(2)
+    // Without the cwd in it, or without the env root, the worktree is not a root.
+    expect(at(`${wt}/docs/plans/a.md`, p).code).toBe(2)
+    expect(at(`${wt}/docs/plans/a.md`, wt, { CLAUDE_PROJECT_DIR: '' }).code).toBe(2)
+    expect(at(`${wt}/docs/plans/a.md`, wt, { CLAUDE_PROJECT_DIR: out }).code).toBe(2)
+  })
+
+  test('a .git file that is not a registered worktree of the project adds no root', () => {
+    const env = { CLAUDE_PROJECT_DIR: p }
+    for (const dir of [`${p}/.claude/worktrees/fake`, `${p}/.claude/worktrees/foreign`, `${p}/.claude/worktrees/nogit`, `${p}/.claude/worktrees/linked`]) {
+      const r = as('architect:architect', 'Write', { file_path: `${dir}/docs/plans/a.md` }, env, { cwd: dir })
+      expect(r.code).toBe(2)
+      expect(r.err).toContain(`under ${p}/docs/plans/ (`)   // the env root's plan directory only
+    }
   })
 
   test('a plan file that is a symlink or hard link out of the plan directory is blocked', () => {

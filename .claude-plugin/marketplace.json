@@ -512,7 +512,7 @@
     {
       "name": "readonly-agent-gate",
       "source": "./plugins/readonly-agent-gate",
-      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans under docs/plans with Write/Edit. Needs bun.",
+      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans with Write/Edit under docs/plans in the project (CLAUDE_PROJECT_DIR) or in a git worktree of it that holds the agent's cwd. Needs bun.",
       "version": "0.3.0",
       "category": "development"
     },

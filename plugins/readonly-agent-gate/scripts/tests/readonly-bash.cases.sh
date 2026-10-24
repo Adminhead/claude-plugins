@@ -1326,7 +1326,7 @@ plan() { # plan <expect> <label> <agent_type> <command>
   json=$(jq -n --arg c "$4" --arg t "$3" '{tool_name:"Bash",tool_input:{command:$c},agent_type:$t,agent_id:"a1",cwd:"/home/u/repo"}')
   err=$(printf '%s' "$json" | CLAUDE_PROJECT_DIR=/home/u/repo invoke "$HOOK" 2>&1 >/dev/null) || rc=$?
   if { [[ $1 == block && $rc -eq 2 && "$err" != *"internal error"* ]] || [[ $1 == allow && $rc -eq 0 ]]; } &&
-    { [[ $3 != architect* || $1 == allow ]] || [[ "$err" == *"To save a plan, use Write or Edit on a .md file under docs/plans/"* ]]; }; then
+    { [[ $3 != architect* || $1 == allow ]] || [[ "$err" == *"To save a plan, use Write or Edit on a .md file under /home/u/repo/docs/plans/;"* ]]; }; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
