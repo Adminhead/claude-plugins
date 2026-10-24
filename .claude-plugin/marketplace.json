@@ -1165,7 +1165,7 @@
       "source": "./plugins/aspnet-core",
       "description": "Builds and reviews ASP.NET Core HTTP apps: minimal APIs and controllers, DTOs, validation, ProblemDetails, OpenAPI, middleware order, auth wiring, .http files, CRUD endpoints written without scaffolders. Use for Program.cs endpoint or middleware work, \"add an endpoint\", OpenAPI setup, or global error handling in a .NET web project.",
       "version": "0.1.0",
-      "category": "meta"
+      "category": "development"
     },
     {
       "name": "blazor",
@@ -1235,7 +1235,7 @@
       "source": "./plugins/ef-core",
       "description": "Writes, reviews and tunes EF Core data access: query shape, tracking, Include vs split queries, N+1, bulk ExecuteUpdate/Delete, DbContext lifetime, migrations, raw SQL parameters, and Dapper code beside it. Use for DbContext or LINQ-to-entities code, a slow EF query, dotnet ef migrations, or reviewing a repository or import job.",
       "version": "0.1.0",
-      "category": "meta"
+      "category": "development"
     },
     {
       "name": "game-ai",
