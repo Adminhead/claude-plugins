@@ -27,9 +27,21 @@ const SECRETS: readonly [RegExp, string][] = [
   [/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, '<aws-key>'],
   [/\bxox[abposr]-[A-Za-z0-9-]{10,}/g, '<slack-token>'],
   [/\bAIza[0-9A-Za-z_-]{35}/g, '<google-key>'],
+  // Stripe secret and restricted keys, and npm access tokens (`npm_` and 36 characters; `npm_config_x` is too short).
+  [/\b[sr]k_(?:live|test)_[A-Za-z0-9]{10,}/g, '<stripe-key>'],
+  [/\bnpm_[A-Za-z0-9]{30,}/g, '<npm-token>'],
   [/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, '<jwt>'],
   [/\b(Bearer|Basic|token)(\s+)[A-Za-z0-9._~+/=-]{12,}/gi, '$1$2<token>'],
+  // A credential header's value, unless the rule above already masked it after its scheme word.
+  [/\b((?:X-)?Api-?Key|X-Auth-Token|(?:Proxy-)?Authorization)(\s*:\s*)(?!<)(?!(?:Bearer|Basic|token|Digest|Negotiate)\s)("[^"]*"|'[^']*'|[^\s"';&|]+)/gi, '$1$2<redacted>'],
   [/\b([A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIALS?)[A-Za-z0-9_]*)(\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s"';&|]+)/gi, '$1$2<redacted>'],
+  // `--password VALUE` with a space (`--password=VALUE` is the rule above); a following option is not a value.
+  [/(--pass(?:word)?\s+)(?!-)("[^"]*"|'[^']*'|[^\s"';&|]+)/g, '$1<redacted>'],
+  // A MySQL client's `-pVALUE` (attached; a bare `-p` prompts). Only within 512 characters after a MySQL or MariaDB
+  // command in the same command line, since `-p` is a port, a flag or a path elsewhere (`psql -p5432`, `ssh -p22`).
+  [/(\b(?:mysql|mysqldump|mysqladmin|mysqlimport|mysqlcheck|mysqlshow|mysqlpump|mariadb|mariadb-dump|mariadb-admin)\b[^\n;&|]{0,512}?\s-p)("[^"]*"|'[^']*'|[^\s"';&|]+)/g, '$1<redacted>'],
+  // curl's `-u USER:PASSWORD` and `--user USER:PASSWORD` (within 512 characters of `curl`); a user alone makes curl prompt.
+  [/(\bcurl\b[^\n;&|]{0,512}?\s(?:-u\s*|--user[=\s]\s*)["']?)([^\s:"']*):([^\s"']+)/g, '$1$2:<redacted>'],
   [/(:\/\/[^/\s:@]+:)[^@\s/]+@/g, '$1<redacted>@'],
 ]
 

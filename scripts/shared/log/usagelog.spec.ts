@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { STREAMS, logFile, pruneArgv } from './usagelog.ts'
+import { STREAMS, logFile, pruneArgv, redact } from './usagelog.ts'
 
 const dirs: string[] = []
 afterEach(() => {
@@ -22,6 +22,68 @@ const there = (p: string): boolean => {
     return false
   }
 }
+
+describe('redaction', () => {
+  test('password options, curl users, Stripe and npm tokens and credential headers are masked', () => {
+    const cases: [string, string][] = [
+      ['mysql -u root -pS3cretPw app', 'mysql -u root -p<redacted> app'],
+      ["mysqldump --single-transaction -p'pa ss' app > d.sql", 'mysqldump --single-transaction -p<redacted> app > d.sql'],
+      ['ssh db "mariadb -uapp -phunter2 -e \'select 1\'"', 'ssh db "mariadb -uapp -p<redacted> -e \'select 1\'"'],
+      ['mysql --password hunter2 app', 'mysql --password <redacted> app'],
+      ['docker login -u bob --password hunter2 ghcr.io', 'docker login -u bob --password <redacted> ghcr.io'],
+      ['mysql --password=hunter2 app', 'mysql --password=<redacted> app'],
+      ['curl -u bob:hunter2 https://x/api', 'curl -u bob:<redacted> https://x/api'],
+      ['curl -ubob:hunter2 https://x', 'curl -ubob:<redacted> https://x'],
+      ['curl -fsS --user "bob:hunter2" https://x', 'curl -fsS --user "bob:<redacted>" https://x'],
+      ['curl --user=bob:hunter2 https://x', 'curl --user=bob:<redacted> https://x'],
+      ['stripe charges list --api-key sk_live_51Habcdefghijklmnop', 'stripe charges list --api-key <stripe-key>'],
+      ['export K=sk_test_4eC39HqLyjWDarjtT1zdp7dc', 'export K=<stripe-key>'],
+      ['echo rk_live_abcdefghij0123456789', 'echo <stripe-key>'],
+      ['npm config set //registry.npmjs.org/:_authToken npm_abcdefghijklmnopqrstuvwxyz0123456789', 'npm config set //registry.npmjs.org/:_authToken <npm-token>'],
+      ['curl -H "X-Api-Key: abc123def" https://x', 'curl -H "X-Api-Key: <redacted>" https://x'],
+      ["curl -H 'x-api-key:abc123' https://x", "curl -H 'x-api-key:<redacted>' https://x"],
+      ['curl -H "Authorization: raw-token-value" https://x', 'curl -H "Authorization: <redacted>" https://x'],
+      ['curl -H "Authorization: Bearer abcdefghijklmnop123"', 'curl -H "Authorization: Bearer <token>"'],
+      ['curl -H "Authorization: Digest abc"', 'curl -H "Authorization: Digest abc"'],
+      ['curl -H "X-Auth-Token: t0k3n" https://x', 'curl -H "X-Auth-Token: <redacted>" https://x'],
+    ]
+    for (const [input, want] of cases) expect([input, redact(input)]).toEqual([input, want])
+  })
+
+  test('look-alikes stay as written', () => {
+    for (const s of [
+      'psql -p5432 -h db app',
+      'ssh -p22 host',
+      'mkdir -p build/out',
+      'git log -p -- src',
+      'mysql -p app',
+      'mysql -h db -P3306 -p app',
+      'sudo -u root ls',
+      'git push -u origin main',
+      'docker run -u 1000:1000 img',
+      'curl -u bob https://x:8443/',
+      'npm_config_registry=https://r npm i',
+      'echo npm_test',
+      'docker login --password-stdin',
+      'mysql --password --host db',
+      'grep -rn Authorization src',
+      'curl -H "Content-Type: application/json" https://x',
+      'tar -pxf a.tar',
+      'sk_live_short',
+    ]) {
+      expect([s, redact(s)]).toEqual([s, s])
+    }
+  })
+
+  test('long inputs are masked in linear time', () => {
+    const t0 = performance.now()
+    redact('mysql '.repeat(20000))
+    redact('curl -u '.repeat(10000))
+    redact('Authorization: '.repeat(10000))
+    redact('--password '.repeat(10000))
+    expect(performance.now() - t0).toBeLessThan(1000)
+  })
+})
 
 describe('usage log prune', () => {
   test('logFile takes only the known streams', () => {
