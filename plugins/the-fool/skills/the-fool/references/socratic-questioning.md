@@ -103,11 +103,22 @@ Watch for language that hides assumptions.
 - How will you know if this is failing before it's too late?
 - What's the exit strategy if this doesn't work?
 
+## Isolation
+
+The critic must not know why the decision was made, or it will argue from the user's reasoning instead of testing it.
+
+1. State the decision or claim neutrally, in one or two sentences, with no rationale and no conversation history.
+2. Hand only that statement to the critic: a subagent when the host offers one, otherwise a fresh context that has not seen the discussion. Do not run the questioning in the conversation that produced the decision, and do not self-assess there.
+3. The critic returns the single sharpest unresolved question. Relay it to the user alone.
+4. The user explains in their own words. The critic never supplies the rationale, and neither do you.
+5. Judge the answer. If it resolves the question, close it and ask for the next one. Pass the critic the answer, never your own reasoning about the decision.
+
 ## Rules
 
+- One question per turn. Never batch questions into a checklist. Over the whole exchange, ask the 3-5 that matter most.
 - Never supply the rationale before the user attempts one. Handing reasoning over first skips the test.
-- On a shallow answer, narrow to the vague part instead of repeating the question.
-- An honestly unexplained gap is a valid ending. Flag it on the decision for re-review rather than forcing a resolution.
+- An answer that restates the question, deflects or leans on authority ("the agent suggested it") is shallow. Narrow to the exact vague part instead of repeating the question, and keep narrowing each round.
+- An honestly unexplained gap is a valid ending. Name the unresolved point specifically and flag it on the decision for re-review rather than forcing a resolution.
 
 ## Output Template
 
@@ -118,19 +129,13 @@ Watch for language that hides assumptions.
 |---|-----------|------|------------|
 | 1 | [Stated or hidden assumption] | Stated / Unstated | High / Medium / Low |
 
-## Probing Questions
+## Questions Asked
 
-### [Theme 1: e.g., "User Behavior"]
-1. [Question targeting assumption #X]
-2. [Follow-up question deepening the probe]
+Record the exchange after it ends. Questions are asked one per turn, never printed as a batch.
 
-### [Theme 2: e.g., "Technical Feasibility"]
-1. [Question targeting assumption #Y]
-2. [Follow-up question]
-
-### [Theme 3: e.g., "Business Viability"]
-1. [Question targeting assumption #Z]
-2. [Follow-up question]
+| # | Question | Targets assumption | User's answer in brief | Closed / Narrowed / Open |
+|---|----------|--------------------|------------------------|--------------------------|
+| 1 | [Question] | #X | [What they explained] | Closed |
 
 ## Suggested Experiments
 

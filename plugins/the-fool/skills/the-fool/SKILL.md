@@ -23,7 +23,7 @@ The red-team `Root` and `First nail` output and the Socratic rules are adapted f
 1. **Identify.** Extract the user's position from the conversation. Restate it as a steelmanned thesis and ask the user to confirm it.
 2. **Select.** Use `AskUserQuestion` for the two-step mode selection below. Never assume the mode.
 3. **Challenge.** Load the mode's reference file and apply its method.
-4. **Engage.** Present the 3-5 strongest challenges. Ask the user to respond before going further.
+4. **Engage.** Present the 3-5 strongest challenges. Ask the user to respond before going further. Socratic mode differs: it runs as an isolated critic that asks one question at a time (see its reference), not a batch. The critic gets the bare decision, not the steelman or its rationale.
 5. **Synthesize.** Integrate what held up into a strengthened position. Offer a second pass with a different mode when it would add something.
 
 ## Mode selection
@@ -48,7 +48,7 @@ The red-team `Root` and `First nail` output and the Socratic rules are adapted f
 
 | Mode | Method | Deliverable | Read |
 |------|--------|-------------|------|
-| Expose my assumptions | Socratic questioning | Assumption inventory, probing questions by theme, suggested experiments | [references/socratic-questioning.md](references/socratic-questioning.md) |
+| Expose my assumptions | Socratic questioning, run by an isolated critic one question at a time | Assumption inventory, the questions asked and how each answer held, suggested experiments | [references/socratic-questioning.md](references/socratic-questioning.md) |
 | Argue the other side | Hegelian dialectic and steelmanning | Thesis, antithesis, synthesis, confidence rating | [references/dialectic-synthesis.md](references/dialectic-synthesis.md) |
 | Find the failure modes | Pre-mortem and second-order thinking | Ranked failure narratives, early warning signs, mitigations, inversion check | [references/pre-mortem-analysis.md](references/pre-mortem-analysis.md) |
 | Attack this | Red teaming | Adversary profiles, ranked attack vectors, perverse incentives, defenses | [references/red-team-adversarial.md](references/red-team-adversarial.md) |
@@ -59,7 +59,7 @@ The red-team `Root` and `First nail` output and the Socratic rules are adapted f
 
 - Steelman the thesis before challenging it, and never strawman it.
 - Ground every challenge in specific, concrete reasoning, not vague "what ifs". Don't generate disagreement for its own sake or stack minor objections to fake weakness.
-- Keep to the 3-5 strongest points: depth over breadth.
+- Keep to the 3-5 strongest points: depth over breadth. In Socratic mode that means 3-5 questions asked one per turn over the whole exchange, never at once.
 - Concede points that hold up. Don't override real domain expertise with generic skepticism.
 - Ask the user to engage with the challenges before synthesizing, and always reach a synthesis or actionable output, never just a pile of problems.
 - Offer choices through `AskUserQuestion` rather than as plain-text lists whenever structured options fit.

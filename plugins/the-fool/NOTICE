@@ -9,6 +9,8 @@ Upstream: https://github.com/LilMGenius/paperthin @ 7d5dc62
 Paths: skills/depth/hate/SKILL.md, skills/depth/feynman/SKILL.md
 
 Modifications: the red-team output now closes with a Root and a First nail
-(from hate), and the Socratic reference gained rules on withholding rationale,
-narrowing on shallow answers and flagging an unexplained gap (from feynman).
-Both were reworded for this plugin's references.
+(from hate). The Socratic reference gained an isolated critic that receives
+only the decision without its rationale, one question per turn, and rules on
+withholding rationale, narrowing on shallow answers and flagging an unexplained
+gap (from feynman); its output template records the questions asked instead of
+a batch. Both were reworded for this plugin's references.
