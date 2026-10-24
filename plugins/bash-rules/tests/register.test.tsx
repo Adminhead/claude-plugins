@@ -8,12 +8,13 @@ import { PRIMER } from '../hooks/rules/hygiene'
 // The mod runs with its manifest defaults (a test cannot pass options): ollamaModel `clef:cloud` with ollamaCloud off, so
 // the Ollama stage is skipped and the fallback decides. Ollama's requests and replies are covered in judge.test.ts.
 
-type World = { fetches: any[]; completes: any[]; ran: string[] }
+type World = { fetches: any[]; completes: any[]; ran: string[]; inputs: any[] }
 
 function world(on: any, now: number, opts: { fetch?: (e: any) => any; complete?: (e: any) => any } = {}): World {
-  const w: World = { fetches: [], completes: [], ran: [] }
+  const w: World = { fetches: [], completes: [], ran: [], inputs: [] }
   mock.clock(on, { now })
   on('tool.call', async ($: any, e: any) => {
+    w.inputs.push(e)
     w.ran.push(e.command ?? `${e.tool} ${e.file_path ?? e.path ?? ''}`)
     return { result: 'ok' }
   })
@@ -203,12 +204,54 @@ describe('file tools and the credentials file', () => {
       { tool: 'Grep', pattern: 'token', path: 'src' },
       { tool: 'Grep', pattern: 'token', path: '/home/u/.claude', glob: '*.md' },
       { tool: 'Grep', pattern: 'token', path: '/home/u/.claude', type: 'ts' },
-      { tool: 'Grep', pattern: 'token', path: '/home/u' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u', glob: '*.md' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u', type: 'jsonl' },
       { tool: 'Grep', pattern: 'token', path: '.claude', glob: '*.json' },
     ]) {
       expect([input, (await tool($, input)).deny]).toEqual([input, undefined])
     }
-    expect(w.ran).toHaveLength(5)
+    expect(w.ran).toHaveLength(6)
+    // Calls that do not reach the file run as given.
+    expect(w.inputs.every(e => e.glob === undefined || !String(e.glob).includes('credentials'))).toBe(true)
+  })
+
+  test('Grep of a directory above the file with no glob runs with the file excluded; a json type is a matching glob', async ($, on) => {
+    const w = world(on, 24e9)
+    env(on, { HOME: '/home/u', CLAUDE_CONFIG_DIR: '/srv/claude-cfg' })
+    for (const path of ['~', '/', '..', '/home/u', '/srv', '/home/u/proj/../..']) {
+      const out = await tool($, { tool: 'Grep', pattern: 'accessToken', path })
+      expect([path, out.deny]).toEqual([path, undefined])
+    }
+    expect(w.inputs.map(e => [e.path, e.glob])).toEqual([
+      ['~', '!**/.credentials.json'],
+      ['/', '!**/.credentials.json'],
+      ['..', '!**/.credentials.json'],
+      ['/home/u', '!**/.credentials.json'],
+      ['/srv', '!**/.credentials.json'],
+      ['/home/u/proj/../..', '!**/.credentials.json'],
+    ])
+    expect(w.inputs[0]).toMatchObject({ tool: 'Grep', pattern: 'accessToken' })
+    for (const input of [
+      { tool: 'Grep', pattern: 'accessToken', path: '~', type: 'json' },
+      { tool: 'Grep', pattern: 'accessToken', path: '/', type: 'JSON' },
+      { tool: 'Grep', pattern: 'accessToken', path: '..', glob: '**/*.json' },
+      { tool: 'Grep', pattern: 'accessToken', path: '/home/u', glob: ' ' , type: 'json' },
+    ]) {
+      expect([input, (await tool($, input)).deny]).toEqual([input, expect.stringMatching(/refusing to read, search/)])
+    }
+    expect(w.ran).toHaveLength(6)
+  })
+
+  test('a path that ends in the CLAUDE_CONFIG_DIR file is the file', async ($, on) => {
+    const w = world(on, 25e9)
+    env(on, { HOME: '/home/u', CLAUDE_CONFIG_DIR: '/srv/claude-cfg' })
+    for (const file_path of ['/proc/self/root/srv/claude-cfg/.credentials.json', '/proc/1/root/srv/claude-cfg/./.credentials.json', '/SRV/Claude-Cfg/.credentials.json']) {
+      expect([file_path, (await tool($, { tool: 'Read', file_path })).deny]).toEqual([file_path, expect.stringMatching(/refusing to read/)])
+    }
+    for (const file_path of ['/srv/other-claude-cfg/.credentials.json', '/srv/claude-cfg/settings.json']) {
+      expect([file_path, (await tool($, { tool: 'Read', file_path })).deny]).toEqual([file_path, undefined])
+    }
+    expect(w.ran).toHaveLength(2)
   })
 
   test('an over-long path or glob is refused unchecked', async ($, on) => {

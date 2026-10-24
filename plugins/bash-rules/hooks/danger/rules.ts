@@ -2,10 +2,10 @@
 // Ported from the archived coremods tool-mgr rules, keeping only the danger and ask rules and the
 // parse-error and too-long guards.
 
-import { askHit, dangerHit, envSplit, stdinReader, viewsOf } from './danger'
+import { askHit, dangerHit, handedScript, stdinReader, viewsOf } from './danger'
 import type { AskRule, DangerRule } from './danger'
 import { expandLiteralVars } from './expand'
-import { nestedScript, parse, reparse } from '../shell/walk'
+import { parse, reparse } from '../shell/walk'
 import type { ShellCommand, ShellParse } from '../shell/walk'
 
 export type Rule = DangerRule | 'parse-error' | 'too-long'
@@ -36,8 +36,9 @@ const readsShellStdin = (c: ShellCommand) => viewsOf(c.argv).some(v => stdinRead
 
 export type Scan = { commands: ShellCommand[]; errors: ShellParse['errors']; tooComplex: boolean }
 
-// Parses a command and every script it hands to a shell: `sh -c STR`, `eval` and `env -S` bodies (also behind wrappers)
-// and heredoc bodies a shell reads all join `commands`. A heredoc body is reparsed once however many commands share it,
+// Parses a command and every script it hands to a shell: `sh -c STR`, `eval` and `env -S` bodies, command-string
+// wrappers (`flock -c`, `npx -c`, `watch`, a parallel template), also behind other wrappers, and heredoc bodies a shell
+// reads all join `commands`. A handed script that does not parse is a parse error. A heredoc body is reparsed once however many commands share it,
 // and the reparsed text is capped (`tooComplex`).
 export function scan(command: string): Scan {
   const out: Scan = { commands: [], errors: [], tooComplex: false }
@@ -54,7 +55,7 @@ export function scan(command: string): Scan {
       // Two views can hand over one script (`busybox sh -c X` and its `sh -c X`): parse it once.
       const seen = new Set<string>()
       for (const v of viewsOf(c.argv)) {
-        const script = nestedScript(v) ?? envSplit(v)
+        const script = handedScript(v)
         if (script === null || seen.has(script) || out.tooComplex) continue
         seen.add(script)
         nested(script, c.depth + 1)

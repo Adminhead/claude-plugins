@@ -819,10 +819,146 @@ describe('A3 danger gaps', () => {
   })
 
   test('git-rewrite (ask): deleting a shared remote branch, a :branch refspec, and checkout -- .', () => {
-    for (const c of ['git push origin --delete main', 'git push -d origin master', 'git push origin -d release/1.2', 'git push --delete origin "$B"', 'git push origin :main', 'git push origin :feature-x', 'git checkout -- .', 'git checkout .', 'git checkout HEAD -- .']) {
+    for (const c of ['git push origin --delete main', 'git push -d origin master', 'git push origin -d release/1.2', 'git push --delete origin "$B"', 'git push origin :main', 'git checkout -- .', 'git checkout .', 'git checkout HEAD -- .']) {
       expect([c, ask(c)]).toEqual([c, 'git-rewrite'])
     }
-    for (const c of ['git push origin --delete feature-x', 'git push origin feature', 'git push origin HEAD:main', 'git push origin :', 'git checkout main', 'git checkout -- src/a.ts', 'git checkout -b x']) expect([c, ask(c)]).toEqual([c, null])
+    for (const c of ['git push origin --delete feature-x', 'git push origin :feature-x', 'git push origin feature', 'git push origin HEAD:main', 'git push origin :', 'git checkout main', 'git checkout -- src/a.ts', 'git checkout -b x']) expect([c, ask(c)]).toEqual([c, null])
+  })
+})
+
+// The A3 review's follow-up gaps: each must-flag case passed on d555432's code.
+describe('A3 review fixes', () => {
+  test('command-string wrappers: flock -c, npx and npm exec -c, watch and a parallel template run their script', () => {
+    for (const c of [
+      'watch "rm -rf ~"',
+      "watch -n 1 'rm -rf /'",
+      "watch --interval=2 -d 'rm -rf ~'",
+      "flock /tmp/l -c 'rm -rf ~'",
+      "flock -c 'rm -rf ~' /tmp/l",
+      "flock -w 5 /tmp/l --command 'rm -rf /'",
+      "flock --command='rm -rf ~' /tmp/l",
+      "npx -c 'rm -rf ~'",
+      "npx --call='rm -rf /'",
+      "npx -y --call 'rm -rf ~'",
+      "npm exec -c 'rm -rf ~'",
+      "npm x --call 'rm -rf /'",
+      "npm --prefix web exec -c 'rm -rf ~'",
+      "parallel 'rm -rf {}' ::: ~",
+      "parallel -j2 'rm -rf {}' ::: build /",
+      "parallel 'rm -rf {1}' ::: /etc",
+      "parallel 'rm -rf' ::: ~",
+      "parallel ::: 'rm -rf ~'",
+      "nice watch 'rm -rf ~'",
+      "bash -c \"flock /tmp/l -c 'rm -rf ~'\"",
+    ]) {
+      expect([c, rule(c)]).toEqual([c, 'rm-root'])
+    }
+    expect(rule("watch 'pkill -f vite'")).toBe('kill-by-name')
+    expect(rule("flock /tmp/l -c 'cat ~/.claude/.credentials.json'")).toBe('credentials-read')
+    for (const c of [
+      "watch -n 1 'kubectl get pods'",
+      'watch -n 1 ls',
+      "flock /tmp/l -c 'make build'",
+      "npx -c 'eslint .'",
+      "npm exec -c 'tsc -p .'",
+      "parallel 'gzip {}' ::: a b",
+      "parallel 'rm -rf {}' ::: build dist",
+      "parallel 'rm -rf {}' ::: \"$D\"",
+      "watch \"$CMD\"",
+    ]) {
+      expect([c, rule(c)]).toEqual([c, null])
+    }
+  })
+
+  test('a command-string wrapper whose script does not parse is denied as a parse error, like sh -c', () => {
+    for (const c of ["watch 'echo $('", "flock /tmp/l -c 'echo $('", "npx -c 'echo $('", "parallel 'echo $(' ::: a"]) expect([c, rule(c)]).toEqual([c, 'parse-error'])
+  })
+
+  test('runner globals that take a value are skipped on the way to exec', () => {
+    for (const c of [
+      'pnpm --filter web exec rm -rf ~',
+      'pnpm --filter=web exec rm -rf ~',
+      'pnpm -F web exec rm -rf ~',
+      'pnpm -C web exec rm -rf ~',
+      'pnpm --dir web exec rm -rf ~',
+      'pnpm -w exec rm -rf ~',
+      'npm --prefix web exec rm -rf ~',
+      'npm -w web exec -- rm -rf ~',
+      'npm --workspace web exec -- rm -rf ~',
+      'npm --workspace=web x rimraf ~',
+      'yarn --cwd web exec rm -rf ~',
+      'bun --cwd web x rimraf ~',
+      'uv --directory web run rm -rf ~',
+      'uv --project web run rm -rf ~',
+    ]) {
+      expect([c, rule(c)]).toEqual([c, 'rm-root'])
+    }
+    for (const c of ['pnpm --filter web exec tsc', 'npm --prefix web exec -- eslint .', 'yarn --cwd web exec jest', 'pnpm --filter web build']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('rm fed by a find from a protected path through any number of pipeline stages', () => {
+    for (const c of ['find /etc -type f | grep -v x | xargs rm -f', 'find /etc | sort | xargs rm', 'find ~ -name "*.bak" | grep -v keep | sort -u | xargs -0 rm -rf']) {
+      expect([c, rule(c)]).toEqual([c, 'rm-root'])
+    }
+    expectRules(['find ~/.ssh | sort | xargs rm'], ['rm-critical'])
+    for (const c of ['find . -type f | grep -v x | xargs rm -f', 'find /tmp/x | sort | xargs rm', 'find /etc | sort | xargs ls']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('a brace list in a protected position is expanded', () => {
+    expect(rule('rm -rf /{etc,x}')).toBe('rm-root')
+    expect(rule('rm -rf "$HOME"/{proj,..}')).toBe('rm-root')
+    expect(rule('rm -rf "$HOME"/{.ssh,x}')).toBe('rm-critical')
+    for (const c of ['jq . ~/{.claude,x}/.credentials.json', 'cp ~/.{claude,x}/.credentials.json /tmp/x', 'cat ~/.claude/.cred{entials,x}.json', 'cat ~/.claude/{a,.credentials.json}']) {
+      expect([c, rule(c)]).toEqual([c, 'credentials-read'])
+    }
+    for (const c of ['rm -rf ./{build,dist}', 'rm -rf /tmp/{a,b}', 'cp src/{a,b}.ts /tmp', 'cat ~/.claude/{settings,keybindings}.json', 'rm -rf build/{1..3}']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('huge brace lists, long xargs pipelines and long parallel argument lists stay fast', () => {
+    const t0 = performance.now()
+    expect(rule('rm -rf /tmp/' + '{a,b}'.repeat(40))).toBeNull()
+    expect(rule('echo ' + Array(500).fill('x{a,b}').join(' '))).toBeNull()
+    expect(rule('rm -rf /tmp/x ' + Array(300).fill('{a,b}').join(' '))).toBeNull()
+    expect(rule('find . | ' + 'xargs rm | '.repeat(3000) + 'cat')).toBeNull()
+    expect(rule('find /etc | ' + 'xargs rm | '.repeat(3000) + 'cat')).toBe('rm-root')
+    expect(rule("parallel 'rm -rf {} {} {}' ::: " + 'a '.repeat(10000) + '/')).toBe('rm-root')
+    expect(rule("parallel 'rm -rf {}' ::: " + 'a '.repeat(10000))).toBeNull()
+    expect(performance.now() - t0).toBeLessThan(2000)
+  })
+
+  test('path components are compared without case', () => {
+    for (const c of ['rm -rf /PRIVATE/etc', 'rm -rf /ETC', 'rm -rf /Private/Var', 'rm -rf /USR/*', 'rm -rf /users/bob'])expect([c, rule(c)]).toEqual([c, 'rm-root'])
+    expectRules(['rm -f /Etc/hosts', 'rm -f ~/.SSH/id_ed25519', 'rm /library/x', 'rm -f ~/.BashRC'], ['rm-critical'])
+    for (const c of ['cat ~/.CLAUDE/.credentials.json', 'jq . ~/.Claude/.Credentials.JSON', 'cd ~/.CLAUDE && cat .credentials.json']) expect([c, rule(c)]).toEqual([c, 'credentials-read'])
+    for (const c of ['rm -rf /tmp/ETC', 'rm -rf ./ETC', 'cat ~/.claude/Settings.json']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('container-prune: a filtered volume listing names only some volumes', () => {
+    for (const c of [
+      'docker volume rm $(docker volume ls -q -f name=test_)',
+      'docker volume rm $(docker volume ls -qf name=test_)',
+      'docker volume rm $(docker volume ls -q --filter label=ci)',
+      'docker volume rm $(docker volume ls -q --filter=name=x)',
+      'docker volume ls -q -f name=tmp_ | xargs docker volume rm',
+    ]) {
+      expect([c, rule(c)]).toEqual([c, null])
+    }
+    for (const c of [
+      'docker volume rm $(docker volume ls -q)',
+      'docker volume rm $(docker volume ls -qf dangling=true)',
+      'docker volume rm $(docker volume ls -q -f dangling=true -f dangling=1)',
+      'docker volume rm $(docker volume ls -q -f "$F")',
+      'docker volume ls -q | xargs docker volume rm',
+    ]) {
+      expect([c, rule(c)]).toEqual([c, 'container-prune'])
+    }
+  })
+
+  test('git push :branch and --delete branch ask alike, only for protected-sounding names', () => {
+    for (const c of ['git push origin :main', 'git push origin :refs/heads/main', 'git push origin :release/2', 'git push origin --delete main', 'git push origin -d production', 'git push --delete origin "$B"']) {
+      expect([c, ask(c)]).toEqual([c, 'git-rewrite'])
+    }
+    for (const c of ['git push origin :feature-x', 'git push origin --delete feature-x', 'git push origin :wip', 'git push origin -d wip']) expect([c, ask(c)]).toEqual([c, null])
   })
 })
 

@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 import {
-  DEFAULTS, Lru, MAX_PROMPT_COMMAND, apiFor, isCloudModel, isLoopback, parseSystemone, systemoneRequest, wantsSystemone, backoffMs, completionText, modelNudge, ollamaRequest, ollamaStands, parseModelText, parseOllama, parseOptions, userPrompt,
+  DEFAULTS, Lru, MAX_PROMPT_COMMAND, apiFor, askOllama, isCloudModel, isLoopback, ollamaState, parseSystemone, systemoneRequest, wantsSystemone, backoffMs, completionText, modelNudge, ollamaRequest, ollamaStands, parseModelText, parseOllama, parseOptions, userPrompt,
 } from '../hooks/rules/judge'
+import type { OllamaHost } from '../hooks/rules/judge'
 
 describe('options', () => {
   test('defaults fill in, and values are clamped and checked', () => {
@@ -43,6 +44,27 @@ describe('redaction', () => {
       expect(body).toContain('aws s3 ls')
     }
     expect(userPrompt(`echo ${KEY}`, [])).toContain('<aws-key>')
+  })
+
+  test('password options, curl users, Stripe and npm tokens and credential headers never reach a model', () => {
+    const secrets: [string, string][] = [
+      ['mysql -u root -pS3cretPw app | sed -n 1p', 'S3cretPw'],
+      ['mysqldump --password hunter2xyz app | head', 'hunter2xyz'],
+      ['curl -u bob:pw0rdz https://x | jq .', 'pw0rdz'],
+      ['curl --user bob:pw0rdz https://x | jq .', 'pw0rdz'],
+      ['STRIPE=sk_live_51Habcdefghijklmnop; cat x', 'sk_live_'],
+      ['echo sk_test_4eC39HqLyjWDarjtT1zdp7dc | cat', 'sk_test_'],
+      ['echo rk_live_abcdefghij0123456789 | cat', 'rk_live_'],
+      ['npm config set //r/:_authToken npm_abcdefghijklmnopqrstuvwxyz0123456789 && cat x', 'npm_abcdef'],
+      ['curl -H "X-Api-Key: k3yv4lue" https://x | cat', 'k3yv4lue'],
+      ['curl -H "Authorization: r4wt0ken" https://x | cat', 'r4wt0ken'],
+    ]
+    for (const [cmd, secret] of secrets) {
+      for (const body of [ollamaRequest('qwen3:8b', cmd, [`notes quote ${cmd}`]), systemoneRequest('clef', cmd, []), userPrompt(cmd, [cmd])]) {
+        expect([cmd, body.includes(secret)]).toEqual([cmd, false])
+      }
+    }
+    expect(userPrompt('psql -p5432 app | cat', [])).toContain('-p5432')
   })
 
   test('masking runs before the cut, so a key at the limit is not split into a partial token', () => {
@@ -153,6 +175,119 @@ describe('nudge', () => {
     const n = modelNudge({ category: 'read', confidence: 1, reason: 'a\nb' + 'x'.repeat(500) })!
     expect(n).not.toContain('\n')
     expect(n.length).toBeLessThan(400)
+  })
+})
+
+// The Ollama stage over a fake host: a settable clock, a scripted fetch and a sleep that resolves on demand. The engine
+// tests run with the manifest defaults (clef:cloud with ollamaCloud off), which skip this stage, so its HTTP behavior is
+// covered here.
+describe('the Ollama stage', () => {
+  type Res = { status: number; text: string }
+  const chat = (category: string, confidence: number) => ({ status: 200, text: JSON.stringify({ message: { content: JSON.stringify({ category, confidence, reason: 'r' }) } }) })
+  const decision = (choice: string, p: number) => ({ status: 200, text: JSON.stringify({ model: 'clef', answers: { category: { type: 'choice', choice, probabilities: { none: 0, read: 0, write: 0, smuggle: 0, [choice]: p } } } }) })
+
+  function host(replies: ((url: string) => Res | Promise<Res>)[], opts: { sleepFires?: boolean } = {}) {
+    const h = {
+      t: 1_000_000,
+      fetches: [] as { url: string; body: any }[],
+      reports: [] as string[],
+      oks: 0,
+      signals: [] as AbortSignal[],
+    }
+    const api: OllamaHost = {
+      now: async () => h.t,
+      sleep: (_ms, signal) => {
+        h.signals.push(signal)
+        return opts.sleepFires ? Promise.resolve() : new Promise((_r, reject) => signal.addEventListener('abort', () => reject(new Error('aborted'))))
+      },
+      fetch: async (url, init) => {
+        h.fetches.push({ url, body: JSON.parse(init.body) })
+        const next = replies.shift()
+        if (!next) throw new Error('connect ECONNREFUSED')
+        return next(url)
+      },
+      report: e => void h.reports.push(e),
+      ok: () => void h.oks++,
+      trace: () => {},
+    }
+    return { h, api }
+  }
+  const local = parseOptions({ ollamaModel: 'qwen3:8b' })
+
+  test('a chat model is asked at /api/chat, and a confident verdict stands; a timer is aborted once it answers', async () => {
+    const { h, api } = host([() => chat('read', 0.93)])
+    expect(await askOllama(api, ollamaState(), local, 'cat x', ['n'])).toEqual({ category: 'read', confidence: 0.93, reason: 'r' })
+    expect(h.fetches.map(f => f.url)).toEqual(['http://localhost:11434/api/chat'])
+    expect(h.fetches[0].body).toMatchObject({ model: 'qwen3:8b', stream: false })
+    expect(h.fetches[0].body.messages[1].content).toContain('<command>\ncat x\n</command>')
+    expect([h.oks, h.reports]).toEqual([1, []])
+    expect(h.signals[0].aborted).toBe(true)
+  })
+
+  test('a low-confidence verdict does not stand, and does not back off', async () => {
+    const { h, api } = host([() => chat('none', 0.4), () => chat('read', 0.9)])
+    const s = ollamaState()
+    expect(await askOllama(api, s, local, 'x', [])).toBeNull()
+    expect(s.downUntil).toBe(0)
+    expect(await askOllama(api, s, local, 'y', [])).toMatchObject({ category: 'read' })
+    expect(h.fetches).toHaveLength(2)
+  })
+
+  test('a missing model (404) backs off for the long interval; a later call past it asks again', async () => {
+    const { h, api } = host([() => ({ status: 404, text: '{"error":"model \'qwen3:8b\' not found"}' }), () => chat('write', 0.95)])
+    const s = ollamaState()
+    expect(await askOllama(api, s, local, 'x', [])).toBeNull()
+    expect(s.downUntil).toBe(h.t + backoffMs(true))
+    expect(h.reports).toEqual([expect.stringMatching(/not found/)])
+    h.t += backoffMs(true) - 1
+    expect(await askOllama(api, s, local, 'x', [])).toBeNull()
+    expect(h.fetches).toHaveLength(1)
+    h.t += 1
+    expect(await askOllama(api, s, local, 'x', [])).toMatchObject({ category: 'write' })
+    expect(h.fetches).toHaveLength(2)
+  })
+
+  test('no answer within the timeout falls through and backs off for the short interval', async () => {
+    const { h, api } = host([() => new Promise<Res>(() => {})], { sleepFires: true })
+    const s = ollamaState()
+    expect(await askOllama(api, s, local, 'x', [])).toBeNull()
+    expect(h.reports).toEqual([`ollama: no answer within ${local.ollamaTimeoutMs} ms`])
+    expect(s.downUntil).toBe(h.t + backoffMs(false))
+  })
+
+  test('a refused connection and a malformed reply fail; only the first backs off', async () => {
+    const { h, api } = host([])
+    const s = ollamaState()
+    expect(await askOllama(api, s, local, 'x', [])).toBeNull()
+    expect(h.reports).toEqual(['ollama: connect ECONNREFUSED'])
+    expect(s.downUntil).toBe(h.t + backoffMs(false))
+    const bad = host([() => ({ status: 200, text: '{"message":{"content":"sure"}}' })])
+    const s2 = ollamaState()
+    expect(await askOllama(bad.api, s2, local, 'x', [])).toBeNull()
+    expect(bad.h.reports).toEqual(['ollama: message is not a verdict'])
+    expect(s2.downUntil).toBe(0)
+  })
+
+  test('a chat refusal that names /v1/systemone switches the endpoint, retries once, and the switch sticks', async () => {
+    const o = parseOptions({ ollamaModel: 'gemma4:cloud', ollamaCloud: true })
+    const refusal = { status: 400, text: '{"error":"gemma4 is a decision model and only supports /v1/systemone"}' }
+    const { h, api } = host([() => refusal, () => decision('smuggle', 0.9), () => decision('none', 0.99)])
+    const s = ollamaState()
+    expect(await askOllama(api, s, o, 'x', [])).toEqual({ category: 'smuggle', confidence: 0.9, reason: 'clef chose smuggle at p=0.90' })
+    expect(s.apis.get('gemma4:cloud')).toBe('systemone')
+    expect(await askOllama(api, s, o, 'y', [])).toMatchObject({ category: 'none' })
+    expect(h.fetches.map(f => f.url.replace('http://localhost:11434', ''))).toEqual(['/api/chat', '/v1/systemone', '/v1/systemone'])
+    expect(h.fetches[1].body).toMatchObject({ model: 'gemma4:cloud', questions: { category: { type: 'choice' } } })
+  })
+
+  test('a clef model goes straight to /v1/systemone; the default cloud model is skipped without a request', async () => {
+    const { h, api } = host([() => decision('read', 0.95)])
+    expect(await askOllama(api, ollamaState(), parseOptions({ ollamaCloud: true }), 'x', [])).toMatchObject({ category: 'read', confidence: 0.95 })
+    expect(h.fetches.map(f => f.url)).toEqual(['http://localhost:11434/v1/systemone'])
+    const skip = host([() => decision('read', 1)])
+    expect(await askOllama(skip.api, ollamaState(), parseOptions(undefined), 'x', [])).toBeNull()
+    expect(skip.h.fetches).toHaveLength(0)
+    expect(skip.h.reports).toEqual([expect.stringMatching(/^ollama skipped: clef:cloud is a cloud model/)])
   })
 })
 

@@ -297,3 +297,70 @@ export class Lru<K, V> {
 // How long the Ollama stage is skipped after a failure: a missing model is not coming back soon, a timeout or refused
 // connection may.
 export const backoffMs = (missingModel: boolean) => (missingModel ? 10 * 60_000 : 60_000)
+
+// What the Ollama stage needs from the host. register.tsx builds it from `$` (`$.clock`, `$.http.fetch`, `$.ui.log`), so
+// the stage itself runs, and is tested, without `$`.
+export type OllamaHost = {
+  now: () => Promise<number>
+  // Resolves after `ms`, or rejects once `signal` aborts.
+  sleep: (ms: number, signal: AbortSignal) => Promise<unknown>
+  fetch: (url: string, init: { method: string; headers: Record<string, string>; body: string }) => Promise<{ status: number; text: string }>
+  // A failure, logged once per distinct text; `ok` clears it.
+  report: (error: string) => void
+  ok: () => void
+  trace: (stage: string, v: ModelVerdict, ms: number) => void
+}
+
+// The stage's state across calls: skipped until `downUntil` after a failure, and the endpoint each model answers once a
+// refusal has shown it differs from apiFor's guess.
+export type OllamaState = { downUntil: number; apis: Map<string, OllamaApi> }
+
+export const ollamaState = (): OllamaState => ({ downUntil: 0, apis: new Map() })
+
+// Stage 1: the local Ollama model. Null when it is off, down, too slow, unsure or wrong-shaped; the caller falls back.
+export async function askOllama(h: OllamaHost, s: OllamaState, o: JudgeOptions, command: string, notes: readonly string[]): Promise<ModelVerdict | null> {
+  if (!o.ollamaUrl || !o.ollamaModel) return null
+  // A cloud model or a remote server sends the command off this machine: only with ollamaCloud on.
+  if (o.ollamaSkip) return (h.report(`ollama skipped: ${o.ollamaSkip}`), null)
+  if ((await h.now()) < s.downUntil) return null
+  const fail = async (error: string, missingModel = false) => {
+    s.downUntil = (await h.now()) + backoffMs(missingModel)
+    h.report(error)
+    return null
+  }
+  // The host's fetch takes no timeout or signal: race it against a sleep that is aborted once the race settles.
+  const started = await h.now()
+  const timer = new AbortController()
+  const sleep = h.sleep(o.ollamaTimeoutMs, timer.signal).then(
+    () => ({ timeout: true as const }),
+    () => ({ timeout: true as const }),
+  )
+  type Reply = { api: OllamaApi; res?: { status: number; text: string }; err?: unknown }
+  const post = (api: OllamaApi): Promise<Reply> =>
+    h
+      .fetch(`${o.ollamaUrl}${api === 'chat' ? '/api/chat' : '/v1/systemone'}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: api === 'chat' ? ollamaRequest(o.ollamaModel, command, notes) : systemoneRequest(o.ollamaModel, command, notes),
+      })
+      .then(
+        res => ({ api, res }),
+        (err: unknown) => ({ api, err: err ?? 'fetch failed' }),
+      )
+  const api = s.apis.get(o.ollamaModel) ?? apiFor(o.ollamaModel)
+  // A chat refusal that names /v1/systemone (a decision model) switches this model's endpoint and retries once.
+  const call = post(api).then(r => {
+    if (api !== 'chat' || !r.res || !wantsSystemone(r.res.status, r.res.text)) return r
+    s.apis.set(o.ollamaModel, 'systemone')
+    return post('systemone')
+  })
+  const first = await Promise.race([call, sleep])
+  timer.abort()
+  if ('timeout' in first) return await fail(`ollama: no answer within ${o.ollamaTimeoutMs} ms`)
+  if (first.err !== undefined || !first.res) return await fail(`ollama: ${first.err instanceof Error ? first.err.message : String(first.err)}`)
+  const out = first.api === 'chat' ? parseOllama(first.res.status, first.res.text) : parseSystemone(first.res.status, first.res.text)
+  if (!out.ok) return out.missingModel ? await fail(out.error, true) : (h.report(out.error), null)
+  h.ok()
+  h.trace(`ollama ${o.ollamaModel}`, out.verdict, (await h.now()) - started)
+  return ollamaStands(out.verdict, o.confidence) ? out.verdict : null
+}

@@ -1,7 +1,8 @@
 // The file-tool side of the credentials rule: Read, Grep, Edit, MultiEdit, Write and NotebookEdit calls that would touch
-// Claude Code's OAuth token cache, `${CLAUDE_CONFIG_DIR:-~/.claude}/.credentials.json`. danger.ts covers Bash. The check is
-// on the path as given, resolved against cwd and home; it does not follow symlinks. register.tsx lists the same tools in
-// its tool.call matcher. Nothing here touches `$`.
+// Claude Code's OAuth token cache, `${CLAUDE_CONFIG_DIR:-~/.claude}/.credentials.json`, are denied, and a Grep of a
+// directory above it with no glob runs with the file excluded. danger.ts covers Bash. The check is on the path as given,
+// resolved against cwd and home; it does not follow symlinks. register.tsx lists the same tools in its tool.call
+// matcher. Nothing here touches `$`.
 
 export const FILE_TOOLS = ['Read', 'Grep', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit'] as const
 
@@ -48,16 +49,20 @@ function credFiles(ctx: PathContext): string[] {
   return [...new Set(dirs.map(d => place(`${d}/${CRED_FILE}`, ctx)!))]
 }
 
+// The path as given, or placed, ends in `.claude/.credentials.json` or in a credentials file this session can reach
+// (`/proc/self/root/<configDir>/.credentials.json` is that file too). Each placed file starts with `/`, so a suffix
+// match stops at a component boundary.
 const isCred = (p: string, ctx: PathContext) => {
   if (endsInCred(p)) return true
   const placed = place(p, ctx)
-  return placed !== null && (endsInCred(placed) || credFiles(ctx).includes(placed))
+  return placed !== null && (endsInCred(placed) || credFiles(ctx).some(f => placed.endsWith(f)))
 }
 
 const MAX_BRACES = 64
 
-// A brace list expanded (`*.{json,ts}`), innermost first, up to MAX_BRACES patterns; null past that.
-function expandBraces(pat: string): string[] | null {
+// A brace list expanded (`*.{json,ts}`), innermost first, up to MAX_BRACES patterns; null past that. danger.ts uses it
+// for brace words in Bash commands too.
+export function expandBraces(pat: string): string[] | null {
   const out: string[] = []
   const todo = [pat]
   while (todo.length > 0) {
@@ -114,23 +119,32 @@ function globCanMatch(glob: string, rel: string): boolean {
   return false
 }
 
-// Whether a Grep call searches the credentials file: its path is the file, or its path is the directory that holds it
-// (any glob that can match, or none), or a directory above that with a glob that can match it. A `type` other than json
-// leaves the file out.
-function grepHits(input: Readonly<Record<string, unknown>>, ctx: PathContext): boolean {
+// The glob a Grep of a directory above the credentials file runs with when it has none. The Grep tool searches hidden
+// files; ripgrep reads a lone negated glob as "everything but this", at any depth.
+export const EXCLUDE_CRED_GLOB = `!**/${CRED_FILE}`
+
+// How a Grep call reaches the credentials file: 'deny' when its path is the file, or the directory that holds it (any
+// glob that can match, or none), or a directory above that with a glob or a `json` type that can match it; 'exclude'
+// when it is a directory above with neither, so the call can run with EXCLUDE_CRED_GLOB; null when it cannot reach it.
+// A `type` other than json leaves the file out.
+function grepReach(input: Readonly<Record<string, unknown>>, ctx: PathContext): 'deny' | 'exclude' | null {
   const path = typeof input.path === 'string' && input.path !== '' ? input.path : '.'
-  if (isCred(path, ctx)) return true
-  if (typeof input.type === 'string' && input.type !== '' && !/^json/i.test(input.type)) return false
+  if (isCred(path, ctx)) return 'deny'
+  const typed = typeof input.type === 'string' && input.type !== ''
+  // `json` is the only ripgrep type whose globs (`*.json`) take `.credentials.json`; `jsonl` is `*.jsonl`.
+  if (typed && !/^json$/i.test(input.type as string)) return null
   const dir = place(path, ctx)
-  if (dir === null) return false
+  if (dir === null) return null
   const glob = typeof input.glob === 'string' && input.glob.trim() !== '' ? input.glob : null
+  let reach: 'deny' | 'exclude' | null = null
   for (const file of credFiles(ctx)) {
     const prefix = dir === '/' ? '/' : `${dir}/`
     if (!file.startsWith(prefix)) continue
     const rel = file.slice(prefix.length)
-    if (glob === null ? !rel.includes('/') : globCanMatch(glob, rel)) return true
+    if (glob !== null ? globCanMatch(glob, rel) : typed || !rel.includes('/')) return 'deny'
+    if (glob === null) reach = 'exclude'
   }
-  return false
+  return reach
 }
 
 // Whether a file-tool call needs the path context at all. Read, Edit, Write and NotebookEdit take a literal path, so
@@ -142,16 +156,22 @@ export function mayTouchCredentials(tool: string, input: Readonly<Record<string,
   return typeof p === 'string' && (p.length > MAX_TOOL_PATH || p.toLowerCase().includes(CRED_FILE))
 }
 
-// The deny text for a file-tool call, or null to let it run. Input is model-controlled: every path and glob is bounded
-// before any regex runs on it.
-export function fileToolDeny(tool: string, input: Readonly<Record<string, unknown>>, ctx: PathContext): string | null {
+// What to do with a file-tool call: deny it (with the text), run it with these input fields changed (a Grep above the
+// file gets EXCLUDE_CRED_GLOB), or null to let it run as given. Input is model-controlled: every path and glob is
+// bounded before any regex runs on it.
+export type FileToolVerdict = { deny: string } | { rewrite: { glob: string } } | null
+
+export function fileToolCheck(tool: string, input: Readonly<Record<string, unknown>>, ctx: PathContext): FileToolVerdict {
   if (!(FILE_TOOLS as readonly string[]).includes(tool)) return null
   const fields = tool === 'Grep' ? ['path', 'glob'] : tool === 'NotebookEdit' ? ['notebook_path'] : ['file_path']
   for (const f of fields) {
     const v = input[f]
-    if (typeof v === 'string' && v.length > (f === 'glob' ? MAX_GLOB : MAX_TOOL_PATH)) return TOO_LONG_MESSAGE
+    if (typeof v === 'string' && v.length > (f === 'glob' ? MAX_GLOB : MAX_TOOL_PATH)) return { deny: TOO_LONG_MESSAGE }
   }
-  if (tool === 'Grep') return grepHits(input, ctx) ? CRED_TOOL_MESSAGE : null
+  if (tool === 'Grep') {
+    const reach = grepReach(input, ctx)
+    return reach === 'deny' ? { deny: CRED_TOOL_MESSAGE } : reach === 'exclude' ? { rewrite: { glob: EXCLUDE_CRED_GLOB } } : null
+  }
   const p = input[fields[0]]
-  return typeof p === 'string' && isCred(p, ctx) ? CRED_TOOL_MESSAGE : null
+  return typeof p === 'string' && isCred(p, ctx) ? { deny: CRED_TOOL_MESSAGE } : null
 }

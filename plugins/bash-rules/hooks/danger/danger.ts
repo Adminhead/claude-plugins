@@ -4,6 +4,7 @@
 // bash-danger-guard, plus the infra-destroy, container-prune, db-drop and git-clean rules. They target model
 // accidents, not a determined adversary, so variable indirection, download-then-run and `cd / && rm -rf *` are out of scope. Nothing here touches `$`.
 
+import { expandBraces } from './credfile'
 import { nestedScript, reparse } from '../shell/walk'
 import type { ShellCommand } from '../shell/walk'
 
@@ -38,7 +39,9 @@ export const baseName = (t: string | null) => (t ?? '').slice((t ?? '').lastInde
 // (attached or as the next word), `long` the long options that take one as the next word, `operands` the
 // positional words before the command, `assigns` whether NAME=value words come before it, `lookup` the letters
 // that make it a lookup instead of a run, and `sub` the subcommand words, one of which must come first (`uv run`).
-type Wrapper = { short: string; long?: readonly string[]; operands?: number; assigns?: boolean; lookup?: string; sub?: readonly string[] }
+// `pre` lists the global options before the subcommand that take a value as the next word (`pnpm --filter web exec`).
+type Valued = { short: string; long: readonly string[] }
+type Wrapper = { short: string; long?: readonly string[]; operands?: number; assigns?: boolean; lookup?: string; sub?: readonly string[]; pre?: Valued }
 
 const WRAPPERS: Record<string, Wrapper> = {
   sudo: {
@@ -62,6 +65,7 @@ const WRAPPERS: Record<string, Wrapper> = {
     short: 'p',
     long: ['with', 'python', 'project', 'directory', 'env-file', 'extra', 'group', 'package', 'with-requirements', 'with-editable', 'index', 'default-index'],
     sub: ['run'],
+    pre: { short: '', long: ['directory', 'project', 'config-file', 'cache-dir', 'color'] },
   },
   // Multi-call binaries run their applet: `busybox rm -rf /`. Their `sh -c` script is the walker's (nestedScript).
   busybox: { short: '' },
@@ -81,11 +85,29 @@ const WRAPPERS: Record<string, Wrapper> = {
   // Package runners: `npx rimraf ~`, `pnpm dlx prisma migrate reset`, `bundle exec rails db:drop`.
   npx: { short: 'pc', long: ['package', 'call', 'shell', 'node-options'] },
   bunx: { short: 'p', long: ['package'] },
-  pnpm: { short: '', long: ['package', 'filter', 'dir'], sub: ['dlx', 'exec'] },
-  yarn: { short: 'p', long: ['package'], sub: ['dlx', 'exec'] },
-  npm: { short: 'pc', long: ['package', 'call', 'workspace'], sub: ['exec', 'x'] },
-  bun: { short: 'p', long: ['package'], sub: ['x'] },
+  // pnpm's `-w` is --workspace-root and takes no value; npm's `-w` is --workspace and does.
+  pnpm: { short: '', long: ['package', 'filter', 'dir'], sub: ['dlx', 'exec'], pre: { short: 'CF', long: ['filter', 'filter-prod', 'dir', 'reporter', 'loglevel'] } },
+  yarn: { short: 'p', long: ['package'], sub: ['dlx', 'exec'], pre: { short: '', long: ['cwd'] } },
+  npm: { short: 'pc', long: ['package', 'call', 'workspace'], sub: ['exec', 'x'], pre: { short: 'wC', long: ['prefix', 'workspace', 'userconfig', 'cache', 'registry', 'loglevel'] } },
+  bun: { short: 'p', long: ['package'], sub: ['x'], pre: { short: '', long: ['cwd', 'config'] } },
   bundle: { short: '', sub: ['exec'] },
+}
+
+// Whether option word `a` takes the next word as its value: a long option in `v.long` without `=`, or a short cluster
+// that ends in a letter of `v.short`.
+const takesNext = (a: string, v: Valued) =>
+  a.startsWith('--') ? !a.includes('=') && v.long.includes(a.slice(2)) : v.short.includes(a[a.length - 1]) && [...a.slice(1, -1)].every(ch => !v.short.includes(ch))
+
+// The index just past a runner's subcommand (`pnpm --filter web exec` -> after `exec`), or null when the first word
+// after its global options is not one of its subcommands.
+function pastSub(argv: Argv, w: Wrapper): number | null {
+  let i = 1
+  for (; i < argv.length; i++) {
+    const a = argv[i]
+    if (a === null || a[0] !== '-' || a === '-') break
+    if (w.pre && takesNext(a, w.pre)) i++
+  }
+  return w.sub!.includes(argv[i] ?? '') ? i + 1 : null
 }
 
 // The command a wrapper runs, or null when it runs none, is only a lookup (`command -v`), or its words are unknown.
@@ -94,9 +116,9 @@ function unwrap(argv: Argv): Argv | null {
   if (!w) return null
   let i = 1
   if (w.sub) {
-    while (i < argv.length && argv[i]?.startsWith('-')) i++
-    if (!w.sub.includes(argv[i] ?? '')) return null
-    i++
+    const at = pastSub(argv, w)
+    if (at === null) return null
+    i = at
   }
   for (; i < argv.length; i++) {
     const a = argv[i]
@@ -123,7 +145,7 @@ function unwrap(argv: Argv): Argv | null {
 }
 
 // The script of `env -S STR`, `env -S"STR"` and `env --split-string=STR`: a command line env splits and runs.
-export function envSplit(argv: Argv): string | null {
+function envSplit(argv: Argv): string | null {
   if (baseName(argv[0]) !== 'env') return null
   for (let i = 1; i < argv.length; i++) {
     const a = argv[i]
@@ -140,6 +162,104 @@ export function envSplit(argv: Argv): string | null {
   }
   return null
 }
+
+// The value of a `-c X`, `-cX`, `--NAME X` or `--NAME=X` option among the words from `from` up to `--` or the first
+// operand (all words when `anywhere`). `skip` lists the other options whose value is the next word. Null when there is
+// none or it is not literal.
+function optionValue(argv: Argv, from: number, short: string, long: string, skip: Valued, anywhere = false): string | null {
+  for (let i = from; i < argv.length; i++) {
+    const a = argv[i]
+    if (a === null || a === '--') return null
+    if (a[0] !== '-' || a === '-') {
+      if (anywhere) continue
+      return null
+    }
+    if (a.startsWith('--')) {
+      if (a === `--${long}`) return argv[i + 1] ?? null
+      if (a.startsWith(`--${long}=`)) return a.slice(long.length + 3)
+      if (takesNext(a, skip)) i++
+      continue
+    }
+    const at = a.indexOf(short)
+    if (at > 0 && [...a.slice(1, at)].every(ch => !skip.short.includes(ch))) return at < a.length - 1 ? a.slice(at + 1) : (argv[i + 1] ?? null)
+    if (takesNext(a, skip)) i++
+  }
+  return null
+}
+
+const WATCH: Valued = { short: 'nq', long: ['interval', 'equexit'] }
+const FLOCK: Valued = { short: 'wE', long: ['timeout', 'conflict-exit-code'] }
+const NPX: Valued = { short: 'pw', long: ['package', 'node-options', 'workspace'] }
+
+// How many `:::` arguments a parallel template is written out for, and how long the result may grow.
+const MAX_PARALLEL_ARGS = 16
+const MAX_PARALLEL_SCRIPT = 64 * 1024
+// parallel's replacement strings for the whole argument: `{}`, `{.}`, `{/}`, `{//}`, `{/.}` and positional `{1}`.
+const PARALLEL_SLOT = /\{(?:\d*|\.|\/|\/\/|\/\.)\}/g
+
+// The script GNU parallel hands its shell: the command words joined, with each literal `:::` argument written into the
+// `{}` slots (or appended when there are none), one line per argument. With no command words, each argument is a
+// command. An argument that is an expansion becomes one here too, so it reads as an unknown word.
+function parallelScript(argv: Argv): string | null {
+  const words = unwrap(argv) ?? []
+  const sep = words.findIndex(a => a !== null && /^:{3,4}\+?$/.test(a))
+  const template = sep < 0 ? words : words.slice(0, sep)
+  if (template.includes(null)) return null
+  const args = (sep < 0 ? [] : words.slice(sep + 1)).filter(a => a === null || !/^:{3,4}\+?$/.test(a)).map(a => a ?? '"$PARALLEL_ARG"')
+  const cmd = template.join(' ')
+  if (cmd === '') return args.length > 0 ? args.join('\n') : null
+  if (args.length === 0) return null
+  // Past the bounds every argument is appended to one command line instead, which grows only linearly.
+  const flat = `${cmd.replace(PARALLEL_SLOT, '')} ${args.join(' ')}`
+  if (args.length > MAX_PARALLEL_ARGS) return flat
+  const slotted = cmd.search(PARALLEL_SLOT) >= 0
+  const script = args.map(a => (slotted ? cmd.replace(PARALLEL_SLOT, () => a) : `${cmd} ${a}`)).join('\n')
+  return script.length > MAX_PARALLEL_SCRIPT ? flat : script
+}
+
+// The script a command-string wrapper hands to a shell: `flock [opts] FILE -c STR` (or `-c STR` among its options),
+// `npx -c STR` and `npm exec|x -c STR` (also `--call`), `watch [opts] WORDS...` (watch joins its words and runs them with
+// `sh -c` unless `-x`), and a GNU parallel command template (parallelScript). Null for any other command, or when the
+// script is not literal. The caller reparses it as it does a `sh -c` script, so one that does not parse is a parse error.
+function wrapperScript(argv: Argv): string | null {
+  const name = baseName(argv[0])
+  if (name === 'flock') {
+    const own = optionValue(argv, 1, 'c', 'command', FLOCK)
+    if (own !== null) return own
+    // After the lock file: `flock FILE -c STR`.
+    let i = 1
+    while (i < argv.length && argv[i] !== null && argv[i]![0] === '-' && argv[i] !== '--') i += takesNext(argv[i]!, FLOCK) ? 2 : 1
+    if (argv[i] === '--') i++
+    const flag = argv[i + 1]
+    return flag === '-c' || flag === '--command' ? (argv[i + 2] ?? null) : flag?.startsWith('--command=') ? flag.slice('--command='.length) : null
+  }
+  if (name === 'npx') return optionValue(argv, 1, 'c', 'call', NPX)
+  if (name === 'npm') {
+    const at = pastSub(argv, WRAPPERS.npm)
+    return at === null ? null : optionValue(argv, at, 'c', 'call', NPX)
+  }
+  if (name === 'watch') {
+    let i = 1
+    for (; i < argv.length; i++) {
+      const a = argv[i]
+      if (a === null) return null
+      if (a === '--') {
+        i++
+        break
+      }
+      if (a[0] !== '-' || a === '-') break
+      if (a === '-x' || a === '--exec' || (/^-[^-]/.test(a) && a.includes('x'))) return null
+      if (takesNext(a, WATCH)) i++
+    }
+    const words = argv.slice(i)
+    return words.length > 0 && !words.includes(null) ? words.join(' ') : null
+  }
+  if (name === 'parallel') return parallelScript(argv)
+  return null
+}
+
+// A script a command hands to a shell: `sh -c`, `eval` (the walker's), `env -S`, or a command-string wrapper.
+export const handedScript = (argv: Argv): string | null => nestedScript(argv) ?? envSplit(argv) ?? wrapperScript(argv)
 
 const FIND_EXEC = new Set(['-exec', '-execdir', '-ok', '-okdir'])
 
@@ -172,11 +292,11 @@ function* views(argv: Argv, level = 0): Generator<Argv> {
 
 export const viewsOf = (argv: Argv): Argv[] => [...views(argv)]
 
-// Whether a command, or a script it hands to a shell (`sh -c`, `eval`, `env -S`), runs one of `names`.
+// Whether a command, or a script it hands to a shell (`sh -c`, `eval`, `env -S`, `flock -c`, ...), runs one of `names`.
 function runs(argv: Argv, names: readonly string[], depth = 0): boolean {
   for (const v of views(argv)) {
     if (names.includes(baseName(v[0]))) return true
-    const script = nestedScript(v) ?? envSplit(v)
+    const script = handedScript(v)
     if (script === null) continue
     for (const c of reparse(script, depth + 1).commands) if (runs(c.argv, names, depth + 1)) return true
   }
@@ -223,8 +343,9 @@ function operandsSkipping(v: Argv, valued = ''): (string | null)[] {
 
 const operands = (v: Argv) => operandsSkipping(v)
 
-// A glob pattern (* ? [..]) against one name. A pattern this cannot read counts as a match.
-// A brace list (`/{bin,etc}`) never gets here: the walker reads it as an expansion (a null word).
+// A glob pattern (* ? [..]) against one name. A pattern this cannot read counts as a match. The path rules pass both
+// lowercased. A brace list (`/{bin,etc}`) never gets here: the walker reads it as an expansion (a null word), and
+// dangerHit checks its expansions as a command of their own.
 function globMatches(pat: string, name: string): boolean {
   let re = ''
   for (let i = 0; i < pat.length; i++) {
@@ -250,17 +371,20 @@ function globMatches(pat: string, name: string): boolean {
 
 const hasGlob = (s: string) => /[*?[]/.test(s)
 
+// Path components are compared lowercased, since macOS volumes ignore case (`/PRIVATE/etc`, `~/.CLAUDE`).
 const SYSTEM_DIRS = [
-  'bin', 'boot', 'dev', 'etc', 'home', 'lib', 'lib64', 'opt', 'root', 'run', 'sbin', 'srv', 'usr', 'var', 'Users',
-  'private', 'Applications', 'mnt', 'media', 'proc', 'sys',
+  'bin', 'boot', 'dev', 'etc', 'home', 'lib', 'lib64', 'opt', 'root', 'run', 'sbin', 'srv', 'usr', 'var', 'users',
+  'private', 'applications', 'mnt', 'media', 'proc', 'sys',
 ]
+
+const lower = (comps: string[]) => comps.map(c => c.toLowerCase())
 
 // macOS keeps /etc, /var and /tmp under /private: `/private/<dir>` stands for `/<dir>`.
 const unprivate = (comps: string[]) => (comps.length >= 2 && comps[0] === 'private' ? comps.slice(1) : comps)
 
 // null stands for any one name.
 const SYSTEM_PATHS: (string | null)[][] = [[], ...SYSTEM_DIRS.map(d => [d])]
-const HOME_PATHS: (string | null)[][] = [['home', null], ['Users', null]]
+const HOME_PATHS: (string | null)[][] = [['home', null], ['users', null]]
 
 const matches = (comps: string[], paths: (string | null)[][]) =>
   paths.some(p => p.length === comps.length && comps.every((c, i) => p[i] === null || (hasGlob(c) ? globMatches(c, p[i]!) : c === p[i])))
@@ -295,10 +419,10 @@ function protectedPath(t: string, home: boolean): boolean {
   if (!tilde && parts[0] !== '') return false
   const resolved = resolve(parts.slice(1), tilde)
   if (resolved === null) return true
-  if (tilde) return resolved.length === 0 || (resolved.length === 1 && wipesAll(resolved[0]))
-  const comps = unprivate(resolved)
+  if (tilde) return resolved.length === 0 || (resolved.length === 1 && wipesAll(resolved[0].toLowerCase()))
+  const comps = unprivate(lower(resolved))
   if (matches(comps, SYSTEM_PATHS) || (comps.length === 2 && wipesAll(comps[1]) && matches([comps[0]], SYSTEM_PATHS))) return true
-  return home && (matches(comps, HOME_PATHS) || (comps.length === 3 && /^(?:home|Users)$/.test(comps[0]) && wipesAll(comps[2])))
+  return home && (matches(comps, HOME_PATHS) || (comps.length === 3 && /^(?:home|users)$/.test(comps[0]) && wipesAll(comps[2])))
 }
 
 const anyProtected = (v: Argv, home: boolean) => operands(v).some(a => a !== null && protectedPath(a, home))
@@ -321,15 +445,19 @@ function findStarts(v: Argv): string[] {
   return out
 }
 
+const MAX_FEED_COMMANDS = 32
+
 // rimraf deletes recursively whatever it is given; `npx rimraf@5 ~` names it with a version.
 const RIMRAF = /^rimraf(?:@|$)/
 
-// The `find` commands whose output a view takes as its operands: the previous pipeline stage when xargs or parallel runs
-// it (`find /etc | xargs rm -f`), and its own substitutions when an operand is an expansion (`rm $(find /etc)`).
+// The `find` commands whose output a view takes as its operands: any earlier pipeline stage when xargs or parallel runs
+// it (`find /etc | xargs rm -f`, `find /etc | grep -v x | xargs rm`), and its own substitutions when an operand is an
+// expansion (`rm $(find /etc)`).
 function findFeeds(v: Argv, c: ShellCommand): Argv[] {
   const from: ShellCommand[] = []
   const p = c.pipeline
-  if (p && viaXargs(v, c)) from.push(...p.prev.filter(e => e.pipeline?.stage === p.stage - 1))
+  // The nearest MAX_FEED_COMMANDS commands upstream, so a long pipeline of xargs stages stays fast.
+  if (p && viaXargs(v, c)) from.push(...p.earlier.slice(-MAX_FEED_COMMANDS))
   if (operands(v).includes(null)) from.push(...c.subs)
   return from.flatMap(e => viewsOf(e.argv)).filter(w => baseName(w[0]) === 'find')
 }
@@ -353,23 +481,24 @@ const rmRoot = (v: Argv, c: ShellCommand) => {
 
 // Top-level directories whose contents are the system: deleting anything under them breaks the machine. /var counts only
 // for its state directories, so /var/tmp, /var/log and /var/cache stay deletable.
-const CRITICAL_ROOTS = new Set(['etc', 'boot', 'usr', 'bin', 'sbin', 'lib', 'lib32', 'lib64', 'libx32', 'root', 'System', 'Library', 'proc', 'sys'])
+const CRITICAL_ROOTS = new Set(['etc', 'boot', 'usr', 'bin', 'sbin', 'lib', 'lib32', 'lib64', 'libx32', 'root', 'system', 'library', 'proc', 'sys'])
 const CRITICAL_VAR = new Set(['lib', 'spool', 'mail', 'db', 'backups'])
-// Under a home directory: credentials and startup files.
+// Under a home directory: credentials and startup files. Matched against lowercased components.
 const HOME_CRITICAL = /^(?:\.ssh|\.gnupg|\.aws|\.kube|\.docker|\.config|\.local|\.(?:bash|zsh|ksh)rc|\.profile|\.bash_profile|\.bash_login|\.bash_logout|\.zprofile|\.zshenv|\.zlogin|\.zlogout|\.inputrc|\.gitconfig|\.netrc|\.npmrc|\.pypirc)$/
 const HOME_CRITICAL_DIRS = /^(?:\.ssh|\.gnupg|\.aws|\.kube)$/
 
 // Whether a path names a system file or directory, or a home credential or startup file (anything inside the credential
-// directories too). The path is normalized first; globs count when they can match (`/etc/*`, `~/.ssh/*`, `~/.*rc`).
+// directories too). The path is normalized and lowercased first; globs count when they can match (`/etc/*`, `~/.ssh/*`,
+// `~/.*rc`).
 function criticalPath(t: string): boolean {
   const parts = t.split('/')
   const tilde = /^~([^/+-][^/]*)?$/.test(parts[0]!)
   if (!tilde && parts[0] !== '') return false
   const resolved = resolve(parts.slice(1), tilde)
   if (resolved === null) return true
-  const comps = tilde ? resolved : unprivate(resolved)
+  const comps = tilde ? lower(resolved) : unprivate(lower(resolved))
   let home: string[] | null = tilde ? comps : null
-  if (!tilde && comps.length >= 2 && (comps[0] === 'home' || comps[0] === 'Users')) home = comps.slice(2)
+  if (!tilde && comps.length >= 2 && (comps[0] === 'home' || comps[0] === 'users')) home = comps.slice(2)
   if (!tilde && comps[0] === 'root') home = comps.slice(1)
   if (home !== null) {
     const first = home[0]
@@ -478,8 +607,29 @@ function composeDownVolumes(v: Argv): boolean {
   return v.slice(at + 1).some(a => a !== null && (a === '--volumes' || /^-[a-zA-Z]*v/.test(a)))
 }
 
-// A `docker|podman volume ls`, whose output names every volume.
-const listsVolumes = (w: Argv) => ['docker', 'podman'].includes(baseName(w[0])) && w[1] === 'volume' && (w[2] === 'ls' || w[2] === 'list')
+// The `--filter` values of a listing (`-f X`, `-qf X`, `-fX`, `--filter X`, `--filter=X`); null stands for an expansion.
+function filterValues(w: Argv): (string | null)[] {
+  const out: (string | null)[] = []
+  for (let i = 1; i < w.length; i++) {
+    const a = w[i]
+    if (a === null || a[0] !== '-') continue
+    if (a === '--filter') out.push(w[++i] ?? null)
+    else if (a.startsWith('--filter=')) out.push(a.slice('--filter='.length))
+    else if (/^-[^-]/.test(a) && a.includes('f')) {
+      const rest = a.slice(a.indexOf('f') + 1)
+      out.push(rest !== '' ? rest : (w[++i] ?? null))
+    }
+  }
+  return out
+}
+
+// A `docker|podman volume ls` whose output names every volume: no filter, or only `dangling=` ones (what `volume
+// prune` removes). A filter by name or label, or any other literal filter, names only some; an unknown one may not.
+const listsVolumes = (w: Argv) =>
+  ['docker', 'podman'].includes(baseName(w[0])) &&
+  w[1] === 'volume' &&
+  (w[2] === 'ls' || w[2] === 'list') &&
+  filterValues(w).every(f => f === null || /^dangling=/i.test(f))
 
 const containerPrune = (v: Argv, c: ShellCommand) => {
   const name = baseName(v[0])
@@ -676,12 +826,19 @@ function patternWords(v: Argv): Set<number> {
   return skip
 }
 
-// Whether a path component names the credentials file: the name, or a glob that starts with a dot and can match it.
-const credName = (s: string) => s === CRED_FILE || (s[0] === '.' && hasGlob(s) && globMatches(s, CRED_FILE))
+// Whether a path component names the credentials file: the name in any case, or a glob that starts with a dot and can
+// match it.
+const credName = (t: string) => {
+  const s = t.toLowerCase()
+  return s === CRED_FILE || (s[0] === '.' && hasGlob(s) && globMatches(s, CRED_FILE))
+}
 
-// Whether a path component names a `.claude` directory: the name, or a glob that starts with a dot and can match it
-// (`.cla*`, `.c?aude`). A glob without the leading dot (`*`) skips dot directories in the shell.
-const claudeName = (s: string) => s === '.claude' || (s[0] === '.' && hasGlob(s) && globMatches(s, '.claude'))
+// Whether a path component names a `.claude` directory: the name in any case, or a glob that starts with a dot and can
+// match it (`.cla*`, `.c?aude`). A glob without the leading dot (`*`) skips dot directories in the shell.
+const claudeName = (t: string) => {
+  const s = t.toLowerCase()
+  return s === '.claude' || (s[0] === '.' && hasGlob(s) && globMatches(s, '.claude'))
+}
 
 // Whether a literal path is the file under a `.claude` directory (`~/.claude/...`, `/home/x/.claude/...`, a relative `.claude/...`).
 function credPath(t: string): boolean {
@@ -752,7 +909,7 @@ const credentialsRead = (v: Argv, c: ShellCommand, all: readonly ShellCommand[])
       const m = /^\$\{?CLAUDE_CONFIG_DIR\}?\/(.*)$/s.exec(p)
       if (m && credPath(`.claude/${m[1]}`)) return true
     }
-    if (a !== null && /^(?:\.\/)*\.credentials\.json$/.test(valueOf(a)) && (claudeDir ??= all.some(entersClaudeDir))) return true
+    if (a !== null && /^(?:\.\/)*\.credentials\.json$/i.test(valueOf(a)) && (claudeDir ??= all.some(entersClaudeDir))) return true
   }
   if (c.assigns.some(a => a.value !== null && credPath(a.value))) return true
   const inv = invocation(v)
@@ -763,7 +920,10 @@ const credentialsRead = (v: Argv, c: ShellCommand, all: readonly ShellCommand[])
     const p = c.pipeline
     if (p) for (const e of p.prev) if (e.pipeline?.stage === p.stage - 1) code.push(...e.heredocs.map(h => h.body))
   }
-  return code.some(t => t.includes('.claude') && t.includes(CRED_FILE))
+  return code.some(t => {
+    const s = t.toLowerCase()
+    return s.includes('.claude') && s.includes(CRED_FILE)
+  })
 }
 
 const DANGER: [DangerRule, (v: Argv, c: ShellCommand, all: readonly ShellCommand[]) => boolean][] = [
@@ -779,12 +939,45 @@ const DANGER: [DangerRule, (v: Argv, c: ShellCommand, all: readonly ShellCommand
   ['credentials-read', credentialsRead],
 ]
 
+// A brace word longer than this is left as an unknown word, and a command whose brace words would add more words than
+// MAX_BRACE_WORDS is left as written.
+const MAX_BRACE_TEXT = 1024
+const MAX_BRACE_WORDS = 256
+
+// The command with each brace-list word written out as bash would (`rm -rf /{etc,x}` -> `rm -rf /etc /x`), or null when
+// it has none. The walker reads such a word as an expansion (null); its text keeps the braces. A word with any other
+// expansion than a leading $HOME stays unknown.
+function braceExpanded(c: ShellCommand): ShellCommand | null {
+  const argv: (string | null)[] = []
+  const text: string[] = []
+  let added = 0
+  for (let i = 0; i < c.argv.length; i++) {
+    const t = (c.text[i] ?? '').replace(/^\$\{?HOME\}?(?=\/)/, '~')
+    const alts = c.argv[i] === null && t.length <= MAX_BRACE_TEXT && t.includes('{') && t.includes(',') && !/[$`]/.test(t) ? expandBraces(t) : null
+    if (alts === null || alts.length < 2) {
+      argv.push(c.argv[i])
+      text.push(c.text[i] ?? '')
+      continue
+    }
+    added += alts.length - 1
+    if (added > MAX_BRACE_WORDS) return null
+    argv.push(...alts)
+    text.push(...alts)
+  }
+  return added > 0 ? { ...c, argv, text } : null
+}
+
 // The first danger rule that any command, or anything its wrappers and `find -exec` run, trips. Rules are tried in
-// order, so `sudo rm -rf /` reports priv-escalation.
+// order, so `sudo rm -rf /` reports priv-escalation. A command with brace-list words is checked as written and with
+// them written out.
 export function dangerHit(commands: readonly ShellCommand[]): { rule: DangerRule; message: string } | null {
-  const all = commands.map(c => ({ c, vs: viewsOf(c.argv) }))
+  const checked = commands.flatMap(c => {
+    const b = braceExpanded(c)
+    return b ? [c, b] : [c]
+  })
+  const all = checked.map(c => ({ c, vs: viewsOf(c.argv) }))
   for (const [rule, test] of DANGER) {
-    if (all.some(({ c, vs }) => vs.some(v => test(v, c, commands)))) return { rule, message: DANGER_MESSAGES[rule] }
+    if (all.some(({ c, vs }) => vs.some(v => test(v, c, checked)))) return { rule, message: DANGER_MESSAGES[rule] }
   }
   return null
 }
@@ -825,8 +1018,8 @@ function forcePush(rest: Argv): boolean {
 // Branch names that are usually shared or protected; an expansion (null) might be one.
 const PROTECTED_BRANCH = /^(?:refs\/heads\/)?(?:main|master|trunk|develop|development|dev|staging|stable|prod|production|live|release(?:[/-].*)?)$/
 
-// A push that deletes a remote branch: `--delete`/`-d` with a protected-ish branch (or an expansion) among the refs after
-// the remote, or a `:<branch>` refspec, which deletes whatever it names.
+// A push that deletes a protected-ish remote branch: `--delete`/`-d` with such a branch (or an expansion) among the refs
+// after the remote, or a `:<branch>` refspec that names one. A feature branch deletes quietly either way.
 function deletePush(rest: Argv): boolean {
   let del = false
   let positional = false
@@ -840,7 +1033,7 @@ function deletePush(rest: Argv): boolean {
     } else words.push(a)
   }
   const refs = words.slice(1)
-  if (refs.some(r => r !== null && /^:./.test(r))) return true
+  if (refs.some(r => r !== null && /^:./.test(r) && PROTECTED_BRANCH.test(r.slice(1)))) return true
   return del && refs.some(r => r === null || PROTECTED_BRANCH.test(r))
 }
 

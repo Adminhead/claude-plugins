@@ -1,16 +1,13 @@
 import type { Register } from 'claude-code'
-import { fileToolDeny, mayTouchCredentials } from './danger/credfile'
+import { fileToolCheck, mayTouchCredentials } from './danger/credfile'
 import type { PathContext } from './danger/credfile'
 import { DANGER_MESSAGES } from './danger/danger'
 import { analyze, withAsk } from './danger/rules'
 import { MAX_SQL_FILE, MAX_SQL_FILES, destroysData, sqlFiles, sqlPath, uncheckedMessage } from './danger/sqlfile'
 import { PRIMER, hygiene } from './rules/hygiene'
 import { laterDeny } from './rules/outcome'
-import {
-  Lru, SYSTEM, apiFor, backoffMs, completionText, modelNudge, ollamaRequest, ollamaStands, parseModelText, parseOllama, parseOptions, parseSystemone,
-  systemoneRequest, userPrompt, wantsSystemone,
-} from './rules/judge'
-import type { JudgeOptions, ModelVerdict, OllamaApi } from './rules/judge'
+import { Lru, SYSTEM, askOllama, completionText, modelNudge, ollamaState, parseModelText, parseOptions, userPrompt } from './rules/judge'
+import type { JudgeOptions, ModelVerdict, OllamaHost } from './rules/judge'
 import { appendArgv, line, logFile } from './log/usagelog'
 
 // All `$` code for bash-rules lives here. The verdicts are pure: danger/ (destructive, ask), rules/hygiene.ts (read,
@@ -39,58 +36,18 @@ const ok = (key: string) => {
 // Model verdicts per exact command, so a retry does not call a model again.
 const cache = new Lru<string, ModelVerdict>(256)
 
-// The Ollama stage is skipped until this time after a failure.
-let ollamaDownUntil = 0
+// The Ollama stage's backoff and per-model endpoint, across calls.
+const ollama = ollamaState()
 
-// The endpoint each Ollama model answers, once a refusal has shown it differs from apiFor's guess.
-const apis = new Map<string, OllamaApi>()
-
-// Stage 1: the local Ollama model. Null when it is off, down, too slow, unsure or wrong-shaped; the caller falls back.
-async function askOllama($: any, o: JudgeOptions, command: string, notes: readonly string[]): Promise<ModelVerdict | null> {
-  if (!o.ollamaUrl || !o.ollamaModel) return null
-  // A cloud model or a remote server sends the command off this machine: only with ollamaCloud on.
-  if (o.ollamaSkip) return (report($, 'ollama', `ollama skipped: ${o.ollamaSkip}`), null)
-  if ((await $.clock.now()) < ollamaDownUntil) return null
-  const fail = async (error: string, missingModel = false) => {
-    ollamaDownUntil = (await $.clock.now()) + backoffMs(missingModel)
-    report($, 'ollama', error)
-    return null
-  }
-  // `$.http.fetch` takes no timeout or signal: race it against a `$.clock.sleep` that is aborted once the race settles.
-  const started = await $.clock.now()
-  const timer = new AbortController()
-  const sleep = $.clock.sleep(o.ollamaTimeoutMs, { signal: timer.signal }).then(
-    () => ({ timeout: true as const }),
-    () => ({ timeout: true as const }),
-  )
-  const post = (api: OllamaApi) =>
-    $.http
-      .fetch(`${o.ollamaUrl}${api === 'chat' ? '/api/chat' : '/v1/systemone'}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: api === 'chat' ? ollamaRequest(o.ollamaModel, command, notes) : systemoneRequest(o.ollamaModel, command, notes),
-      })
-      .then(
-        (res: { status: number; text: string }) => ({ api, res }),
-        (err: unknown) => ({ api, err }),
-      )
-  const api = apis.get(o.ollamaModel) ?? apiFor(o.ollamaModel)
-  // A chat refusal that names /v1/systemone (a decision model) switches this model's endpoint and retries once.
-  const call = post(api).then((r: any) => {
-    if (api !== 'chat' || !r.res || !wantsSystemone(r.res.status, r.res.text)) return r
-    apis.set(o.ollamaModel, 'systemone')
-    return post('systemone')
-  })
-  const first: any = await Promise.race([call, sleep])
-  timer.abort()
-  if (first.timeout) return await fail(`ollama: no answer within ${o.ollamaTimeoutMs} ms`)
-  if (first.err !== undefined) return await fail(`ollama: ${first.err instanceof Error ? first.err.message : String(first.err)}`)
-  const out = first.api === 'chat' ? parseOllama(first.res.status, first.res.text) : parseSystemone(first.res.status, first.res.text)
-  if (!out.ok) return out.missingModel ? await fail(out.error, true) : (report($, 'ollama', out.error), null)
-  ok('ollama')
-  trace($, `ollama ${o.ollamaModel}`, out.verdict, (await $.clock.now()) - started)
-  return ollamaStands(out.verdict, o.confidence) ? out.verdict : null
-}
+// The Ollama stage (judge.ts) on this session's clock, HTTP and debug log.
+const ollamaHost = ($: any): OllamaHost => ({
+  now: () => $.clock.now(),
+  sleep: (ms, signal) => $.clock.sleep(ms, { signal }),
+  fetch: (url, init) => $.http.fetch(url, init),
+  report: error => report($, 'ollama', error),
+  ok: () => ok('ollama'),
+  trace: (stage, v, ms) => trace($, stage, v, ms),
+})
 
 // Stage 2: one completion on the fallback model. Its answer is final; null when it is off or fails.
 async function askFallback($: any, o: JudgeOptions, command: string, notes: readonly string[]): Promise<ModelVerdict | null> {
@@ -149,7 +106,7 @@ async function inLinkedWorktree($: any): Promise<boolean> {
 }
 
 // Where a file tool's relative and `~` paths point, and where the credentials file lives. A value that cannot be read
-// is null; fileToolDeny then checks the path as written.
+// is null; fileToolCheck then checks the path as written.
 async function pathContext($: any): Promise<PathContext> {
   const get = async (f: () => Promise<unknown> | unknown) => {
     try {
@@ -197,7 +154,7 @@ async function judge($: any, o: JudgeOptions, command: string, entry: BashEntry)
   else {
     const started = await $.clock.now()
     let source: 'ollama' | 'fallback' = 'ollama'
-    let found = await askOllama($, o, command, v.reasons)
+    let found = await askOllama(ollamaHost($), ollama, o, command, v.reasons)
     if (!found) {
       source = 'fallback'
       found = await askFallback($, o, command, v.reasons)
@@ -236,11 +193,16 @@ export const register: Register = (on, options) => {
   // Denies destructive Bash, Bash that reads or writes files the built-in tools should, and smuggled payloads, and logs
   // each decision with the command's outcome. analyze() bounds the input length before parsing; the model stages bound
   // what they send. The file tools are checked here too (one tool.call hook per plugin): none may touch the
-  // credentials file; fileToolDeny bounds each path before matching.
+  // credentials file, and a Grep above it runs with it excluded; fileToolCheck bounds each path before matching.
   on('tool.call', { tool: ['Bash', 'Read', 'Grep', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit'] }, async ($, e: any, next) => {
     if (e.tool !== 'Bash') {
-      const deny = mayTouchCredentials(e.tool, e) ? fileToolDeny(e.tool, e, await pathContext($)) : null
-      return deny !== null ? { deny } : next(e)
+      const v = mayTouchCredentials(e.tool, e) ? fileToolCheck(e.tool, e, await pathContext($)) : null
+      if (v === null) return next(e)
+      if ('deny' in v) return { deny: v.deny }
+      // A Grep of a directory above the credentials file runs with the file excluded.
+      $.ui.log(`bash-rules: ${e.tool} of ${String(e.path ?? '.').slice(0, 200)} runs with glob ${v.rewrite.glob}`, { to: 'debug' })
+      if (logging) await logLine($, 'file-tool', { agentId: e.agentId, tool: e.tool, path: e.path, decision: 'rewrite', glob: v.rewrite.glob })
+      return next({ ...e, ...v.rewrite })
     }
     if (typeof e.command !== 'string') return next(e)
     const entry: BashEntry = {}
