@@ -1,7 +1,7 @@
 {
   "name": "playwright-cli",
-  "version": "0.1.0",
-  "description": "Drive a headless, isolated browser from Bash with playwright-cli: inspect pages, fill forms, take screenshots, debug console and network errors, and run smoke QA.",
+  "version": "0.2.0",
+  "description": "Drive a headless, isolated browser from Bash with playwright-cli through a verb-checked wrapper: inspect pages, fill forms, take screenshots, debug console and network errors, and run smoke QA.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
