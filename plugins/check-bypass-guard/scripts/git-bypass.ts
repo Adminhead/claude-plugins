@@ -1,4 +1,5 @@
-// Finds git commands that skip or redirect git hooks or signing. Pure: no I/O.
+// Finds git commands that skip or redirect git hooks or signing, for one command (`-c`, `--config-env`, the
+// environment, `--no-verify`) or for good (`git config` setting, unsetting or dropping the keys and sections). Pure: no I/O.
 //
 // Adapted from ECC's scripts/hooks/block-no-verify.js (MIT, (c) 2026 Affaan Mustafa) and wshobson's
 // block-no-verify plugin (MIT, (c) 2024 Seth Hobson), rewritten on the shell AST walker so words inside
@@ -8,18 +9,24 @@
 import { nestedScript, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand } from './shell/walk.ts'
 
+// Hits are denied. `config-edit` (a git config change the guard cannot read) and `unparsed` ask.
 export type GitHit = { rule: 'no-verify' | 'no-gpg-sign' | 'hooks-path' | 'skip-env'; message: string }
-export type GitVerdict = GitHit | { rule: 'unparsed'; message: string } | null
+export type GitAsk = { rule: 'config-edit' | 'unparsed'; message: string }
+export type GitVerdict = GitHit | GitAsk | null
+type Rule = GitHit['rule'] | 'config-edit'
+
+export const isAsk = (v: NonNullable<GitVerdict>): v is GitAsk => v.rule === 'config-edit' || v.rule === 'unparsed'
 
 export const MAX_COMMAND = 64 * 1024
 const MAX_REPARSE = 256 * 1024
 
 const FIX = 'Fix what the hook reports and commit again; if a hook itself is broken, tell the user.'
-const MESSAGES: Record<GitHit['rule'], string> = {
+const MESSAGES: Record<Rule, string> = {
   'no-verify': `check-bypass-guard: --no-verify (or commit -n) skips the git hooks. ${FIX}`,
-  'no-gpg-sign': `check-bypass-guard: --no-gpg-sign or a gpgsign=false override skips commit signing. Sign the commit, or ask the user.`,
-  'hooks-path': `check-bypass-guard: overriding core.hooksPath or include paths on the command line redirects the git hooks. ${FIX}`,
+  'no-gpg-sign': `check-bypass-guard: --no-gpg-sign, or setting gpgsign to false or removing it (with -c or git config), skips commit signing. Sign the commit, or ask the user.`,
+  'hooks-path': `check-bypass-guard: setting, overriding or removing core.hooksPath or an include path (with -c, the environment or git config) redirects the git hooks. ${FIX}`,
   'skip-env': `check-bypass-guard: SKIP, HUSKY=0 and LEFTHOOK=0 turn off pre-commit, husky or lefthook hooks. ${FIX}`,
+  'config-edit': 'check-bypass-guard: this git config command opens an editor, has a key or value that could not be read, or uses an option the guard does not know, so it may change core.hooksPath, include paths or signing. Confirm it leaves the hooks and signing on.',
 }
 const UNPARSED = 'check-bypass-guard: this git command could not be checked for hook bypasses (too long or not plain bash). Confirm it skips no hooks.'
 
@@ -44,10 +51,10 @@ const WRAPPERS: Record<string, { short: string; long?: string[]; operands?: numb
 
 const ASSIGN = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/s
 
-type View = { argv: Argv; env: { name: string; value: string | null }[] }
+export type View = { argv: Argv; env: { name: string; value: string | null }[] }
 
 // The command and what its wrappers run, each with the NAME=value words in front of it (env's included).
-function views(c: ShellCommand): View[] {
+export function views(c: ShellCommand): View[] {
   const env = c.assigns.filter(a => a.name !== null).map(a => ({ name: a.name!, value: a.value }))
   const out: View[] = [{ argv: c.argv, env }]
   let argv = c.argv
@@ -89,7 +96,9 @@ function views(c: ShellCommand): View[] {
 
 // git config keys that move or drop the hooks, or turn signing off.
 const isHookKey = (k: string) => /^(?:core\.hookspath|include\.path|includeif\..*\.path)$/.test(k.toLowerCase())
-const isSignOff = (k: string, v: string) => /^(?:commit|tag|push|rebase)\.gpgsign$/.test(k.toLowerCase()) && /^(?:false|no|off|0|)$/i.test(v.trim())
+const isSignKey = (k: string) => /^(?:commit|tag|push|rebase)\.gpgsign$/.test(k.toLowerCase())
+const isFalse = (v: string) => /^(?:false|no|off|0|)$/i.test(v.trim())
+const isSignOff = (k: string, v: string) => isSignKey(k) && isFalse(v)
 
 function configHit(setting: string): GitHit['rule'] | null {
   const eq = setting.indexOf('=')
@@ -128,7 +137,106 @@ const SHORT_OPTIONAL: Record<string, string> = { commit: 'uS', merge: 'S', rebas
 
 const prefixOf = (word: string, full: string, min: number) => word.length >= min && full.startsWith(word)
 
-function gitHit(v: View): GitHit['rule'] | null {
+// git config's long options (git 2.56), in both the legacy and the subcommand forms. git takes any unambiguous prefix
+// (`--repl`, `--unset-al`, `--glob`) and a `no-` form of most.
+const CONFIG_LONG = [
+  'global', 'system', 'local', 'worktree', 'file', 'blob', 'get', 'get-all', 'get-regexp', 'get-urlmatch', 'replace-all', 'add',
+  'unset', 'unset-all', 'rename-section', 'remove-section', 'list', 'edit', 'get-color', 'get-colorbool', 'null', 'name-only',
+  'show-origin', 'show-scope', 'show-names', 'type', 'bool', 'int', 'bool-or-int', 'bool-or-str', 'path', 'expiry-date', 'default',
+  'comment', 'fixed-value', 'includes', 'all', 'value', 'regexp', 'url',
+]
+const CONFIG_VALUED = new Set(['file', 'blob', 'type', 'default', 'comment', 'value', 'url'])
+const CONFIG_ACTIONS = new Set(['add', 'replace-all', 'unset', 'unset-all', 'rename-section', 'remove-section', 'edit'])
+// Legacy read actions. `--get name value-pattern` has two operands, so with one of these no operand pair is a set.
+const CONFIG_READS = new Set(['get', 'get-all', 'get-regexp', 'get-urlmatch', 'get-color', 'get-colorbool', 'list'])
+const CONFIG_SUBS = new Set(['list', 'get', 'set', 'unset', 'rename-section', 'remove-section', 'edit'])
+// Sections whose removal or renaming drops a hooks path, an include, or a signing setting. `[core "x"]` is another section.
+const isGuardedSection = (s: string) => /^(?:core|commit|tag|include)$|^includeif(?:\..*)?$/i.test(s)
+
+// The option a long-option word names, `no-` forms as `!name`, or null when git would reject it as unknown or ambiguous.
+function configLong(word: string): string | null {
+  if (CONFIG_LONG.includes(word)) return word
+  const neg = word.startsWith('no-') ? word.slice(3) : null
+  if (neg !== null && CONFIG_LONG.includes(neg)) return `!${neg}`
+  const hits = [
+    ...CONFIG_LONG.filter(o => o.startsWith(word)),
+    ...(neg === null ? [] : CONFIG_LONG.filter(o => o.startsWith(neg)).map(o => `!${o}`)),
+  ]
+  return word !== '' && hits.length === 1 ? hits[0] : null
+}
+
+type ConfigChange = { op: 'set' | 'unset' | 'section'; key: string | null; value?: string | null }
+
+// A `git config` command's verdict, read from the word after `config` on: a deny rule, `config-edit` for an editor or a
+// change whose key or value is an expansion, or null for a read or a change to other keys. Every scope and file option
+// counts the same.
+function configRule(argv: Argv, start: number): Rule | null {
+  const actions: string[] = []
+  const ops: (string | null)[] = []
+  let unknown = false
+  let read = false
+  let options = true
+  for (let i = start; i < argv.length; i++) {
+    const a = argv[i]
+    if (!options || a === null || a === '-' || a[0] !== '-') {
+      ops.push(a)
+      continue
+    }
+    if (a === '--') {
+      options = false
+      continue
+    }
+    if (a.startsWith('--')) {
+      const eq = a.indexOf('=')
+      const opt = configLong(a.slice(2, eq < 0 ? undefined : eq))
+      if (opt === null) unknown = true
+      else if (CONFIG_VALUED.has(opt) && eq < 0) i++
+      else if (CONFIG_ACTIONS.has(opt)) actions.push(opt)
+      else if (CONFIG_READS.has(opt)) read = true
+      continue
+    }
+    for (let k = 1; k < a.length; k++) {
+      const ch = a[k]
+      if (ch === 'e') actions.push('edit')
+      else if (ch === 'l') read = true
+      else if (ch === 'f' || ch === 't') {
+        if (k === a.length - 1) i++
+        break
+      } else if (ch !== 'z') unknown = true
+    }
+  }
+  const sub = actions.length === 0 && !read && typeof ops[0] === 'string' && CONFIG_SUBS.has(ops[0]) ? ops[0] : null
+  const rest = sub === null ? ops : ops.slice(1)
+  const kinds = sub === null ? actions : [sub]
+  const changes: ConfigChange[] = []
+  // Legacy `git config <name> <value>`; one operand is a read.
+  if (kinds.length === 0 && !read && rest.length >= 2) changes.push({ op: 'set', key: rest[0], value: rest[1] })
+  for (const kind of kinds) {
+    if ((kind === 'set' || kind === 'add' || kind === 'replace-all') && rest.length >= 2) changes.push({ op: 'set', key: rest[0], value: rest[1] })
+    else if ((kind === 'unset' || kind === 'unset-all') && rest.length >= 1) changes.push({ op: 'unset', key: rest[0] })
+    else if (kind === 'remove-section' || kind === 'rename-section') {
+      // Renaming into a guarded section can plant a key there, so both names count.
+      for (const s of rest.slice(0, kind === 'rename-section' ? 2 : 1)) changes.push({ op: 'section', key: s })
+    }
+  }
+  let ask = kinds.includes('edit')
+  for (const c of changes) {
+    if (c.key === null) ask = true
+    else if (c.op === 'section') {
+      if (isGuardedSection(c.key)) return /^(?:commit|tag)$/i.test(c.key) ? 'no-gpg-sign' : 'hooks-path'
+    } else if (isHookKey(c.key)) return 'hooks-path'
+    else if (isSignKey(c.key)) {
+      if (c.op === 'unset') return 'no-gpg-sign'
+      if (c.value === null || c.value === undefined) ask = true
+      else if (isFalse(c.value)) return 'no-gpg-sign'
+    }
+  }
+  // An option this table does not know may be a newer action, so a guarded key among the operands asks.
+  if (unknown && ops.some(o => o !== null && (isHookKey(o) || isSignKey(o) || isGuardedSection(o)))) ask = true
+  return ask ? 'config-edit' : null
+}
+
+function gitHit(v: View): Rule | null {
   const argv = v.argv
   if (base(argv[0]) !== 'git') return null
   const fromEnv = envHit(v.env)
@@ -157,6 +265,7 @@ function gitHit(v: View): GitHit['rule'] | null {
     }
   }
   if (sub === null) return null
+  if (sub === 'config') return configRule(argv, i)
   const valued = SHORT_VALUED[sub] ?? ''
   const optional = SHORT_OPTIONAL[sub] ?? ''
   for (; i < argv.length; i++) {
@@ -202,7 +311,7 @@ function exportedSkip(commands: readonly ShellCommand[]): boolean {
 }
 
 // Parses a command and the scripts it hands to `sh -c` or `eval`, behind wrappers too.
-function scan(command: string): { commands: ShellCommand[]; ok: boolean } {
+export function scan(command: string): { commands: ShellCommand[]; ok: boolean } {
   const commands: ShellCommand[] = []
   let ok = true
   let reparsed = 0
@@ -225,18 +334,22 @@ function scan(command: string): { commands: ShellCommand[]; ok: boolean } {
 
 const MENTIONS_GIT = /\bgit\b/
 
-// The verdict for a Bash command: a hit (deny), `unparsed` (ask) for a git command that could not be checked, or null.
+// The verdict for a Bash command: a hit (deny); `config-edit` (ask) for a git config change that could not be read, or
+// `unparsed` (ask) for a git command that could not be checked; or null. A deny anywhere wins over an ask.
 export function checkGit(command: string): GitVerdict {
   // The regex is linear, so it may run on the whole text; the parser only runs on bounded input.
   if (!MENTIONS_GIT.test(command)) return null
   if (command.length > MAX_COMMAND) return { rule: 'unparsed', message: UNPARSED }
   const { commands, ok } = scan(command)
   const gits = commands.flatMap(c => views(c)).filter(v => base(v.argv[0]) === 'git')
+  let edit = false
   for (const v of gits) {
     const rule = gitHit(v)
-    if (rule) return { rule, message: MESSAGES[rule] }
+    if (rule === 'config-edit') edit = true
+    else if (rule) return { rule, message: MESSAGES[rule] }
   }
   if (gits.length > 0 && exportedSkip(commands)) return { rule: 'skip-env', message: MESSAGES['skip-env'] }
+  if (edit) return { rule: 'config-edit', message: MESSAGES['config-edit'] }
   if (!ok) return { rule: 'unparsed', message: UNPARSED }
   return null
 }

@@ -27,14 +27,16 @@ const NAMES = new Set([
   '.golangci.yml', '.golangci.yaml', '.golangci.toml', '.golangci.json', 'rustfmt.toml', '.rustfmt.toml', 'clippy.toml', '.clippy.toml',
   // Hook managers
   '.pre-commit-config.yaml', '.pre-commit-config.yml', 'lefthook.yml', 'lefthook.yaml', '.lefthook.yml', '.lefthook.yaml',
+  // lint-staged and commitlint, which the hooks run
+  '.lintstagedrc', '.commitlintrc',
   // Ignore files: one line in one silences a failing file without touching the code or the config.
   '.eslintignore', '.prettierignore', '.stylelintignore', '.markdownlintignore', '.markdownlint-cli2-ignore',
 ])
 
-// Split configs (`eslint.config.base.mjs`, `.prettierrc.shared.yml`).
+// Split configs (`eslint.config.base.mjs`, `.prettierrc.shared.yml`), and lint-staged and commitlint in every format.
 const PATTERNS = [
-  /^(?:eslint|prettier|stylelint|oxlint)\.config(?:\.[A-Za-z0-9_-]+)*\.(?:js|mjs|cjs|ts|mts|cts)$/i,
-  /^\.(?:eslintrc|prettierrc|stylelintrc|markdownlintrc)(?:\.[A-Za-z0-9_-]+)*\.(?:js|cjs|mjs|json|jsonc|yml|yaml|toml)$/i,
+  /^(?:eslint|prettier|stylelint|oxlint|lint-staged|commitlint)\.config(?:\.[A-Za-z0-9_-]+)*\.(?:js|mjs|cjs|ts|mts|cts)$/i,
+  /^\.(?:eslintrc|prettierrc|stylelintrc|markdownlintrc|lintstagedrc|commitlintrc)(?:\.[A-Za-z0-9_-]+)*\.(?:js|cjs|mjs|ts|mts|cts|json|jsonc|json5|yml|yaml|toml)$/i,
 ]
 
 // Files that mix lint settings with other content: only their lint sections are protected.

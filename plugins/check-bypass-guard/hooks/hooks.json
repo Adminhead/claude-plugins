@@ -1,5 +1,5 @@
 {
-  "description": "Denies git hook and signing bypasses, and asks before edits to existing lint, format and hook configs.",
+  "description": "Denies git hook and signing bypasses, persistent ones included, and asks before edits or Bash writes to lint, format and hook configs, git hooks and .git/config.",
   "hooks": {
     "PreToolUse": [
       {

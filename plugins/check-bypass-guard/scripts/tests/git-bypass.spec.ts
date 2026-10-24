@@ -108,6 +108,111 @@ describe('the pass column', () => {
   })
 })
 
+describe('persistent git config changes', () => {
+  test('setting, unsetting or dropping core.hooksPath or an include path is denied', () => {
+    for (const c of [
+      'git config core.hooksPath /dev/null',
+      'git config --global core.hooksPath x',
+      'git config --local core.hooksPath x',
+      'git config --worktree core.hooksPath x',
+      'git config --system core.hookspath x',
+      'git config --file .git/config core.hooksPath x',
+      'git config -f .git/config core.hooksPath x',
+      'git config --file=x core.hooksPath y',
+      'git config --type=path core.hooksPath x',
+      'git config set core.hooksPath x',
+      'git config set --global core.hooksPath x',
+      'git config set --glob core.hooksPath x',
+      'git config --add core.hooksPath x',
+      'git config --replace-all core.hooksPath x',
+      'git config --repl core.hooksPath x',
+      'git config --unset core.hooksPath',
+      'git config --unset-all core.hooksPath',
+      'git config --unset-al core.hooksPath',
+      'git config unset core.hooksPath',
+      'git config unset --all core.hooksPath',
+      'git config --global --add include.path ~/x',
+      'git config includeIf.gitdir:~/w/.path ~/x',
+      'git config --remove-section core',
+      'git config remove-section core',
+      'git config --rem core',
+      'git config --remove-section include',
+      "git config --remove-section 'includeIf.gitdir:~/w/'",
+      'git config --rename-section core x',
+      'git config rename-section x core',
+      'git -C repo config core.hooksPath x',
+      'sudo git config --system core.hooksPath x',
+      "bash -c 'git config core.hooksPath x'",
+    ]) expect([c, rule(c)]).toEqual([c, 'hooks-path'])
+  })
+
+  test('turning signing off, or unsetting or dropping it, is denied', () => {
+    for (const c of [
+      'git config commit.gpgsign false',
+      'git config --global commit.gpgSign false',
+      'git config --bool tag.gpgsign no',
+      'git config set commit.gpgsign false',
+      'git config set --type=bool commit.gpgsign off',
+      "git config commit.gpgsign ''",
+      'git config --unset commit.gpgsign',
+      'git config --unset-all commit.gpgsign',
+      'git config unset tag.gpgsign',
+      'git config --remove-section commit',
+      'git config remove-section tag',
+      'git config --rename-section commit x',
+    ]) expect([c, rule(c)]).toEqual([c, 'no-gpg-sign'])
+  })
+
+  test('an editor, or a mutation whose key or value cannot be read, asks', () => {
+    for (const c of [
+      'git config --edit',
+      'git config -e',
+      'git config --global edit',
+      'git config edit',
+      'git config "$K" /dev/null',
+      'git config commit.gpgsign "$V"',
+      'git config unset "$K"',
+      'git config --remove-section "$S"',
+      'git config --frobnicate core.hooksPath',
+      'git config --re core.hooksPath',
+    ]) expect([c, rule(c)]).toEqual([c, 'config-edit'])
+  })
+
+  test('a deny later in the script wins over an earlier ask', () => {
+    expect(rule('git config "$K" x; git commit --no-verify')).toBe('no-verify')
+  })
+
+  test('reads, signing on and other keys pass', () => {
+    for (const c of [
+      'git config user.name x',
+      'git config --get core.hooksPath',
+      'git config core.hooksPath',
+      'git config get core.hooksPath',
+      'git config get --all include.path',
+      'git config --get-all include.path',
+      "git config --get core.hooksPath '^/'",
+      'git config --get-all include.path x',
+      'git config --get-regexp gpgsign false',
+      'git config --get-urlmatch core https://x',
+      'git config -l core.hooksPath x',
+      'git config --list',
+      'git config -l',
+      'git config list --show-origin',
+      "git config --get-regexp '^core\\.'",
+      'git config --type bool --get commit.gpgsign',
+      'git config commit.gpgsign true',
+      'git config set commit.gpgsign true',
+      'git config --unset user.email',
+      'git config --remove-section alias',
+      'git config --rename-section alias aliases',
+      'git config --blob HEAD:x --list',
+      'git config core.editor vim',
+      'git config --global core.excludesFile ~/.gitignore',
+      'git config "$K"',
+    ]) expect([c, rule(c)]).toEqual([c, null])
+  })
+})
+
 describe('unparsed git asks', () => {
   test('a git command that does not parse, or is over the limit, asks', () => {
     expect(rule('git commit -m "$(')).toBe('unparsed')

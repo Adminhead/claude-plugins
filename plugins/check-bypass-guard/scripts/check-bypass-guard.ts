@@ -2,17 +2,21 @@
 // PreToolUse hook: stops the agent weakening checks instead of fixing code.
 //
 // - Bash: denies git commands that skip hooks or signing (--no-verify, commit -n, --no-gpg-sign, -c core.hooksPath=...,
-//   SKIP=/HUSKY=0/LEFTHOOK=0), and asks when a git command is too long or too odd to parse.
-// - Edit, Write, MultiEdit: asks before changing an existing lint, format or hook config, or its ignore file.
-//   Creating a new one passes.
+//   SKIP=/HUSKY=0/LEFTHOOK=0) or turn them off for good (git config setting, unsetting or dropping core.hooksPath,
+//   include paths or gpgsign). Asks on git config --edit, on a git command too long or too odd to parse, and on a Bash
+//   write, move, removal or chmod of a protected config, a git hook or .git/config, or a hook-manager uninstall.
+// - Edit, Write, MultiEdit: asks before changing an existing lint, format or hook config, or its ignore file (creating
+//   a new one passes), and before writing anything under .husky/ or .git/hooks/, or .git/config, new or not.
 //
 // Prints one JSON decision or nothing, and always exits 0. An internal error prints `ask`, so a broken guard never
-// silently lets a call through. Reasons are static apart from the config's base name.
+// silently lets a call through. Reasons are static apart from the config's name or path.
 
 import { lstatSync, readFileSync, writeSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
-import { configVerdict, isProtectedName, sectionRule } from './config-protect.ts'
-import { checkGit } from './git-bypass.ts'
+import { checkBashWrites } from './bash-protect.ts'
+import { configVerdict, sectionRule } from './config-protect.ts'
+import { checkGit, isAsk } from './git-bypass.ts'
+import { protectedPath } from './protect-path.ts'
 
 const MAX_STDIN = 4 * 1024 * 1024
 const MAX_FILE = 4 * 1024 * 1024
@@ -38,13 +42,19 @@ export function decide(input: any): Decision {
   if (tool === 'Bash') {
     if (typeof ti.command !== 'string') return null
     const hit = checkGit(ti.command)
-    if (!hit) return null
-    return { decision: hit.rule === 'unparsed' ? 'ask' : 'deny', reason: hit.message }
+    if (hit && !isAsk(hit)) return { decision: 'deny', reason: hit.message }
+    const write = checkBashWrites(ti.command)
+    if (write) return { decision: 'ask', reason: write }
+    return hit ? { decision: 'ask', reason: hit.message } : null
   }
   if (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit') {
     if (typeof ti.file_path !== 'string' || ti.file_path === '') return null
+    const prot = protectedPath(ti.file_path)
+    if (prot && prot.kind !== 'config') {
+      return { decision: 'ask', reason: `check-bypass-guard: ${prot.shown} is a git hook or git config file, where a change can turn the hooks or signing off. Change it only if the user asked for it.` }
+    }
     const name = ti.file_path.slice(ti.file_path.replace(/\\/g, '/').lastIndexOf('/') + 1)
-    const named = isProtectedName(name)
+    const named = prot !== null
     if (!named && !sectionRule(name)) return null
     const cwd = typeof input.cwd === 'string' ? input.cwd : '.'
     const path = isAbsolute(ti.file_path) ? ti.file_path : join(cwd, ti.file_path)

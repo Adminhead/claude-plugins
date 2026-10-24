@@ -24,6 +24,13 @@ describe('protected names', () => {
     ]) expect(isProtectedName(n)).toBe(true)
   })
 
+  test('lint-staged and commitlint configs', () => {
+    for (const n of [
+      '.lintstagedrc', '.lintstagedrc.json', '.lintstagedrc.yaml', '.lintstagedrc.mjs', 'lint-staged.config.js', 'lint-staged.config.mjs',
+      '.commitlintrc', '.commitlintrc.json', '.commitlintrc.ts', 'commitlint.config.js', 'commitlint.config.cjs', 'commitlint.config.ts',
+    ]) expect([n, isProtectedName(n)]).toEqual([n, true])
+  })
+
   test('build and test configs are not', () => {
     for (const n of ['vite.config.ts', 'vitest.config.ts', 'jest.config.js', 'tsconfig.json', 'package.json', 'Cargo.toml', '.gitignore', 'pyproject.toml']) {
       expect(isProtectedName(n)).toBe(false)

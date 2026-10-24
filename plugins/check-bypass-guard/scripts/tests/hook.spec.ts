@@ -1,11 +1,15 @@
 import { afterAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const SCRIPT = join(import.meta.dir, '..', 'check-bypass-guard.ts')
 const dir = mkdtempSync(join(tmpdir(), 'cbg-'))
 writeFileSync(join(dir, '.eslintrc.json'), '{}')
+mkdirSync(join(dir, '.husky'))
+writeFileSync(join(dir, '.husky', 'commit-msg'), 'npx commitlint --edit "$1"\n')
+mkdirSync(join(dir, '.git', 'hooks'), { recursive: true })
+writeFileSync(join(dir, '.git', 'config'), '[core]\n')
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
 function run(stdin: string): { code: number; out: any } {
@@ -31,6 +35,22 @@ describe('the hook as Claude Code runs it', () => {
     expect(hook('Edit', { file_path: join(dir, '.eslintrc.json'), old_string: '{}', new_string: '{"rules":{}}' }).out?.permissionDecision).toBe('ask')
     expect(hook('Write', { file_path: '.eslintrc.json', content: '{}' }).out?.permissionDecision).toBe('ask')
     expect(hook('Write', { file_path: join(dir, '.prettierrc'), content: '{}' }).out).toBeNull()
+  })
+
+  test('a persistent hooksPath change is denied; a Bash write to a protected config asks; ordinary Bash passes', () => {
+    expect(hook('Bash', { command: 'git config core.hooksPath /dev/null' }).out?.permissionDecision).toBe('deny')
+    expect(hook('Bash', { command: 'git config --edit' }).out?.permissionDecision).toBe('ask')
+    expect(hook('Bash', { command: 'echo x >> .eslintignore' }).out?.permissionDecision).toBe('ask')
+    expect(hook('Bash', { command: 'rm build/out.js' }).out).toBeNull()
+  })
+
+  test('hook scripts and .git/config ask whether or not they exist', () => {
+    expect(hook('Write', { file_path: join(dir, '.husky', 'pre-commit'), content: 'exit 0' }).out?.permissionDecision).toBe('ask')
+    expect(hook('Write', { file_path: '.husky/pre-push', content: 'exit 0' }).out?.permissionDecision).toBe('ask')
+    expect(hook('Write', { file_path: join(dir, '.husky', 'commit-msg'), content: 'exit 0' }).out?.permissionDecision).toBe('ask')
+    expect(hook('Write', { file_path: join(dir, '.git', 'hooks', 'pre-commit'), content: 'exit 0' }).out?.permissionDecision).toBe('ask')
+    expect(hook('Edit', { file_path: join(dir, '.git', 'config'), old_string: '[core]', new_string: '[core]\n\thooksPath = /dev/null' }).out?.permissionDecision).toBe('ask')
+    expect(hook('MultiEdit', { file_path: '.git/config', edits: [] }).out?.permissionDecision).toBe('ask')
   })
 
   test('malformed input asks', () => {
