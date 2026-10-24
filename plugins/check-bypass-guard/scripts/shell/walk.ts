@@ -420,7 +420,9 @@ const FISH_VALUE = new Set(['c', 'C', 'p', 'd', 'o', 'f', 'D'])
 // Callers reparse the script as POSIX sh, so it is returned only when both shells read it alike. fish
 // decodes `\` escapes (`\'` and `\xNN` even inside single quotes), expands `$` and `{…}`, runs `(…)`,
 // and leaves backticks literal, so a script with any of these characters is refused.
-const FISH_UNLIKE_SH = /[\\$(){}`]/
+// fish also reads `>|` and `N>|` as piping that fd into the next command, where sh sees a clobber redirect
+// to a file named by the next word.
+const FISH_UNLIKE_SH = /[\\$(){}`]|>\|/
 // fish words that sh reads as plain commands: `true; and kubectl …` runs kubectl under fish only, and
 // `set`, `alias` and `function` define what later words mean. Matched anywhere, quoted or not.
 const FISH_WORDS = new Set([

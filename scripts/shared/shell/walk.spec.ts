@@ -43,6 +43,9 @@ describe('nestedScript: multi-call binaries and fish', () => {
       "fish -c 'true; and kubectl delete ns prod'", "fish -c 'false; or rm -rf ~'", "fish -c 'not true'",
       "fish -c 'begin; rm -rf ~; end'", "fish -c 'alias k kubectl; k delete ns prod'",
       "fish -c 'set -x KUBECONFIG prod.yaml; kubectl delete ns x'", "fish -c 'echo \"and\"'",
+      // fish pipes an fd with `>|`; sh reads a clobber redirect to a file.
+      "fish -c 'echo x >| kubectl --context prod delete ns prod'",
+      "fish -c 'echo x 2>| kubectl --context prod delete ns prod'",
     ]) {
       expect(script(c)).toBeNull()
     }
