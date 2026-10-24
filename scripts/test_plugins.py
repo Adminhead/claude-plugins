@@ -360,7 +360,6 @@ def test_exclusive_metas_share_detected_through_own_marketplace_deps(root):
     assert "github-meta and forgejo-meta must not share gh-pr; scope them per forge" in errors
 
 
-@pytest.mark.xfail(reason="the apply slices (B2, C1 to C3) clear the violations the new rules report; drop this mark then")
 def test_repo_passes_check():
     assert plugins.check(REPO) == []
 

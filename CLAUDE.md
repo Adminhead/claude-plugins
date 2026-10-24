@@ -15,7 +15,7 @@ Conventional Commits, lowercase subject: `feat(scope): ...`, `fix(scope): ...`, 
 
 ## Tests
 
-- Marketplace scripts: `uv run --with pytest pytest scripts/test_plugins.py`.
+- Marketplace scripts: `uv run --with pytest --with pyyaml pytest scripts/test_plugins.py`. `check` needs PyYAML (`uv run --with pyyaml python3 scripts/plugins.py check` when it is not installed).
 - Installer: `node --test scripts/install.spec.mjs`.
 - Plugin specs: `bun test <plugin spec paths>`, for example `bun test plugins/check-bypass-guard/scripts/tests/`. Don't run a bare `bun test` in a plugin that has mod tests, because `claude plugin test` loads its `*.test.*` files as mods.
 
