@@ -474,6 +474,7 @@ No meta or bundle is bumped, because no `dependencies` list changes.
 - **F3.** `runs: 3` and model pins for the 44 unpinned cases, and settling the `runs: 1` contradiction in `.claude/skills/skill-evals/SKILL.md:49` vs `:122,131`.
 - **F4.** An optional `check --evals-load` using `claude plugin eval … --max-cost-usd 0`, once the stop-before-spend behaviour is confirmed.
 - **F5.** Move forgejo-ship's cross-plugin cases to `evals/forgejo-ship/`, and design a slash-invoked `ship` outcome case.
+  - 2026-10-23: C2's `/pr-comments 214` outcome case was dropped after one run. The skill's `` !`fetch.sh` `` preprocessing runs before the model with the harness PATH, not the scaffold-written workspace settings, so the stub `gh` never ran (the real, unauthenticated `gh` did). A case `env` only accepts `EVAL_*` keys. A slash-invoked case for a skill that preprocesses with a CLI needs a fetch-script override (for example an `EVAL_`-prefixed binary path) or harness PATH support. pr-comments has no evals until then.
 - **F6. Meta restructuring:** hand-off targets, the new metas, and dotnet-meta coverage.
 - **F7. Remaining G1 medium and low items:**
   - consult agy read-path restriction and the SECRET list

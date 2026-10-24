@@ -163,7 +163,7 @@
       "name": "ansible",
       "source": "./plugins/ansible",
       "description": "Ansible skill: playbooks, roles and inventories with idempotency proof, check-mode limits, validate hooks, vault or sops secrets, and ansible-lint style.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -275,7 +275,7 @@
       "name": "docker",
       "source": "./plugins/docker",
       "description": "Docker skill: Dockerfiles, Compose and .dockerignore with multi-stage builds, non-root hardened runtime, daemon.json hardening, secret handling and container debugging.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -324,7 +324,7 @@
       "name": "gh-release",
       "source": "./plugins/gh-release",
       "description": "Cut a manual GitHub release with gh: detect release tooling first, propose a SemVer bump from the public-API diff, draft a Keep a Changelog entry, open a release PR, then tag and publish after approval.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -338,7 +338,7 @@
       "name": "gh-triage",
       "source": "./plugins/gh-triage",
       "description": "Triage existing GitHub issues and external PRs with gh: category and state labels, duplicate and prior-rejection checks, claim verification, needs-info notes, agent briefs and stale policy.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -352,7 +352,7 @@
       "name": "git-history",
       "source": "./plugins/git-history",
       "description": "Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -380,14 +380,14 @@
       "name": "golang-cli",
       "source": "./plugins/golang-cli",
       "description": "Go command-line tools with cobra and viper: command tree and hooks, flag, env and config precedence, output and exit codes, signal shutdown, testable commands.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "golang-performance",
       "source": "./plugins/golang-performance",
       "description": "Measurement-first Go performance: benchstat comparisons, pprof and trace reading, escape analysis, GC and GOMEMLIMIT tuning, and CI regression checks.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -541,7 +541,7 @@
       "name": "rust",
       "source": "./plugins/rust",
       "description": "Rust language skill: ownership and lifetimes, error design, traits and modules, Cargo features, async and concurrency, unsafe review, clippy and measured performance.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -800,7 +800,7 @@
       "name": "better-auth",
       "source": "./plugins/better-auth",
       "description": "Better Auth library setup and debugging from version-matched docs: adapters, the auth CLI, route handlers, sessions, security options, email/password, two-factor and organizations.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -856,7 +856,7 @@
       "name": "deprecation-migration",
       "source": "./plugins/deprecation-migration",
       "description": "Deprecation and migration skill: Hyrum's law, a sunset-or-keep decision tree, incremental consumer migration (strangler, adapter, flags), and expand/contract for zero-downtime schema changes.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -933,7 +933,7 @@
       "name": "homelab-network",
       "source": "./plugins/homelab-network",
       "description": "Home and homelab network planning, read-only first: inventory, VLANs and trust zones, default-deny firewall rules, Pi-hole DNS cutover, WireGuard remote access and interface error diagnosis.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1129,14 +1129,14 @@
       "name": "the-fool",
       "source": "./plugins/the-fool",
       "description": "Devil's advocate skill that steelmans an idea or decision, then challenges it in one chosen mode (Socratic, dialectic, pre-mortem, red team, evidence audit) and drives to a stronger position.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
       "name": "threat-model",
       "source": "./plugins/threat-model",
       "description": "STRIDE threat modeling from the code: trust boundaries, data-flow diagram, verified findings tiered by exploitability, attack trees, testable security requirements and mapped controls.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1157,21 +1157,21 @@
       "name": "aspire",
       "source": "./plugins/aspire",
       "description": "Aspire skill: AppHost resource model and wiring, service defaults, the aspire CLI (start, wait, describe, logs), DistributedApplicationTestingBuilder tests, and aspire publish/deploy to Compose, Kubernetes and Azure.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "aspnet-core",
       "source": "./plugins/aspnet-core",
       "description": "Builds and reviews ASP.NET Core HTTP apps: minimal APIs and controllers, DTOs, validation, ProblemDetails, OpenAPI, middleware order, auth wiring, .http files, CRUD endpoints written without scaffolders. Use for Program.cs endpoint or middleware work, \"add an endpoint\", OpenAPI setup, or global error handling in a .NET web project.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "blazor",
       "source": "./plugins/blazor",
       "description": "Blazor skill: component rules, render modes, forms and validation, auth per render mode, shared state, data loading, prerendering, JS interop, and Blazor Server to Web App conversion.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1220,7 +1220,7 @@
       "name": "dotnet-testing",
       "source": "./plugins/dotnet-testing",
       "description": "Writes, runs and fixes .NET tests in xUnit, NUnit, MSTest and TUnit: dotnet test syntax for VSTest vs Microsoft.Testing.Platform, filters, TRX and dumps, test-project wiring, TimeProvider and file-system seams, coverage. Use for running tests in a .NET repo, a filter that matches nothing, \"VSTest or MTP?\", or testing DateTime.Now code.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1234,7 +1234,7 @@
       "name": "ef-core",
       "source": "./plugins/ef-core",
       "description": "Writes, reviews and tunes EF Core data access: query shape, tracking, Include vs split queries, N+1, bulk ExecuteUpdate/Delete, DbContext lifetime, migrations, raw SQL parameters, and Dapper code beside it. Use for DbContext or LINQ-to-entities code, a slow EF query, dotnet ef migrations, or reviewing a repository or import job.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1339,7 +1339,7 @@
       "name": "godot-csharp",
       "source": "./plugins/godot-csharp",
       "description": "Writes and fixes C# in Godot 4 .NET projects: partial node classes, the PascalCase lifecycle, [Export], [Signal] events, GDScript interop, the .csproj and the build. Use for .cs or .csproj files beside project.godot, \"port this GDScript to C#\", GD0201 errors, or ObjectDisposedException after a signal.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1374,7 +1374,7 @@
       "name": "godot-multiplayer",
       "source": "./plugins/godot-multiplayer",
       "description": "Builds and secures networked Godot 4 games: server-authoritative @rpc validation, ENet and WebSocket peers, MultiplayerSpawner and MultiplayerSynchronizer, lobbies, dedicated servers, interpolation and prediction. Use for @rpc, \"multiplayer\", \"netcode\" or a headless server in a Godot project.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1521,14 +1521,14 @@
       "name": "aws",
       "source": "./plugins/aws",
       "description": "General AWS skill: resolve account, region and identity first, sign-in with SSO or aws login, IAM policy and trust traps, AccessDenied debugging and cost-query habits.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "aws-cli",
       "source": "./plugins/aws-cli",
       "description": "AWS CLI v2 mechanics for scripts and write commands: pagination, --query and output, timeouts, waiters, skeletons, dry runs and client tokens. Not for read-only inspection (aws-resource-query) or profiles, SSO and IAM (aws).",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1731,14 +1731,14 @@
       "name": "necromancy",
       "source": "./plugins/necromancy",
       "description": "Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "vet",
       "source": "./plugins/vet",
       "description": "Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1759,7 +1759,7 @@
       "name": "v0-rewrite",
       "source": "./plugins/v0-rewrite",
       "description": "Rewrites a drifted document as a clean v0 that says what is true now, with no trace of the edits that produced it.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1773,7 +1773,7 @@
       "name": "reorder",
       "source": "./plugins/reorder",
       "description": "Manual command that realigns an arbitrarily ordered list, table or section set under one stated principle, moving items only.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1801,14 +1801,14 @@
       "name": "catchup",
       "source": "./plugins/catchup",
       "description": "Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and a single next move when asked what to do.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "leakage-audit",
       "source": "./plugins/leakage-audit",
       "description": "Audits an eval, metric, experiment or benchmark for leakage and reports which independence checks fail, each with a fix.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     }
   ]

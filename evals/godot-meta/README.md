@@ -8,4 +8,4 @@ claude plugin eval . --eval-dir evals/godot-meta/evals --trust-plugin --ablation
 
 Run it from the repo root: a case's `plugins:` entries must sit under the directory `claude plugin eval` targets. `--ablation none`: a no-plugin baseline means nothing for routing. Keep the `plugins:` lists in step with `godot-meta`, `gamedev-core` and `programming-core`.
 
-Closure rule: each case's `plugins:` list must equal the `godot-meta` closure minus the listed exclusions (`grep-app`, per D8). `python3 scripts/plugins.py check` enforces it and reports any drift.
+Closure rule: each case's `plugins:` list must equal the `godot-meta` closure minus the listed exclusions (`grep-app`, which ships no skill). `python3 scripts/plugins.py check` enforces it and reports any drift.
