@@ -1,4 +1,6 @@
 import type { Register } from 'claude-code'
+import { fileToolDeny, mayTouchCredentials } from './danger/credfile'
+import type { PathContext } from './danger/credfile'
 import { DANGER_MESSAGES } from './danger/danger'
 import { analyze, withAsk } from './danger/rules'
 import { MAX_SQL_FILE, MAX_SQL_FILES, destroysData, sqlFiles, sqlPath, uncheckedMessage } from './danger/sqlfile'
@@ -45,7 +47,10 @@ const apis = new Map<string, OllamaApi>()
 
 // Stage 1: the local Ollama model. Null when it is off, down, too slow, unsure or wrong-shaped; the caller falls back.
 async function askOllama($: any, o: JudgeOptions, command: string, notes: readonly string[]): Promise<ModelVerdict | null> {
-  if (!o.ollamaUrl || !o.ollamaModel || (await $.clock.now()) < ollamaDownUntil) return null
+  if (!o.ollamaUrl || !o.ollamaModel) return null
+  // A cloud model or a remote server sends the command off this machine: only with ollamaCloud on.
+  if (o.ollamaSkip) return (report($, 'ollama', `ollama skipped: ${o.ollamaSkip}`), null)
+  if ((await $.clock.now()) < ollamaDownUntil) return null
   const fail = async (error: string, missingModel = false) => {
     ollamaDownUntil = (await $.clock.now()) + backoffMs(missingModel)
     report($, 'ollama', error)
@@ -143,6 +148,24 @@ async function inLinkedWorktree($: any): Promise<boolean> {
   }
 }
 
+// Where a file tool's relative and `~` paths point, and where the credentials file lives. A value that cannot be read
+// is null; fileToolDeny then checks the path as written.
+async function pathContext($: any): Promise<PathContext> {
+  const get = async (f: () => Promise<unknown> | unknown) => {
+    try {
+      const v = await f()
+      return typeof v === 'string' && v !== '' ? v : null
+    } catch {
+      return null
+    }
+  }
+  return {
+    cwd: await get(() => $.session.cwd()),
+    home: await get(() => $.env.get('HOME')),
+    configDir: await get(() => $.env.get('CLAUDE_CONFIG_DIR')),
+  }
+}
+
 // What the usage log records for one Bash call: which stage settled it and how. `judge` fills it in.
 type BashEntry = {
   stage?: 'danger' | 'sql' | 'hygiene' | 'model'
@@ -212,8 +235,13 @@ export const register: Register = (on, options) => {
 
   // Denies destructive Bash, Bash that reads or writes files the built-in tools should, and smuggled payloads, and logs
   // each decision with the command's outcome. analyze() bounds the input length before parsing; the model stages bound
-  // what they send.
-  on('tool.call', { tool: 'Bash' }, async ($, e: any, next) => {
+  // what they send. The file tools are checked here too (one tool.call hook per plugin): none may touch the
+  // credentials file; fileToolDeny bounds each path before matching.
+  on('tool.call', { tool: ['Bash', 'Read', 'Grep', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit'] }, async ($, e: any, next) => {
+    if (e.tool !== 'Bash') {
+      const deny = mayTouchCredentials(e.tool, e) ? fileToolDeny(e.tool, e, await pathContext($)) : null
+      return deny !== null ? { deny } : next(e)
+    }
     if (typeof e.command !== 'string') return next(e)
     const entry: BashEntry = {}
     const deny = await judge($, o, e.command, entry)
@@ -230,7 +258,11 @@ export const register: Register = (on, options) => {
       await logLine($, 'bash', { ...fields, ...ran, ms: Math.round((await $.clock.now()) - started) })
     }
     return out
-  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'bash-rules: the safety check failed on this command. Rewrite it in plain bash, or hand it to the user to run.' }))
+  }).catch(($, e: any, next) => {
+    if (next.called) return next(e)
+    if (e.tool !== 'Bash') return { deny: 'bash-rules: the credentials-file check failed on this call. Retry it, or hand it to the user.' }
+    return { deny: 'bash-rules: the safety check failed on this command. Rewrite it in plain bash, or hand it to the user to run.' }
+  })
 
   // Asks before Bash that pipes a download into a shell, rewrites git history, git-cleans ignored files outside a
   // linked worktree, or feeds a database client a script file that could not be checked. A deny from a hook below stands.

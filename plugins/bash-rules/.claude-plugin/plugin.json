@@ -1,7 +1,7 @@
 {
   "name": "bash-rules",
-  "version": "0.4.0",
-  "description": "Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, destroy systems, infra and data, kill processes by name, touch Claude Code's credentials file, or pass grep --no-ignore. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku.",
+  "version": "0.5.0",
+  "description": "Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, destroy systems, infra and data, kill processes by name, or pass grep --no-ignore, and denies any Bash or file-tool touch of Claude Code's credentials file. Commands the parser is unsure about go, with common secrets masked, to a local Ollama, then to Haiku; a :cloud model or a remote Ollama server is used only with ollamaCloud on.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
@@ -22,8 +22,14 @@
     "ollamaModel": {
       "type": "string",
       "title": "Ollama model",
-      "description": "Model for the first check. A :cloud model sends the command to ollama.com. Empty skips Ollama.",
+      "description": "Model for the first check. A :cloud model sends the command to ollama.com, so it is skipped unless Ollama cloud is on. Empty skips Ollama.",
       "default": "clef:cloud"
+    },
+    "ollamaCloud": {
+      "type": "boolean",
+      "title": "Ollama cloud",
+      "description": "Allow the Ollama check to send commands off this machine: a :cloud model (forwarded to ollama.com) or an Ollama URL that is not localhost. Off: those are skipped and the fallback model decides.",
+      "default": false
     },
     "ollamaTimeoutMs": {
       "type": "number",

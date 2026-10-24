@@ -51,9 +51,13 @@ export function scan(command: string): Scan {
     out.errors.push(...r.errors)
     for (const c of r.commands) {
       out.commands.push(c)
+      // Two views can hand over one script (`busybox sh -c X` and its `sh -c X`): parse it once.
+      const seen = new Set<string>()
       for (const v of viewsOf(c.argv)) {
         const script = nestedScript(v) ?? envSplit(v)
-        if (script !== null && !out.tooComplex) nested(script, c.depth + 1)
+        if (script === null || seen.has(script) || out.tooComplex) continue
+        seen.add(script)
+        nested(script, c.depth + 1)
       }
     }
   }

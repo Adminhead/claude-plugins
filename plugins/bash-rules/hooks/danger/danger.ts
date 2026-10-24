@@ -19,15 +19,15 @@ export const DANGER_MESSAGES: Record<DangerRule, string> = {
   'disk-wipe': 'bash-rules: refusing a command that can wipe or reformat a disk. Hand it to the user to run.',
   'system-perms': 'bash-rules: refusing a recursive chmod, chown or chgrp on / or a system directory. Name the subdirectory you mean.',
   'infra-destroy': 'bash-rules: refusing a command that destroys infrastructure (terraform/tofu destroy, apply -destroy, kubectl delete of a namespace or --all, helm uninstall). Hand it to the user to run.',
-  'container-prune': 'bash-rules: refusing a docker or podman command that removes all images or volumes (system prune -a, volume prune, compose down -v). Hand it to the user to run.',
-  'db-drop': 'bash-rules: refusing a command that drops or truncates a database or table (dropdb, DROP DATABASE/SCHEMA/TABLE, TRUNCATE, FLUSHALL). Hand it to the user to run.',
+  'container-prune': 'bash-rules: refusing a docker or podman command that removes all images or volumes (system prune -a, volume prune, volume rm of every volume, compose down -v). Hand it to the user to run.',
+  'db-drop': 'bash-rules: refusing a command that drops or truncates a database or table, or resets one (dropdb, dropuser, DROP DATABASE/SCHEMA/TABLE, TRUNCATE, FLUSHALL, prisma migrate reset, rails db:drop, manage.py flush, a mongosh drop()). Hand it to the user to run.',
   'kill-by-name': 'bash-rules: refusing to kill processes by name or pattern (pkill, killall, kill $(pgrep ...), pgrep | xargs kill, kill -1). It can end work that other sessions and agents run on this machine. Find the PID with pgrep -a <name> or ps, then kill <pid> the one you started; hand a broad kill to the user.',
   'credentials-read': "bash-rules: refusing a command that touches ~/.claude/.credentials.json, Claude Code's OAuth token cache. Reading it exposes the token, and outside an interactive session it is often stale. For usage or rate-limit numbers, read the JSON Claude Code passes to a statusline command (rate_limits.five_hour / seven_day: used_percentage, resets_at).",
 }
 
 export const ASK_MESSAGES: Record<AskRule, string> = {
   'remote-exec': 'bash-rules: this runs downloaded or decoded code in a shell or interpreter.',
-  'git-rewrite': 'bash-rules: this force-pushes, mirrors or hard-resets, which can discard commits or work.',
+  'git-rewrite': 'bash-rules: this force-pushes, mirrors, deletes a remote branch, hard-resets or discards every uncommitted change, which can lose commits or work.',
   'git-clean': 'bash-rules: this git clean deletes ignored files (.env, build caches, local config) as well as untracked ones.',
   'sql-unchecked': "bash-rules: couldn't check a SQL script file for DROP/TRUNCATE; confirm it's safe.",
 }
@@ -37,8 +37,8 @@ export const baseName = (t: string | null) => (t ?? '').slice((t ?? '').lastInde
 // Wrappers whose operands end at the command they run. `short` lists the option letters that take a value
 // (attached or as the next word), `long` the long options that take one as the next word, `operands` the
 // positional words before the command, `assigns` whether NAME=value words come before it, `lookup` the letters
-// that make it a lookup instead of a run, and `sub` a subcommand word that must come first (`uv run`).
-type Wrapper = { short: string; long?: readonly string[]; operands?: number; assigns?: boolean; lookup?: string; sub?: string }
+// that make it a lookup instead of a run, and `sub` the subcommand words, one of which must come first (`uv run`).
+type Wrapper = { short: string; long?: readonly string[]; operands?: number; assigns?: boolean; lookup?: string; sub?: readonly string[] }
 
 const WRAPPERS: Record<string, Wrapper> = {
   sudo: {
@@ -61,8 +61,31 @@ const WRAPPERS: Record<string, Wrapper> = {
   uv: {
     short: 'p',
     long: ['with', 'python', 'project', 'directory', 'env-file', 'extra', 'group', 'package', 'with-requirements', 'with-editable', 'index', 'default-index'],
-    sub: 'run',
+    sub: ['run'],
   },
+  // Multi-call binaries run their applet: `busybox rm -rf /`. Their `sh -c` script is the walker's (nestedScript).
+  busybox: { short: '' },
+  toybox: { short: '' },
+  // Scheduling, locking and namespace wrappers. `-p` makes ionice, chrt and taskset act on a PID instead.
+  ionice: { short: 'cn', long: ['class', 'classdata'], lookup: 'p' },
+  chrt: { short: 'TPD', long: ['sched-runtime', 'sched-period', 'sched-deadline'], operands: 1, lookup: 'p' },
+  taskset: { short: '', operands: 1, lookup: 'p' },
+  flock: { short: 'wE', long: ['timeout', 'conflict-exit-code'], operands: 1 },
+  unshare: { short: 'SGRw', long: ['setuid', 'setgid', 'root', 'wd', 'map-user', 'map-group', 'map-users', 'map-groups', 'propagation', 'setgroups', 'monotonic', 'boottime'] },
+  'systemd-run': {
+    short: 'upEMH',
+    long: ['unit', 'property', 'setenv', 'description', 'slice', 'service-type', 'uid', 'gid', 'nice', 'working-directory', 'machine', 'host'],
+  },
+  watch: { short: 'nq', long: ['interval', 'equexit'] },
+  parallel: { short: 'jaSdEINnPsL', long: ['jobs', 'arg-file', 'sshlogin', 'delimiter', 'colsep', 'max-args', 'joblog', 'results', 'tmpdir', 'workdir'] },
+  // Package runners: `npx rimraf ~`, `pnpm dlx prisma migrate reset`, `bundle exec rails db:drop`.
+  npx: { short: 'pc', long: ['package', 'call', 'shell', 'node-options'] },
+  bunx: { short: 'p', long: ['package'] },
+  pnpm: { short: '', long: ['package', 'filter', 'dir'], sub: ['dlx', 'exec'] },
+  yarn: { short: 'p', long: ['package'], sub: ['dlx', 'exec'] },
+  npm: { short: 'pc', long: ['package', 'call', 'workspace'], sub: ['exec', 'x'] },
+  bun: { short: 'p', long: ['package'], sub: ['x'] },
+  bundle: { short: '', sub: ['exec'] },
 }
 
 // The command a wrapper runs, or null when it runs none, is only a lookup (`command -v`), or its words are unknown.
@@ -72,7 +95,7 @@ function unwrap(argv: Argv): Argv | null {
   let i = 1
   if (w.sub) {
     while (i < argv.length && argv[i]?.startsWith('-')) i++
-    if (argv[i] !== w.sub) return null
+    if (!w.sub.includes(argv[i] ?? '')) return null
     i++
   }
   for (; i < argv.length; i++) {
@@ -227,7 +250,13 @@ function globMatches(pat: string, name: string): boolean {
 
 const hasGlob = (s: string) => /[*?[]/.test(s)
 
-const SYSTEM_DIRS = ['bin', 'boot', 'dev', 'etc', 'home', 'lib', 'lib64', 'opt', 'root', 'run', 'sbin', 'srv', 'usr', 'var', 'Users']
+const SYSTEM_DIRS = [
+  'bin', 'boot', 'dev', 'etc', 'home', 'lib', 'lib64', 'opt', 'root', 'run', 'sbin', 'srv', 'usr', 'var', 'Users',
+  'private', 'Applications', 'mnt', 'media', 'proc', 'sys',
+]
+
+// macOS keeps /etc, /var and /tmp under /private: `/private/<dir>` stands for `/<dir>`.
+const unprivate = (comps: string[]) => (comps.length >= 2 && comps[0] === 'private' ? comps.slice(1) : comps)
 
 // null stands for any one name.
 const SYSTEM_PATHS: (string | null)[][] = [[], ...SYSTEM_DIRS.map(d => [d])]
@@ -264,9 +293,10 @@ function protectedPath(t: string, home: boolean): boolean {
   const parts = t.split('/')
   const tilde = home && /^~([^/+-][^/]*)?$/.test(parts[0])
   if (!tilde && parts[0] !== '') return false
-  const comps = resolve(parts.slice(1), tilde)
-  if (comps === null) return true
-  if (tilde) return comps.length === 0 || (comps.length === 1 && wipesAll(comps[0]))
+  const resolved = resolve(parts.slice(1), tilde)
+  if (resolved === null) return true
+  if (tilde) return resolved.length === 0 || (resolved.length === 1 && wipesAll(resolved[0]))
+  const comps = unprivate(resolved)
   if (matches(comps, SYSTEM_PATHS) || (comps.length === 2 && wipesAll(comps[1]) && matches([comps[0]], SYSTEM_PATHS))) return true
   return home && (matches(comps, HOME_PATHS) || (comps.length === 3 && /^(?:home|Users)$/.test(comps[0]) && wipesAll(comps[2])))
 }
@@ -291,12 +321,29 @@ function findStarts(v: Argv): string[] {
   return out
 }
 
-const rmRoot = (v: Argv) => {
+// rimraf deletes recursively whatever it is given; `npx rimraf@5 ~` names it with a version.
+const RIMRAF = /^rimraf(?:@|$)/
+
+// The `find` commands whose output a view takes as its operands: the previous pipeline stage when xargs or parallel runs
+// it (`find /etc | xargs rm -f`), and its own substitutions when an operand is an expansion (`rm $(find /etc)`).
+function findFeeds(v: Argv, c: ShellCommand): Argv[] {
+  const from: ShellCommand[] = []
+  const p = c.pipeline
+  if (p && viaXargs(v, c)) from.push(...p.prev.filter(e => e.pipeline?.stage === p.stage - 1))
+  if (operands(v).includes(null)) from.push(...c.subs)
+  return from.flatMap(e => viewsOf(e.argv)).filter(w => baseName(w[0]) === 'find')
+}
+
+const fedFrom = (v: Argv, c: ShellCommand, test: (path: string) => boolean) => findFeeds(v, c).some(f => findStarts(f).some(test))
+
+const rmRoot = (v: Argv, c: ShellCommand) => {
   const name = baseName(v[0])
   if (name === 'rm') {
     if (options(v).includes('--no-preserve-root')) return true
-    return hasFlag(v, 'rR', ['--recursive']) && anyProtected(v, true)
+    if (hasFlag(v, 'rR', ['--recursive']) && anyProtected(v, true)) return true
+    return fedFrom(v, c, s => protectedPath(s, true))
   }
+  if (RIMRAF.test(name)) return anyProtected(v, true) || fedFrom(v, c, s => protectedPath(s, true))
   if (name === 'find') {
     if (!findStarts(v).some(s => protectedPath(s, true))) return false
     return v.includes('-delete') || findExecs(v).some(g => runs(g, ['rm']))
@@ -306,7 +353,7 @@ const rmRoot = (v: Argv) => {
 
 // Top-level directories whose contents are the system: deleting anything under them breaks the machine. /var counts only
 // for its state directories, so /var/tmp, /var/log and /var/cache stay deletable.
-const CRITICAL_ROOTS = new Set(['etc', 'boot', 'usr', 'bin', 'sbin', 'lib', 'lib32', 'lib64', 'libx32', 'root', 'System', 'Library'])
+const CRITICAL_ROOTS = new Set(['etc', 'boot', 'usr', 'bin', 'sbin', 'lib', 'lib32', 'lib64', 'libx32', 'root', 'System', 'Library', 'proc', 'sys'])
 const CRITICAL_VAR = new Set(['lib', 'spool', 'mail', 'db', 'backups'])
 // Under a home directory: credentials and startup files.
 const HOME_CRITICAL = /^(?:\.ssh|\.gnupg|\.aws|\.kube|\.docker|\.config|\.local|\.(?:bash|zsh|ksh)rc|\.profile|\.bash_profile|\.bash_login|\.bash_logout|\.zprofile|\.zshenv|\.zlogin|\.zlogout|\.inputrc|\.gitconfig|\.netrc|\.npmrc|\.pypirc)$/
@@ -318,8 +365,9 @@ function criticalPath(t: string): boolean {
   const parts = t.split('/')
   const tilde = /^~([^/+-][^/]*)?$/.test(parts[0]!)
   if (!tilde && parts[0] !== '') return false
-  const comps = resolve(parts.slice(1), tilde)
-  if (comps === null) return true
+  const resolved = resolve(parts.slice(1), tilde)
+  if (resolved === null) return true
+  const comps = tilde ? resolved : unprivate(resolved)
   let home: string[] | null = tilde ? comps : null
   if (!tilde && comps.length >= 2 && (comps[0] === 'home' || comps[0] === 'Users')) home = comps.slice(2)
   if (!tilde && comps[0] === 'root') home = comps.slice(1)
@@ -340,9 +388,12 @@ function criticalPath(t: string): boolean {
 }
 
 // rm (recursive or not), shred -u and unlink of a critical path. rm-root takes the recursive top-level cases first.
-const rmCritical = (v: Argv) => {
+// rm, rimraf or shred fed by a `find` from a critical path (`find ~/.ssh | xargs rm`) too.
+const rmCritical = (v: Argv, c: ShellCommand) => {
   const name = baseName(v[0])
-  if (name === 'rm' || name === 'unlink' || (name === 'shred' && hasFlag(v, 'u', ['--remove']))) return operands(v).some(a => a !== null && criticalPath(a))
+  if (name === 'rm' || name === 'unlink' || RIMRAF.test(name) || (name === 'shred' && hasFlag(v, 'u', ['--remove']))) {
+    return operands(v).some(a => a !== null && criticalPath(a)) || fedFrom(v, c, criticalPath)
+  }
   return false
 }
 
@@ -427,13 +478,21 @@ function composeDownVolumes(v: Argv): boolean {
   return v.slice(at + 1).some(a => a !== null && (a === '--volumes' || /^-[a-zA-Z]*v/.test(a)))
 }
 
-const containerPrune = (v: Argv) => {
+// A `docker|podman volume ls`, whose output names every volume.
+const listsVolumes = (w: Argv) => ['docker', 'podman'].includes(baseName(w[0])) && w[1] === 'volume' && (w[2] === 'ls' || w[2] === 'list')
+
+const containerPrune = (v: Argv, c: ShellCommand) => {
   const name = baseName(v[0])
   if (name === 'docker-compose' || name === 'podman-compose') return composeDownVolumes(v)
   if (name !== 'docker' && name !== 'podman') return false
   const words = args(v).filter((a): a is string => a !== null && a[0] !== '-')
   const flags = args(v).filter((a): a is string => a !== null && a[0] === '-')
   if (words[0] === 'volume' && words[1] === 'prune') return true
+  // `docker volume rm $(docker volume ls -q)` and `docker volume ls -q | xargs docker volume rm`: every volume.
+  if (words[0] === 'volume' && (words[1] === 'rm' || words[1] === 'remove')) {
+    const sources = [...(args(v).includes(null) ? c.subs : []), ...(c.pipeline && viaXargs(v, c) ? c.pipeline.prev : [])]
+    return sources.some(e => viewsOf(e.argv).some(listsVolumes))
+  }
   if (words.includes('compose')) return composeDownVolumes(v)
   if (!(words[0] === 'system' && words[1] === 'prune')) return false
   return flags.some(a => a === '--all' || a === '--volumes' || /^-[a-zA-Z]*a/.test(a))
@@ -463,20 +522,51 @@ function clientText(v: Argv, c: ShellCommand): string[] {
 // Commands that run another on a container, pod or host: `docker compose exec db psql -c ...`, `ssh host "dropdb x"`.
 const REMOTE = new Set(['docker', 'podman', 'kubectl', 'oc', 'ssh'])
 
+// MongoDB shell code that drops a collection or a database (`db.users.drop()`, `db.dropDatabase()`). Only mongosh and
+// mongo read it: DESTROY_SQL also checks SQL script files, where these words mean nothing.
+const MONGO_DROP = /\.drop\s*\(|\bdrop(?:Database|Collection)\s*\(/
+
+// Framework tasks that drop, reset or reload a database: rails/rake `db:drop`, `db:reset`, `db:schema:load` (and their
+// `:all`/`purge` kin), and Django's `flush`.
+const RAILS_TASK = /^db:(?:drop|reset|purge|schema:load|migrate:reset|truncate_all)(?::all)?$/
+
+// The first word after a Django entry point, `manage.py <task>` or `django-admin <task>`, behind python when it runs the script.
+function djangoTask(v: Argv): string | null {
+  const name = baseName(v[0])
+  if (name === 'manage.py' || name === 'django-admin') return operands(v)[0] ?? null
+  const inv = /^python[\d.]*$/.test(name) ? invocation(v) : null
+  if (!inv || inv.code >= 0 || baseName(v[inv.ops] ?? null) !== 'manage.py') return null
+  return v.slice(inv.ops + 1).find(a => a === null || a[0] !== '-') ?? null
+}
+
+// `prisma migrate reset` drops the database; `prisma db push --force-reset` drops it before pushing.
+function prismaDrop(v: Argv): boolean {
+  if (baseName(v[0]) !== 'prisma') return false
+  const words = operands(v)
+  if (words[0] === 'migrate' && words[1] === 'reset') return true
+  return words[0] === 'db' && words[1] === 'push' && options(v).includes('--force-reset')
+}
+
 const dbDrop = (v: Argv, c: ShellCommand): boolean => {
   if (REMOTE.has(baseName(v[0]))) {
-    const at = v.findIndex((a, i) => i > 0 && a !== null && (SQL_CLIENTS.has(baseName(a)) || ['dropdb', 'mysqladmin', 'redis-cli', 'valkey-cli'].includes(baseName(a))))
+    const at = v.findIndex((a, i) => i > 0 && a !== null && (SQL_CLIENTS.has(baseName(a)) || ['dropdb', 'dropuser', 'mysqladmin', 'redis-cli', 'valkey-cli'].includes(baseName(a))))
     if (at > 0) return dbDrop(v.slice(at), c)
     // ssh takes the remote command as one string.
-    return baseName(v[0]) === 'ssh' && c.text.slice(1).some(t => (/\b(?:psql|mysql|sqlite3|mongosh)\b/.test(t) && DESTROY_SQL.test(t)) || /\bdropdb\s/.test(t))
+    return baseName(v[0]) === 'ssh' && c.text.slice(1).some(t => (/\b(?:psql|mysql|sqlite3|mongosh)\b/.test(t) && DESTROY_SQL.test(t)) || /\bdrop(?:db|user)\s/.test(t))
   }
   const name = baseName(v[0])
-  if (name === 'dropdb') return true
+  if (name === 'dropdb' || name === 'dropuser') return true
   if (name === 'mysqladmin') return args(v).some(a => a === 'drop')
   if (name === 'redis-cli' || name === 'valkey-cli') return args(v).some(a => a !== null && /^flush(?:all|db)$/i.test(a))
+  if (prismaDrop(v)) return true
+  if (name === 'rails' || name === 'rake') return operands(v).some(a => a !== null && RAILS_TASK.test(a))
+  const task = djangoTask(v)
+  if (task === 'flush' || task === 'reset_db') return true
   if (!SQL_CLIENTS.has(name)) return false
   // Only the client's own command reads its text: a view from a wrapper (`timeout 5 psql ...`) shares the same `c`.
-  return clientText(v, c).some(t => DESTROY_SQL.test(t))
+  const text = clientText(v, c)
+  if ((name === 'mongosh' || name === 'mongo') && text.some(t => MONGO_DROP.test(t))) return true
+  return text.some(t => DESTROY_SQL.test(t))
 }
 
 const PID_FINDERS = ['pgrep', 'pidof', 'ps']
@@ -484,11 +574,11 @@ const PID_FINDERS = ['pgrep', 'pidof', 'ps']
 // Whether any command in the list, or what its wrappers run, is one of `names`.
 const runsAny = (cs: readonly ShellCommand[], names: readonly string[]) => cs.some(x => viewsOf(x.argv).some(w => names.includes(baseName(w[0]))))
 
-// Whether a view is what `xargs` (anywhere before it in the wrapper chain) runs, so its operands come from stdin.
+// Whether a view is what `xargs` or `parallel` (anywhere before it in the wrapper chain) runs, so its operands come from stdin.
 function viaXargs(v: Argv, c: ShellCommand): boolean {
   const vs = viewsOf(c.argv)
   const at = vs.findIndex(w => w.length === v.length && w.every((a, i) => a === v[i]))
-  return vs.slice(0, Math.max(at, 0)).some(w => baseName(w[0]) === 'xargs')
+  return vs.slice(0, Math.max(at, 0)).some(w => ['xargs', 'parallel'].includes(baseName(w[0])))
 }
 
 // The targets of a `kill`: its operands, plus any option-looking word after the signal (`kill -9 -1`). The first
@@ -589,12 +679,16 @@ function patternWords(v: Argv): Set<number> {
 // Whether a path component names the credentials file: the name, or a glob that starts with a dot and can match it.
 const credName = (s: string) => s === CRED_FILE || (s[0] === '.' && hasGlob(s) && globMatches(s, CRED_FILE))
 
+// Whether a path component names a `.claude` directory: the name, or a glob that starts with a dot and can match it
+// (`.cla*`, `.c?aude`). A glob without the leading dot (`*`) skips dot directories in the shell.
+const claudeName = (s: string) => s === '.claude' || (s[0] === '.' && hasGlob(s) && globMatches(s, '.claude'))
+
 // Whether a literal path is the file under a `.claude` directory (`~/.claude/...`, `/home/x/.claude/...`, a relative `.claude/...`).
 function credPath(t: string): boolean {
   // A word with spaces is prose (a commit message), unless it starts like a path (`/Users/John Smith/...`).
   if (/\s/.test(t) && !/^(?:[/~$]|\.\/)/.test(t)) return false
   const comps = resolve(t.split('/'), t[0] === '~')
-  return comps !== null && comps.length >= 2 && comps[comps.length - 2] === '.claude' && credName(comps[comps.length - 1])
+  return comps !== null && comps.length >= 2 && claudeName(comps[comps.length - 2]) && credName(comps[comps.length - 1])
 }
 
 // The value of a `key=VALUE` or `--option=VALUE` word, or the word.
@@ -630,7 +724,7 @@ const entersClaudeDir = (c: ShellCommand) => {
   if (t === undefined) return false
   if (/^\$\{?CLAUDE_CONFIG_DIR\}?\/*$/.test(t)) return true
   const comps = resolve(t.split('/'), t[0] === '~')
-  return comps !== null && comps[comps.length - 1] === '.claude'
+  return comps !== null && comps.length > 0 && claudeName(comps[comps.length - 1])
 }
 
 // Any touch of ~/.claude/.credentials.json, Claude Code's OAuth token cache, outside commands that only read metadata.
@@ -728,11 +822,42 @@ function forcePush(rest: Argv): boolean {
   return false
 }
 
+// Branch names that are usually shared or protected; an expansion (null) might be one.
+const PROTECTED_BRANCH = /^(?:refs\/heads\/)?(?:main|master|trunk|develop|development|dev|staging|stable|prod|production|live|release(?:[/-].*)?)$/
+
+// A push that deletes a remote branch: `--delete`/`-d` with a protected-ish branch (or an expansion) among the refs after
+// the remote, or a `:<branch>` refspec, which deletes whatever it names.
+function deletePush(rest: Argv): boolean {
+  let del = false
+  let positional = false
+  const words: (string | null)[] = []
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i]
+    if (a !== null && !positional && a === '--') positional = true
+    else if (a !== null && !positional && a[0] === '-') {
+      if (a === '--delete' || (/^-[^-]/.test(a) && a.includes('d'))) del = true
+      if (PUSH_VALUED.has(a)) i++
+    } else words.push(a)
+  }
+  const refs = words.slice(1)
+  if (refs.some(r => r !== null && /^:./.test(r))) return true
+  return del && refs.some(r => r === null || PROTECTED_BRANCH.test(r))
+}
+
+// `git checkout -- .` (or `checkout .`): it discards every uncommitted change under the current directory.
+const DISCARD_ALL = new Set(['.', './', ':/', '*', ':/*'])
+function checkoutAll(rest: Argv): boolean {
+  const end = rest.indexOf('--')
+  const paths = end >= 0 ? rest.slice(end + 1) : rest.filter(a => a !== null && a[0] !== '-')
+  return paths.some(a => a !== null && DISCARD_ALL.has(a))
+}
+
 const gitRewrite = (v: Argv) => {
   const call = gitCall(v)
   if (!call) return false
   if (call.sub === 'reset') return call.rest.slice(0, call.rest.includes('--') ? call.rest.indexOf('--') : undefined).includes('--hard')
-  return call.sub === 'push' && forcePush(call.rest)
+  if (call.sub === 'checkout') return checkoutAll(call.rest)
+  return call.sub === 'push' && (forcePush(call.rest) || deletePush(call.rest))
 }
 
 // `git clean` with a force flag and -x/-X: it deletes ignored files too (.env, caches, local config). The caller exempts a

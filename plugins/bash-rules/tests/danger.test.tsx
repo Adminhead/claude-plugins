@@ -718,4 +718,114 @@ describe('credentials-read', () => {
       expect([c, rule(c)]).toEqual([c, 'credentials-read'])
     }
   })
+
+  test('a glob that can expand to .claude names the directory', () => {
+    for (const c of ['jq . ~/.cla*/.credentials.json', 'cat ~/.c?aude/.credentials.json', 'cat ~/.[c]laude/.c*', 'cat /home/buck/.cl*/.credentials.json', 'cd ~/.cla* && jq . .credentials.json']) {
+      expect([c, rule(c)]).toEqual([c, 'credentials-read'])
+    }
+    for (const c of ['cat ~/*/.credentials.json', 'cat ~/.config*/.credentials.json', 'cat ~/.cla*/settings.json']) expect([c, rule(c)]).toEqual([c, null])
+  })
 })
+
+// The review's V7 gaps (docs/plans/plugin-review-fixes.md, slice A3): each failed before the fix.
+const verdict = (c: string) => rule(c) ?? ask(c)
+
+describe('A3 danger gaps', () => {
+  test('must-flag: every V7 command and the plan extras', () => {
+    const want: [string, string][] = [
+      ['rm -rf /private/etc', 'rm-root'],
+      ['find /etc | xargs rm -f', 'rm-root'],
+      ['npx rimraf ~', 'rm-root'],
+      ['busybox rm -rf /', 'rm-root'],
+      ['prisma migrate reset --force', 'db-drop'],
+      ['rails db:drop', 'db-drop'],
+      ['git push origin --delete main', 'git-rewrite'],
+      ['jq . ~/.cla*/.credentials.json', 'credentials-read'],
+      ['rm -rf /private/var/db', 'rm-critical'],
+      ['flock /tmp/l rm -rf ~', 'rm-root'],
+      ['docker volume rm $(docker volume ls -q)', 'container-prune'],
+      ["mongosh --eval 'db.users.drop()'", 'db-drop'],
+    ]
+    for (const [c, r] of want) expect([c, verdict(c)]).toEqual([c, r])
+  })
+
+  test('must-pass: the look-alikes', () => {
+    for (const c of ['rm -rf ./private/etc-copy', "find . -name '*.o' | xargs rm -f", 'prisma migrate dev', 'git push origin feature']) expect([c, verdict(c)]).toEqual([c, null])
+  })
+
+  test('/private/<dir> is /<dir>, and the new top-level directories are protected', () => {
+    expectRules(['rm -rf /private', 'rm -rf /private/etc/', 'rm -rf /mnt', 'rm -rf /media', 'rm -rf /Applications', 'rm -rf /proc', 'rm -rf /sys', 'rm -rf /private/var', 'chmod -R 777 /mnt'], ['rm-root', 'system-perms'])
+    expectRules(['rm /private/etc/hosts', 'rm -f /proc/x', 'rm -rf /private/var/lib/x'], ['rm-critical'])
+    for (const c of ['rm -rf /private/tmp/x', 'rm -rf /private/var/tmp/x', 'rm -f /mnt/usb/old.txt', 'rm -rf /opt/app/cache', 'rm -rf /media/disk/build', 'rm -rf private/etc']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('the new wrappers are seen through', () => {
+    for (const c of [
+      'toybox rm -rf /',
+      'ionice -c3 rm -rf ~',
+      'chrt -f 10 rm -rf /',
+      'taskset 0x1 rm -rf /',
+      'taskset -c 0 rm -rf ~',
+      'flock -w 5 /tmp/l rm -rf /',
+      'unshare -r rm -rf /',
+      'systemd-run --user -u x rm -rf ~',
+      'watch -n 5 rm -rf /',
+      'parallel rm -rf ::: /',
+      "busybox sh -c 'rm -rf /'",
+      'nice -n 5 flock /tmp/l rm -rf ~',
+    ]) {
+      expect([c, rule(c)]).toEqual([c, 'rm-root'])
+    }
+    for (const c of ['ionice -p 123', 'taskset -p 123', 'flock /tmp/l make', 'watch -n 1 ls', 'busybox ls', 'parallel gzip ::: a b']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('rimraf, also behind npx, bunx, pnpm dlx and npm exec, and rm fed by a find from a protected path', () => {
+    for (const c of ['rimraf /', 'npx -y rimraf ~', 'npx rimraf@5 /etc', 'bunx rimraf ~', 'pnpm dlx rimraf /', 'npm exec -- rimraf ~', 'find / -name x | xargs rm', 'find ~ -print0 | xargs -0 rm -f', 'rm -f $(find /etc -name x)', 'find /etc | parallel rm']) {
+      expect([c, rule(c)]).toEqual([c, 'rm-root'])
+    }
+    expectRules(['rimraf ~/.ssh', 'find ~/.ssh | xargs rm', 'find /var/lib/x | xargs rm'], ['rm-critical'])
+    for (const c of ['npx rimraf dist', 'rimraf ./node_modules', 'find build -name "*.o" | xargs rm', 'find /tmp/x | xargs rm -f', 'rm -f $(find . -name "*.pyc")', 'find /etc -name x | xargs ls']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('db-drop: framework resets, dropuser and mongosh drops', () => {
+    for (const c of [
+      'npx prisma migrate reset',
+      'pnpm dlx prisma migrate reset --force',
+      'prisma db push --force-reset',
+      'bin/rails db:reset',
+      'bundle exec rails db:drop',
+      'RAILS_ENV=test rake db:schema:load',
+      'rails db:drop:all',
+      'python manage.py flush --noinput',
+      './manage.py flush',
+      'uv run python manage.py flush',
+      'django-admin flush',
+      'dropuser app',
+      'ssh db1 dropuser app',
+      'mongosh app --eval "db.getCollection(\'x\').drop()"',
+      "mongo --eval 'db.dropDatabase()'",
+      "mongosh --eval 'db.dropCollection(\"x\")'",
+    ]) {
+      expect([c, rule(c)]).toEqual([c, 'db-drop'])
+    }
+    for (const c of ['prisma migrate dev', 'prisma migrate deploy', 'prisma db push', 'npx prisma generate', 'rails db:migrate', 'rake db:seed', 'python manage.py migrate', 'python manage.py shell', "mongosh --eval 'db.users.find()'", "psql -c 'select drop()'", 'createuser app']) {
+      expect([c, rule(c)]).toEqual([c, null])
+    }
+  })
+
+  test('container-prune: removing every volume through a listing', () => {
+    expectRules(['docker volume rm $(docker volume ls -q)', 'podman volume rm $(podman volume ls -q)', 'docker volume ls -q | xargs docker volume rm', 'docker volume rm -f $(docker volume ls -qf dangling=true)'], ['container-prune'])
+    for (const c of ['docker volume rm data', 'docker volume rm "$VOL"', 'docker volume ls', 'docker rm $(docker ps -aq)']) expect([c, rule(c)]).toEqual([c, null])
+  })
+
+  test('git-rewrite (ask): deleting a shared remote branch, a :branch refspec, and checkout -- .', () => {
+    for (const c of ['git push origin --delete main', 'git push -d origin master', 'git push origin -d release/1.2', 'git push --delete origin "$B"', 'git push origin :main', 'git push origin :feature-x', 'git checkout -- .', 'git checkout .', 'git checkout HEAD -- .']) {
+      expect([c, ask(c)]).toEqual([c, 'git-rewrite'])
+    }
+    for (const c of ['git push origin --delete feature-x', 'git push origin feature', 'git push origin HEAD:main', 'git push origin :', 'git checkout main', 'git checkout -- src/a.ts', 'git checkout -b x']) expect([c, ask(c)]).toEqual([c, null])
+  })
+})
+
+function expectRules(cases: string[], rules: string[]) {
+  for (const c of cases) expect([c, rules.includes(rule(c) ?? '')]).toEqual([c, true])
+}

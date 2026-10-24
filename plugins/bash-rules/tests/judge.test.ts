@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 import {
-  DEFAULTS, Lru, MAX_PROMPT_COMMAND, apiFor, parseSystemone, systemoneRequest, wantsSystemone, backoffMs, completionText, modelNudge, ollamaRequest, ollamaStands, parseModelText, parseOllama, parseOptions, userPrompt,
+  DEFAULTS, Lru, MAX_PROMPT_COMMAND, apiFor, isCloudModel, isLoopback, parseSystemone, systemoneRequest, wantsSystemone, backoffMs, completionText, modelNudge, ollamaRequest, ollamaStands, parseModelText, parseOllama, parseOptions, userPrompt,
 } from '../hooks/rules/judge'
 
 describe('options', () => {
@@ -13,6 +13,41 @@ describe('options', () => {
     expect(parseOptions({ ollamaUrl: 'not a url' }).ollamaUrl).toBe('')
     expect(parseOptions({ modelStages: false }).models).toBe(false)
     expect(parseOptions({ ollamaModel: '  gemma4:cloud ' }).ollamaModel).toBe('gemma4:cloud')
+  })
+
+  test('with ollamaCloud off (the default) a cloud model or a remote server skips Ollama', () => {
+    expect(DEFAULTS.ollamaCloud).toBe(false)
+    expect(parseOptions({}).ollamaSkip).toMatch(/clef:cloud is a cloud model and ollamaCloud is off/)
+    expect(parseOptions({ ollamaModel: 'clef:cloud', ollamaCloud: false }).ollamaSkip).not.toBe('')
+    expect(parseOptions({ ollamaModel: 'gpt-oss:120b-cloud' }).ollamaSkip).toMatch(/cloud model/)
+    expect(parseOptions({ ollamaModel: 'qwen3:8b', ollamaUrl: 'http://gpu-box:11434' }).ollamaSkip).toMatch(/not on this machine/)
+    for (const ollamaUrl of ['http://localhost:11434', 'http://127.0.0.1:11434', 'http://[::1]:11434', 'http://ollama.localhost']) {
+      expect([ollamaUrl, parseOptions({ ollamaModel: 'qwen3:8b', ollamaUrl }).ollamaSkip]).toEqual([ollamaUrl, ''])
+    }
+    // Opted in, or nothing to send to: no skip reason.
+    expect(parseOptions({ ollamaCloud: true }).ollamaSkip).toBe('')
+    expect(parseOptions({ ollamaCloud: true, ollamaUrl: 'http://gpu-box:11434' }).ollamaSkip).toBe('')
+    expect(parseOptions({ ollamaModel: '' }).ollamaSkip).toBe('')
+    expect([isCloudModel('cloud'), isCloudModel('mycloud:latest'), isLoopback('http://127.evil.com'), isLoopback('http://0.0.0.0')]).toEqual([false, false, false, false])
+  })
+})
+
+describe('redaction', () => {
+  const KEY = 'AKIAIOSFODNN7EXAMPLE'
+  const command = `AWS_ACCESS_KEY_ID=${KEY} aws s3 ls | sed -n 1p`
+  const notes = [`sed reads the output of a command that sets ${KEY}`]
+
+  test('no request builder sends an AWS key from the command or the notes', () => {
+    for (const body of [ollamaRequest('qwen3:8b', command, notes), systemoneRequest('clef', command, notes), userPrompt(command, notes)]) {
+      expect(body).not.toContain('AKIA')
+      expect(body).toContain('aws s3 ls')
+    }
+    expect(userPrompt(`echo ${KEY}`, [])).toContain('<aws-key>')
+  })
+
+  test('masking runs before the cut, so a key at the limit is not split into a partial token', () => {
+    const p = userPrompt('x'.repeat(MAX_PROMPT_COMMAND - 11) + ' ' + KEY, [])
+    expect(p).not.toContain('AKIA')
   })
 })
 

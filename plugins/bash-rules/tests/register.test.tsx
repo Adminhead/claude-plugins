@@ -4,13 +4,9 @@ import { PRIMER } from '../hooks/rules/hygiene'
 // The mod through the engine: the parser's denies and passes, then the model stages with Ollama (`http.fetch`) and the
 // fallback (`model.complete`) stubbed. Each test runs at its own clock time and uses its own commands, so the module's
 // verdict cache and Ollama backoff cannot carry over between tests.
-
-// A /v1/systemone reply, the endpoint the default model (clef:cloud, a decision model) answers.
-const decision = (choice: string, p: number) => {
-  const rest = (1 - p) / 3
-  const probabilities = Object.fromEntries(['none', 'read', 'write', 'smuggle'].map(l => [l, l === choice ? p : rest]))
-  return { status: 200, ok: true, headers: {}, text: JSON.stringify({ model: 'clef', answers: { category: { type: 'choice', choice, probabilities, confidence: 0.5 } } }) }
-}
+//
+// The mod runs with its manifest defaults (a test cannot pass options): ollamaModel `clef:cloud` with ollamaCloud off, so
+// the Ollama stage is skipped and the fallback decides. Ollama's requests and replies are covered in judge.test.ts.
 
 type World = { fetches: any[]; completes: any[]; ran: string[] }
 
@@ -18,7 +14,7 @@ function world(on: any, now: number, opts: { fetch?: (e: any) => any; complete?:
   const w: World = { fetches: [], completes: [], ran: [] }
   mock.clock(on, { now })
   on('tool.call', async ($: any, e: any) => {
-    w.ran.push(e.command)
+    w.ran.push(e.command ?? `${e.tool} ${e.file_path ?? e.path ?? ''}`)
     return { result: 'ok' }
   })
   on('http.fetch', async ($: any, e: any) => {
@@ -31,10 +27,13 @@ function world(on: any, now: number, opts: { fetch?: (e: any) => any; complete?:
     if (!opts.complete) return { value: { isAnswered: false, reason: 'api-error' } }
     return { value: opts.complete(e) }
   })
+  on('ui.log', async () => ({ value: undefined }))
   return w
 }
 
 const call = ($: any, command: string) => $.tool.call({ tool: 'Bash', command } as never) as Promise<any>
+
+const answer = (category: string, confidence: number, reason = '') => ({ isAnswered: true, text: JSON.stringify({ category, confidence, reason }), usage: {} })
 
 describe('parser stage', () => {
   test('destructive commands are denied before the tool runs, without a model call', async ($, on) => {
@@ -106,81 +105,117 @@ describe('primer', () => {
 })
 
 describe('model stages', () => {
-  test('Ollama decides an unsure command when it is confident, and the verdict is cached', async ($, on) => {
-    const w = world(on, 5e9, { fetch: () => decision('read', 0.95) })
+  test('the default clef:cloud model is never sent the command; the fallback decides, and the verdict is cached', async ($, on) => {
+    const w = world(on, 5e9, { fetch: () => ({ status: 200, ok: true, headers: {}, text: '{}' }), complete: () => answer('read', 0.95, 'prints a file') })
     const out = await call($, "sed 's/a/b/' notes.txt")
-    expect(out.deny).toMatch(/^bash-rules: a model check found this command reads a file .*\(clef chose read at p=0\.95\)/)
-    expect(w.fetches).toHaveLength(1)
-    expect(w.fetches[0].url).toBe('http://localhost:11434/v1/systemone')
-    expect(w.fetches[0].init.method).toBe('POST')
-    const body = JSON.parse(w.fetches[0].init.body)
-    expect(body).toMatchObject({ model: 'clef:cloud', questions: { category: { type: 'choice' } } })
-    expect(Object.keys(body.questions.category.criteria)).toEqual(['none', 'read', 'write', 'smuggle'])
-    expect(body.state).toContain("<command>\nsed 's/a/b/' notes.txt\n</command>")
-    expect(w.completes).toHaveLength(0)
-    expect((await call($, "sed 's/a/b/' notes.txt")).deny).toBeDefined()
-    expect(w.fetches).toHaveLength(1)
-  })
-
-  test('a confident none from Ollama lets the command run', async ($, on) => {
-    const w = world(on, 6e9, { fetch: () => decision('none', 0.9) })
-    expect((await call($, "awk '{s+=$1} END {print s}' sizes.txt")).deny).toBeUndefined()
-    expect(w.ran).toEqual(["awk '{s+=$1} END {print s}' sizes.txt"])
-  })
-
-  test('low Ollama confidence falls to the fallback model, whose answer is final', async ($, on) => {
-    const w = world(on, 7e9, {
-      fetch: () => decision('none', 0.4),
-      complete: () => ({ isAnswered: true, text: '{"category":"write","confidence":0.7,"reason":"echo of a variable into a file"}', usage: {} }),
-    })
-    expect((await call($, 'echo "$CONFIG" > app.conf')).deny).toMatch(/model check found this command writes file content/)
+    expect(out.deny).toMatch(/^bash-rules: a model check found this command reads a file .*\(prints a file\)/)
+    expect(w.fetches).toHaveLength(0)
     expect(w.completes).toHaveLength(1)
     expect(w.completes[0].model).toBe('haiku')
+    expect(w.completes[0].prompt).toContain("<command>\nsed 's/a/b/' notes.txt\n</command>")
+    expect((await call($, "sed 's/a/b/' notes.txt")).deny).toBeDefined()
+    expect([w.fetches.length, w.completes.length]).toEqual([0, 1])
+  })
+
+  test('a none from the fallback lets the command run', async ($, on) => {
+    const w = world(on, 6e9, { complete: () => answer('none', 0.9) })
+    expect((await call($, "awk '{s+=$1} END {print s}' sizes.txt")).deny).toBeUndefined()
+    expect(w.ran).toEqual(["awk '{s+=$1} END {print s}' sizes.txt"])
+    expect(w.completes).toHaveLength(1)
+  })
+
+  test("the fallback's answer is final, whatever its confidence", async ($, on) => {
+    const w = world(on, 7e9, { complete: () => answer('write', 0.4, 'echo of a variable into a file') })
+    expect((await call($, 'echo "$CONFIG" > app.conf')).deny).toMatch(/model check found this command writes file content/)
+    expect(w.completes).toHaveLength(1)
     expect(w.completes[0].prompt).toContain('<command>\necho "$CONFIG" > app.conf\n</command>')
   })
 
-  test('a missing Ollama model (404) falls through to the fallback, then Ollama is skipped for a while', async ($, on) => {
-    const w = world(on, 8e9, {
-      fetch: () => ({ status: 404, ok: false, headers: {}, text: '{"error":"model \'clef:cloud\' not found"}' }),
-      complete: () => '{"category":"none","confidence":0.9,"reason":"ok"}',
-    })
-    expect((await call($, 'cat data.csv | mytool --sum')).deny).toBeUndefined()
-    expect([w.fetches.length, w.completes.length]).toEqual([1, 1])
-    expect((await call($, 'cat other.csv | mytool --avg')).deny).toBeUndefined()
-    expect([w.fetches.length, w.completes.length]).toEqual([1, 2])
-  })
-
-  test('an Ollama call that outlives the timeout falls through to the fallback', async ($, on) => {
-    let clock: any
-    const w: World = { fetches: [], completes: [], ran: [] }
-    clock = mock.clock(on, { now: 9e9 })
-    on('tool.call', async ($: any, e: any) => (w.ran.push(e.command), { result: 'ok' }))
-    on('http.fetch', async ($: any, e: any) => {
-      w.fetches.push(e)
-      await clock.sleep(60_000)
-      return { value: decision('read', 1) }
-    })
-    on('model.complete', async ($: any, e: any) => (w.completes.push(e), { value: '{"category":"smuggle","confidence":0.9,"reason":"runs a variable"}' }))
-    const pending = call($, 'bash -c "$CMD"')
-    await clock.settle()
-    expect(w.completes).toHaveLength(0)
-    await clock.advance(8000)
-    const out = await pending
-    expect(out.deny).toMatch(/model check found this command hides what it runs/)
+  test('secrets in the command are masked before the fallback sees it', async ($, on) => {
+    const w = world(on, 8e9, { complete: () => answer('none', 0.9) })
+    await call($, 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE eval "$(cat setup2.out)"')
     expect(w.completes).toHaveLength(1)
+    expect(w.completes[0].prompt).not.toContain('AKIA')
+    expect(w.completes[0].prompt).toContain('<redacted>')
   })
 
-  test('with both models unavailable the command runs (fail open)', async ($, on) => {
+  test('with the fallback unavailable the command runs (fail open)', async ($, on) => {
     const w = world(on, 10e9)
     expect((await call($, 'eval "$(cat setup.out)"')).deny).toBeUndefined()
     expect(w.ran).toEqual(['eval "$(cat setup.out)"'])
-    expect([w.fetches.length, w.completes.length]).toEqual([1, 1])
+    expect([w.fetches.length, w.completes.length]).toEqual([0, 1])
   })
 
   test('an unreadable fallback reply fails open too', async ($, on) => {
     const w = world(on, 11e9, { complete: () => 'sure, looks fine' })
     expect((await call($, 'python3 -c "exec(input())"')).deny).toBeUndefined()
     expect(w.ran).toHaveLength(1)
+  })
+})
+
+describe('file tools and the credentials file', () => {
+  const env = (on: any, vars: Record<string, string>) => {
+    on('session.cwd', async () => ({ value: '/home/u/proj' }))
+    on('env.get', async (_$: any, e: any) => ({ value: vars[e.name] }))
+  }
+  const tool = ($: any, input: Record<string, unknown>) => $.tool.call(input as never) as Promise<any>
+
+  test('Read, Edit, Write, MultiEdit and NotebookEdit of the file are denied before the tool runs', async ($, on) => {
+    const w = world(on, 20e9)
+    env(on, { HOME: '/home/u' })
+    for (const input of [
+      { tool: 'Read', file_path: '/home/u/.claude/.credentials.json' },
+      { tool: 'Read', file_path: '~/.claude/.credentials.json' },
+      { tool: 'Read', file_path: '../.claude/./.credentials.json' },
+      { tool: 'Edit', file_path: '/home/u/.claude/.credentials.json', old_string: 'a', new_string: 'b' },
+      { tool: 'MultiEdit', file_path: '/home/u/.claude/.credentials.json', edits: [] },
+      { tool: 'Write', file_path: '/home/u/.claude/.credentials.json', content: '{}' },
+      { tool: 'NotebookEdit', notebook_path: '/home/u/.claude/.credentials.json', new_source: '' },
+    ]) {
+      expect([input.tool, (await tool($, input)).deny]).toEqual([input.tool, expect.stringMatching(/^bash-rules: refusing to read, search or change .*rate_limits/)])
+    }
+    expect(w.ran).toEqual([])
+  })
+
+  test('the CLAUDE_CONFIG_DIR copy is protected too; other files run', async ($, on) => {
+    const w = world(on, 21e9)
+    env(on, { HOME: '/home/u', CLAUDE_CONFIG_DIR: '/srv/claude-cfg' })
+    expect((await tool($, { tool: 'Read', file_path: '/srv/claude-cfg/.credentials.json' })).deny).toMatch(/refusing to read/)
+    expect((await tool($, { tool: 'Read', file_path: '/home/u/.claude/settings.json' })).deny).toBeUndefined()
+    expect((await tool($, { tool: 'Read', file_path: 'src/credentials.json' })).deny).toBeUndefined()
+    expect((await tool($, { tool: 'Write', file_path: '/tmp/out.txt', content: 'x' })).deny).toBeUndefined()
+    expect(w.ran).toHaveLength(3)
+  })
+
+  test('Grep of the file, or of its directory with a glob that can match it, is denied', async ($, on) => {
+    const w = world(on, 22e9)
+    env(on, { HOME: '/home/u' })
+    for (const input of [
+      { tool: 'Grep', pattern: 'token', path: '~/.claude', glob: '*.json' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u/.claude' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u/.claude/.credentials.json' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u', glob: '**/*.json' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u/.claude', glob: '*.{ts,json}' },
+    ]) {
+      expect([input, (await tool($, input)).deny]).toEqual([input, expect.stringMatching(/refusing to read, search/)])
+    }
+    for (const input of [
+      { tool: 'Grep', pattern: 'token', path: 'src' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u/.claude', glob: '*.md' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u/.claude', type: 'ts' },
+      { tool: 'Grep', pattern: 'token', path: '/home/u' },
+      { tool: 'Grep', pattern: 'token', path: '.claude', glob: '*.json' },
+    ]) {
+      expect([input, (await tool($, input)).deny]).toEqual([input, undefined])
+    }
+    expect(w.ran).toHaveLength(5)
+  })
+
+  test('an over-long path or glob is refused unchecked', async ($, on) => {
+    world(on, 23e9)
+    env(on, { HOME: '/home/u' })
+    expect((await tool($, { tool: 'Read', file_path: '/' + 'a/'.repeat(3000) })).deny).toMatch(/too long to check/)
+    expect((await tool($, { tool: 'Grep', pattern: 'x', glob: '*'.repeat(2000) })).deny).toMatch(/too long to check/)
   })
 })
 
@@ -197,7 +232,7 @@ describe('usage log', () => {
   }
 
   test('a deny, a pass and a model verdict are each logged with the stage that decided', async ($, on) => {
-    world(on, 14e9, { fetch: () => decision('read', 0.95) })
+    world(on, 14e9, { complete: () => answer('read', 0.95) })
     const lines = logs(on)
     await call($, 'sed -n 1,5p README.md')
     await call($, 'grep -rn foo src')
@@ -210,7 +245,7 @@ describe('usage log', () => {
     expect(lines[0]).toMatchObject({ v: 1, session: 'sess-1', category: 'read', tool: 'Read', command: 'sed -n 1,5p README.md' })
     expect(lines[0].file).toMatch(/^bash-rules-\d{4}-\d{2}-\d{2}\.jsonl$/)
     expect(lines[1]).toMatchObject({ isError: false, ms: expect.any(Number) })
-    expect(lines[2].model).toMatchObject({ source: 'ollama', category: 'read', confidence: 0.95 })
+    expect(lines[2].model).toMatchObject({ source: 'fallback', category: 'read', confidence: 0.95 })
   })
 
   test('a classic-hook deny that comes back as a tool error is logged as denied-later; other errors stay allow', async ($, on) => {
@@ -268,7 +303,7 @@ describe('SQL script files', () => {
   })
 
   test('a script file that cannot be read is not sent to a model; the classic.PreToolUse ask covers it', async ($, on) => {
-    const w = world(on, 13e9, { fetch: () => decision('read', 1) })
+    const w = world(on, 13e9, { complete: () => answer('read', 1) })
     files(on, { '/w/big.sql': 'x'.repeat(256 * 1024 + 1) })
     for (const c of ['psql -f missing.sql', 'psql -f "$F"', 'mysql app < big.sql']) expect((await call($, c)).deny).toBeUndefined()
     expect(w.ran).toEqual(['psql -f missing.sql', 'psql -f "$F"', 'mysql app < big.sql'])
