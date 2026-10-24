@@ -190,8 +190,8 @@
     {
       "name": "check-bypass-guard",
       "source": "./plugins/check-bypass-guard",
-      "description": "Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files. Needs bun.",
-      "version": "0.1.0",
+      "description": "Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides or git config changes, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files, git hooks and .git/config, and Bash writes to those configs. Needs bun.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -204,8 +204,8 @@
     {
       "name": "cloud-ops-guard",
       "source": "./plugins/cloud-ops-guard",
-      "description": "PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, gates subagent plan, state, output and aws calls, asks before destructive aws operations, and guards kubectl, helm, talosctl and omnictl changes on production clusters.",
-      "version": "0.2.0",
+      "description": "PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, gates subagent plan, init, state, output and aws calls, asks before destructive aws, pulumi and helmfile operations, and guards kubectl, helm, talosctl and omnictl changes on production clusters, through common aliases and wrappers. By default it no longer auto-approves plan, init or other read-only forms (option autoAllowReadOnly).",
+      "version": "0.3.0",
       "category": "development"
     },
     {
@@ -513,7 +513,7 @@
       "name": "readonly-agent-gate",
       "source": "./plugins/readonly-agent-gate",
       "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. Needs bun.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "development"
     },
     {
@@ -1464,8 +1464,8 @@
     {
       "name": "bash-rules",
       "source": "./plugins/bash-rules",
-      "description": "Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, destroy systems, infra and data, kill processes by name, touch Claude Code's credentials file, or pass grep --no-ignore. Commands the parser is unsure about are sent to Ollama (ollama.com for :cloud models), then to Haiku.",
-      "version": "0.4.0",
+      "description": "Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, destroy systems, infra and data, kill processes by name, or pass grep --no-ignore, and denies any Bash or file-tool touch of Claude Code's credentials file. Commands the parser is unsure about go, with common secrets masked, to a local Ollama, then to Haiku; a :cloud model or a remote Ollama server is used only with ollamaCloud on.",
+      "version": "0.5.0",
       "category": "development"
     },
     {
