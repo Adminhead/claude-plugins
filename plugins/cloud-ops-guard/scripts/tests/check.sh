@@ -534,9 +534,9 @@ t "talosctl in a subagent without token" deny "talosctl -n 10.0.0.1 reset" notok
 t "omnictl delete asks" ask "omnictl delete cluster x"
 t "omnictl apply asks" ask "omnictl apply -f c.yaml"
 t "omnictl get" none "omnictl get clusters"
-t "omnictl delete --help" none "omnictl delete --help"
-t "talosctl reboot --help" none "talosctl reboot --help"
-t "prod apply --help" none "kubectl --context omni-prod apply --help"
+t "omnictl delete --help asks (help is ignored beside an ask verb)" ask "omnictl delete --help"
+t "talosctl reboot --help asks" ask "talosctl reboot --help"
+t "prod apply --help asks" ask "kubectl --context omni-prod apply --help"
 t "dev scale" none "kubectl --context omni-dev -n isktel-dev scale deploy/worker --replicas=0"
 t "dev delete pvc" none "kubectl --context omni-dev -n x delete pvc d"
 t "dev helm upgrade" none "helm --kube-context omni-dev upgrade x chart"
@@ -695,7 +695,8 @@ t "kubeconfig created in the same command asks" ask "cp a k.yaml && kubectl --ku
 t "kubeconfig overwritten in the same command asks" ask "cp $root/cfg-a.yaml $root/cfg-b.yaml && kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1"
 t "kubeconfig switched by kubectl config asks" ask "export KUBECONFIG=$root/cfg-b.yaml; kubectl config use-context omni-prod; kubectl delete pv pv-1"
 t "kubeconfig written by a redirect asks" ask "echo x > $root/cfg-b.yaml; kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1"
-t "kubeconfig in a nested shell asks" ask "bash -c 'kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1'"
+t "dev kubeconfig in a nested shell stays quiet" none "bash -c 'kubectl --kubeconfig $root/cfg-b.yaml delete pv pv-1'"
+t "prod kubeconfig in a nested shell" deny "bash -c 'kubectl --kubeconfig $root/cfg-a.yaml delete pv pv-1'"
 t "dev kubeconfig with read-only neighbours stays quiet" none "export KUBECONFIG=$root/cfg-b.yaml; [ \"\$(kubectl config current-context)\" = omni-dev ] || exit 9; kubectl delete pvc d 2>&1 | tail -1"
 # tofu flags with values, aws global flags and variables
 t "show -json=true asks" ask "tofu show -json=true tfplan"
@@ -792,7 +793,7 @@ t "helmfile destroy, subagent without token" deny "helmfile destroy" notoken
 t "helmfile diff stays quiet" none "helmfile -e production diff"
 t "helmfile template stays quiet" none "helmfile template"
 t "helmfile list stays quiet" none "helmfile list"
-t "helmfile destroy --help stays quiet" none "helmfile destroy --help"
+t "helmfile destroy --help asks" ask "helmfile destroy --help"
 # pulumi: destroy, up, refresh and their aliases ask on any stack
 t "pulumi destroy --yes" ask "pulumi destroy --yes"
 t "pulumi down" ask "pulumi down -y"
@@ -805,7 +806,7 @@ t "pulumi destroy, subagent without token" deny "pulumi destroy --yes" notoken
 t "pulumi behind an unknown sudo option" ask "sudo -iu root pulumi destroy"
 t "pulumi preview stays quiet" none "pulumi preview"
 t "pulumi stack ls stays quiet" none "pulumi stack ls"
-t "pulumi up --help stays quiet" none "pulumi up --help"
+t "pulumi up --help asks" ask "pulumi up --help"
 t "echo pulumi destroy is data" none "echo pulumi destroy"
 # Wrappers: nix run maps the installable's attribute to its program; nix shell -c and busybox sh -c are unwrapped
 t "nix run terraform destroy" deny "nix run nixpkgs#terraform -- destroy"
@@ -849,22 +850,112 @@ prodpat='(' t "invalid pattern leaves terraform checks alone" deny "tofu destroy
 
 # 3a: a process kubeconfig that is unreadable, or that a command may switch first, is unknown
 kubecfg=$root/missing.yaml t "use-context then delete with no kubeconfig asks" ask "kubectl config use-context production; kubectl delete pvc data"
+t "use-context production then delete on the dev process kubeconfig asks" ask "kubectl config use-context production; kubectl delete pvc data"
 t "use-context then apply on the dev process kubeconfig asks" ask "kubectl config use-context omni-dev; kubectl apply -f x.yaml"
-t "nested shell on the process kubeconfig asks" ask "bash -c 'kubectl delete pvc d'"
+t "nested shell on the dev process kubeconfig stays quiet" none "bash -c 'kubectl delete pvc d'"
 t "nested shell with an explicit dev context stays quiet" none "bash -c 'kubectl --context omni-dev delete pvc d'"
 kubecfg=$root/missing.yaml t "unreadable process kubeconfig with an exported dev file asks" ask "export KUBECONFIG=$root/cfg-b.yaml; kubectl delete pv pv-1"
-# Any command outside NO_WRITE (helm itself, kustomize, curl) may write the kubeconfig, so the dev
-# process kubeconfig is not read and these ask. See the follow-up on narrowing writesNothing.
-t "helm upgrade on the dev process kubeconfig asks" ask "helm upgrade x chart"
-t "kustomize piped to kubectl apply asks" ask "kustomize build . | kubectl apply -f -"
-t "helm template piped to kubectl apply asks" ask "helm template x c | kubectl apply -f -"
-t "kubectl apply beside curl asks" ask "kubectl apply -f x.yaml && curl localhost:8080/health"
+# Only a command that runs before the judged one can write the kubeconfig it reads. helm, talosctl and
+# omnictl verbs keep to the cluster, and kustomize build writes only stdout, so these read the dev fixture.
+t "helm upgrade on the dev process kubeconfig stays quiet" none "helm upgrade x chart"
+t "helm install on the dev process kubeconfig stays quiet" none "helm install x c"
+kubecfg=$prod t "helm upgrade on the prod process kubeconfig asks" ask "helm upgrade x chart"
+t "kustomize piped to kubectl apply stays quiet" none "kustomize build . | kubectl apply -f -"
+t "helm template piped to kubectl apply stays quiet" none "helm template x c | kubectl apply -f -"
+t "kubectl apply then curl stays quiet" none "kubectl apply -f x.yaml && curl localhost:8080/health"
 t "kubectl apply beside a read-only filter stays quiet" none "kubectl apply -f x.yaml | tail -5"
+t "sh -c kubectl delete on the dev process kubeconfig stays quiet" none "sh -c 'kubectl delete pv x'"
+kubecfg=$prod t "sh -c kubectl delete pv on the prod process kubeconfig" deny "sh -c 'kubectl delete pv x'"
+# Commands that may write the kubeconfig first still make it unknown
+t "aws eks update-kubeconfig before kubectl asks" ask "aws eks update-kubeconfig --name c && kubectl delete pv x"
+t "talosctl kubeconfig before kubectl asks" ask "talosctl -n 10.0.0.1 kubeconfig && kubectl delete pv x"
+t "omnictl kubeconfig before kubectl asks" ask "omnictl kubeconfig -c c && kubectl delete pv x"
+t "helm plugin install before kubectl asks" ask "helm plugin install https://x && kubectl apply -f x.yaml"
+t "helm repo add before kubectl asks" ask "helm repo add x https://x && kubectl apply -f x.yaml"
+t "helm diff (a plugin) before kubectl asks" ask "helm diff upgrade x c && kubectl apply -f x.yaml"
+t "helm --post-renderer piped to kubectl asks" ask "helm template x c --post-renderer ./r.sh | kubectl apply -f -"
+t "kustomize build -o before kubectl asks" ask "kustomize build . -o out.yaml && kubectl apply -f out.yaml"
+t "a writer in the command's own substitution asks" ask "kubectl delete pv \$(cp a $root/kube-dev.yaml; echo x)"
+t "a function body runs after a later writer" ask 'f() { kubectl delete pv x; }; cp a b; f'
+t "a loop runs the kubectl again after the writer" ask 'for i in 1 2; do kubectl delete pv x; cp a b; done'
+t "a writer before sh -c asks" ask "cp a b; sh -c 'kubectl delete pv x'"
+t "a writer inside sh -c before kubectl asks" ask "sh -c 'cp a b; kubectl delete pv x'"
+t "bash -lc reads a profile first" ask "bash -lc 'kubectl delete pv x'"
+t "zsh -c reads zshenv first" ask "zsh -c 'kubectl delete pv x'"
+t "a heredoc fed to bash is not read" ask $'bash <<\'EOF\'\nkubectl delete pv x\nEOF'
+t "a KUBECONFIG prefix on sh -c reaches the nested kubectl" ask "KUBECONFIG=$root/cfg-a.yaml sh -c 'kubectl delete pv x'"
+t "an env KUBECONFIG wrapper on sh -c reaches the nested kubectl" ask "env KUBECONFIG=$root/cfg-a.yaml sh -c 'kubectl delete pv x'"
+t "an exported KUBECONFIG reaches the nested kubectl" ask "export KUBECONFIG=$root/cfg-a.yaml; sh -c 'kubectl delete pv x'"
+t "sudo sh -c may read another user's kubeconfig" ask "sudo sh -c 'kubectl delete pv x'"
+
+# Review round 2: -h as another flag's value cannot turn off the check. With an ask verb among the
+# positional words, help flags are ignored, so asking on `destroy --help` is expected.
+t "pulumi destroy, -h as --event-log's value" ask "pulumi destroy --yes --event-log -h"
+t "pulumi destroy, -h as a value, subagent without token" deny "pulumi destroy --yes --event-log -h" notoken
+t "pulumi up, -h as --tracing-header's value" ask "pulumi up --yes --tracing-header -h"
+t "helmfile sync, -h as --kustomize-binary's value" ask "helmfile sync --kustomize-binary -h"
+t "helmfile destroy, -h as --cascade's value" ask "helmfile destroy --cascade -h"
+t "helmfile -k -h sync" ask "helmfile -k -h sync"
+t "helmfile -k -h sync, subagent without token" deny "helmfile -k -h sync" notoken
+t "kubectl delete pv on prod, -h as --raw's value" deny "kubectl --context prod delete pv x --raw -h"
+t "helm upgrade on prod, -h as --description's value" ask "helm --kube-context omni-prod upgrade x chart --description -h"
+t "talosctl reset, -h as a value" ask "talosctl -n 10.0.0.1 reset --system-labels-to-wipe -h"
+t "kubectl get --help on prod stays quiet" none "kubectl --context omni-prod get pods --help"
+t "pulumi stack ls --help stays quiet" none "pulumi stack ls --help"
+# A variable or substitution as the verb asks, and gates a subagent
+t "pulumi verb from a variable" ask 'ACTION=destroy; pulumi "$ACTION" --yes'
+t "pulumi verb from a variable, subagent without token" deny 'ACTION=destroy; pulumi "$ACTION" --yes' notoken
+t "pulumi verb from an unset variable" ask 'pulumi $ACTION --yes'
+t "pulumi verb from an unset variable, subagent without token" deny 'pulumi $ACTION --yes' notoken
+t "pulumi verb from a substitution" ask 'pulumi $(echo destroy) --yes'
+t "pulumi stack verb from a variable" ask 'pulumi stack $V dev --yes'
+t "pulumi config set with a variable value stays quiet" none 'pulumi config set region $REGION'
+t "pulumi stack select of a variable stays quiet" none 'pulumi stack select $STACK'
+t "helmfile verb from a variable" ask 'ACTION=destroy; helmfile "$ACTION"'
+t "helmfile verb from a variable, subagent without token" deny 'ACTION=destroy; helmfile "$ACTION"' notoken
+t "helmfile verb from an unset variable" ask 'helmfile -e dev $ACTION'
+t "helmfile diff with a variable environment stays quiet" none 'helmfile -e $ENV diff'
+t "kubectl verb from a variable on prod" deny 'V=delete; kubectl --context prod $V pv x'
+# mise exec runs the command after --, aliases included
+t "mise exec tf destroy" deny "mise exec -- tf destroy"
+t "mise x tg run-all destroy" deny "mise x -- tg run-all destroy"
+t "mise exec k delete pv on prod" deny "mise exec -- k --context prod delete pv x"
+t "mise exec with a tool spec, tf destroy" deny "mise exec terraform@1.9 -- tf destroy"
+t "mise exec tf plan stays quiet" none "mise exec -- tf plan"
+t "mise exec bash -c tofu destroy" deny "mise exec -- bash -c 'tofu destroy'"
+# python -m awscli is aws wherever it appears; only pip install awscli is a package name
+t "ssh runs python -m awscli" ask "ssh host python3 -m awscli ec2 terminate-instances --instance-ids i-1"
+t "busybox xargs runs python -m awscli" ask "busybox xargs python3 -m awscli ec2 terminate-instances --instance-ids i-1"
+t "python long option value before -m awscli" ask "python3 --check-hash-based-pycs always -m awscli ec2 terminate-instances --instance-ids i-1"
+t "python long option value before -m awscli, subagent without token" deny "python3 --check-hash-based-pycs always -m awscli s3 ls" notoken
+t "pip install of a pinned awscli stays quiet" none "python3 -m pip install awscli==1.32.0"
+# nix: the subcommand word, option values, the first --, and versioned attributes
+t "nix run kubectl with shell and -c among its arguments" deny "nix run nixpkgs#kubectl -- --context prod delete pv shell -c x"
+t "nix run past an --option value holding a #" deny "nix run --option substituters https://cache.example#x nixpkgs#terraform -- destroy"
+t "nix run terraform destroy before a later --" deny "nix run nixpkgs#terraform destroy -- -x"
+t "nix run terraform_1 destroy" deny "nix run nixpkgs#terraform_1 -- destroy"
+t "nix run kubernetes-helm-wrapped upgrade on prod" ask "nix run nixpkgs#kubernetes-helm-wrapped -- --kube-context omni-prod upgrade x chart"
+t "nix env shell -c tofu destroy" deny "nix env shell nixpkgs#opentofu -c tofu destroy"
+t "nix --option before shell -c" deny "nix --option sandbox false shell nixpkgs#terraform -c terraform destroy"
+t "nix run terraform-docs is not terraform" none "nix run nixpkgs#terraform-docs -- markdown ."
+# pulumi credentialed reads: preview gates a subagent; --show-secrets and stack export print secrets
+t "pulumi preview, subagent without token" deny "pulumi preview" notoken
+t "pulumi pre, subagent without token" deny "pulumi pre" notoken
+t "pulumi preview, subagent with token" none "pulumi preview" withtoken
+t "pulumi stack output --show-secrets asks" ask "pulumi stack output --show-secrets"
+t "pulumi config --show-secrets=true asks" ask "pulumi config --show-secrets=true"
+t "pulumi stack output --show-secrets, subagent without token" deny "pulumi stack output --show-secrets" notoken
+t "pulumi stack export asks" ask "pulumi stack export"
+t "pulumi stack export, subagent without token" deny "pulumi stack export" notoken
+t "pulumi stack export, subagent with token" none "pulumi stack export" withtoken
 
 # The subagent deny names the main session and the user, never the token line itself
 why "subagent deny: ask the user" "ask the user" "tofu plan" notoken
 got=$(mkin "aws s3 ls" notoken | guard 2>/dev/null)
 case $got in *"ALLOW: cloud-ops"*|'') bad "subagent deny omits the token line" "no token line" "$got" ;; *) ok "subagent deny omits the token line" ;; esac
+got=$(mkin "aws s3 ls" nosuchagent | guard 2>/dev/null)
+case $got in *"ALLOW: cloud-ops"*|'') bad "unreadable brief omits the token line" "no token line" "$got" ;; *) ok "unreadable brief omits the token line" ;; esac
+why "unreadable brief: ask the user" "ask the user" "aws s3 ls" nosuchagent
 
 # Non-matching
 t "no tool" none "ls -la"
