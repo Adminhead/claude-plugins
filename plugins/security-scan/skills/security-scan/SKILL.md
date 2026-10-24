@@ -60,5 +60,5 @@ Spawn one Agent with `subagent_type: general-purpose` and `model: sonnet`. Give 
 ## Gotchas
 
 - The script pins `govulncheck` and `pip-audit` to fixed versions and fetches them with `go run` and `uvx`. Bump the constants in `scripts/scanners.py` deliberately, then rerun `tests/` with pytest.
-- `pip-audit` resolves requirements by installing them into a temporary virtualenv, so a dependency shipped only as an sdist runs its build code. Mention it when auditing an untrusted branch.
+- `pip-audit` always runs with `--no-deps --disable-pip`, so it never installs or builds branch code. It audits only the listed packages, from `uv.lock` (via `uv export`) or `requirements*.txt`. A requirements file with option lines (`-e`, `--index-url`, `-r`, `-c`) or URL, VCS or path requirements is not audited, and unpinned requirements are skipped. A `pyproject.toml` or `setup.py` without a lock is not audited. Each case is reported as a gap, as is a requirements file that is not fully pinned with hashes or a lock header ("transitive dependencies not audited (no lock)").
 - semgrep downloads the `p/default` ruleset from the Semgrep registry; metrics stay off.

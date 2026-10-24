@@ -1,6 +1,6 @@
 {
   "name": "security-scan",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Manual security audit of a branch: gitleaks, semgrep, trivy, govulncheck and pip-audit in one script, subagent verification, a ranked findings table, plus CI and supply-chain trust checks and SBOM guidance.",
   "author": {
     "name": "AdminHead",
