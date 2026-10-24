@@ -1,6 +1,6 @@
 ---
 name: docker
-description: Writes and reviews Dockerfiles, Compose files and .dockerignore: multi-stage builds, layer caching, non-root runtime, daemon.json hardening, secrets and container debugging. Use when creating or changing a Dockerfile, compose.yaml or daemon.json, hardening an image or host, or debugging a container that won't build, start or connect.
+description: 'Writes and reviews Dockerfiles, Compose files and .dockerignore: multi-stage builds, layer caching, non-root runtime, daemon.json hardening, secrets and container debugging. Use when creating or changing a Dockerfile, compose.yaml or daemon.json, hardening an image or host, or debugging a container that won''t build, start or connect.'
 ---
 
 # Docker and Compose

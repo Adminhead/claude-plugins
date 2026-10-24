@@ -1,6 +1,6 @@
 ---
 name: aspnet-core
-description: Builds and reviews ASP.NET Core HTTP apps: minimal APIs and controllers, DTOs, validation, ProblemDetails, OpenAPI, middleware order, auth wiring, .http files, CRUD endpoints written without scaffolders. Use for Program.cs endpoint or middleware work, "add an endpoint", OpenAPI setup, or global error handling in a .NET web project.
+description: 'Builds and reviews ASP.NET Core HTTP apps: minimal APIs and controllers, DTOs, validation, ProblemDetails, OpenAPI, middleware order, auth wiring, .http files, CRUD endpoints written without scaffolders. Use for Program.cs endpoint or middleware work, "add an endpoint", OpenAPI setup, or global error handling in a .NET web project.'
 ---
 
 # ASP.NET Core

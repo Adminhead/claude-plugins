@@ -1,6 +1,6 @@
 {
   "name": "better-auth",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Better Auth library setup and debugging from version-matched docs: adapters, the auth CLI, route handlers, sessions, security options, email/password, two-factor and organizations.",
   "author": {
     "name": "AdminHead",

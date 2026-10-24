@@ -1,6 +1,6 @@
 {
   "name": "aspnet-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Builds and reviews ASP.NET Core HTTP apps: minimal APIs and controllers, DTOs, validation, ProblemDetails, OpenAPI, middleware order, auth wiring, .http files, CRUD endpoints written without scaffolders. Use for Program.cs endpoint or middleware work, \"add an endpoint\", OpenAPI setup, or global error handling in a .NET web project.",
   "author": {
     "name": "AdminHead",

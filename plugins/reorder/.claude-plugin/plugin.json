@@ -1,6 +1,6 @@
 {
   "name": "reorder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Manual command that realigns an arbitrarily ordered list, table or section set under one stated principle, moving items only.",
   "author": {
     "name": "AdminHead",

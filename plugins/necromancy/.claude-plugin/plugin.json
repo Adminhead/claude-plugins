@@ -1,6 +1,6 @@
 {
   "name": "necromancy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session.",
   "author": {
     "name": "AdminHead",

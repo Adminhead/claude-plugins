@@ -1,6 +1,6 @@
 ---
 name: blazor
-description: Builds and debugs Blazor components and Blazor Web Apps: parameters and EventCallback, render modes, forms and validation, auth by render mode, shared state, data loading, prerendering, JS interop, and Blazor Server to Web App conversion. Use for any .razor file, a new Blazor project, data loading twice, or HttpContext null in a component.
+description: 'Builds and debugs Blazor components and Blazor Web Apps: parameters and EventCallback, render modes, forms and validation, auth by render mode, shared state, data loading, prerendering, JS interop, and Blazor Server to Web App conversion. Use for any .razor file, a new Blazor project, data loading twice, or HttpContext null in a component.'
 ---
 
 # Blazor

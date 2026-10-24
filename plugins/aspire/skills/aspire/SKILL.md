@@ -1,6 +1,6 @@
 ---
 name: aspire
-description: Builds, runs, tests and deploys Aspire apps (formerly .NET Aspire): the AppHost resource model, service defaults, integrations, the aspire CLI, integration tests, and aspire publish/deploy. Use for *.AppHost or apphost.cs/apphost.ts work, AddProject/AddPostgres/WithReference wiring, or a service that fails to start or connect under aspire run.
+description: 'Builds, runs, tests and deploys Aspire apps (formerly .NET Aspire): the AppHost resource model, service defaults, integrations, the aspire CLI, integration tests, and aspire publish/deploy. Use for *.AppHost or apphost.cs/apphost.ts work, AddProject/AddPostgres/WithReference wiring, or a service that fails to start or connect under aspire run.'
 ---
 
 # Aspire

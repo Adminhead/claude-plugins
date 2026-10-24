@@ -1,6 +1,6 @@
 {
   "name": "aws",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "General AWS skill: resolve account, region and identity first, sign-in with SSO or aws login, IAM policy and trust traps, AccessDenied debugging and cost-query habits.",
   "author": {
     "name": "AdminHead",

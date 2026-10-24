@@ -1,6 +1,6 @@
 ---
 name: gh-triage
-description: Triages existing GitHub issues and external PRs with gh: category and state labels, duplicate and prior-rejection checks, claim verification, then a needs-info note, an agent brief, or a reasoned close. Use when the user asks what needs attention in a backlog, or to triage, label or judge readiness of an issue or PR.
+description: 'Triages existing GitHub issues and external PRs with gh: category and state labels, duplicate and prior-rejection checks, claim verification, then a needs-info note, an agent brief, or a reasoned close. Use when the user asks what needs attention in a backlog, or to triage, label or judge readiness of an issue or PR.'
 ---
 
 # Issue and PR triage

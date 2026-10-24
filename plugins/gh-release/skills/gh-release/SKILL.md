@@ -1,6 +1,6 @@
 ---
 name: gh-release
-description: Cuts a manual GitHub release for a single-package repo: defers to release-please, semantic-release or changesets when present, proposes a SemVer bump from the public-API diff, drafts a Keep a Changelog entry, opens a release PR, then tags and publishes with gh after approval. Use when asked to cut or prepare a release or changelog entry by hand. Not for Forgejo or Codeberg (`forgejo-release`).
+description: 'Cuts a manual GitHub release for a single-package repo: defers to release-please, semantic-release or changesets when present, proposes a SemVer bump from the public-API diff, drafts a Keep a Changelog entry, opens a release PR, then tags and publishes with gh after approval. Use when asked to cut or prepare a release or changelog entry by hand. Not for Forgejo or Codeberg (`forgejo-release`).'
 ---
 
 # GitHub Release

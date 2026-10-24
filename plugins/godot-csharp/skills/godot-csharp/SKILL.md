@@ -1,6 +1,6 @@
 ---
 name: godot-csharp
-description: Writes and fixes C# in Godot 4 .NET projects: partial node classes, the PascalCase lifecycle, [Export], [Signal] events, GDScript interop, the .csproj and the build. Use for .cs or .csproj files beside project.godot, "port this GDScript to C#", GD0201 errors, or ObjectDisposedException after a signal.
+description: 'Writes and fixes C# in Godot 4 .NET projects: partial node classes, the PascalCase lifecycle, [Export], [Signal] events, GDScript interop, the .csproj and the build. Use for .cs or .csproj files beside project.godot, "port this GDScript to C#", GD0201 errors, or ObjectDisposedException after a signal.'
 license: Apache-2.0 AND MIT
 ---
 

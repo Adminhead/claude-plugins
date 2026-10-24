@@ -1,6 +1,6 @@
 ---
 name: aws
-description: Works out which AWS account, region and identity is in use when that is unknown, unclear or wrong, guides sign-in with SSO or aws login, and covers IAM: AccessDenied debugging, policy and trust-policy writing, STS session limits, and cost-query habits. Use when the user mentions AWS credentials, profile, SSO, expired tokens, an unclear region or account, writing or debugging an IAM policy or role, AccessDenied, or what AWS costs. Not for listing or inspecting resources (aws-resource-query), incidents (aws-cloudwatch), architecture or cost reviews (aws-well-architected), CLI flags and scripting (aws-cli), or infrastructure as code (terraform).
+description: 'Works out which AWS account, region and identity is in use when that is unknown, unclear or wrong, guides sign-in with SSO or aws login, and covers IAM: AccessDenied debugging, policy and trust-policy writing, STS session limits, and cost-query habits. Use when the user mentions AWS credentials, profile, SSO, expired tokens, an unclear region or account, writing or debugging an IAM policy or role, AccessDenied, or what AWS costs. Not for listing or inspecting resources (aws-resource-query), incidents (aws-cloudwatch), architecture or cost reviews (aws-well-architected), CLI flags and scripting (aws-cli), or infrastructure as code (terraform).'
 ---
 
 # AWS

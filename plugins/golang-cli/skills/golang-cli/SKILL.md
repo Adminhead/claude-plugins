@@ -1,6 +1,6 @@
 ---
 name: golang-cli
-description: Builds and reviews Go command-line tools with cobra and viper: command tree and hooks, flag/env/config precedence, stdout/stderr, exit codes, signal shutdown, version embedding and tests. Use when adding or changing a cobra or viper CLI, or when a flag, env var or config file is ignored.
+description: 'Builds and reviews Go command-line tools with cobra and viper: command tree and hooks, flag/env/config precedence, stdout/stderr, exit codes, signal shutdown, version embedding and tests. Use when adding or changing a cobra or viper CLI, or when a flag, env var or config file is ignored.'
 ---
 
 # Go CLIs with cobra and viper

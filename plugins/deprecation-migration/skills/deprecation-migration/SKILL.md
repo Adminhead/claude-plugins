@@ -1,6 +1,6 @@
 ---
 name: deprecation-migration
-description: Plans deprecations and migrations: whether to sunset or keep a system, moving consumers off an old API, library or feature safely, and zero-downtime schema changes via expand/contract. Use for "sunset the v1 API", "migrate users off the legacy service", "remove this feature safely", "rename or drop a column without downtime".
+description: 'Plans deprecations and migrations: whether to sunset or keep a system, moving consumers off an old API, library or feature safely, and zero-downtime schema changes via expand/contract. Use for "sunset the v1 API", "migrate users off the legacy service", "remove this feature safely", "rename or drop a column without downtime".'
 ---
 
 # Deprecation and migration

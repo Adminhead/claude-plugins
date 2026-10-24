@@ -1,6 +1,6 @@
 {
   "name": "gh-triage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Triage existing GitHub issues and external PRs with gh: category and state labels, duplicate and prior-rejection checks, claim verification, needs-info notes, agent briefs and stale policy.",
   "author": {
     "name": "AdminHead",

@@ -1,6 +1,6 @@
 ---
 name: aws-cli
-description: AWS CLI v2 mechanics for scripts and write commands: pagination (--no-paginate, --max-items, --starting-token), --output and --query, the pager, retries and timeouts, waiters, skeletons with --cli-input-json, dry runs and client tokens, and the aws --version check. Use when writing or debugging an aws command or script, when output is truncated or paginated, before running a create, update, delete, or launch command, when a long call times out, or when credential source precedence (env keys vs profile) is in question. Not for read-only questions about what exists in an account or how a resource is configured (use aws-resource-query), and not for profiles, SSO login, or IAM permissions (use aws).
+description: 'AWS CLI v2 mechanics for scripts and write commands: pagination (--no-paginate, --max-items, --starting-token), --output and --query, the pager, retries and timeouts, waiters, skeletons with --cli-input-json, dry runs and client tokens, and the aws --version check. Use when writing or debugging an aws command or script, when output is truncated or paginated, before running a create, update, delete, or launch command, when a long call times out, or when credential source precedence (env keys vs profile) is in question. Not for read-only questions about what exists in an account or how a resource is configured (use aws-resource-query), and not for profiles, SSO login, or IAM permissions (use aws).'
 ---
 
 # AWS CLI v2 mechanics

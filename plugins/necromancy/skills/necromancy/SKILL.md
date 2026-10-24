@@ -1,6 +1,6 @@
 ---
 name: necromancy
-description: Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them against the repo and writes a handoff-shaped brief for a fresh session. Use for /necromancy, "recover the dead session", "resurrect that session" or a crash before a handoff was written. Not for a live session (handoff), or for restoring the old conversation whole (claude --resume).
+description: 'Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them against the repo and writes a handoff-shaped brief for a fresh session. Use for /necromancy, "recover the dead session", "resurrect that session" or a crash before a handoff was written. Not for a live session (handoff), or for restoring the old conversation whole (claude --resume).'
 argument-hint: "[session id or prefix, or topic]"
 disable-model-invocation: true
 allowed-tools:

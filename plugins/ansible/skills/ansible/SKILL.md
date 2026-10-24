@@ -1,6 +1,6 @@
 ---
 name: ansible
-description: Writes, reviews and runs Ansible playbooks, roles and inventories safely: idempotency proof, check mode limits, validate hooks, handlers, vault or sops secrets, FQCN and become. Use when editing a playbook, role or inventory, running ansible-playbook or ansible-lint, using --check or --limit, or fixing a task that reports changed every run.
+description: 'Writes, reviews and runs Ansible playbooks, roles and inventories safely: idempotency proof, check mode limits, validate hooks, handlers, vault or sops secrets, FQCN and become. Use when editing a playbook, role or inventory, running ansible-playbook or ansible-lint, using --check or --limit, or fixing a task that reports changed every run.'
 ---
 
 # Ansible

@@ -1,6 +1,6 @@
 {
   "name": "git-history",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery.",
   "author": {
     "name": "AdminHead",

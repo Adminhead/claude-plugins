@@ -1,6 +1,6 @@
 {
   "name": "the-fool",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Devil's advocate skill that steelmans an idea or decision, then challenges it in one chosen mode (Socratic, dialectic, pre-mortem, red team, evidence audit) and drives to a stronger position.",
   "author": {
     "name": "AdminHead",

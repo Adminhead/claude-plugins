@@ -1,6 +1,6 @@
 ---
 name: git-history
-description: Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery. Use when asked to squash or reorder commits, update a branch with main, backport a fix, find a regression, or undo a bad rebase or reset.
+description: 'Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery. Use when asked to squash or reorder commits, update a branch with main, backport a fix, find a regression, or undo a bad rebase or reset.'
 ---
 
 # Git history

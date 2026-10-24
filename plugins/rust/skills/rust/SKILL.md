@@ -1,6 +1,6 @@
 ---
 name: rust
-description: Writes, reviews and debugs Rust: ownership and lifetimes, Result and error types, traits and modules, Cargo workspaces and features, async and tokio tasks, unsafe, measured performance. Use for *.rs or Cargo.toml work, borrow-checker fights, error-type design, clippy failures or unsafe review.
+description: 'Writes, reviews and debugs Rust: ownership and lifetimes, Result and error types, traits and modules, Cargo workspaces and features, async and tokio tasks, unsafe, measured performance. Use for *.rs or Cargo.toml work, borrow-checker fights, error-type design, clippy failures or unsafe review.'
 ---
 
 # Rust

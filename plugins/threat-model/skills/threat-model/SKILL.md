@@ -1,6 +1,6 @@
 ---
 name: threat-model
-description: Builds a STRIDE threat model of a system or repo from the code: trust boundaries, data-flow diagram, verified findings tiered by exploitability, attack trees, and testable requirements with mapped controls. Use when asked for a threat model, attack-surface or trust-boundary review, attack tree, or what changed security-wise since the last model.
+description: 'Builds a STRIDE threat model of a system or repo from the code: trust boundaries, data-flow diagram, verified findings tiered by exploitability, attack trees, and testable requirements with mapped controls. Use when asked for a threat model, attack-surface or trust-boundary review, attack tree, or what changed security-wise since the last model.'
 ---
 
 # Threat model

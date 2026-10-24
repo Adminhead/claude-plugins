@@ -1,6 +1,6 @@
 ---
 name: golang-performance
-description: Measurement-first Go performance work: benchstat comparisons, pprof and execution traces, escape analysis, GC and GOMEMLIMIT tuning, CI regression checks. Use when Go code is slow or allocates or uses too much memory, when writing or comparing benchmarks, reading a profile, or claiming a speedup.
+description: 'Measurement-first Go performance work: benchstat comparisons, pprof and execution traces, escape analysis, GC and GOMEMLIMIT tuning, CI regression checks. Use when Go code is slow or allocates or uses too much memory, when writing or comparing benchmarks, reading a profile, or claiming a speedup.'
 ---
 
 # Go performance

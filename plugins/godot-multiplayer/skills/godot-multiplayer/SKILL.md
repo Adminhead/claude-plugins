@@ -1,6 +1,6 @@
 ---
 name: godot-multiplayer
-description: Builds and secures networked Godot 4 games: server-authoritative @rpc validation, ENet and WebSocket peers, MultiplayerSpawner and MultiplayerSynchronizer, lobbies, dedicated servers, interpolation and prediction. Use for @rpc, "multiplayer", "netcode" or a headless server in a Godot project.
+description: 'Builds and secures networked Godot 4 games: server-authoritative @rpc validation, ENet and WebSocket peers, MultiplayerSpawner and MultiplayerSynchronizer, lobbies, dedicated servers, interpolation and prediction. Use for @rpc, "multiplayer", "netcode" or a headless server in a Godot project.'
 license: Apache-2.0 AND MIT
 ---
 

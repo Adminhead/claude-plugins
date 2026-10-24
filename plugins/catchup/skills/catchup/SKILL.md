@@ -1,6 +1,6 @@
 ---
 name: catchup
-description: Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, plus one next move when asked. Use when asked "what happened while I was away?", "I can't follow this anymore", "what does this term mean in the plan?", or "what should I do next?". Read-only. Not for handoffs or crash recovery.
+description: 'Rebuilds a returning human''s context from live project state: what needs them, what changed, what new words mean, plus one next move when asked. Use when asked "what happened while I was away?", "I can''t follow this anymore", "what does this term mean in the plan?", or "what should I do next?". Read-only. Not for handoffs or crash recovery.'
 ---
 
 # Catchup

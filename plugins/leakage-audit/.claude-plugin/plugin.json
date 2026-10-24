@@ -1,6 +1,6 @@
 {
   "name": "leakage-audit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Audits an eval, metric, experiment or benchmark for leakage and reports which independence checks fail, each with a fix.",
   "author": {
     "name": "AdminHead",

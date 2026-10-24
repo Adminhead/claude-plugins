@@ -1,6 +1,6 @@
 ---
 name: better-auth
-description: Adds, configures and debugs the Better Auth TypeScript library using docs for the installed version. Use when a project imports better-auth or has a betterAuth() config, or the user names Better Auth: setup, adapters, the auth CLI, route handlers, sessions, rate limits, trusted origins, email/password, two-factor or organizations.
+description: 'Adds, configures and debugs the Better Auth TypeScript library using docs for the installed version. Use when a project imports better-auth or has a betterAuth() config, or the user names Better Auth: setup, adapters, the auth CLI, route handlers, sessions, rate limits, trusted origins, email/password, two-factor or organizations.'
 ---
 
 # Better Auth

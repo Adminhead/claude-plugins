@@ -1,6 +1,6 @@
 ---
 name: the-fool
-description: Challenges an idea, decision, proposal or claim with structured critical reasoning in one of five modes: Socratic questioning, dialectic, pre-mortem, red team or evidence audit. Use for "play devil's advocate", "poke holes in this", "challenge this", "what could go wrong", "red team this idea", "run a pre-mortem" or "test my assumptions".
+description: 'Challenges an idea, decision, proposal or claim with structured critical reasoning in one of five modes: Socratic questioning, dialectic, pre-mortem, red team or evidence audit. Use for "play devil''s advocate", "poke holes in this", "challenge this", "what could go wrong", "red team this idea", "run a pre-mortem" or "test my assumptions".'
 ---
 
 # The Fool
