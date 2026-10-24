@@ -1,6 +1,6 @@
 ---
 name: catchup
-description: Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, with an optional single next move. Use when asked "what happened while I was away?", "I can't follow this anymore", "what does this term mean in the plan?", or "what should I do next?". Read-only. Not for handoffs or crash recovery.
+description: Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, plus one next move when asked. Use when asked "what happened while I was away?", "I can't follow this anymore", "what does this term mean in the plan?", or "what should I do next?". Read-only. Not for handoffs or crash recovery.
 ---
 
 # Catchup
@@ -24,7 +24,7 @@ Adapted from the `catchup` and `nba` skills in LilMGenius/paperthin (MIT).
    - **New words**: every term coined or repurposed since their last touch, one line each, with where it lives. Skip terms they used themselves.
 4. Gloss each project-specific term inline at its first use, even when a New words section follows.
 5. Fit it on one screen. End with a drill-down offer per section instead of expanding everything.
-6. Optionally end with **Next move**: one action, why now, and done when. Pick the cheapest move that clears the binding constraint, including the hard step being avoided. If the gate is already met, the move is to change phase or ship, not to add another surface. If no outside truth has entered lately, the move is external input, not another internal lap. Recommend it; never execute it. When the move is a manual command, name it for the user to run and do not invoke it.
+6. End with **Next move** whenever the user asks what to do next, what to do now or where to start; otherwise include it only when it clearly helps. It is one action, why now, and done when. Pick the cheapest move that clears the binding constraint, including the hard step being avoided. If the gate is already met, the move is to change phase or ship, not to add another surface. If no outside truth has entered lately, the move is external input, not another internal lap. Recommend it; never execute it. When the move is a manual command, name it for the user to run and do not invoke it.
 
 ## Rules
 
@@ -42,4 +42,4 @@ Adapted from the `catchup` and `nba` skills in LilMGenius/paperthin (MIT).
 2. Each Needs you item is actionable without opening another file.
 3. Every claim has a checkable source.
 4. It fits on a screen, with expansion offered and not delivered.
-5. If a Next move is present, there is exactly one, with a done-when a reader can observe.
+5. If the user asked what to do next, a Next move is present. Whenever one is present, there is exactly one, with a done-when a reader can observe.

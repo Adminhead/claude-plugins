@@ -13,7 +13,8 @@ only and never brief from conversation memory; anchor on the human's last
 touch; decision order of Needs you, Changed while you were away and New words;
 outcomes, not process; gloss each coined term at first use; fit on one screen
 with drill-down offers; every claim cites a file, commit or path; read-only;
-"done" means verified. The optional Next move line gives one action, why now and
+"done" means verified. The Next move line, required when the user asks what to
+do next and otherwise optional, gives one action, why now and
 done when, recommends and never executes, and names a manual command for the
 user to run instead of invoking it. Added "Not for" lines naming handoff and
 necromancy.
