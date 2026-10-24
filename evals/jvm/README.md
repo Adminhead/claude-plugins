@@ -22,6 +22,8 @@ Skills appear in the `Skill` tool input either bare (`java`) or plugin-qualified
 
 The `plugins:` lists mirror the plan (`docs/plans/jvm-meta.md`, slice 12). If a leaf plugin is added or renamed, or `programming-core` changes its skill dependencies, update every case. `grep-app` and `context7` are left out: `grep-app` ships no skill and `context7` comes from the official marketplace.
 
+Closure rule: each case's `plugins:` list must equal the `java-meta` and `scala-meta` closure minus the listed exclusions. `python3 scripts/plugins.py check` enforces it and reports any drift.
+
 ## Writing cases
 
 Prompts give symptoms only and never name the skill, plugin or the word "skill". Each neighbour in the `not-` grader is clearly outside the case's intent. Graders are `min: 0`, `max: 0`, `arm: both` on the negative side, so they score in both arms.
