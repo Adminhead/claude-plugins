@@ -1,7 +1,7 @@
 {
   "name": "architect",
-  "version": "0.2.0",
-  "description": "A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model.",
+  "version": "0.2.1",
+  "description": "A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under docs/plans.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
