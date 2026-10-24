@@ -43,16 +43,21 @@ Read the diff, not just subjects, for removed or renamed public symbols (MAJOR),
 
 ## 5. Tag and create the release
 
-After approval of each command:
+After approval of each command. Tag the commit you verified, not whatever the branch head is when the server acts:
 
 ```bash
-fj release -R <remote> create "v1.4.0" -T --branch main \
+SHA=$(git rev-parse HEAD)   # after preflight: HEAD must equal <remote>/<default>
+test "$SHA" = "$(git rev-parse <remote>/<default>)" || { echo "HEAD is not <remote>/<default>"; exit 1; }
+git tag -a v1.4.0 -m "v1.4.0" "$SHA"
+git push <remote> v1.4.0
+test "$(git ls-remote <remote> 'refs/tags/v1.4.0^{}' | awk '{print $1}')" = "$SHA" || { echo "remote tag is not $SHA"; exit 1; }
+fj release -R <remote> create "v1.4.0" -t v1.4.0 \
   -b "$(cat /tmp/release-notes.md)" -a dist/app.tar.gz -d
 ```
 
-- `-t <tag>` uses an existing tag. `-T [tag]` creates the tag (default: the release name) on `-B/--branch`. Alternatively tag yourself: `git tag -a v1.4.0 <sha> -m "v1.4.0" && git push <remote> v1.4.0`, then `-t v1.4.0`.
+- `-t <tag>` uses the tag pushed above. Don't use `-T`/`--create-tag` with `-B/--branch`: it tags the branch head on the server at run time, which can be a different commit from the one you verified. This mirrors `gh-release`'s `--verify-tag`.
 - `-d` draft, `-p` prerelease. `-b` takes the notes text; with no value it opens an editor, which hangs a non-interactive run. There is no notes-file flag, hence `$(cat file)`.
-- `-a FILE` or `-a FILE:name` attaches a file; repeat the flag per asset (confirm repeating with `fj release create --help`). Verify the file exists first.
+- `-a FILE` or `-a FILE:name` attaches a file. Verify the file exists first.
 
 Create as a draft, show the result (`fj release view v1.4.0`, or `fj release browse v1.4.0`), and publish with `fj release edit v1.4.0 -d false` once the user agrees.
 
