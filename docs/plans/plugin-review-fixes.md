@@ -499,6 +499,8 @@ No meta or bundle is bumped, because no `dependencies` list changes.
 
 ## Decisions for the user
 
+**Decided 2026-10-23:** D1 (a) opt-in `ollamaCloud`; D2 (a) opt-in `autoAllowReadOnly`; D9 GitHub only (E1 writes `.github/workflows/check.yml`, no Forgejo workflow). D3 to D8 take the recommendation below.
+
 - **D1. bash-rules cloud model.** Option (a): a boolean `ollamaCloud` (default false) that skips `:cloud` and non-loopback Ollama. Option (b): default `ollamaModel: ''`. Recommend (a). It keeps local Ollama working and makes the third-party hop opt-in.
 - **D2. cloud-ops allowlist.** Option (a): userConfig `autoAllowReadOnly`, default false (no opinion). Option (b): drop the allow path entirely. Recommend (a).
 - **D3. Inert graders.** Delete only (C1), or delete and also add own-skill hard negatives now. Recommend delete only, with negatives in F2.
