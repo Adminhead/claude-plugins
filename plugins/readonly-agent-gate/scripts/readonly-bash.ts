@@ -1,9 +1,17 @@
 // Bash check for read-only subagents: blocks Bash commands that mutate files.
 //
 // This is an ACCIDENT GUARD, not a sandbox. It parses the command with the shell AST walker
-// and pattern-matches known mutating commands. It is easy to evade on purpose (`python -c`,
-// `curl -o`, variable indirection like `$CMD`, scripts that write), and exists to stop a
-// read-only agent from mutating files by mistake.
+// and pattern-matches known mutating commands. It exists to stop a read-only agent from
+// mutating files by mistake, and is easy to evade on purpose. Known gaps:
+// - Code that writes: `python -c`, scripts, variable indirection like `$CMD`, `make` targets
+//   other than install/uninstall, and config files (`curl -K`, `wget --config` block, but
+//   ~/.curlrc and ~/.wgetrc are read).
+// - Redirects, file commands (cp, ln, tee, ...) and the Write tools resolve links on the
+//   filesystem (scratch.ts). Other written paths (tar -C, sort -o, rsync, psql -o, ...) are
+//   string checks, so a pre-created link there is followed.
+// - A link made earlier in the same command line is not on disk yet when this runs.
+// - `sftp`, `cmake --install`, `ninja install` and `meson install` are not handled.
+// - `sqlite3 new.db "select 1"` creates an empty new.db.
 //
 // Contract (https://code.claude.com/docs/en/hooks): the hook JSON has the command at
 // .tool_input.command. Exit 2 blocks the tool call and stderr is shown to Claude; exit 0
@@ -14,10 +22,10 @@
 // Ported from the archived crew plugin (scripts/readonly-bash.ts), itself a 1:1 port of a Python
 // checker whose tokenizer the shell walker replaced. The Python checker is not carried over.
 
-import { writeSync } from 'node:fs'
+import { statSync, writeSync } from 'node:fs'
 import { MAX_DEPTH, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand } from './shell/walk.ts'
-import { SCRATCH_MSG, isScratch, isScratchRoot, joinPath, normpath, setScratchRoots } from './scratch.ts'
+import { SCRATCH_MSG, isScratch, isScratchRoot, joinPath, normpath, resolvesToScratch, scratchDest, setScratchRoots } from './scratch.ts'
 
 // Stands for an expanded assignment name or value, which the walker reports as null without its
 // source text. It never matches a name, is never empty or `cat`, and is not a scratch path.
@@ -69,7 +77,7 @@ const anyIn = (chars: string, letters: string): boolean => [...chars].some(c => 
 
 // ---------------------------------------------------------------- command checks
 
-const FS_CMDS = set('rm', 'rmdir', 'mv', 'cp', 'ln', 'touch', 'mkdir', 'chmod', 'chown', 'chgrp',
+const FS_CMDS = set('rm', 'rmdir', 'mv', 'cp', 'ln', 'link', 'touch', 'mkdir', 'chmod', 'chown', 'chgrp',
   'truncate', 'dd', 'install', 'tee', 'patch', 'unlink')
 const FS_VALUED: Record<string, ReadonlySet<string>> = {
   mkdir: set('-m', '--mode'),
@@ -107,15 +115,18 @@ function checkFs(cmd: string, args: Words): void {
   const valued = FS_VALUED[cmd] ?? NONE
   let paths: string[] = []
   const targets: string[] = []
+  const opts: string[] = []
   let pastDashes = false
   for (let i = 0; i < args.length; i++) {
     const a = args[i]
     const opt = pastDashes ? null : pathOption(cmd, a, args, i)
     if (a === '--' && !pastDashes) pastDashes = true
     else if (opt !== null) {
+      opts.push(a)   // a bundle such as -lt carries other flags too
       targets.push(opt[0])
       i += opt[1]
     } else if (!pastDashes && a.startsWith('-') && a.length > 1) {
+      opts.push(a)
       if (valued.has(a)) i++
     } else if (cmd === 'dd') {
       if (a.startsWith('of=')) paths.push(a.slice(3))
@@ -128,10 +139,52 @@ function checkFs(cmd: string, args: Words): void {
     block('patch edits the files named in the diff')
   }
   if (cmd === 'ln' && paths.length === 1 && !targets.length) block('one-argument ln creates a link in the current directory')
-  if (['cp', 'ln', 'install'].includes(cmd)) paths = targets.length ? [] : paths.slice(-1)   // only the destination is written
+  const operands = paths
+  if (['cp', 'ln', 'link', 'install'].includes(cmd)) paths = targets.length ? [] : paths.slice(-1)   // only the destination is written
   for (const p of [...paths, ...targets]) {
-    if (!isScratch(p)) block(`'${cmd}' on non-scratch path '${p}'`)
+    const why = scratchDest(p)
+    if (why !== null) block(`'${cmd}' on ${why}`)
     if (['rm', 'rmdir', 'mv'].includes(cmd) && isScratchRoot(p)) block(`'${cmd}' on the scratch root itself`)
+  }
+  const flag = (letter: string, long: string): boolean => opts.some(a => a === long || shortFlags(a).includes(letter))
+  if (cmd === 'ln' || cmd === 'link' || (cmd === 'cp' && (flag('l', '--link') || flag('s', '--symbolic-link')))) {
+    checkLinkSources(cmd, flag, operands, targets)
+  }
+}
+
+// The working directory the command runs in: the payload's `cwd`, else this process's.
+let shellCwd = process.cwd()
+
+const dirname = (p: string): string => {
+  const k = p.replace(/\/+$/, '').lastIndexOf('/')
+  return k < 0 ? '.' : k === 0 ? '/' : p.slice(0, k)
+}
+
+function isDir(p: string): boolean {
+  if (p.endsWith('/')) return true
+  try {
+    return statSync(p).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+// A link source must resolve inside scratch, or a later write through the link reaches the
+// file it names. A symlink's target resolves from the link's directory; a hard link's source,
+// and `ln -r`'s, from the working directory.
+function checkLinkSources(cmd: string, flag: (letter: string, long: string) => boolean, paths: Words, targets: Words): void {
+  const symbolic = cmd === 'cp' ? flag('s', '--symbolic-link') : cmd === 'ln' && flag('s', '--symbolic')
+  const relative = cmd === 'ln' && flag('r', '--relative')
+  const sources = targets.length ? paths : paths.slice(0, -1)
+  const dest = targets.length ? targets[targets.length - 1] : paths[paths.length - 1] ?? ''
+  let base = shellCwd
+  if (symbolic && !relative) {
+    const noDir = cmd === 'ln' && (flag('T', '--no-target-directory') || flag('n', '--no-dereference'))
+    base = targets.length || (!noDir && isDir(dest)) ? dest : dirname(dest)
+  }
+  for (const s of sources) {
+    if (/[$`]/.test(s) || s.startsWith('~')) block(`'${cmd}' source '${s}' holds an expansion, so where the link points is unknown`)
+    if (!resolvesToScratch(joinPath(base, s))) block(`'${cmd}' links to '${s}', which resolves outside scratch`)
   }
 }
 
@@ -238,7 +291,7 @@ function checkFind(args: Words): void {
       while (j < args.length && args[j] !== ';' && args[j] !== '+') j++
       let nested = args.slice(i + 1, j)
       if (overScratch) nested = nested.map(w => w.replaceAll('{}', '/tmp/_found'))   // {} stays inside the scratch tree
-      checkArgv(nested)
+      withoutStdin(() => checkArgv(nested))
       i = j
     }
   }
@@ -255,7 +308,9 @@ function checkXargs(args: Words): void {
   if (!rest.length) block('xargs wrapper runs a command that cannot be checked')
   // xargs supplies the paths from stdin, which cannot be checked.
   if (FS_CMDS.has(basename(rest[0]))) block(`xargs ${rest[0]} modifies the filesystem`)
-  checkArgv(rest)
+  // sqlite3 and duckdb read every argument after the database as SQL.
+  if (Object.hasOwn(LITE, basename(rest[0]))) block(`xargs ${rest[0]} adds SQL from stdin`)
+  withoutStdin(() => checkArgv(rest))
 }
 
 const GIT_VALUED = set('-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix', '--config-env')
@@ -835,26 +890,33 @@ function sqlCommands(cmd: string, args: Words): string[] {
   return found
 }
 
+// The SQL dialect each client's statements are split in.
+const DIALECT: Record<string, 'psql' | 'mysql' | 'sqlite' | 'duckdb'> = {
+  psql: 'psql', mysql: 'mysql', mariadb: 'mysql', sqlite3: 'sqlite', litecli: 'sqlite', duckdb: 'duckdb',
+}
+
 // Statements of text, split on ; outside quotes, with comments dropped and quoted text emptied
 // so that keywords inside literals and comments are not read as SQL.
 function splitSql(cmd: string, text: string): string[] {
-  const mysql = cmd !== 'psql'
+  const dialect = DIALECT[cmd]
+  const mysql = dialect === 'mysql'
   const stmts: string[] = []
   let out = ''
   let i = 0
   const n = text.length
   while (i < n) {
     const c = text[i]
-    if ('\'"`'.includes(c)) {
-      let j = text.indexOf(c, i + 1)
-      while (j >= 0 && text.startsWith(c, j + 1)) j = text.indexOf(c, j + 2)   // a doubled quote is an escape
+    if ('\'"`'.includes(c) || (dialect === 'sqlite' && c === '[')) {   // SQLite also quotes identifiers in [ ]
+      const close = c === '[' ? ']' : c
+      let j = text.indexOf(close, i + 1)
+      while (close !== ']' && j >= 0 && text.startsWith(close, j + 1)) j = text.indexOf(close, j + 2)   // a doubled quote is an escape
       if (j < 0) block(`${cmd} statement has an unterminated quote`)
       // Backslash escapes differ by server settings, so the span is unreadable.
       if (text.slice(i + 1, j).includes('\\')) block(`${cmd} statement has a backslash inside quotes`)
-      out += c + c
+      out += c + close
       i = j + 1
-    } else if (!mysql && /^\$[\p{L}\p{N}\p{M}_]*\$/u.test(text.slice(i, i + 64))) {
-      block('psql dollar quote hides text from this check')
+    } else if ((dialect === 'psql' || dialect === 'duckdb') && /^\$[\p{L}\p{N}\p{M}_]*\$/u.test(text.slice(i, i + 64))) {
+      block(`${cmd} dollar quote hides text from this check`)
     } else if (text.startsWith('/*', i)) {
       if (mysql && (text.startsWith('/*!', i) || text.startsWith('/*M!', i))) block(`${cmd} executable comment`)
       const j = text.indexOf('*/', i + 2)
@@ -897,6 +959,417 @@ function checkSqlClient(cmd: string, args: Words): void {
     block(`${cmd} without -c/-e reads SQL from stdin`)
   }
   for (const text of commands) for (const stmt of splitSql(cmd, text)) checkSqlStatement(cmd, stmt)
+}
+
+// ---------------------------------------------------------------- SQLite-family clients
+//
+// sqlite3 and duckdb (whose shell is a fork of sqlite3's) take options with one or two dashes
+// anywhere on the line, the database as the first positional and SQL or dot-commands as the
+// rest. With no SQL argument they read stdin. litecli takes its SQL with -e.
+
+type LiteSpec = {
+  flags: ReadonlySet<string>
+  valued: Record<string, number>   // option -> how many words its value takes
+  sql: ReadonlySet<string>   // options whose value is SQL or a dot-command
+  exits: ReadonlySet<string>   // options after which stdin is not read
+}
+const LITE: Record<string, LiteSpec> = {
+  sqlite3: {
+    flags: set('ascii', 'bail', 'batch', 'box', 'column', 'csv', 'deserialize', 'echo', 'header', 'noheader', 'help',
+      'html', 'ifexists', 'json', 'line', 'list', 'markdown', 'memtrace', 'nofollow', 'noinit', 'no-rowid-in-view',
+      'pcachetrace', 'quote', 'readonly', 'safe', 'stats', 'table', 'tabs', 'version', 'vfstrace'),
+    valued: {
+      cmd: 1, escape: 1, 'cmdline-edit': 1, maxsize: 1, mmap: 1, newline: 1, nonce: 1, nullvalue: 1,
+      screenwidth: 1, separator: 1, vfs: 1, lookaside: 2, pagecache: 2, heap: 2,
+    },
+    sql: set('cmd'),
+    exits: set('help', 'version'),
+  },
+  duckdb: {
+    flags: set('ascii', 'bail', 'batch', 'box', 'column', 'csv', 'echo', 'header', 'noheader', 'help', 'html', 'json',
+      'line', 'list', 'markdown', 'no-stdin', 'quote', 'readonly', 'stats', 'table', 'version'),
+    valued: { cmd: 1, c: 1, s: 1, newline: 1, nullvalue: 1, separator: 1 },
+    sql: set('cmd', 'c', 's'),
+    exits: set('c', 's', 'no-stdin', 'help', 'version'),
+  },
+}
+// Read-only dot-commands, matched in full (the shell also takes abbreviations, which block).
+const LITE_DOT = set('.tables', '.schema', '.indexes', '.mode', '.headers')
+// Functions the sqlite3 shell adds that write files, run an editor or load code.
+const LITE_SIDE_EFFECT = new RegExp(`\\b(writefile|edit|load_extension|fts3_tokenizer)${WS}*\\(`, 'i')
+
+// The command whose words are being checked, for its stdin; null where stdin is not its own
+// (find -exec, xargs).
+let current: ShellCommand | null = null
+
+function withoutStdin(check: () => void): void {
+  const saved = current
+  current = null
+  try {
+    check()
+  } finally {
+    current = saved
+  }
+}
+
+// The text a command reads on stdin: a heredoc or here-string. Null when stdin is a file, a
+// pipe, the terminal or an expanded word, which this check cannot read.
+function stdinText(c: ShellCommand | null): string | null {
+  if (c === null) return null
+  const docs = c.heredocs.filter(h => h.fd === null || h.fd === 0)
+  const ins = c.redirects.filter(r => (r.fd === null || r.fd === 0) && ['<', '<<<', '<>', '<&'].includes(r.op))
+  if (docs.length + ins.length !== 1) return null
+  if (docs.length) {
+    const d = docs[0]
+    if (!d.quoted && /[$`\\]/.test(d.body)) return null   // expanded when the shell reads it
+    return d.op === '<<-' ? d.body.replace(/^\t+/gm, '') : d.body
+  }
+  return ins[0].op === '<<<' ? ins[0].target : null
+}
+
+// Statements of SQL text, plus a check of each.
+function checkLiteSql(cmd: string, text: string): void {
+  for (const stmt of splitSql(cmd, text)) {
+    if (LITE_SIDE_EFFECT.test(stmt)) block(`${cmd} statement calls a function that writes or loads code: ${stmt.slice(0, 40)}`)
+    checkSqlStatement(cmd, stmt)
+  }
+}
+
+// One argument or stdin line that starts with a dot. litecli splits on `;`, so every piece is
+// checked: a dot-command against the list, anything else as SQL.
+function checkLiteDot(cmd: string, text: string): void {
+  for (const piece of text.split(/[;\n]/)) {
+    const p = strip(piece)
+    if (!p) continue
+    if (!p.startsWith('.')) checkLiteSql(cmd, p)
+    else if (!LITE_DOT.has(p.split(new RegExp(`${WS}`))[0])) block(`${cmd} dot-command '${p.slice(0, 40)}' is not on the read-only list`)
+  }
+}
+
+// An argument: a dot-command when it starts with `.`, else SQL.
+const checkLiteArg = (cmd: string, text: string): void => (text.startsWith('.') ? checkLiteDot(cmd, text) : checkLiteSql(cmd, text))
+
+// Stdin as the shell reads it: a line that starts with `.` while no SQL statement is open is a
+// dot-command; other lines gather until a statement ends with `;` (or a line of `go` or `/`).
+function checkLiteStdin(cmd: string, text: string): void {
+  let sql = ''
+  let open = false   // a significant character since the last complete statement
+  let quote = ''   // the closing character of an open quote or `*/` comment
+  for (let line of text.split('\n')) {
+    if (!open && !quote && line.startsWith('.')) {
+      checkLiteDot(cmd, line)
+      continue
+    }
+    if (open && !quote && /^\s*(\/|go)\s*$/i.test(line)) line = ';'
+    sql += `${line}\n`
+    let last = ''
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i]
+      if (quote) {
+        const j = line.indexOf(quote, i)
+        if (j < 0) break
+        i = j + quote.length - 1
+        if (quote !== '*/' && quote !== ']' && line.startsWith(quote, j + 1)) i++   // a doubled quote
+        else quote = ''
+        last = 'x'
+      } else if (line.startsWith('--', i)) break
+      else if (line.startsWith('/*', i)) {
+        quote = '*/'
+        i++
+      } else if ('\'"`'.includes(c) || (cmd !== 'duckdb' && c === '[')) quote = c === '[' ? ']' : c
+      else if (!/\s/.test(c)) last = c
+    }
+    if (last) open = last !== ';'
+    if (!open && !quote && strip(sql)) {
+      checkLiteSql(cmd, sql)
+      sql = ''
+    }
+  }
+  if (strip(sql)) checkLiteSql(cmd, sql)
+}
+
+function checkLite(cmd: string, args: Words): void {
+  const spec = LITE[cmd]
+  const positional: string[] = []
+  let exits = false
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a === '--') {
+      positional.push(...args.slice(i + 1))
+      break
+    }
+    if (!a.startsWith('-') || a === '-') {
+      positional.push(a)
+      continue
+    }
+    const name = a.replace(/^--?/, '')
+    if (name === 'init' || name === 'f') block(`${cmd} -${name} runs SQL from a file that cannot be checked`)
+    if (name.startsWith('A')) block(`${cmd} -A runs an archive command that writes files`)
+    if (spec.exits.has(name)) exits = true
+    if (spec.flags.has(name)) continue
+    if (!Object.hasOwn(spec.valued, name)) block(`${cmd} option '${a}' is not on the read-only list`)
+    const n = spec.valued[name]
+    if (i + n >= args.length) block(`${cmd} ${a} needs a value`)
+    if (spec.sql.has(name)) checkLiteArg(cmd, args[i + 1])
+    i += n
+  }
+  const commands = positional.slice(1)   // the first is the database
+  for (const text of commands) checkLiteArg(cmd, text)
+  if (commands.length || exits) return
+  const input = stdinText(current)
+  if (input === null) block(`${cmd} without SQL arguments reads stdin, which cannot be checked here`)
+  checkLiteStdin(cmd, input)
+}
+
+const LITECLI_VALUED: Record<string, string> = { e: '--execute', D: '--database', R: '--prompt', l: '--logfile' }
+const LITECLI_FLAGS = set('--version', '--table', '--csv', '--warn', '--no-warn', '--auto-vertical-output', '--help')
+
+// litecli [options] [DATABASE]: SQL comes from -e, else stdin. --logfile writes a file.
+function checkLitecli(args: Words): void {
+  let executed = false
+  let exits = false
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (!a.startsWith('-') || a === '-') continue
+    let name = a
+    let value: string | null = null
+    if (a.startsWith('--')) {
+      const [n, eq, v] = partition(a, '=')
+      name = n
+      if (eq) value = v
+      if (LITECLI_FLAGS.has(name)) {
+        exits ||= name === '--version' || name === '--help'
+        continue
+      }
+    } else {
+      // Short flags bundle; a valued letter takes the rest of the word.
+      let k = 1
+      while (k < a.length && 'Vt'.includes(a[k])) k++
+      if (a.slice(1, k).includes('V')) exits = true
+      if (k === a.length) continue
+      if (!Object.hasOwn(LITECLI_VALUED, a[k])) block(`litecli option '${a}' is not on the read-only list`)
+      name = LITECLI_VALUED[a[k]]
+      if (k + 1 < a.length) value = a.slice(k + 1)
+    }
+    if (!Object.values(LITECLI_VALUED).includes(name)) block(`litecli option '${name}' is not on the read-only list`)
+    if (value === null) {
+      if (i + 1 >= args.length) block(`litecli ${name} needs a value`)
+      value = args[++i]
+    }
+    if (name === '--execute') {
+      executed = true
+      checkLiteArg('litecli', value)
+    } else if (name === '--logfile' && scratchDest(value) !== null) block('litecli --logfile writes a non-scratch file')
+  }
+  if (executed || exits) return
+  const input = stdinText(current)
+  if (input === null) block('litecli without -e reads stdin, which cannot be checked here')
+  checkLiteStdin('litecli', input)
+}
+
+// ---------------------------------------------------------------- installs, copies and downloads
+
+// make: install targets write outside the tree. Other targets run the Makefile as tests do.
+function checkMake(args: Words): void {
+  const valued = set('--directory', '--file', '--makefile', '--include-dir', '--old-file', '--assume-old',
+    '--what-if', '--new-file', '--assume-new')
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    const numberNext = /^\d+$/.test(args[i + 1] ?? '')
+    if (a.startsWith('--')) {
+      if (!a.includes('=') && (valued.has(a) || ((a === '--jobs' || a === '--load-average') && numberNext))) i++
+    } else if (a.startsWith('-') && a.length > 1) {
+      const k = [...a.slice(1)].findIndex(ch => 'CfIoW'.includes(ch))
+      if ((k >= 0 && k === a.length - 2) || (k < 0 && /[jl]$/.test(a) && numberNext)) i++   // the value is the next word
+    } else if (!a.includes('=') && /^(?:un)?install(?:-[^\n]*)?$/.test(a)) block(`make ${a} installs files outside the working tree`)
+  }
+}
+
+// Remote iff a `:` comes before any `/`, as scp reads it.
+const isRemote = (p: string): boolean => /^scp:\/\//.test(p) || /^[^/]*:/.test(p)
+
+// scp: only a copy to a local scratch path passes. Options that run a local program block.
+function checkScp(args: Words): void {
+  const operands: string[] = []
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a === '--') {
+      operands.push(...args.slice(i + 1))
+      break
+    }
+    if (!a.startsWith('-') || a.length === 1) {
+      operands.push(a)
+      continue
+    }
+    for (let p = 1; p < a.length; p++) {
+      const ch = a[p]
+      if ('cDFiJloPSX'.includes(ch)) {
+        const value = p + 1 < a.length ? a.slice(p + 1) : (args[++i] ?? '')
+        if ('DFS'.includes(ch)) block(`scp -${ch} names a program or config that runs local commands`)
+        if (ch === 'o' && /command/i.test(value)) block('scp -o ...Command runs a local command')
+        break
+      }
+      if (!'346ABCOpqRrsTv'.includes(ch)) block(`scp option '-${ch}' is not on the read-only list`)
+    }
+  }
+  if (operands.length < 2) return   // a usage error
+  const dest = operands[operands.length - 1]
+  if (isRemote(dest)) block('scp writes to a remote host')
+  const why = scratchDest(dest)
+  if (why !== null) block(`scp writes to ${why}`)
+}
+
+const SSH_VALUED = 'BbcDEeFIiJLlmOoPpQRSWw'
+const SSH_FLAGS = '46AaCfGgKkMNnqsTtVvXxYy'
+
+// ssh: connecting runs commands on the remote host (the argument, or stdin). Only -V, -G and -Q,
+// which print and exit, pass.
+function checkSsh(args: Words): void {
+  let info = false
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (!a.startsWith('-') || a === '-' || a === '--') {
+      if (!info) block('ssh runs commands on a remote host')
+      return
+    }
+    for (let p = 1; p < a.length; p++) {
+      const ch = a[p]
+      if (SSH_VALUED.includes(ch)) {
+        if (ch === 'Q') info = true
+        if (p + 1 === a.length) i++
+        break
+      }
+      if (ch === 'G' || ch === 'V') info = true
+      else if (!SSH_FLAGS.includes(ch)) block(`ssh option '-${ch}' is not on the read-only list`)
+    }
+  }
+}
+
+// Long options of wget, which takes any unambiguous prefix of one. Each is 'flag', 'value', or
+// the kind of path it writes: 'out' (the downloads), 'dir' (where downloads go), 'log'.
+type WgetKind = 'flag' | 'value' | 'out' | 'dir' | 'log' | 'exec'
+const WGET_LONG: Record<string, WgetKind> = {
+  'output-document': 'out', 'directory-prefix': 'dir', 'output-file': 'log', 'append-output': 'log',
+  'save-cookies': 'log', 'rejected-log': 'log', 'warc-file': 'log', 'hsts-file': 'log',
+  execute: 'exec', config: 'exec',
+  spider: 'flag', background: 'flag', quiet: 'flag', verbose: 'flag', 'no-verbose': 'flag', 'server-response': 'flag',
+  'no-check-certificate': 'flag', 'content-on-error': 'flag', 'max-redirect': 'value', 'no-hsts': 'flag',
+  header: 'value', 'user-agent': 'value', user: 'value', password: 'value', 'http-user': 'value', 'http-password': 'value',
+  referer: 'value', 'post-data': 'value', 'post-file': 'value', 'body-data': 'value', 'body-file': 'value',
+  method: 'value', tries: 'value', timeout: 'value', 'connect-timeout': 'value', 'read-timeout': 'value',
+  'dns-timeout': 'value', wait: 'value', waitretry: 'value', 'input-file': 'value', base: 'value', 'load-cookies': 'value',
+  'ca-certificate': 'value', certificate: 'value', 'private-key': 'value', 'limit-rate': 'value', quota: 'value',
+  level: 'value', accept: 'value', reject: 'value', domains: 'value', progress: 'value',
+}
+const WGET_SHORT: Record<string, WgetKind> = {
+  O: 'out', P: 'dir', o: 'log', a: 'log', e: 'exec',
+  A: 'value', B: 'value', D: 'value', i: 'value', I: 'value', l: 'value', n: 'value', Q: 'value', R: 'value',
+  t: 'value', T: 'value', U: 'value', w: 'value', X: 'value',
+}
+const WGET_FLAGS = '46bcdEFhHkKLmNpqrSvVx'
+
+function wgetLong(name: string): [string, WgetKind] {
+  if (Object.hasOwn(WGET_LONG, name)) return [name, WGET_LONG[name]]
+  const hits = Object.keys(WGET_LONG).filter(k => name.length > 0 && k.startsWith(name))
+  // An abbreviation of a writing option is read as that option; an unknown name as a flag.
+  const write = hits.find(k => !['flag', 'value'].includes(WGET_LONG[k]))
+  const k = write ?? hits[0]
+  return k === undefined ? [name, 'flag'] : [k, WGET_LONG[k]]
+}
+
+// wget saves into the working directory unless the downloads go to stdout or scratch.
+function checkWget(args: Words): void {
+  let spider = false
+  let out = false
+  let background = false
+  let logged = false
+  const writes = (kind: WgetKind, name: string, value: string): void => {
+    // `-e robots=off` is the common use; any other wgetrc command could set the output file.
+    if (kind === 'exec' && !(name !== '--config' && /^robots\s*=\s*(on|off)$/i.test(value))) {
+      block(`wget ${name} runs wgetrc commands that can pick the output file`)
+    }
+    if (kind === 'out' || kind === 'dir') out = true
+    if (kind === 'log') logged = true
+    if ((kind === 'out' && value === '-') || !['out', 'dir', 'log'].includes(kind)) return
+    if (scratchDest(value) !== null) block(`wget ${name} writes '${value}', which is not scratch`)
+  }
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a === '--') break
+    if (!a.startsWith('-') || a === '-') continue
+    if (a.startsWith('--')) {
+      const [n, eq, v] = partition(a.slice(2), '=')
+      const [name, kind] = wgetLong(n)
+      if (name === 'spider') spider = true
+      if (name === 'background') background = true
+      if (kind === 'flag') continue
+      writes(kind, `--${name}`, eq ? v : (args[++i] ?? ''))
+      continue
+    }
+    for (let p = 1; p < a.length; p++) {
+      const ch = a[p]
+      if (Object.hasOwn(WGET_SHORT, ch)) {
+        writes(WGET_SHORT[ch], `-${ch}`, p + 1 < a.length ? a.slice(p + 1) : (args[++i] ?? ''))
+        break
+      }
+      if (ch === 'b') background = true
+      if (!WGET_FLAGS.includes(ch)) block(`wget option '-${ch}' is not on the read-only list`)
+    }
+  }
+  if (background && !logged) block('wget -b writes wget-log into the working directory')
+  if (!spider && !out) block('wget saves into the working directory; use -O -, -O /tmp/<file> or --spider')
+}
+
+// curl options that write a file: 'out' (-o, '-' is stdout), 'dir' (--output-dir), 'log'.
+const CURL_LONG: Record<string, WgetKind> = {
+  output: 'out', 'output-dir': 'dir', 'dump-header': 'log', 'cookie-jar': 'log', trace: 'log',
+  'trace-ascii': 'log', stderr: 'log', libcurl: 'log', 'etag-save': 'log', hsts: 'log', 'alt-svc': 'log',
+  config: 'exec',
+}
+const CURL_SHORT_VALUED = 'AbcCdDeEFHKmoPQrtTuUwxXyYz'
+const CURL_SHORT_FLAGS = '0123456aBfgGhiIjJklLMnNOpqRsSvVZ#:'
+// Long options that take a value, so it is not read as an option.
+const CURL_VALUED = set('data', 'data-raw', 'data-binary', 'data-urlencode', 'data-ascii', 'json', 'form', 'form-string',
+  'header', 'proxy-header', 'user', 'user-agent', 'request', 'url', 'cookie', 'referer', 'range', 'upload-file',
+  'max-time', 'connect-timeout', 'retry', 'retry-delay', 'retry-max-time', 'proxy', 'proxy-user', 'cacert', 'capath',
+  'cert', 'key', 'resolve', 'connect-to', 'write-out', 'oauth2-bearer', 'interface', 'limit-rate', 'max-filesize',
+  'max-redirs', 'netrc-file', 'proto', 'proto-redir', 'unix-socket', 'variable', 'url-query', 'aws-sigv4', 'etag-compare',
+  'dns-servers', 'doh-url', 'ciphers', 'tls-max', 'expect100-timeout', 'keepalive-time', 'speed-limit', 'speed-time',
+  'time-cond', 'continue-at', 'local-port', 'preproxy', 'socks5', 'socks5-hostname', 'noproxy', 'pinnedpubkey', 'engine')
+
+// curl writes only with -o/-O and the file options; each must be scratch (or stdout).
+function checkCurl(args: Words): void {
+  let remoteName = false
+  let outputDir = false
+  const writes = (kind: WgetKind, name: string, value: string): void => {
+    if (kind === 'exec') block(`curl ${name} reads options from a file that can pick the output file`)
+    if (kind === 'dir') outputDir = true
+    if (value === '-' && kind !== 'dir') return
+    if (scratchDest(value) !== null) block(`curl ${name} writes '${value}', which is not scratch`)
+  }
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (!a.startsWith('-') || a === '-') continue
+    if (a.startsWith('--')) {
+      const name = a.slice(2).replace(/^expand-/, '')   // --expand-output takes {{variables}}
+      if (name === 'remote-name' || name === 'remote-name-all') remoteName = true
+      if (Object.hasOwn(CURL_LONG, name)) writes(CURL_LONG[name], a, args[++i] ?? '')
+      else if (CURL_VALUED.has(name)) i++
+      continue
+    }
+    for (let p = 1; p < a.length; p++) {
+      const ch = a[p]
+      if (CURL_SHORT_VALUED.includes(ch)) {
+        const value = p + 1 < a.length ? a.slice(p + 1) : (args[++i] ?? '')
+        const kind = ({ o: 'out', D: 'log', c: 'log', K: 'exec' } as Record<string, WgetKind>)[ch]
+        if (kind) writes(kind, `-${ch}`, value)
+        break
+      }
+      if (ch === 'O') remoteName = true
+      else if (!CURL_SHORT_FLAGS.includes(ch)) block(`curl option '-${ch}' is not on the read-only list`)
+    }
+  }
+  if (remoteName && !outputDir) block('curl -O saves into the working directory; add --output-dir /tmp/<dir> or use -o')
 }
 
 const LIQUIBASE_VALUED = set('--changelog-file', '--url', '--username', '--password', '--defaults-file',
@@ -1188,6 +1661,13 @@ function checkArgv(words: Words): void {
   else if (cmd === 'aws') checkAws(args)
   else if (cmd === 'redis-cli') checkRedis(args)
   else if (Object.hasOwn(SQL_CLIENTS, cmd)) checkSqlClient(cmd, args)
+  else if (Object.hasOwn(LITE, cmd)) checkLite(cmd, args)
+  else if (cmd === 'litecli') checkLitecli(args)
+  else if (cmd === 'make' || cmd === 'gmake') checkMake(args)
+  else if (cmd === 'scp') checkScp(args)
+  else if (cmd === 'ssh') checkSsh(args)
+  else if (cmd === 'wget') checkWget(args)
+  else if (cmd === 'curl') checkCurl(args)
   else if (['rails', 'rake', 'knex'].includes(cmd)) checkMigration(cmd, args)
   else if (cmd === 'liquibase') checkLiquibase(args)
   else checkFormatter(cmd, args)
@@ -1223,7 +1703,8 @@ function checkRedirects(c: ShellCommand): void {
     seenRedirects.add(r)
     const target = word(r.target, r.text)
     const fdDup = (r.op === '>&' || r.op === '<&') && /^(\d+-?|-)$/.test(target)
-    if (REDIR_OUT.has(r.op) && !fdDup && !isScratch(target)) block(`redirect to non-scratch path '${target}'`)
+    const why = REDIR_OUT.has(r.op) && !fdDup ? scratchDest(target) : null
+    if (why !== null) block(`redirect to ${why}`)
   }
 }
 
@@ -1245,6 +1726,7 @@ function checkCommand(c: ShellCommand): void {
       if (a.startsWith('-') && /[\n\r\u2028\u2029]/.test(a)) block('option word with an embedded newline')   // defeats the flag regexes
     }
     for (const a of assigns) checkAssignment(a, argv.length === 0)
+    current = c
     checkArgv(argv)
   } catch (e) {
     if (e instanceof Block && e.segment === null) {
@@ -1273,6 +1755,8 @@ function main(input: string): void {
   }
   const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
   setScratchRoots(isObject(data) ? data.scratchpad_dir : undefined)
+  const cwd = isObject(data) ? data.cwd : null
+  if (typeof cwd === 'string' && cwd.startsWith('/') && cwd.length <= 4096) shellCwd = cwd
   const toolInput = isObject(data) ? data.tool_input : null
   const command = isObject(toolInput) ? toolInput.command : null
   if (typeof command !== 'string' || !command.trim()) throw new ParseFailure('input has no command string')

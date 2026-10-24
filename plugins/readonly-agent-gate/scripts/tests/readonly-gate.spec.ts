@@ -1,5 +1,6 @@
 // bun test plugins/readonly-agent-gate/scripts/tests
-import { describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { linkSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DEFAULT_AGENTS, isReadOnly, parseExtra } from '../agents.ts'
 
@@ -126,6 +127,84 @@ describe('file tools', () => {
   test('other agents and the main thread pass', () => {
     expect(gate({ agent_type: 'coder:coder', agent_id: 'a2', tool_name: 'Write', tool_input: { file_path: '/home/u/repo/x' } }).code).toBe(0)
     expect(gate({ tool_name: 'Write', tool_input: { file_path: '/home/u/repo/x' } }).code).toBe(0)
+  })
+})
+
+// Links pre-created in a scratch directory. The repo targets are this checkout's own files, which
+// sit outside every scratch root unless the checkout is under /tmp. /tmp is usually its own
+// filesystem, so the hard link joins two scratch files: the rule refuses any file with nlink > 1.
+describe('links on the filesystem', () => {
+  const repo = join(import.meta.dir, '..')
+  const repoFile = join(repo, 'scratch.ts')
+  let d = ''
+  beforeAll(() => {
+    d = mkdtempSync('/tmp/readonly-gate-spec-')
+    symlinkSync(repoFile, `${d}/link`)
+    symlinkSync(repo, `${d}/dirlink`)
+    symlinkSync(join(repo, 'not-there-yet.ts'), `${d}/dangling`)
+    symlinkSync('sub/inner', `${d}/rel`)   // relative, resolves from the link's directory
+    mkdirSync(`${d}/sub`)
+    writeFileSync(`${d}/sub/inner`, '')
+    symlinkSync(`${d}/sub/inner`, `${d}/scratchlink`)
+    writeFileSync(`${d}/orig`, 'x')
+    linkSync(`${d}/orig`, `${d}/hard`)
+    writeFileSync(`${d}/plain`, 'x')
+  })
+  afterAll(() => rmSync(d, { recursive: true, force: true }))
+
+  test('Write and Edit through a symlink to a repo file are blocked', () => {
+    const r = ro('Write', { file_path: `${d}/link`, content: 'x' })
+    expect(r.code).toBe(2)
+    expect(r.err).toContain('resolves to')
+    expect(ro('Edit', { file_path: `${d}/link` }).code).toBe(2)
+    expect(ro('Write', { file_path: 'link' }, { cwd: d }).code).toBe(2)
+  })
+
+  test('Bash redirects and file commands through the symlink are blocked', () => {
+    for (const command of [`printf x > ${d}/link`, `cp a ${d}/link`, `echo x >> ${d}/link`, `cat f | tee ${d}/link`,
+      `touch ${d}/link`, `chmod +x ${d}/link`, `mkdir -p ${d}/dirlink/new`, `dd if=f of=${d}/link`]) {
+      expect(ro('Bash', { command }).code).toBe(2)
+    }
+  })
+
+  test('a pre-created hard link is blocked for Write and Bash', () => {
+    const r = ro('Write', { file_path: `${d}/hard` })
+    expect(r.code).toBe(2)
+    expect(r.err).toContain('hard link')
+    expect(ro('Bash', { command: `printf x > ${d}/hard` }).code).toBe(2)
+    expect(ro('Bash', { command: `cp a ${d}/hard` }).code).toBe(2)
+  })
+
+  test('a dangling symlink and .. after a symlinked directory resolve outside', () => {
+    expect(ro('Write', { file_path: `${d}/dangling` }).code).toBe(2)
+    expect(ro('Bash', { command: `echo x > ${d}/dangling` }).code).toBe(2)
+    expect(ro('Write', { file_path: `${d}/dirlink/../README.md` }).code).toBe(2)
+    expect(ro('Write', { file_path: `${d}/dirlink/new.ts` }).code).toBe(2)
+  })
+
+  test('links that stay inside scratch, plain files and new paths pass', () => {
+    expect(ro('Write', { file_path: `${d}/scratchlink` }).code).toBe(0)
+    expect(ro('Write', { file_path: `${d}/rel` }).code).toBe(0)
+    expect(ro('Write', { file_path: `${d}/plain` }).code).toBe(0)
+    expect(ro('Write', { file_path: `${d}/new.txt` }).code).toBe(0)
+    expect(ro('Write', { file_path: `${d}/newdir/x` }).code).toBe(0)   // a missing parent
+    expect(ro('Write', { file_path: '/tmp/new.txt' }).code).toBe(0)
+    expect(ro('Write', { file_path: '/tmp/newdir/x' }).code).toBe(0)
+    expect(ro('Write', { file_path: `${d}/sub/../new2.txt` }).code).toBe(0)
+    expect(ro('Bash', { command: `printf x > ${d}/plain && cp a ${d}/sub/` }).code).toBe(0)
+    expect(ro('Bash', { command: `mkdir -p ${d}/newdir/a/b` }).code).toBe(0)
+  })
+
+  test('ln and cp -s/-l block a source that resolves outside scratch', () => {
+    for (const command of [`ln -s ${d}/link ${d}/l2`, `ln -s ${repoFile} ${d}/l3`, `ln src/a.ts ${d}/h2`,
+      `ln -s ../../..${repo}/scratch.ts ${d}/sub/l4`, `cp -s ${repoFile} ${d}/l5`, `cp -l src/a.ts ${d}/l6`,
+      `link src/a.ts ${d}/l7`, `ln -sr src/a.ts ${d}/l8`, `ln -s ../dirlink/scratch.ts ${d}/sub/l9`]) {
+      expect(ro('Bash', { command }).code).toBe(2)
+    }
+    for (const command of [`ln -s plain ${d}/l10`, `ln -s ${d}/plain ${d}/l11`, `ln ${d}/plain ${d}/l12`,
+      `ln -s inner ${d}/sub/l13`, `ln -s ../plain ${d}/sub/`, `ln -s src/a /tmp/readonly-gate-spec-no-such-dir/x`]) {
+      expect(ro('Bash', { command }).code).toBe(0)
+    }
   })
 })
 

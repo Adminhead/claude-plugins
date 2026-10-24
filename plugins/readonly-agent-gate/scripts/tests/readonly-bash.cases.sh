@@ -854,6 +854,179 @@ cmd block 'gh api --method=$m x'
 cmd block 'PAGER+=cat git log'
 cmd allow 'for p in a b; do mkdir -p "/tmp/x/$p"; echo hi > "/tmp/x/$p.log"; done'
 
+# ln and its kin: a link whose source resolves outside scratch blocks. A relative symlink
+# target resolves from the link's directory (/tmp/src/a is scratch), a hard link's from cwd.
+cmd block 'ln -s "$PWD/src/a.ts" /tmp/link'
+cmd block 'ln -s "$(pwd)/src/a.ts" /tmp/link'
+cmd block 'ln -s ~/x /tmp/link'
+cmd block 'ln -s ../../repo/src/a /tmp/x/link'
+cmd block "ln -s ../..$PWD/src/a /tmp/x/link"
+cmd block 'ln src/a.ts /tmp/h'
+cmd block 'ln -sr src/a.ts /tmp/link'
+cmd block 'ln -s /etc/passwd /tmp/link'
+cmd block 'link src/a.ts /tmp/h'
+cmd block 'cp -s /etc/passwd /tmp/link'
+cmd block 'cp -l src/a.ts /tmp/h'
+cmd block 'cp -al src/ /tmp/tree'
+cmd block 'cp -lt /tmp/d src/a.ts'
+cmd block 'ln -t /tmp/d src/a.ts'
+cmd allow 'ln -st /tmp/d src/a'
+cmd allow 'ln -s /tmp/a /tmp/link'
+cmd allow 'ln /tmp/a /tmp/h'
+cmd allow 'ln -sf a /tmp/x/link'
+cmd allow 'cp -r src/ /tmp/tree'
+
+# SQLite-family clients: SQL arguments and stdin text are checked, dot-commands are allowlisted.
+cmd block 'sqlite3 db "insert into t values(1)"'
+cmd block "sqlite3 db '.shell id'"
+cmd block "sqlite3 db '.system id'"
+cmd block "sqlite3 db '.output /home/u/x'"
+cmd block "sqlite3 db '.once x'"
+cmd block "sqlite3 db '.backup x'"
+cmd block "sqlite3 db '.save x'"
+cmd block "sqlite3 db '.import f t'"
+cmd block "sqlite3 db '.load ./evil'"
+cmd block 'sqlite3 db .sh'
+cmd block "sqlite3 db \"select writefile('x', 'y')\""
+cmd block "sqlite3 db \"select load_extension('./evil')\""
+cmd block 'sqlite3 db "select 1; drop table t"'
+cmd block "sqlite3 db \"select [it's] ; delete from t; select 'x'\""
+cmd block 'sqlite3 -init x.sql db "select 1"'
+cmd block 'sqlite3 db -A -x'
+cmd block 'sqlite3 -unsafe-testing db "select 1"'
+cmd block "sqlite3 -cmd '.shell id' db 'select 1'"
+cmd block 'sqlite3 db'
+cmd block 'sqlite3 db < q.sql'
+cmd block 'echo "select 1" | sqlite3 db'
+cmd block 'xargs sqlite3 db'
+cmd block "sqlite3 db <<'EOF'
+.tables
+.shell id
+EOF"
+cmd block "sqlite3 db <<'EOF'
+select 1
+go
+delete from t
+EOF"
+cmd block "sqlite3 db <<'EOF'
+select 'a
+.tables ' ; delete from t; select '
+';
+EOF"
+cmd block 'sqlite3 db <<EOF
+select $x;
+EOF'
+cmd block 'duckdb db -c "copy t to '"'"'x.csv'"'"'"'
+cmd block "duckdb db \"install httpfs\""
+cmd block 'duckdb -init x.sql db'
+cmd block 'litecli db -e "delete from t"'
+cmd block 'litecli db -e ".tables; delete from t"'
+cmd block 'litecli db'
+cmd allow 'sqlite3 db "select 1"'
+cmd allow 'sqlite3 db .schema'
+cmd allow 'sqlite3 db ".schema t"'
+cmd allow 'sqlite3 -readonly -header -csv db "select * from t"'
+cmd allow "sqlite3 -cmd '.headers on' -separator , db 'select 1' .tables"
+cmd allow 'sqlite3 db "select [a;b] from t"'
+cmd allow 'sqlite3 db "explain query plan delete from t"'
+cmd allow 'sqlite3 -version'
+cmd allow "sqlite3 db <<'EOF'
+.mode csv
+-- a comment
+select 1;
+.tables
+select a
+  from t;
+EOF"
+cmd allow 'sqlite3 db <<< "select 1"'
+cmd allow 'duckdb db -c "select 42"'
+cmd allow 'duckdb -readonly db "select 1"'
+cmd allow 'litecli db -e "select 1"'
+cmd allow 'litecli -t db --execute=".tables"'
+
+# Installs, copies and downloads that write outside scratch.
+cmd block 'make install'
+cmd block 'make uninstall'
+cmd block 'make -C build install-strip'
+cmd block 'make PREFIX=/home/u/.local install'
+cmd block 'gmake install'
+cmd allow 'make -C install test'
+cmd allow 'make -j 4 check'
+cmd allow 'make -f build.mk all'
+cmd block 'scp host:f .'
+cmd block 'scp -P 2222 -r host:dir src/'
+cmd block 'scp a.txt host:/tmp/'
+cmd block 'scp -S ./evil host:f /tmp/f'
+cmd block "scp -o 'ProxyCommand sh -c x' host:f /tmp/f"
+cmd allow 'scp host:f /tmp/f'
+cmd allow 'scp -P 2222 -i key user@host:/var/log/app.log /tmp/app.log'
+cmd block 'wget https://x'
+cmd block 'wget -q https://x/a.tgz'
+cmd block 'wget -O a.tgz https://x'
+cmd block 'wget --output-document=a.tgz https://x'
+cmd block 'wget --output-doc=a.tgz https://x'
+cmd block 'wget -P dl https://x'
+cmd block 'wget -O - -o wget.log https://x'
+cmd block 'wget -b -O - https://x'
+cmd block 'wget -e output_document=a https://x'
+cmd block 'wget --config=./wgetrc -O - https://x'
+cmd allow 'wget -O - https://x'
+cmd allow 'wget -qO- https://x'
+cmd allow 'wget -q -O /tmp/a.tgz https://x'
+cmd allow 'wget --spider https://x'
+cmd allow 'wget -P /tmp/dl https://x'
+cmd allow 'wget -e robots=off -O - https://x'
+cmd block 'curl -o out.html https://x'
+cmd block 'curl -sSLo out.html https://x'
+cmd block 'curl --output out.html https://x'
+cmd block 'curl -O https://x/a.tgz'
+cmd block 'curl --remote-name-all https://x/a https://x/b'
+cmd block 'curl -O --output-dir dl https://x/a.tgz'
+cmd block 'curl -D headers.txt https://x'
+cmd block 'curl -c jar.txt https://x'
+cmd block 'curl --trace-ascii trace.txt https://x'
+cmd block 'curl -K ./curlrc https://x'
+cmd allow 'curl -s https://x'
+cmd allow 'curl -sSL https://x | jq .'
+cmd allow 'curl -o /tmp/out.html https://x'
+cmd allow 'curl -o - https://x'
+cmd allow 'curl -sO --output-dir /tmp/dl https://x/a.tgz'
+cmd allow 'curl -D - -o /dev/null https://x'
+cmd allow 'curl -H "X-Note: -o out" -d @/tmp/body.json https://x'
+cmd block "ssh host 'rm -rf x'"
+cmd block 'ssh -p 2222 user@host ls'
+cmd block 'ssh host'
+cmd block 'ssh host <<EOF
+rm -rf x
+EOF'
+cmd allow 'ssh -V'
+cmd allow 'ssh -G host'
+cmd allow 'ssh -Q cipher'
+
+# Links pre-created on disk: writes through them resolve outside scratch. The targets are this
+# checkout's files, outside every scratch root unless the checkout sits under /tmp.
+fx=$(mktemp -d /tmp/readonly-cases-XXXXXX)
+trap 'rm -rf "$fx"' EXIT
+ln -s "$scripts/scratch.ts" "$fx/link"
+ln -s "$scripts" "$fx/dirlink"
+ln -s "$scripts/not-there-yet.ts" "$fx/dangling"
+: > "$fx/orig"
+ln "$fx/orig" "$fx/hard"
+: > "$fx/plain"
+cmd block "printf x > $fx/link"
+cmd block "cp a $fx/link"
+cmd block "tee -a $fx/link < f"
+cmd block "echo x > $fx/dangling"
+cmd block "echo x > $fx/dirlink/../README.md"
+cmd block "mkdir -p $fx/dirlink/new"
+cmd block "printf x > $fx/hard"
+cmd block "ln -s $fx/link $fx/l2"
+cmd block "curl -o $fx/link https://x"
+cmd allow "printf x > $fx/plain"
+cmd allow "printf x > $fx/newdir/x"
+cmd allow "ln -s plain $fx/l3"
+cmd allow "rm $fx/plain"
+
 # Holes the old Python checker had; this gate blocks them.
 hole=block
 
