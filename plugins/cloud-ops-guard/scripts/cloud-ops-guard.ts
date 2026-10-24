@@ -23,6 +23,7 @@ import { closeSync, constants, fstatSync, openSync, readFileSync, readSync, stat
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { nestedScript, parse, reparse } from './shell/walk.ts'
+import { parse as unbash } from './vendor/unbash.js'
 import type { ShellCommand, ShellHeredoc, ShellRedirect } from './shell/walk.ts'
 
 const TOKEN_LINE = 'ALLOW: cloud-ops'
@@ -1097,28 +1098,50 @@ const runs = (script: string, h: ShellHeredoc): boolean =>
 
 // Findings for the commands of one parsed script, then for each heredoc body it runs. Commands
 // under one compound share their heredoc objects, so each body is parsed once.
-// Loops, functions, traps and watch run commands out of their written order, and a background job
-// (a lone `&`, not `&&`, `|&`, `;&` or a redirect's `>&`, `<&`, `&>`) runs beside the commands after
-// it, so in such a script any command may run first.
-const UNORDERED_RE = /(?<![\w./-])(?:for|while|until|select|foreach|repeat|function|trap|coproc|watch)(?![\w./-])|\(\s*\)|(?<![&|;<>])&(?![&>])/
+// Loops, functions, traps and watch run commands out of their written order, so any command may run first.
+const UNORDERED_RE = /(?<![\w./-])(?:for|while|until|select|foreach|repeat|function|trap|coproc|watch)(?![\w./-])|\(\s*\)/
+
+// unbash builds these node fields on first read, so `Object.keys` doesn't list them (as in shell/walk.ts).
+const LAZY_FIELDS = ['parts', 'elements', 'value', 'initialize', 'test', 'update', 'expression', 'index']
+
+// Whether the script starts a background job (`a &`, `(a; b) &`, `a && b &`, in a substitution too),
+// which runs beside the commands written after it. Read from the parse, so a quoted or escaped `&`
+// (`curl "x?a=1&b=2"`) is none. A walk too deep to finish counts as one.
+function runsInBackground(script: string): boolean {
+  const found = (n: unknown): boolean => {
+    if (Array.isArray(n)) return n.some(found)
+    if (typeof n !== 'object' || n === null) return false
+    const node = n as Record<string, unknown>
+    if (node.type === 'Statement' && node.background === true) return true
+    return [...new Set([...Object.keys(node), ...LAZY_FIELDS])].some(k => found(node[k]))
+  }
+  try {
+    return found(unbash(script))
+  } catch (e) {
+    if ((e as Error)?.name === 'RangeError') return true
+    throw e
+  }
+}
 
 function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number, k8sOnly: boolean, outer: Files): Finding[] {
   const vars = collectVars(commands, script)
   const envSeen = collectEnv(commands)
   // A kubeconfig is read for a command only when outer allows it and no command that runs before it
   // can write one: an earlier command, one of its own substitutions (they run first), or, for a
-  // command in a pipeline (its stages run at once) or in an unordered script, any other command.
-  // Later commands cannot change what it has already read. Each is checked once, and only when a
-  // check needs a file.
+  // command in a pipeline stage or a substitution of one (the stages run at once), or in a script with
+  // a loop, function, trap, watch or background job, any other command. Later commands cannot change
+  // what it has already read. Each is checked once, and only when a check needs a file.
   const writes: (boolean | undefined)[] = []
   const writer = (j: number): boolean => (writes[j] ??= !writesNothing(commands[j]))
-  const unordered = UNORDERED_RE.test(plainText(script))
+  let unordered: boolean | undefined
   const filesFor = (i: number): Files => {
     let memo: boolean | undefined
     return () => {
       if (memo === undefined) {
-        const own = new Set(commands[i].subs)
-        const any = unordered || commands[i].pipeline !== null
+        const self = commands[i]
+        const own = new Set(self.subs)
+        unordered ??= UNORDERED_RE.test(plainText(script)) || runsInBackground(script)
+        const any = unordered || self.pipeline !== null || commands.some(c => c.pipeline !== null && c.subs.includes(self))
         memo = outer() && !commands.some((c, j) => j !== i && (j < i || any || own.has(c)) && writer(j))
       }
       return memo

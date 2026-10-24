@@ -863,6 +863,8 @@ kubecfg=$prod t "helm upgrade on the prod process kubeconfig asks" ask "helm upg
 t "kustomize piped to kubectl apply stays quiet" none "kustomize build . | kubectl apply -f -"
 t "helm template piped to kubectl apply stays quiet" none "helm template x c | kubectl apply -f -"
 t "kubectl apply then curl stays quiet" none "kubectl apply -f x.yaml && curl localhost:8080/health"
+t "kubectl apply then curl of a quoted query stays quiet" none 'kubectl apply -f x.yaml && curl "localhost:8080/health?a=1&b=2"'
+t "kubectl apply then curl of an escaped & stays quiet" none 'kubectl apply -f x.yaml && curl localhost:8080/a\&b'
 t "kubectl apply beside a read-only filter stays quiet" none "kubectl apply -f x.yaml | tail -5"
 t "sh -c kubectl delete on the dev process kubeconfig stays quiet" none "sh -c 'kubectl delete pv x'"
 kubecfg=$prod t "sh -c kubectl delete pv on the prod process kubeconfig" deny "sh -c 'kubectl delete pv x'"
@@ -896,7 +898,10 @@ for c in \
   'sleep 2 && kubectl delete pv x & kubectl config use-context prod; wait' \
   "timeout 5 sh -c 'sleep 2; kubectl delete pv x' & kubectl config use-context prod" \
   'watch -n1 kubectl delete pv x & kubectl config use-context prod' \
-  'watch -n1 kubectl delete pv x; kubectl config use-context prod'; do
+  'watch -n1 kubectl delete pv x; kubectl config use-context prod' \
+  'kubectl delete pv x&kubectl config use-context prod' \
+  'echo $(kubectl delete pv x) | kubectl config use-context prod' \
+  "sh -c 'kubectl delete pv x' | kubectl config use-context prod"; do
   t "concurrent writer: $c" ask "$c"
   t "concurrent writer, subagent with token: $c" ask "$c" withtoken
 done
