@@ -30,11 +30,19 @@ mktar() { # out.tgz version [extra-setup-fn]
   echo 'extends EditorPlugin' > "$root/godot-mcp-HEAD/addons/godot_mcp/plugin.gd"
   echo 'not copied' > "$root/godot-mcp-HEAD/src/server.ts"
   if [ $# -ge 3 ]; then "$3" "$root/godot-mcp-HEAD"; fi
-  tar -czf "$1" -C "$root" godot-mcp-HEAD
+  # Commit the tree and archive it, so the tarball carries a real commit id.
+  git -C "$root/godot-mcp-HEAD" init -q
+  git -C "$root/godot-mcp-HEAD" add -A
+  git -C "$root/godot-mcp-HEAD" -c user.name=t -c user.email=t@t commit -q -m fixture
+  git -C "$root/godot-mcp-HEAD" rev-parse HEAD > "$1.sha"
+  git -C "$root/godot-mcp-HEAD" archive --format=tar.gz --prefix=godot-mcp-HEAD/ -o "$1" HEAD
 }
 
+sha_of() { cat -- "$1.sha" 2>/dev/null || echo 0000000000000000000000000000000000000000; }
 run() { GODOT_MCP_TARBALL="$1" "$script" "${@:2}"; }
-refuses() { ! GODOT_MCP_TARBALL="$1" "$script" "$2" 2>/dev/null; }
+# Real install of a fixture with the commit its dry run would report.
+install() { GODOT_MCP_TARBALL="$1" "$script" --commit "$(sha_of "${1#file://}")" "$2"; }
+refuses() { ! GODOT_MCP_TARBALL="$1" "$script" --commit "$(sha_of "$1")" "$2" 2>/dev/null; }
 
 # Fresh install, then update.
 mkproj "$work/p"
@@ -45,13 +53,26 @@ out="$(run "$work/v1.tgz" --dry-run "$work/p")"
 expect "dry-run reports none -> 0.1.0" grep -q '^installed_version=none$' <<<"$out"
 expect "dry-run writes nothing" test ! -e "$work/p/addons"
 
-out="$(run "file://$work/v1.tgz" "$work/p")"
+expect "dry-run reports the archive commit" grep -qx "commit=$(sha_of "$work/v1.tgz")" <<<"$out"
+
+# The real install is pinned to the approved commit.
+no_commit() { ! GODOT_MCP_TARBALL="$work/v1.tgz" "$script" "$work/p" 2>/dev/null; }
+expect "install without --commit fails" no_commit
+bad_commit() { ! GODOT_MCP_TARBALL="$work/v1.tgz" "$script" --commit "$(sha_of "$work/v2.tgz")" "$work/p" 2>/dev/null; }
+expect "mismatched commit fails" bad_commit
+short_commit() { ! GODOT_MCP_TARBALL="$work/v1.tgz" "$script" --commit abc123 "$work/p" 2>/dev/null; }
+expect "non-40-hex commit fails" short_commit
+dry_commit() { ! GODOT_MCP_TARBALL="$work/v1.tgz" "$script" --dry-run --commit "$(sha_of "$work/v1.tgz")" "$work/p" 2>/dev/null; }
+expect "--dry-run with --commit is bad usage" dry_commit
+expect "refused installs write nothing" test ! -e "$work/p/addons"
+
+out="$(install "file://$work/v1.tgz" "$work/p")"
 expect "install action" grep -q '^action=installed$' <<<"$out"
 expect "addon copied" test -f "$work/p/addons/godot_mcp/plugin.gd"
 expect "only the addon copied" test ! -e "$work/p/src"
 
 echo stale > "$work/p/addons/godot_mcp/old_file.gd"
-out="$(run "$work/v2.tgz" "$work/p")"
+out="$(install "$work/v2.tgz" "$work/p")"
 expect "update reports 0.1.0 -> 0.2.0" grep -q '^installed_version=0.1.0$' <<<"$out"
 expect "update action" grep -q '^action=updated$' <<<"$out"
 expect "old copy replaced" test ! -e "$work/p/addons/godot_mcp/old_file.gd"

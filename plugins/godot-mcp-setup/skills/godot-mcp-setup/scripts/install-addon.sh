@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 # Installs or updates the godot_mcp editor addon in a Godot project.
 #
-# Downloads the default-branch tarball of github.com/voidrot/godot-mcp into a
-# new temp dir, extracts it there, and copies only addons/godot_mcp/ into the
-# project, replacing an older copy. Nothing from the tarball is executed. It
+# The dry run downloads the default-branch tarball of github.com/voidrot/godot-mcp
+# and reports the commit it came from. The real install requires that commit
+# (--commit), downloads archive/<commit>.tar.gz, and refuses unless the tarball's
+# embedded commit id matches, so it installs exactly what the dry run showed.
+# Either way it extracts into a new temp dir and copies only addons/godot_mcp/
+# into the project, replacing an older copy. Nothing from the tarball is executed. It
 # never touches project.godot or .mcp.json.
 #
-# Usage: install-addon.sh [--dry-run] <project-dir>
-#   --dry-run  download and report the versions, change nothing
+# Usage: install-addon.sh --dry-run <project-dir>
+#        install-addon.sh --commit <40-hex> <project-dir>
+#   --dry-run  download HEAD and report the versions and commit, change nothing
+#   --commit   the commit= value from the dry run; required for a real install,
+#              which also needs git
 # Env:
 #   GODOT_MCP_TARBALL  local .tar.gz path or file:// URL to use instead of
 #                      downloading (for tests and offline installs)
@@ -17,16 +23,18 @@
 # Diagnostics go to stderr. Exit 0 on success, 1 on error, 2 on bad usage.
 set -euo pipefail
 
-URL="https://github.com/voidrot/godot-mcp/archive/HEAD.tar.gz"
+BASE="https://github.com/voidrot/godot-mcp/archive"
 
 die() { echo "install-addon: $*" >&2; exit 1; }
-usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 dry_run=0
+want=""
 project=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) dry_run=1 ;;
+    --commit) [ $# -ge 2 ] || usage; want="$2"; shift ;;
     -h|--help) usage ;;
     -*) echo "install-addon: unknown option $1" >&2; usage ;;
     *) [ -z "$project" ] || usage; project="$1" ;;
@@ -34,6 +42,15 @@ while [ $# -gt 0 ]; do
   shift
 done
 [ -n "$project" ] || usage
+if [ "$dry_run" -eq 1 ]; then
+  [ -z "$want" ] || usage
+  URL="$BASE/HEAD.tar.gz"
+else
+  [ -n "$want" ] || die "a real install requires --commit <sha> from the dry run"
+  [[ "$want" =~ ^[0-9a-f]{40}$ ]] || die "--commit must be 40 lowercase hex characters"
+  command -v git >/dev/null || die "git not found; it is needed to verify the commit"
+  URL="$BASE/$want.tar.gz"
+fi
 
 [ -d "$project" ] || die "not a directory: $project"
 project="$(cd -- "$project" && pwd -P)"
@@ -71,6 +88,15 @@ if grep -Eq '^/|(^|/)\.\.(/|$)' "$tmp/list"; then
   die "archive contains absolute or parent-relative paths; refusing"
 fi
 
+commit="unknown"
+if command -v git >/dev/null; then
+  commit="$(gzip -dc "$archive" | git get-tar-commit-id 2>/dev/null || true)"
+  [ -n "$commit" ] || commit="unknown"
+fi
+if [ "$dry_run" -eq 0 ] && [ "$commit" != "$want" ]; then
+  die "archive commit is $commit, not the approved $want; refusing"
+fi
+
 mkdir "$tmp/x"
 tar -xzf "$archive" -C "$tmp/x" --no-same-owner || die "could not extract the archive"
 
@@ -86,12 +112,6 @@ odd="$(find "$addon" ! -type f ! -type d -print | head -n 5)"
 
 new="$(read_version "$addon/plugin.cfg")"
 [ -n "$new" ] || die "no version= line in the downloaded plugin.cfg"
-
-commit="unknown"
-if command -v git >/dev/null; then
-  commit="$(gzip -dc "$archive" | git get-tar-commit-id 2>/dev/null || true)"
-  [ -n "$commit" ] || commit="unknown"
-fi
 
 echo "project=$project"
 echo "installed_version=${installed:-none}"

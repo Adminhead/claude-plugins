@@ -24,13 +24,13 @@ Confirm with the user before every write: the addon copy, the `project.godot` ed
 - POSIX host (Linux or macOS). On Windows stop: the addon's `headersHelper` is a POSIX shell command and its setup refuses Windows.
 - `project.godot` exists and `config/features` names `"4.7"` or later. The addon targets 4.7; on an older project stop and say so.
 - A Godot binary: `$GODOT`, else `godot`, `godot4` or `godot-mono` on `PATH` (`<bin> --version`). Also coreutils `timeout` on `PATH`; the addon's job tools (`run_headless`, `import_assets`, `build_dotnet`) need it.
-- `curl` and `tar` on `PATH`.
+- `curl`, `tar` and `git` on `PATH`.
 
 ### 2. Install or update the addon
 
 1. Preview: `${CLAUDE_SKILL_DIR}/scripts/install-addon.sh --dry-run <godot-dir>`. It prints `installed_version`, `new_version` and `commit` (key=value lines) and changes nothing.
 2. Show the user the version change (or "fresh install") and that `addons/godot_mcp/` will be replaced wholesale. Get a yes.
-3. Run `${CLAUDE_SKILL_DIR}/scripts/install-addon.sh <godot-dir>`. It downloads the default-branch tarball into a new temp dir, refuses archives with absolute or `..` paths and addons with symlinks or special files, and copies only `addons/godot_mcp/`. Nothing in the tarball runs.
+3. Run `${CLAUDE_SKILL_DIR}/scripts/install-addon.sh --commit <commit> <godot-dir>`, passing the dry run's `commit` value. It downloads that exact commit's tarball into a new temp dir, refuses unless the tarball's commit id equals `<commit>` (so a commit that moved since the preview is never installed), refuses archives with absolute or `..` paths and addons with symlinks or special files, and copies only `addons/godot_mcp/`. Nothing in the tarball runs.
 4. Record `new_version` and `commit` for the final report.
 
 ### 3. Enable the plugin
