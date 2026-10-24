@@ -124,15 +124,16 @@ function globCanMatch(glob: string, rel: string): boolean {
 export const EXCLUDE_CRED_GLOB = `!**/${CRED_FILE}`
 
 // How a Grep call reaches the credentials file: 'deny' when its path is the file, or the directory that holds it (any
-// glob that can match, or none), or a directory above that with a glob or a `json` type that can match it; 'exclude'
+// glob that can match, or none), or a directory above that with a glob or a `json`/`all` type that can match it; 'exclude'
 // when it is a directory above with neither, so the call can run with EXCLUDE_CRED_GLOB; null when it cannot reach it.
 // A `type` other than json leaves the file out.
 function grepReach(input: Readonly<Record<string, unknown>>, ctx: PathContext): 'deny' | 'exclude' | null {
   const path = typeof input.path === 'string' && input.path !== '' ? input.path : '.'
   if (isCred(path, ctx)) return 'deny'
   const typed = typeof input.type === 'string' && input.type !== ''
-  // `json` is the only ripgrep type whose globs (`*.json`) take `.credentials.json`; `jsonl` is `*.jsonl`.
-  if (typed && !/^json$/i.test(input.type as string)) return null
+  // `json` (`*.json`) and the special `all` (every known type, json included) take `.credentials.json`; `jsonl` is
+  // `*.jsonl`.
+  if (typed && !/^(?:json|all)$/i.test(input.type as string)) return null
   const dir = place(path, ctx)
   if (dir === null) return null
   const glob = typeof input.glob === 'string' && input.glob.trim() !== '' ? input.glob : null

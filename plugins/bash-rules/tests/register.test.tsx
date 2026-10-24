@@ -234,6 +234,7 @@ describe('file tools and the credentials file', () => {
     for (const input of [
       { tool: 'Grep', pattern: 'accessToken', path: '~', type: 'json' },
       { tool: 'Grep', pattern: 'accessToken', path: '/', type: 'JSON' },
+      { tool: 'Grep', pattern: 'accessToken', path: '~', type: 'all' },
       { tool: 'Grep', pattern: 'accessToken', path: '..', glob: '**/*.json' },
       { tool: 'Grep', pattern: 'accessToken', path: '/home/u', glob: ' ' , type: 'json' },
     ]) {
