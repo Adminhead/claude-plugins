@@ -278,7 +278,7 @@ def target_args(project: Project, targets: list[Target]) -> list[str]:
                 )
         return binaries + (["--", *filters] if filters else [])
     raise DetectError(
-        f"the {kind} runner can't select tests; pass --cmd with the selection"
+        f"the {kind} runner can't select tests; use run_custom.py --cmd with the selection"
     )
 
 

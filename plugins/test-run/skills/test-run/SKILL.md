@@ -1,8 +1,8 @@
 ---
 name: test-run
-description: Run the project's tests, show only compact failures, and fix them in a bounded loop. Manual command (`/test-run:test-run`).
+description: Run the project's tests, show only compact failures, and fix them in a bounded loop. Manual command (`/test-run:test-run`). Only the detected-runner script is pre-approved; a custom `--cmd` goes through `run_custom.py` and prompts.
 disable-model-invocation: true
-argument-hint: "[path|pattern] [--all] [--cmd \"…\"]"
+argument-hint: "[path|pattern] [--all]"
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/run_tests.py *)
 ---
 
@@ -19,7 +19,8 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/run_tests.py $ARGUMENTS
 ```
 
 - With no arguments it runs the tests affected by changes against the default branch, or the full suite when nothing maps. The `scope:` line says which.
-- Pass `--cmd` only with a command the user gave. The script is pre-approved, so `--cmd` would otherwise run an unreviewed command.
+- `run_tests.py` rejects `--cmd` (exit 2). For a command the user gave, run `python3 ${CLAUDE_SKILL_DIR}/scripts/run_custom.py --cmd "…" [targets]`. It shares the parse and plan code but is not pre-approved, so each call prompts.
+- This closes the arbitrary-command escape hatch. A detected runner such as `npm test` still runs project code, which is inherent, so use this skill on trusted projects only.
 - Run `--help` for the other flags.
 
 Detected runners, scanning the repo root and two levels down:
@@ -34,7 +35,7 @@ Output starts with `runner:` (the exact command) and `scope:`, then a summary li
 | --- | --- | --- |
 | 0 | All selected tests passed | Report the result and its scope. Stop. |
 | 1 | Test failures | Go to step 2. |
-| 2 | Usage, detection, or runner error (collection or compile error, no tests ran) | Read the `error:` block. Fix a code error like a failure. For detection problems, rerun with a target path or ask the user for `--cmd`. Treat a missing tool or dependency as environmental. |
+| 2 | Usage, detection, or runner error (collection or compile error, no tests ran) | Read the `error:` block. Fix a code error like a failure. For detection problems, rerun with a target path or ask the user for a command to pass to `run_custom.py --cmd`. Treat a missing tool or dependency as environmental. |
 
 ## 2. Fix loop
 
@@ -48,7 +49,7 @@ For each failure:
    python3 ${CLAUDE_SKILL_DIR}/scripts/run_tests.py "<id>" ["<id>" ...]
    ```
 
-   Keep passing the original `--cmd`, if any.
+   If the first run used `run_custom.py --cmd "…"`, rerun with the same script and `--cmd`.
 4. Allow at most 3 materially distinct attempts per failure. After the third, stop working on it and record it as remaining.
 
 Stop and ask the user with AskUserQuestion, explaining each option, when:

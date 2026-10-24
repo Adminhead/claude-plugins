@@ -38,7 +38,7 @@ ENV = {
 }
 
 
-def parse_args(argv: list[str] | None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None, custom: bool = False) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Detect the test runner, run the affected tests (or the given targets), "
@@ -54,6 +54,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         help=(
             "run this command instead; targets are translated for pytest, jest, "
             "and go commands and appended verbatim otherwise"
+            if custom
+            else "not accepted here; use run_custom.py"
         ),
     )
     parser.add_argument(
@@ -65,6 +67,10 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--dry-run", action="store_true", help="print the command and exit"
     )
     args = parser.parse_args(argv)
+    if custom and not args.cmd:
+        parser.error("run_custom.py needs --cmd")
+    if args.cmd and not custom:
+        parser.error("--cmd is not accepted here: use run_custom.py")
     if args.all and args.targets:
         parser.error("--all runs the full suite; drop the targets or --all")
     if args.max_failures < 1 or args.trace_lines < 0:
@@ -198,8 +204,8 @@ def write_log(log: Path, header: str, run: RunOutput, report_path: Path | None) 
     log.write_text("\n".join(parts) + "\n", encoding="utf-8")
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+def main(argv: list[str] | None = None, custom: bool = False) -> int:
+    args = parse_args(argv, custom)
     try:
         repo = repo_root(args.repo_root)
         targets = [parse_target(t, repo, Path.cwd()) for t in args.targets]

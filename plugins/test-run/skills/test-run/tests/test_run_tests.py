@@ -17,6 +17,7 @@ from parse import Failure, Report, RunOutput, parse
 from plan import build_plan, changed_files
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "run_tests.py"
+CUSTOM = SCRIPT.with_name("run_custom.py")
 FIXTURES = Path(__file__).parent / "fixtures"
 WORK = Path("/work")
 GIT_ENV = {
@@ -48,9 +49,11 @@ def ids(report: Report) -> list[str]:
     return [f"{f.path}::{f.name}" if f.path else f.name for f in report.failures]
 
 
-def cli(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def cli(
+    cwd: Path, *args: str, script: Path = SCRIPT
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *args],
+        [sys.executable, str(script), *args],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -842,12 +845,24 @@ def test_usage_and_detection_errors_exit_2(tmp_path: Path) -> None:
 
 
 def test_generic_runner_passes_exit_status_through(tmp_path: Path) -> None:
-    passed = cli(tmp_path, "--repo-root", str(tmp_path), "--cmd", "true")
+    root = ("--repo-root", str(tmp_path))
+    passed = cli(tmp_path, *root, "--cmd", "true", script=CUSTOM)
     assert passed.returncode == 0
     assert passed.stdout.splitlines()[0] == "runner: true"
     assert passed.stdout.splitlines()[-1].startswith("log: ")
     assert Path(passed.stdout.splitlines()[-1].removeprefix("log: ")).is_file()
-    assert cli(tmp_path, "--repo-root", str(tmp_path), "--cmd", "false").returncode == 1
+    failed = cli(tmp_path, *root, "--cmd", "false", script=CUSTOM)
+    assert failed.returncode == 1
+    assert cli(tmp_path, *root, script=CUSTOM).returncode == 2
+
+
+def test_run_tests_rejects_cmd_and_runs_nothing(tmp_path: Path) -> None:
+    marker = tmp_path / "ran"
+    for flag in (["--cmd", f"touch {marker}"], [f"--cmd=touch {marker}"]):
+        result = cli(tmp_path, "--repo-root", str(tmp_path), *flag)
+        assert result.returncode == 2
+        assert "use run_custom.py" in result.stderr
+    assert not marker.exists()
 
 
 def pytest_project(root: Path) -> Path:

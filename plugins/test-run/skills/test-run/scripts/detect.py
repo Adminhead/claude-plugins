@@ -407,9 +407,9 @@ def select_project(repo: Path, targets: list[Target], cmd: str | None) -> Projec
     if len(found) == 1:
         return found[0]
     if not found:
-        raise DetectError(f"no test runner found under {repo}; pass --cmd")
+        raise DetectError(f"no test runner found under {repo}; pass a target path or ask the user to approve run_custom.py --cmd")
     listing = "\n".join(f"  {rel(p.root, repo)}: {shlex.join(p.base)}" for p in found)
     raise DetectError(
         "several test projects found; pass a target path inside one of them, "
-        f"or --cmd:\n{listing}"
+        f"or ask the user to approve run_custom.py --cmd:\n{listing}"
     )
