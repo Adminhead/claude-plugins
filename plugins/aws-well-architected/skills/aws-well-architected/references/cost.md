@@ -1,13 +1,14 @@
 # Cost candidates
 
-Add `--profile <profile> --region <region> --no-cli-pager`. Sample utilization over at least 7 days, and 14 where the load has a weekly rhythm, because a quiet week hides the peak. One-minute metric data is kept 15 days, so hourly periods suit a longer look. Report estimates as estimates, and give the pricing source or label the figure unconfirmed.
+Add `--profile <profile> --region <region> --no-cli-pager`, except `aws ce` and `aws budgets`, which take `--region us-east-1` (Cost Explorer has one endpoint, `ce.us-east-1.amazonaws.com`; AWS General Reference, Billing and Cost Management endpoints). Sample utilization over at least 7 days, and 14 where the load has a weekly rhythm, because a quiet week hides the peak. One-minute metric data is kept 15 days, so hourly periods suit a longer look. Report estimates as estimates, and give the pricing source or label the figure unconfirmed.
 
 ## Spend
 
 Each Cost Explorer request is billed (about $0.01 on the primary billing view), so group in a single call. The end date is exclusive.
 
 ```bash
-aws ce get-cost-and-usage --time-period Start=<YYYY-MM-DD>,End=<YYYY-MM-DD> \
+aws ce get-cost-and-usage --profile <profile> --region us-east-1 --no-cli-pager \
+  --time-period Start=<YYYY-MM-DD>,End=<YYYY-MM-DD> \
   --granularity MONTHLY --metrics UnblendedCost \
   --group-by Type=DIMENSION,Key=SERVICE \
   --query 'ResultsByTime[].Groups[].[Keys[0],Metrics.UnblendedCost.Amount]' --output table
@@ -29,7 +30,7 @@ aws cloudwatch get-metric-statistics --namespace AWS/Lambda --metric-name Durati
   --period 86400 --statistics Average Maximum
 ```
 
-`get-metric-statistics` returns at most 1,440 datapoints per call, which fits 7 days at hourly periods. Memory and disk for EC2 need the CloudWatch agent, and without it the right-sizing call rests on CPU alone, which you should say. When Compute Optimizer is enabled, `aws compute-optimizer get-ec2-instance-recommendations` and `get-lambda-function-recommendations` are a better starting point than raw CPU. `aws ce get-rightsizing-recommendation --service AmazonEC2` also exists.
+`get-metric-statistics` returns at most 1,440 datapoints per call, which fits 7 days at hourly periods. Memory and disk for EC2 need the CloudWatch agent, and without it the right-sizing call rests on CPU alone, which you should say. When Compute Optimizer is enabled, `aws compute-optimizer get-ec2-instance-recommendations` and `get-lambda-function-recommendations` are a better starting point than raw CPU. `aws ce get-rightsizing-recommendation --service AmazonEC2 --region us-east-1` also exists.
 
 ## Candidate patterns
 
