@@ -137,8 +137,12 @@ describe('links on the filesystem', () => {
   const repo = join(import.meta.dir, '..')
   const repoFile = join(repo, 'scratch.ts')
   let d = ''
+  let d2 = ''   // a second scratch dir, outside d
   beforeAll(() => {
     d = mkdtempSync('/tmp/readonly-gate-spec-')
+    d2 = mkdtempSync('/tmp/readonly-gate-spec2-')
+    mkdirSync(`${d2}/deeper`)
+    symlinkSync(`${d2}/deeper`, `${d}/inlink`)
     symlinkSync(repoFile, `${d}/link`)
     symlinkSync(repo, `${d}/dirlink`)
     symlinkSync(join(repo, 'not-there-yet.ts'), `${d}/dangling`)
@@ -150,7 +154,10 @@ describe('links on the filesystem', () => {
     linkSync(`${d}/orig`, `${d}/hard`)
     writeFileSync(`${d}/plain`, 'x')
   })
-  afterAll(() => rmSync(d, { recursive: true, force: true }))
+  afterAll(() => {
+    rmSync(d, { recursive: true, force: true })
+    rmSync(d2, { recursive: true, force: true })
+  })
 
   test('Write and Edit through a symlink to a repo file are blocked', () => {
     const r = ro('Write', { file_path: `${d}/link`, content: 'x' })
@@ -180,6 +187,27 @@ describe('links on the filesystem', () => {
     expect(ro('Bash', { command: `echo x > ${d}/dangling` }).code).toBe(2)
     expect(ro('Write', { file_path: `${d}/dirlink/../README.md` }).code).toBe(2)
     expect(ro('Write', { file_path: `${d}/dirlink/new.ts` }).code).toBe(2)
+  })
+
+  test('.. after a missing or non-directory part is blocked', () => {
+    for (const file_path of [`${d}/nope/../link`, `${d}/plain/../link`, `${d}/nope/../dirlink/x`, `${d}/nope/x/../../link`]) {
+      const r = ro('Write', { file_path })
+      expect(r.code).toBe(2)
+      expect(ro('Edit', { file_path }).code).toBe(2)
+    }
+    expect(ro('Write', { file_path: 'nope/../link' }, { cwd: d }).code).toBe(2)
+    expect(ro('Bash', { command: `mkdir -p ${d}/nope && printf x > ${d}/nope/../link` }).code).toBe(2)
+  })
+
+  test('a file tool path must stay in scratch both as the kernel and as a normalizing writer read it', () => {
+    // The kernel reads inlink/.. as d2, so the shell writes d2/link; a writer that normalizes the
+    // path first writes d/link, which is the link to the repo file.
+    const r = ro('Write', { file_path: `${d}/inlink/../link` })
+    expect(r.code).toBe(2)
+    expect(r.err).toContain('resolves to')
+    expect(ro('Edit', { file_path: `${d}/inlink/../link` }).code).toBe(2)
+    expect(ro('Bash', { command: `printf x > ${d}/inlink/../link` }).code).toBe(0)
+    expect(ro('Write', { file_path: `${d}/inlink/../new.txt` }).code).toBe(0)
   })
 
   test('links that stay inside scratch, plain files and new paths pass', () => {

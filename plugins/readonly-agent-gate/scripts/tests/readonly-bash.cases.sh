@@ -1027,6 +1027,119 @@ cmd allow "printf x > $fx/newdir/x"
 cmd allow "ln -s plain $fx/l3"
 cmd allow "rm $fx/plain"
 
+# A `..` after a part that does not exist yet (or is a file) is refused: a command earlier in the
+# line can create the part, and the `..` then lands next to a link.
+cmd block "mkdir -p $fx/nope && printf x > $fx/nope/../link"
+cmd block "printf x > $fx/plain/../link"
+cmd block "mkdir -p $fx/nope/../dirlink/x"
+cmd block "printf x > $fx/newdir/../new.txt"
+mkdir "$fx/rdir" "$fx/a" "$fx/tree"
+ln -s "$scripts" "$fx/rdir/sub"
+ln -s ../plain "$fx/a/s"                  # resolves to $fx/plain
+ln -s ../../home/u/x "$fx/a/far"          # /tmp/home/u/x from here, /home/u/x from /tmp
+: > "$fx/tree/f"
+cmd allow "printf x > $fx/rdir/../new.txt"
+# A link to a scratch root is the root itself for rm and find -delete.
+ln -s /tmp "$fx/tmplink"
+cmd block "rm -rf $fx/tmplink/"
+cmd block "find $fx/tmplink/ -delete"
+
+# Written paths outside the file commands resolve links too.
+cmd block "sort -o $fx/link a"
+cmd block "sort -ro README.md a"
+cmd block "sort --out=README.md a"
+cmd block "tar -xf a.tar -C $fx/dirlink"
+cmd block "rsync a $fx/link"
+cmd block "unzip a.zip -d $fx/dirlink"
+cmd block "gzip $fx/link"
+cmd block "find . -fprint $fx/link"
+cmd block "find $fx/dirlink/ -delete"
+cmd block "git log --output=$fx/link"
+cmd block "terraform plan -out=$fx/link"
+cmd block "aws s3api get-object --bucket b --key k $fx/link"
+cmd block "psql -o $fx/link -c 'select 1'"
+cmd block "mysql --tee=$fx/link -e 'select 1'"
+cmd block "liquibase --output-file=$fx/link status"
+cmd block "strace -o $fx/link ls"
+cmd block "flock $fx/link ls"
+cmd block "shuf -o $fx/link a"
+cmd block 'shuf -o out.txt a'
+cmd block 'shuf --out=out.txt a'
+cmd block "uniq in $fx/link"
+cmd block 'uniq in out.txt'
+cmd block "split a $fx/dirlink/x"
+cmd block 'split a'
+cmd block "split --filter='rm x' a /tmp/p"
+cmd allow 'sort -o /tmp/out.txt -r a'
+cmd allow "find $fx/rdir -name x -delete"
+cmd allow 'shuf -o /tmp/s.txt a'
+cmd allow 'shuf -n 3 a'
+cmd allow 'uniq -c in'
+cmd allow 'uniq in /tmp/u.txt'
+cmd allow 'uniq in -'
+cmd allow 'split -l 10 a /tmp/parts/x'
+
+# cp, ln, mv and install: unique long-option prefixes, valued short options and link sources.
+cmd block "cp --symb $scripts/scratch.ts /tmp/l && printf x > /tmp/l"
+cmd block "cp --li $scripts/scratch.ts /tmp/h"
+cmd block 'cp --l src/a.ts /tmp/h'
+cmd block 'cp --targ=src /tmp/a'
+cmd block 'mv --target=src /tmp/a'
+cmd block 'install --target src /tmp/a'
+cmd block 'ln --sym /etc/passwd /tmp/link'
+cmd block 'cp --s a /tmp/b'
+cmd block 'cp --bogus a /tmp/b'
+cmd block 'ln -Ssuffix README.md /tmp/new-link'
+cmd block 'ln -sfS .bak /etc/passwd /tmp/l'
+cmd block "ln -sn sub/scratch.ts $fx/rdir"
+cmd block "ln $fx/a/s /tmp/out"
+cmd block "cp -l $fx/a/s /tmp/out"
+cmd block "cp -rsL $fx/tree /tmp/copy"
+cmd block "cp -P $fx/a/far /tmp/out"
+cmd block "cp -a $fx/a/far /tmp/out"
+cmd block "cp -r $fx/a/far /tmp/out"
+cmd block "mv $fx/a/far /tmp/out"
+cmd block 'install -d src/new /tmp/x'
+cmd block 'cp --parents ../x /tmp/d'
+cmd allow 'cp --suffix=.bak a /tmp/b'
+cmd allow 'cp --suf .bak a /tmp/b'
+cmd allow 'cp --rec src/ /tmp/tree'
+cmd allow "ln -sn plain $fx/l4"
+cmd allow "ln -Ssuffix $fx/plain /tmp/new-link"
+cmd allow "cp -P $fx/a/far $fx/a/far2"
+cmd allow "cp -L $fx/a/far /tmp/out"
+cmd allow "cp $fx/a/s /tmp/out"
+cmd allow "ln -L $fx/a/s /tmp/out" # -L links the file the symlink names
+cmd allow 'install -d /tmp/x/a /tmp/x/b'
+cmd allow 'install -m 644 a /tmp/x'
+cmd allow 'cp --parents src/a /tmp/d'
+
+# SQLite takes a function name in [..], `..` or "..", so the side-effect names are found there too.
+cmd block "sqlite3 db \"select [writefile]('/home/x','y')\""
+cmd block 'sqlite3 db "select `edit`('"'x'"')"'
+cmd block "sqlite3 db 'select \"writefile\"(''/home/x'',''y'')'"
+cmd block "sqlite3 db \"select [writefile]/**/('/home/x','y')\""
+cmd block "sqlite3 db \"select [load_extension]('./evil')\""
+cmd allow "sqlite3 db \"select [edited] from t\""
+
+# curl: write-out can redirect itself to a file, and the TLS session cache is a written file.
+cmd block "curl -w '%output{/home/u/x}%{http_code}' https://x"
+cmd block "curl --write-out '%output{>>notes.md}x' https://x"
+cmd block 'curl -w @fmt.txt https://x'
+cmd block 'curl --ssl-sessions sess.txt https://x'
+cmd allow "curl -w '%{http_code}' -o /dev/null https://x"
+cmd allow 'curl --ssl-sessions /tmp/sess.txt https://x'
+
+# busybox and toybox applets are checked as the command they run.
+cmd block 'busybox rm x'
+cmd block '/bin/busybox ln -s /etc/passwd /tmp/l'
+cmd block 'toybox rm -rf src'
+cmd block 'busybox sed -i s/a/b/ f'
+cmd block 'busybox --install -s /tmp/bin'
+cmd allow 'busybox ls -la'
+cmd allow 'busybox --list'
+cmd allow 'toybox grep x f'
+
 # Holes the old Python checker had; this gate blocks them.
 hole=block
 

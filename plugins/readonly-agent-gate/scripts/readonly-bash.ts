@@ -6,10 +6,14 @@
 // - Code that writes: `python -c`, scripts, variable indirection like `$CMD`, `make` targets
 //   other than install/uninstall, and config files (`curl -K`, `wget --config` block, but
 //   ~/.curlrc and ~/.wgetrc are read).
-// - Redirects, file commands (cp, ln, tee, ...) and the Write tools resolve links on the
-//   filesystem (scratch.ts). Other written paths (tar -C, sort -o, rsync, psql -o, ...) are
-//   string checks, so a pre-created link there is followed.
-// - A link made earlier in the same command line is not on disk yet when this runs.
+// - Written paths (redirects, file commands, tar -C, sort -o, rsync, psql -o, ...) and the Write
+//   tools resolve links on the filesystem (scratch.ts), as they stand when the hook runs.
+// - A link made earlier in the same command line is not on disk yet when this runs. New links
+//   are checked where ln, cp -s/-l/-P/-a/-r and mv make them, but not the links inside a tree
+//   that cp -r/-a, rsync or tar/unzip extraction copies, and split is checked for its first
+//   output name only.
+// - Long options are read as unique prefixes for cp, ln, mv, install, sort, shuf, uniq and split
+//   only; other commands' abbreviations (tar --dir=, ...) are not expanded.
 // - `sftp`, `cmake --install`, `ninja install` and `meson install` are not handled.
 // - `sqlite3 new.db "select 1"` creates an empty new.db.
 //
@@ -22,7 +26,7 @@
 // Ported from the archived crew plugin (scripts/readonly-bash.ts), itself a 1:1 port of a Python
 // checker whose tokenizer the shell walker replaced. The Python checker is not carried over.
 
-import { statSync, writeSync } from 'node:fs'
+import { lstatSync, readlinkSync, statSync, writeSync } from 'node:fs'
 import { MAX_DEPTH, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand } from './shell/walk.ts'
 import { SCRATCH_MSG, isScratch, isScratchRoot, joinPath, normpath, resolvesToScratch, scratchDest, setScratchRoots } from './scratch.ts'
@@ -83,15 +87,204 @@ const FS_VALUED: Record<string, ReadonlySet<string>> = {
   mkdir: set('-m', '--mode'),
   touch: set('-d', '-r', '-t', '--date', '--reference'),
   truncate: set('-s', '-r', '--size', '--reference'),
-  install: set('-m', '-o', '-g', '-S', '--mode', '--owner', '--group', '--suffix'),
-  cp: set('-S', '--suffix'), mv: set('-S', '--suffix'), ln: set('-S', '--suffix'),
   patch: set('-p', '-d', '-i', '-r', '-V', '-F', '--strip', '--directory', '--input'),
 }
 // Options whose value is a written path: [short letter, long name].
 const FS_PATH_OPTS: Record<string, [string, string]> = {
-  cp: ['t', '--target-directory'], mv: ['t', '--target-directory'],
-  ln: ['t', '--target-directory'], install: ['t', '--target-directory'],
   patch: ['o', '--output'],
+}
+
+// ---------------------------------------------------------------- getopt
+//
+// Options as GNU getopt_long reads them for coreutils: anywhere before `--`, short letters
+// bundled until a letter that takes a value (the rest of the word, else the next word), and a
+// long name given as any unique prefix of it (`cp --symb` is `--symbolic-link`).
+
+// Long options: 0 takes no value, 1 needs one, 2 takes one only after `=`.
+type LongOpts = Record<string, 0 | 1 | 2>
+type OptSpec = {
+  valued: string   // short letters that take a value
+  long: LongOpts
+  alias?: Record<string, string>   // long name -> the short option it equals
+  strict?: boolean   // an unknown long option blocks (else it reads as a flag)
+}
+type Parsed = { opts: [string, string | null][]; operands: string[] }
+
+function longName(cmd: string, given: string, spec: OptSpec): string | null {
+  if (Object.hasOwn(spec.long, given)) return given
+  const hits = Object.keys(spec.long).filter(k => given !== '' && k.startsWith(given))
+  if (hits.length === 1) return hits[0]
+  if (hits.length) block(`${cmd} option '--${given}' is ambiguous (${hits.slice(0, 4).join(', ')})`)
+  if (spec.strict) block(`${cmd} option '--${given}' is not one this check knows`)
+  return null
+}
+
+// Options as [name, value] (a short name `-x`, or `--long` unless it aliases a short one) and
+// the operands.
+function getopt(cmd: string, args: Words, spec: OptSpec): Parsed {
+  const opts: [string, string | null][] = []
+  const operands: string[] = []
+  const next = (i: number, name: string): string => (i < args.length ? args[i] : block(`${cmd} ${name} needs a value`))
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a === '--') {
+      operands.push(...args.slice(i + 1))
+      break
+    }
+    if (!a.startsWith('-') || a === '-') {
+      operands.push(a)
+      continue
+    }
+    if (a.startsWith('--')) {
+      const [given, eq, v] = partition(a.slice(2), '=')
+      const name = longName(cmd, given, spec)
+      if (name === null) {
+        opts.push([`--${given}`, eq ? v : null])
+        continue
+      }
+      const kind = spec.long[name]
+      let value: string | null = eq ? v : null
+      if (kind === 1 && !eq) value = next(++i, `--${name}`)
+      opts.push([spec.alias?.[name] ?? `--${name}`, value])
+      continue
+    }
+    for (let p = 1; p < a.length; p++) {
+      const ch = a[p]
+      if (spec.valued.includes(ch)) {
+        opts.push([`-${ch}`, p + 1 < a.length ? a.slice(p + 1) : next(++i, `-${ch}`)])
+        break
+      }
+      opts.push([`-${ch}`, null])
+    }
+  }
+  return { opts, operands }
+}
+
+const hasOpt = (p: Parsed, ...names: string[]): boolean => p.opts.some(([n]) => names.includes(n))
+const optValues = (p: Parsed, name: string): string[] => p.opts.filter(([n]) => n === name).map(([, v]) => v ?? '')
+
+// ---------------------------------------------------------------- cp, ln, mv, install, link
+
+// GNU coreutils 9 long options of each, so a prefix reads as the option it abbreviates.
+const COPY_SPECS: Record<string, OptSpec> = {
+  cp: {
+    valued: 'St',
+    long: {
+      archive: 0, 'attributes-only': 0, backup: 2, context: 2, 'copy-contents': 0, debug: 0, dereference: 0,
+      force: 0, help: 0, interactive: 0, 'keep-directory-symlink': 0, link: 0, 'no-clobber': 0, 'no-dereference': 0,
+      'no-preserve': 1, 'no-target-directory': 0, 'one-file-system': 0, parents: 0, preserve: 2, recursive: 0,
+      reflink: 2, 'remove-destination': 0, sparse: 1, 'strip-trailing-slashes': 0, suffix: 1, 'symbolic-link': 0,
+      'target-directory': 1, update: 2, verbose: 0, version: 0,
+    },
+    alias: {
+      archive: '-a', dereference: '-L', link: '-l', 'no-dereference': '-P', 'no-target-directory': '-T',
+      recursive: '-r', suffix: '-S', 'symbolic-link': '-s', 'target-directory': '-t',
+    },
+    strict: true,
+  },
+  ln: {
+    valued: 'St',
+    long: {
+      backup: 2, directory: 0, force: 0, help: 0, interactive: 0, logical: 0, 'no-dereference': 0,
+      'no-target-directory': 0, physical: 0, relative: 0, suffix: 1, symbolic: 0, 'target-directory': 1,
+      verbose: 0, version: 0,
+    },
+    alias: {
+      logical: '-L', 'no-dereference': '-n', 'no-target-directory': '-T', physical: '-P', relative: '-r',
+      suffix: '-S', symbolic: '-s', 'target-directory': '-t',
+    },
+    strict: true,
+  },
+  mv: {
+    valued: 'St',
+    long: {
+      backup: 2, context: 0, debug: 0, exchange: 0, force: 0, help: 0, interactive: 0, 'no-clobber': 0,
+      'no-copy': 0, 'no-target-directory': 0, 'strip-trailing-slashes': 0, suffix: 1, 'target-directory': 1,
+      update: 2, verbose: 0, version: 0,
+    },
+    alias: { 'no-target-directory': '-T', suffix: '-S', 'target-directory': '-t' },
+    strict: true,
+  },
+  install: {
+    valued: 'gmoSt',
+    long: {
+      backup: 2, compare: 0, context: 2, debug: 0, directory: 0, group: 1, help: 0, mode: 1,
+      'no-target-directory': 0, owner: 1, 'preserve-context': 0, 'preserve-timestamps': 0, strip: 0,
+      'strip-program': 1, suffix: 1, 'target-directory': 1, verbose: 0, version: 0,
+    },
+    alias: { directory: '-d', 'no-target-directory': '-T', suffix: '-S', 'target-directory': '-t' },
+    strict: true,
+  },
+  link: { valued: '', long: { help: 0, version: 0 }, strict: true },
+}
+
+const isSymlink = (p: string): boolean => {
+  try {
+    return lstatSync(p).isSymbolicLink()
+  } catch {
+    return false
+  }
+}
+
+// The directory a new entry named by dest lands in: dest itself when it is a directory the
+// command writes into, else its parent.
+const entryDir = (dest: string, intoDir: boolean): string => (intoDir ? dest : dirname(dest))
+
+// Only the destination of a copy or link is written (mv also changes its sources). Links are
+// then checked for where they point from the directory they land in.
+function checkCopy(cmd: string, args: Words): void {
+  const p = getopt(cmd, args, COPY_SPECS[cmd])
+  const has = (...names: string[]): boolean => hasOpt(p, ...names)
+  const targets = optValues(p, '-t')
+  const operands = p.operands
+  if (cmd === 'ln' && operands.length === 1 && !targets.length) block('one-argument ln creates a link in the current directory')
+  // install -d creates every operand as a directory.
+  const written = cmd === 'mv' || (cmd === 'install' && has('-d')) ? [...operands, ...targets] : targets.length ? targets : operands.slice(-1)
+  for (const w of written) {
+    const why = scratchDest(w)
+    if (why !== null) block(`'${cmd}' on ${why}`)
+    if (cmd === 'mv' && isScratchRoot(w)) block(`'${cmd}' on the scratch root itself`)
+  }
+  if (cmd === 'install') return   // copies file contents
+  const sources = targets.length ? operands : operands.slice(0, -1)
+  const dest = targets.length ? targets[targets.length - 1] : operands[operands.length - 1] ?? ''
+  if (cmd === 'cp' && has('--parents') && sources.some(s => s.split('/').includes('..'))) {
+    block("cp --parents with '..' in a source writes above the destination")
+  }
+  const symbolic = (cmd === 'cp' || cmd === 'ln') && has('-s')
+  const hard = !symbolic && (cmd === 'link' || cmd === 'ln' || (cmd === 'cp' && has('-l')))
+  // ln -n treats dest as a file only when dest is itself a symlink.
+  const noDir = has('-T') || (cmd === 'ln' && has('-n') && isSymlink(dest))
+  const intoDir = targets.length > 0 || (!noDir && (sources.length > 1 || isDir(dest)))
+  if (symbolic && cmd === 'cp' && has('-r', '-R', '-a')) block('cp -rs links every file in the tree, which this check cannot follow')
+  if (symbolic || hard) {
+    // A symlink's target resolves from the directory it lands in; a hard link's source, and ln -r's, from cwd.
+    const base = symbolic && !(cmd === 'ln' && has('-r')) ? entryDir(dest, intoDir) : shellCwd
+    for (const s of sources) {
+      if (/[$`]/.test(s) || s.startsWith('~')) block(`'${cmd}' source '${s}' holds an expansion, so where the link points is unknown`)
+      if (hard && !has('-L') && isSymlink(joinPath(shellCwd, s))) {
+        block(`'${cmd}' hard-links the symlink '${s}', whose target then reads from the new link's directory`)
+      }
+      if (!resolvesToScratch(joinPath(base, s))) block(`'${cmd}' links to '${s}', which resolves outside scratch`)
+    }
+    return
+  }
+  // mv, and cp -P/-d/-a/-r (without -L/-H), keep a symlink as a link with the same text, which
+  // then resolves from where the copy lands.
+  if (cmd === 'mv' || (cmd === 'cp' && (has('-P', '-d', '-a') || (has('-r', '-R') && !has('-L', '-H'))))) {
+    const dir = joinPath(shellCwd, entryDir(dest, intoDir))
+    for (const s of sources) {
+      const src = joinPath(shellCwd, s)
+      let text: string
+      try {
+        if (!lstatSync(src).isSymbolicLink()) continue
+        text = readlinkSync(src)
+      } catch {
+        continue
+      }
+      if (!resolvesToScratch(joinPath(dir, text))) block(`'${cmd}' moves the symlink '${s}' to where it points outside scratch`)
+    }
+  }
 }
 
 // If args[i] is cmd's written-path option, return [value, extra words consumed].
@@ -112,21 +305,19 @@ function pathOption(cmd: string, a: string, args: Words, i: number): [string, nu
 
 // Filesystem commands are fine only when every written path is scratch.
 function checkFs(cmd: string, args: Words): void {
+  if (Object.hasOwn(COPY_SPECS, cmd)) return checkCopy(cmd, args)
   const valued = FS_VALUED[cmd] ?? NONE
   let paths: string[] = []
   const targets: string[] = []
-  const opts: string[] = []
   let pastDashes = false
   for (let i = 0; i < args.length; i++) {
     const a = args[i]
     const opt = pastDashes ? null : pathOption(cmd, a, args, i)
     if (a === '--' && !pastDashes) pastDashes = true
     else if (opt !== null) {
-      opts.push(a)   // a bundle such as -lt carries other flags too
       targets.push(opt[0])
       i += opt[1]
     } else if (!pastDashes && a.startsWith('-') && a.length > 1) {
-      opts.push(a)
       if (valued.has(a)) i++
     } else if (cmd === 'dd') {
       if (a.startsWith('of=')) paths.push(a.slice(3))
@@ -138,17 +329,10 @@ function checkFs(cmd: string, args: Words): void {
   if (cmd === 'patch' && !(paths.length || targets.length) && !args.includes('--dry-run')) {
     block('patch edits the files named in the diff')
   }
-  if (cmd === 'ln' && paths.length === 1 && !targets.length) block('one-argument ln creates a link in the current directory')
-  const operands = paths
-  if (['cp', 'ln', 'link', 'install'].includes(cmd)) paths = targets.length ? [] : paths.slice(-1)   // only the destination is written
   for (const p of [...paths, ...targets]) {
     const why = scratchDest(p)
     if (why !== null) block(`'${cmd}' on ${why}`)
-    if (['rm', 'rmdir', 'mv'].includes(cmd) && isScratchRoot(p)) block(`'${cmd}' on the scratch root itself`)
-  }
-  const flag = (letter: string, long: string): boolean => opts.some(a => a === long || shortFlags(a).includes(letter))
-  if (cmd === 'ln' || cmd === 'link' || (cmd === 'cp' && (flag('l', '--link') || flag('s', '--symbolic-link')))) {
-    checkLinkSources(cmd, flag, operands, targets)
+    if ((cmd === 'rm' || cmd === 'rmdir') && isScratchRoot(p)) block(`'${cmd}' on the scratch root itself`)
   }
 }
 
@@ -169,25 +353,6 @@ function isDir(p: string): boolean {
   }
 }
 
-// A link source must resolve inside scratch, or a later write through the link reaches the
-// file it names. A symlink's target resolves from the link's directory; a hard link's source,
-// and `ln -r`'s, from the working directory.
-function checkLinkSources(cmd: string, flag: (letter: string, long: string) => boolean, paths: Words, targets: Words): void {
-  const symbolic = cmd === 'cp' ? flag('s', '--symbolic-link') : cmd === 'ln' && flag('s', '--symbolic')
-  const relative = cmd === 'ln' && flag('r', '--relative')
-  const sources = targets.length ? paths : paths.slice(0, -1)
-  const dest = targets.length ? targets[targets.length - 1] : paths[paths.length - 1] ?? ''
-  let base = shellCwd
-  if (symbolic && !relative) {
-    const noDir = cmd === 'ln' && (flag('T', '--no-target-directory') || flag('n', '--no-dereference'))
-    base = targets.length || (!noDir && isDir(dest)) ? dest : dirname(dest)
-  }
-  for (const s of sources) {
-    if (/[$`]/.test(s) || s.startsWith('~')) block(`'${cmd}' source '${s}' holds an expansion, so where the link points is unknown`)
-    if (!resolvesToScratch(joinPath(base, s))) block(`'${cmd}' links to '${s}', which resolves outside scratch`)
-  }
-}
-
 const ARCHIVERS = set('gzip', 'gunzip', 'bzip2', 'bunzip2', 'xz', 'unxz', 'zstd')
 
 // Value of `-X v`, `-Xv`, `--long v` or `--long=v`, or null.
@@ -205,32 +370,81 @@ function checkTar(args: Words): void {
   if (args.length && !args[0].startsWith('-')) flags += args[0]   // old style: tar xzf a.tgz
   if (!flags.includes('x') && !args.includes('--extract') && !args.includes('--get')) return
   const dest = optionValue(args, '-C', '--directory')
-  if (dest === null || !isScratch(dest)) block('tar extraction needs -C <scratch dir>')
+  if (dest === null || scratchDest(dest) !== null) block('tar extraction needs -C <scratch dir>')
 }
 
 function checkUnzip(args: Words): void {
   if (anyIn(args.map(shortFlags).join(''), 'ltpZ')) return
   const dest = optionValue(args, '-d', '--none')
-  if (dest === null || !isScratch(dest)) block('unzip extraction needs -d <scratch dir>')
+  if (dest === null || scratchDest(dest) !== null) block('unzip extraction needs -d <scratch dir>')
 }
 
 function checkArchiver(cmd: string, args: Words): void {
   const flags = args.map(shortFlags).join('')
   if (anyIn(flags, 'clt') || args.some(a => ['--stdout', '--list', '--test', '--to-stdout'].includes(a))) return
   for (const a of args) {
-    if (!a.startsWith('-') && !isScratch(a)) block(`'${cmd}' rewrites non-scratch file '${a}'`)
+    if (!a.startsWith('-') && scratchDest(a) !== null) block(`'${cmd}' rewrites non-scratch file '${a}'`)
   }
 }
 
-function checkSort(args: Words): void {
-  const out = optionValue(args, '-o', '--output')
-  if (out !== null && !isScratch(out)) block('sort -o writes a non-scratch file')
+// Text tools that write a file named by an option or an operand.
+const TEXT_SPECS: Record<string, OptSpec> = {
+  sort: {
+    valued: 'koStT',
+    long: {
+      'batch-size': 1, 'buffer-size': 1, check: 2, 'compress-program': 1, debug: 0, 'dictionary-order': 0,
+      'field-separator': 1, 'files0-from': 1, 'general-numeric-sort': 0, help: 0, 'human-numeric-sort': 0,
+      'ignore-case': 0, 'ignore-leading-blanks': 0, 'ignore-nonprinting': 0, key: 1, merge: 0, 'month-sort': 0,
+      'numeric-sort': 0, output: 1, parallel: 1, 'random-sort': 0, 'random-source': 1, reverse: 0, sort: 1,
+      stable: 0, 'temporary-directory': 1, unique: 0, version: 0, 'version-sort': 0, 'zero-terminated': 0,
+    },
+    alias: { output: '-o' },
+  },
+  shuf: {
+    valued: 'ino',
+    long: {
+      echo: 0, 'head-count': 1, help: 0, 'input-range': 1, output: 1, 'random-source': 1, repeat: 0, version: 0,
+      'zero-terminated': 0,
+    },
+    alias: { output: '-o' },
+  },
+  uniq: {
+    valued: 'fsw',
+    long: {
+      'all-repeated': 2, 'check-chars': 1, count: 0, group: 2, help: 0, 'ignore-case': 0, repeated: 0,
+      'skip-chars': 1, 'skip-fields': 1, unique: 0, version: 0, 'zero-terminated': 0,
+    },
+  },
+  split: {
+    valued: 'abClnt',
+    long: {
+      'additional-suffix': 1, bytes: 1, 'elide-empty-files': 0, filter: 1, help: 0, 'hex-suffixes': 2,
+      'line-bytes': 1, lines: 1, number: 1, 'numeric-suffixes': 2, separator: 1, 'suffix-length': 1,
+      unbuffered: 0, verbose: 0, version: 0,
+    },
+  },
+}
+
+// sort/shuf -o FILE, uniq [IN [OUT]] and split [IN [PREFIX]] (which writes PREFIXaa, ... and
+// defaults to x in the working directory).
+function checkText(cmd: string, args: Words): void {
+  const p = getopt(cmd, args, TEXT_SPECS[cmd])
+  const outs = optValues(p, '-o')
+  if (cmd === 'uniq' && p.operands.length > 1 && p.operands[1] !== '-') outs.push(p.operands[1])
+  if (cmd === 'split') {
+    if (hasOpt(p, '--filter')) block('split --filter runs a shell command')
+    outs.push(`${p.operands[1] ?? 'x'}aa`)
+  }
+  for (const out of outs) {
+    const why = scratchDest(out)
+    if (why !== null) block(`${cmd} writes to ${why}`)
+  }
 }
 
 function checkRsync(args: Words): void {
   if (args.some(a => ['-n', '--dry-run', '--list-only'].includes(a))) return
   const words = args.filter(a => !a.startsWith('-'))
-  if (!words.length || !isScratch(words[words.length - 1])) block('rsync destination is not scratch')
+  if (!words.length || scratchDest(words[words.length - 1]) !== null) block('rsync destination is not scratch')
 }
 
 function checkShell(cmd: string, args: Words): void {
@@ -279,11 +493,12 @@ function checkFind(args: Words): void {
     if (a.startsWith('-') || a === '(' || a === '!') break
     starts.push(a)
   }
-  const overScratch = starts.length > 0 && starts.every(isScratch)
+  // A start point is read through its links (`find link/` descends into the target).
+  const overScratch = starts.length > 0 && starts.every(s => scratchDest(s) === null)
   for (let i = 0; i < args.length; i++) {
     const a = args[i]
     if (a === '-delete' && (!overScratch || starts.some(isScratchRoot))) block('find -delete outside a scratch subdirectory')
-    if (['-fprint', '-fprint0', '-fprintf', '-fls'].includes(a) && (i + 1 >= args.length || !isScratch(args[i + 1]))) {
+    if (['-fprint', '-fprint0', '-fprintf', '-fls'].includes(a) && (i + 1 >= args.length || scratchDest(args[i + 1]) !== null)) {
       block(`${a} writes a file`)
     }
     if (['-exec', '-execdir', '-ok', '-okdir'].includes(a)) {
@@ -390,7 +605,7 @@ function checkGit(args: Words): void {
     for (const [j, a] of rest.entries()) {
       if (a === '--output' || a.startsWith('--output=')) {
         const target = a.includes('=') ? partition(a, '=')[2] : j + 1 < rest.length ? rest[j + 1] : ''
-        if (!isScratch(target)) block(`git ${sub} --output writes a file`)
+        if (scratchDest(target) !== null) block(`git ${sub} --output writes a file`)
       }
     }
   } else if (sub === 'bisect') {
@@ -743,7 +958,7 @@ function checkLive(cmd: string, args: Words): void {
   }
   for (const [short, long] of liveOutputs(cmd, sub, rest, valued)) {
     const out = optionValue(rest, short, long)
-    if (out !== null && !isScratch(out)) block(`${cmd} ${sub} writes '${out}'`)
+    if (out !== null && scratchDest(out) !== null) block(`${cmd} ${sub} writes '${out}'`)
   }
 }
 
@@ -780,7 +995,7 @@ function checkAws(args: Words): void {
     block(`aws ${words[0]} ${words[1]} may change an account and is not on the read-only list`)
   }
   const last = args[args.length - 1]
-  if (AWS_OUTFILE_VERBS.has(words[1]) && !(isScratch(last) || last === '-')) block(`aws ${words[1]} writes a non-scratch file`)
+  if (AWS_OUTFILE_VERBS.has(words[1]) && last !== '-' && scratchDest(last) !== null) block(`aws ${words[1]} writes a non-scratch file`)
 }
 
 const REDIS_VALUED = set('-h', '-p', '-a', '-n', '-u', '-s', '-r', '-i', '-d', '-D', '-t', '--user', '--pass',
@@ -867,7 +1082,7 @@ function sqlCommands(cmd: string, args: Words): string[] {
       if (name === '--file') block(`${cmd} --file runs SQL that cannot be checked`)
       if (name === longName) found.push(eq ? val : take(''))
       else if (SQL_OUT_LONG[cmd].includes(name)) {
-        if (!isScratch(eq ? val : take(''))) block(`${cmd} ${name} writes a non-scratch file`)
+        if (scratchDest(eq ? val : take('')) !== null) block(`${cmd} ${name} writes a non-scratch file`)
       }
     } else if (a.startsWith('-') && a.length > 1) {
       const cs = [...a]
@@ -880,7 +1095,7 @@ function sqlCommands(cmd: string, args: Words): string[] {
         }
         if (cmd === 'psql' && ch === 'f') block('psql -f runs SQL that cannot be checked')
         if (cmd === 'psql' && 'oL'.includes(ch)) {
-          if (!isScratch(take(restOfWord))) block(`psql -${ch} writes a non-scratch file`)
+          if (scratchDest(take(restOfWord)) !== null) block(`psql -${ch} writes a non-scratch file`)
           break
         }
         if (valued.includes(ch)) break
@@ -896,8 +1111,9 @@ const DIALECT: Record<string, 'psql' | 'mysql' | 'sqlite' | 'duckdb'> = {
 }
 
 // Statements of text, split on ; outside quotes, with comments dropped and quoted text emptied
-// so that keywords inside literals and comments are not read as SQL.
-function splitSql(cmd: string, text: string): string[] {
+// so that keywords inside literals and comments are not read as SQL. With keepIdents, the
+// identifier spans ("..", `..`, and [..] for SQLite) are kept as written, quotes included.
+function splitSql(cmd: string, text: string, keepIdents = false): string[] {
   const dialect = DIALECT[cmd]
   const mysql = dialect === 'mysql'
   const stmts: string[] = []
@@ -913,7 +1129,7 @@ function splitSql(cmd: string, text: string): string[] {
       if (j < 0) block(`${cmd} statement has an unterminated quote`)
       // Backslash escapes differ by server settings, so the span is unreadable.
       if (text.slice(i + 1, j).includes('\\')) block(`${cmd} statement has a backslash inside quotes`)
-      out += c + close
+      out += keepIdents && c !== "'" ? text.slice(i, j + 1) : c + close
       i = j + 1
     } else if ((dialect === 'psql' || dialect === 'duckdb') && /^\$[\p{L}\p{N}\p{M}_]*\$/u.test(text.slice(i, i + 64))) {
       block(`${cmd} dollar quote hides text from this check`)
@@ -995,8 +1211,10 @@ const LITE: Record<string, LiteSpec> = {
 }
 // Read-only dot-commands, matched in full (the shell also takes abbreviations, which block).
 const LITE_DOT = set('.tables', '.schema', '.indexes', '.mode', '.headers')
-// Functions the sqlite3 shell adds that write files, run an editor or load code.
-const LITE_SIDE_EFFECT = new RegExp(`\\b(writefile|edit|load_extension|fts3_tokenizer)${WS}*\\(`, 'i')
+// Functions the sqlite3 shell adds that write files, run an editor or load code. SQLite also
+// takes a function name quoted as an identifier: [writefile](...), `edit`(...), "writefile"(...).
+const LITE_FN = '(?:writefile|edit|load_extension|fts3_tokenizer)'
+const LITE_SIDE_EFFECT = new RegExp(`(?<![\\w$])(?:\\[${LITE_FN}\\]|\`${LITE_FN}\`|"${LITE_FN}"|${LITE_FN}(?![\\w$]))${WS}*\\(`, 'i')
 
 // The command whose words are being checked, for its stdin; null where stdin is not its own
 // (find -exec, xargs).
@@ -1028,11 +1246,13 @@ function stdinText(c: ShellCommand | null): string | null {
 }
 
 // Statements of SQL text, plus a check of each.
+// The side-effect names are looked for in the raw text and in the statements with comments
+// dropped but identifier spans kept; the plain-read check then runs on the emptied statements.
 function checkLiteSql(cmd: string, text: string): void {
-  for (const stmt of splitSql(cmd, text)) {
+  for (const stmt of [text, ...splitSql(cmd, text, true)]) {
     if (LITE_SIDE_EFFECT.test(stmt)) block(`${cmd} statement calls a function that writes or loads code: ${stmt.slice(0, 40)}`)
-    checkSqlStatement(cmd, stmt)
   }
+  for (const stmt of splitSql(cmd, text)) checkSqlStatement(cmd, stmt)
 }
 
 // One argument or stdin line that starts with a dot. litecli splits on `;`, so every piece is
@@ -1324,7 +1544,15 @@ function checkWget(args: Words): void {
 const CURL_LONG: Record<string, WgetKind> = {
   output: 'out', 'output-dir': 'dir', 'dump-header': 'log', 'cookie-jar': 'log', trace: 'log',
   'trace-ascii': 'log', stderr: 'log', libcurl: 'log', 'etag-save': 'log', hsts: 'log', 'alt-svc': 'log',
-  config: 'exec',
+  'ssl-sessions': 'log', config: 'exec',
+}
+
+// -w/--write-out: `%output{FILE}` sends the rest of the output to a file, and `@FILE` reads the
+// format from a file, which this check cannot see. An --expand- form fills in {{variables}}.
+function checkCurlWriteOut(name: string, value: string, expand: boolean): void {
+  if (/%output\{/i.test(value) || value.startsWith('@') || (expand && value.includes('{{'))) {
+    block(`curl ${name} '${value.slice(0, 40)}' can write to a file`)
+  }
 }
 const CURL_SHORT_VALUED = 'AbcCdDeEFHKmoPQrtTuUwxXyYz'
 const CURL_SHORT_FLAGS = '0123456aBfgGhiIjJklLMnNOpqRsSvVZ#:'
@@ -1354,7 +1582,10 @@ function checkCurl(args: Words): void {
       const name = a.slice(2).replace(/^expand-/, '')   // --expand-output takes {{variables}}
       if (name === 'remote-name' || name === 'remote-name-all') remoteName = true
       if (Object.hasOwn(CURL_LONG, name)) writes(CURL_LONG[name], a, args[++i] ?? '')
-      else if (CURL_VALUED.has(name)) i++
+      else if (CURL_VALUED.has(name)) {
+        i++
+        if (name === 'write-out') checkCurlWriteOut(a, args[i] ?? '', a.startsWith('--expand-'))
+      }
       continue
     }
     for (let p = 1; p < a.length; p++) {
@@ -1363,6 +1594,7 @@ function checkCurl(args: Words): void {
         const value = p + 1 < a.length ? a.slice(p + 1) : (args[++i] ?? '')
         const kind = ({ o: 'out', D: 'log', c: 'log', K: 'exec' } as Record<string, WgetKind>)[ch]
         if (kind) writes(kind, `-${ch}`, value)
+        if (ch === 'w') checkCurlWriteOut('-w', value, false)
         break
       }
       if (ch === 'O') remoteName = true
@@ -1386,7 +1618,7 @@ function checkLiquibase(args: Words): void {
   }
   if (!words.length) block('liquibase has no command')
   const out = optionValue(args, '', '--output-file')
-  if (out !== null && !isScratch(out)) block(`liquibase --output-file writes '${out}'`)
+  if (out !== null && scratchDest(out) !== null) block(`liquibase --output-file writes '${out}'`)
   const ok = words[0] === 'checks'
     ? words[1] === 'show'
     : LIQUIBASE_READ.has(words[0]) || (words[0].endsWith('sql') && words[0] !== 'executesql')
@@ -1569,17 +1801,24 @@ function stripWrappers(words: Words): Words {
       words = dropFlags(rest, set('-s', '-n', '-e', '-f', '-w', '--server-args', '--server-num', '--error-file', '--auth-file', '--wait'))
     } else if (name === 'strace') {
       const out = optionValue(rest, '-o', '--output')
-      if (out !== null && !isScratch(out)) block('strace -o writes a non-scratch file')
+      if (out !== null && scratchDest(out) !== null) block('strace -o writes a non-scratch file')
       words = dropFlags(rest, set('-o', '-e', '-p', '-s', '-u', '-E', '-I', '-a', '-b', '-O', '-P', '-S', '-X', '-U'))
     } else if (name === 'flock') {
       rest = dropFlags(rest, set('-w', '-E', '--timeout', '--conflict-exit-code'))
       if (words.slice(1).some(a => a === '-c' || a === '--command')) block('flock -c runs a shell string')
-      if (rest.length && !/^[0-9]+$/.test(rest[0]) && !isScratch(rest[0])) block(`flock creates its lock file '${rest[0]}'`)
+      if (rest.length && !/^[0-9]+$/.test(rest[0]) && scratchDest(rest[0]) !== null) block(`flock creates its lock file '${rest[0]}'`)
       words = rest.slice(1)
     } else if (name === 'watch') {
       rest = dropFlags(rest, set('-n', '--interval'))
       checkScript(rest.join(' '), 1)   // watch runs its arguments through a shell
       return []
+    } else if (name === 'busybox' || name === 'toybox') {   // multi-call binaries: judge the applet
+      if (rest.length && rest[0].startsWith('-')) {
+        // `busybox --install` writes a link per applet; the rest only list or print.
+        if (!['--list', '--list-full', '--long', '--help', '--version'].includes(rest[0])) block(`${name} ${rest[0]} is not on the read-only list`)
+        return []
+      }
+      words = rest
     } else if (name === 'env') words = envCommand(rest)
     else if (name === 'nice') words = dropFlags(rest, set('-n'))
     else if (name === 'stdbuf') words = dropFlags(rest, set('-i', '-o', '-e'))
@@ -1636,7 +1875,7 @@ function checkArgv(words: Words): void {
   else if (cmd === 'tar') checkTar(args)
   else if (cmd === 'unzip') checkUnzip(args)
   else if (ARCHIVERS.has(cmd)) checkArchiver(cmd, args)
-  else if (cmd === 'sort') checkSort(args)
+  else if (Object.hasOwn(TEXT_SPECS, cmd)) checkText(cmd, args)
   else if (cmd === 'rsync') checkRsync(args)
   else if (cmd === 'sed') checkSed(args)
   else if (cmd === 'perl') checkPerl(args)

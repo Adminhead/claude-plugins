@@ -2,9 +2,10 @@
 // readonly-gate.ts.
 //
 // `isScratch` is a string check. `scratchDest` adds a filesystem check for a path that is about
-// to be written: it resolves symlinks (including `..` after a symlink and a dangling final link)
-// and refuses a regular file with more than one hard link, so a pre-created /tmp link to a repo
-// file is not scratch.
+// to be written: it resolves symlinks (including `..` after a symlink and a dangling final link),
+// refuses a `..` after a part that is missing or not a directory, and refuses a regular file with
+// more than one hard link, so a pre-created /tmp link to a repo file is not scratch. A file tool's
+// path must also pass with its `..` normalized away, as a writer that normalizes would read it.
 //
 // Like the Bash check this is an accident guard, not a sandbox. The filesystem is read when the
 // hook runs, so a link created between the check and the write (a race, or another command in the
@@ -65,10 +66,13 @@ export function isScratch(path: string): boolean {
   return scratchRoots.some(t => norm === t || norm.startsWith(`${t}/`))
 }
 
-// A scratch directory itself, after normalizing `..`.
+// A scratch directory itself, after normalizing `..` or after resolving links.
 export function isScratchRoot(path: string): boolean {
   const norm = normpath(path)
-  return norm === '/tmp' || scratchRoots.includes(norm)
+  if (norm === '/tmp' || scratchRoots.includes(norm)) return true
+  if (!path.startsWith('/') || path.length > 4096) return false
+  const real = resolve(path)
+  return typeof real === 'string' && canonRoots.includes(real)
 }
 
 const MAX_LINKS = 40
@@ -106,6 +110,10 @@ function resolve(path: string, hops = 0): string | { error: string } {
     const code = errno(e)
     if (code !== 'ENOENT' && code !== 'ENOTDIR') return { error: code }
   }
+  // rest[0] is missing, or `real` is not a directory. A `..` past it has no answer on disk yet:
+  // a command earlier in the line can create the part (`mkdir -p a && echo > a/../link`), and
+  // where a writer that normalizes the path lands depends on the links beside it.
+  if (rest.includes('..')) return { error: "'..' after a missing or non-directory part" }
   return normpath(joinPath(real, rest.join('/')))
 }
 
@@ -170,6 +178,9 @@ export function checkFileWrite(h: Record<string, unknown>): string | null {
     if (typeof cwd !== 'string' || !cwd.startsWith('/')) return `${tool} on relative path '${path}' without an absolute cwd`
     full = joinPath(cwd, path)
   }
-  const why = scratchDest(full)
+  // The kernel reads `a/../b` through the link a may be; a writer that normalizes the path first
+  // drops `a/..`. Both readings must stay in scratch.
+  const norm = normpath(full)
+  const why = scratchDest(full) ?? (norm === full ? null : scratchDest(norm))
   return why === null ? null : `${tool} on ${why}`
 }
