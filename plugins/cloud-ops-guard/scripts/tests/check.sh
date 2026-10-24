@@ -22,8 +22,14 @@ mkdir -p "$root/.kube"
 printf 'current-context: omni-dev\n' >"$root/.kube/dev.yaml"
 mkfifo "$root/kube-fifo.yaml"
 kubecfg=$root/kube-dev.yaml
+# The plugin options default off; auto=true and prodpat=<regex> set them for one case.
+unset CLAUDE_PLUGIN_OPTION_AUTOALLOWREADONLY CLAUDE_PLUGIN_OPTION_PRODPATTERN
+auto='' prodpat=''
 # HOME is the test root too, so a ~/ kubeconfig path in a command resolves to a fixture.
-guard() { HOME=$root KUBECONFIG=${kubecfg:-$root/kube-dev.yaml} bun --no-env-file --config=/dev/null "$script"; }
+guard() {
+  HOME=$root KUBECONFIG=${kubecfg:-$root/kube-dev.yaml} CLAUDE_PLUGIN_OPTION_AUTOALLOWREADONLY=${auto:-false} \
+    CLAUDE_PLUGIN_OPTION_PRODPATTERN=${prodpat:-} bun --no-env-file --config=/dev/null "$script"
+}
 
 # The walker copies must match the canonical copy in scripts/shared byte for byte, when this
 # plugin sits in the marketplace checkout. Installed alone, the check is skipped.
@@ -97,25 +103,26 @@ raw() { # name expected raw-stdin
   if [ "$got" = "$2" ]; then ok "$1"; else bad "$1" "$2" "$got"; fi
 }
 
-# Safe forms: the strict allowlist
-t "plan" allow "tofu plan"
-t "plan -out" allow "tofu plan -out=x.tfplan"
-t "plan -out=tfplan" allow "tofu plan -out=tfplan"
-t "validate" allow "terraform validate"
-t "fmt" allow "tofu fmt -recursive"
-t "init" allow "tofu init -upgrade"
+# Safe forms: the strict allowlist. With the default options the guard has no opinion on them;
+# the autoAllowReadOnly block below checks that they allow when the option is on.
+t "plan" none "tofu plan"
+t "plan -out" none "tofu plan -out=x.tfplan"
+t "plan -out=tfplan" none "tofu plan -out=tfplan"
+t "validate" none "terraform validate"
+t "fmt" none "tofu fmt -recursive"
+t "init" none "tofu init -upgrade"
 t "output -json prompts (prints secrets)" ask "tofu output -json"
-t "state list" allow "tofu state list"
-t "state show" allow "tofu state show aws_instance.a"
+t "state list" none "tofu state list"
+t "state show" none "tofu state show aws_instance.a"
 t "apply saved plan prompts" none "tofu apply x.tfplan"
 t "apply saved plan named tfplan prompts" none "tofu apply tfplan"
 t "apply saved plan in a directory prompts" none "tofu apply plans/x.tfplan"
 t "apply saved plan with lock timeout prompts" none "tofu apply -lock-timeout=60s x.tfplan"
 t "chdir apply saved plan prompts" none "tofu -chdir=infra apply x.tfplan"
-t "version flag" allow "tofu --version"
-t "aws --version" allow "aws --version"
-t "aws help" allow "aws ec2 help"
-t "aws operation help" allow "aws iam delete-user help"
+t "version flag" none "tofu --version"
+t "aws --version" none "aws --version"
+t "aws help" none "aws ec2 help"
+t "aws operation help" none "aws iam delete-user help"
 
 # Outside the exact grammar: never allow
 t "apply saved plan with -auto-approve" deny "tofu apply -auto-approve -lock-timeout=60s x.tfplan"
@@ -213,11 +220,11 @@ t "absolute path" deny "/usr/local/bin/tofu apply -auto-approve"
 t "quote-split tool name" deny "t'o'fu apply -auto-approve"
 t "line-continued tool name" deny $'tof\\\nu apply -auto-approve'
 t "mise exec" deny "mise exec -- tofu apply -auto-approve"
-t "mise exec plan" allow "mise exec -- tofu plan"
+t "mise exec plan" none "mise exec -- tofu plan"
 t "mise exec -c" ask "mise exec -c 'tofu apply -auto-approve'"
 t "mise run flag with a value" deny "mise run -j 4 tofu core apply -auto-approve"
-t "mise run tofu env plan" allow "mise run tofu core plan"
-t "mise run tofu env plan -out" allow "mise run tofu core plan -out=uptimekuma.tfplan"
+t "mise run tofu env plan" none "mise run tofu core plan"
+t "mise run tofu env plan -out" none "mise run tofu core plan -out=uptimekuma.tfplan"
 t "mise run tofu env apply saved" none "mise run tofu core apply uptimekuma.tfplan"
 t "mise run tofu env apply -auto-approve" deny "mise run tofu authentik apply -auto-approve"
 t "mise run tofu env destroy" deny "mise run tofu lab destroy"
@@ -435,10 +442,10 @@ t "subagent show, no token" deny "tofu show tfplan" notoken
 t "subagent output -json, no token" deny "tofu output -json" notoken
 t "subagent output, no token" deny "tofu output" notoken
 t "subagent refresh, no token" deny "tofu refresh" notoken
-t "subagent state list, no token" allow "tofu state list" notoken
+t "subagent state list, no token" none "tofu state list" notoken
 t "subagent console, token" none "tofu console" withtoken
 t "subagent state pull, token" none "tofu state pull" withtoken
-t "subagent state show, token" allow "tofu state show module.x" withtoken
+t "subagent state show, token" none "tofu state show module.x" withtoken
 t "subagent output -json, token" none "tofu output -json" withtoken
 t "subagent show, token" none "tofu show tfplan" withtoken
 t "main output -json asks" ask "tofu output -json"
@@ -449,7 +456,7 @@ t "main console asks" ask "tofu console"
 t "main refresh asks" ask "tofu refresh"
 t "main output is quiet" none "tofu output"
 t "main show is quiet" none "tofu show"
-t "main state show is allowed" allow "tofu state show aws_instance.a"
+t "main state show is quiet" none "tofu state show aws_instance.a"
 
 # Wrappers around a guarded tool
 t "lock wrapper script, saved plan, main" none '$S/locked.sh tofu-core mise run tofu core apply tfplan'
@@ -479,7 +486,7 @@ t "aws s3 ls" none "aws s3 ls"
 t "aws s3 cp" none "aws s3 cp a s3://b/a"
 t "aws filter-log-events" none "aws logs filter-log-events --log-group-name g"
 t "aws describe with global flags" none "aws --region us-east-1 --output json ec2 describe-instances"
-t "aws iam delete-user help is allowed" allow "aws iam delete-user help"
+t "aws iam delete-user help is quiet" none "aws iam delete-user help"
 t "aws terminate in a subagent without token" deny "aws ec2 terminate-instances --instance-ids i-1" notoken
 
 # Kubernetes: production is judged by context, kubeconfig, or the fixture's current-context
@@ -548,7 +555,8 @@ t "fixture dev current-context, apply" none "kubectl apply -f x.yaml"
 kubecfg=$prod t "fixture prod current-context, get" none "kubectl -n x get pvc"
 kubecfg=$prod t "fixture prod current-context, apply asks" ask "kubectl apply -f x.yaml"
 kubecfg=$prod t "explicit dev context beats the prod fixture" none "kubectl --context omni-dev apply -f x.yaml"
-kubecfg=$root/missing.yaml t "unreadable kubeconfig is not prod" none "kubectl -n x delete pvc d"
+kubecfg=$root/missing.yaml t "unreadable kubeconfig asks" ask "kubectl -n x delete pvc d"
+kubecfg=$root/missing.yaml t "unreadable kubeconfig, get stays quiet" none "kubectl -n x get pvc"
 kubecfg=$root/kube-big.yaml t "current-context past the read cap is not read" none "kubectl -n x delete pvc d"
 t "kubectl as an argument is data" none "git log --grep kubectl"
 t "kubectl in echo is data" none "echo kubectl --context omni-prod delete pv x"
@@ -671,7 +679,7 @@ if [ "$got" = ask ]; then ok "--kubeconfig FIFO asks without blocking (${ms} ms)
 got=$(mkin "KUBECONFIG=$root/kube-fifo.yaml kubectl delete pv pv-1" | timeout 5 bash -c "$(declare -f guard decision); root='$root' script='$script' kubecfg='$root/kube-dev.yaml' decision")
 if [ "$got" = ask ]; then ok "KUBECONFIG= FIFO asks without blocking"; else bad "KUBECONFIG= FIFO" "ask within 5 s" "$got"; fi
 got=$(mkin "kubectl delete pv pv-1" | timeout 5 bash -c "$(declare -f guard decision); root='$root' script='$script' kubecfg='$root/kube-fifo.yaml' decision")
-if [ "$got" = none ]; then ok "process kubeconfig FIFO is not prod and does not block"; else bad "process kubeconfig FIFO" "none within 5 s" "$got"; fi
+if [ "$got" = ask ]; then ok "process kubeconfig FIFO asks and does not block"; else bad "process kubeconfig FIFO" "ask within 5 s" "$got"; fi
 t "missing --kubeconfig asks" ask "kubectl --kubeconfig $root/missing.yaml delete pv pv-1"
 t "directory as --kubeconfig asks" ask "kubectl --kubeconfig $root/.kube delete pv pv-1"
 if [ "$(id -u)" != 0 ]; then
@@ -710,6 +718,154 @@ got=$(mkin "$big" | decision)
 ms=$(( ($(date +%s%N) - start) / 1000000 ))
 if [ "$got" = deny ] && [ "$ms" -lt 1000 ]; then ok "64 KB shared heredoc: deny in ${ms} ms"; else bad "64 KB shared heredoc" "deny under 1000 ms" "$got in ${ms} ms"; fi
 
+# autoAllowReadOnly on: the allowlisted forms allow, and the subagent gate still holds
+auto=true t "option on: plan" allow "tofu plan"
+auto=true t "option on: plan -out" allow "tofu plan -out=x.tfplan"
+auto=true t "option on: plan -out=tfplan" allow "tofu plan -out=tfplan"
+auto=true t "option on: validate" allow "terraform validate"
+auto=true t "option on: fmt" allow "tofu fmt -recursive"
+auto=true t "option on: init" allow "tofu init -upgrade"
+auto=true t "option on: state list" allow "tofu state list"
+auto=true t "option on: state show" allow "tofu state show aws_instance.a"
+auto=true t "option on: version flag" allow "tofu --version"
+auto=true t "option on: aws --version" allow "aws --version"
+auto=true t "option on: aws help" allow "aws ec2 help"
+auto=true t "option on: aws operation help" allow "aws iam delete-user help"
+auto=true t "option on: mise exec plan" allow "mise exec -- tofu plan"
+auto=true t "option on: mise run tofu env plan" allow "mise run tofu core plan"
+auto=true t "option on: mise run tofu env plan -out" allow "mise run tofu core plan -out=uptimekuma.tfplan"
+auto=true t "option on: subagent state list, no token" allow "tofu state list" notoken
+auto=true t "option on: subagent state show, token" allow "tofu state show module.x" withtoken
+auto=true t "option on: subagent plan, token" allow "tofu plan" withtoken
+auto=true t "option on: subagent aws --version needs no token" allow "aws --version" notoken
+auto=true t "option on: subagent brief after a meta line" allow "tofu plan" metabrief
+auto=true t "option on: subagent plan, no token" deny "tofu plan" notoken
+auto=true t "option on: subagent init, no token" deny "terraform init" notoken
+auto=true t "option on: subagent init, token" allow "terraform init" withtoken
+auto=true t "option on: subagent plan, unreadable brief" ask "tofu plan" nosuchagent
+auto=true t "option on: subagent meta token cannot grant" ask "tofu plan" metatoken
+auto=true t "option on: apply still denied" deny "tofu apply -auto-approve"
+auto=true t "option on: compound gets no allow" none "cd infra && tofu plan"
+auto=false t "option false: plan" none "tofu plan"
+auto=TRUE t "option is the exact string true" none "tofu plan"
+
+# V3: plan and init run repo code, so by default the guard has no opinion, and init is a gate
+t "terraform plan, default" none "terraform plan"
+auto=true t "terraform plan, option on" allow "terraform plan"
+t "mise run tofu dev plan, default" none "mise run tofu dev plan"
+auto=true t "mise run tofu dev plan, option on" allow "mise run tofu dev plan"
+t "terraform init, default" none "terraform init"
+t "subagent init, no token" deny "terraform init" notoken
+t "subagent init, token" none "terraform init" withtoken
+t "subagent init via mise run, no token" deny "mise run tofu dev init" notoken
+t "subagent init behind timeout, no token" deny "timeout 60 terraform init -upgrade" notoken
+t "subagent init with a backend file, no token" deny "terraform init -backend-config=x.hcl" notoken
+t "subagent plan, unreadable brief" ask "tofu plan" nosuchagent
+t "subagent init, unreadable brief" ask "tofu init" nosuchagent
+
+# V4: aliases are read as the tool they stand for
+t "k delete pvc on prod" deny "k --context prod delete pvc data"
+t "kubecolor delete pvc on prod" deny "kubecolor --context prod delete pvc data"
+t "oc delete pvc on prod" deny "oc --context prod delete pvc data"
+t "k apply on prod asks" ask "k --context omni-prod apply -f x.yaml"
+t "k apply on prod, subagent without token" deny "k --context omni-prod apply -f x.yaml" notoken
+t "k get on prod stays quiet" none "k --context omni-prod get pods"
+t "oc delete on dev stays quiet" none "oc --context omni-dev delete pvc d"
+t "tf destroy" deny "tf destroy"
+t "tf apply -auto-approve" deny "tf apply -auto-approve"
+t "tg run-all destroy" deny "tg run-all destroy"
+t "tf plan, subagent without token" deny "tf plan" notoken
+t "kubecolor behind sudo" deny "sudo kubecolor --context prod delete pv x"
+t "kubecolor behind watch" deny "watch kubecolor --context prod delete pv x"
+t "kubecolor behind mise exec" deny "mise exec -- kubecolor --context prod delete pv x"
+t "variable holding oc, delete pv" deny 'K="oc --context prod"; $K delete pv x'
+kubecfg=$prod t "k as an argument of an unknown command is data" none "foo k delete pv x"
+t "sort -k is not kubectl" none "sort -k 2 notes.txt"
+t "echo of tf is data" none "echo tf destroy"
+# helmfile: destroy, delete, sync and apply ask in any environment
+t "helmfile -e production destroy" ask "helmfile -e production destroy"
+why "helmfile on production: reason" "production" "helmfile -e production destroy"
+t "helmfile sync on dev asks" ask "helmfile -e dev sync"
+t "helmfile apply asks" ask "helmfile apply"
+t "helmfile delete with a selector asks" ask "helmfile -l name=x delete"
+t "helmfile destroy, subagent without token" deny "helmfile destroy" notoken
+t "helmfile diff stays quiet" none "helmfile -e production diff"
+t "helmfile template stays quiet" none "helmfile template"
+t "helmfile list stays quiet" none "helmfile list"
+t "helmfile destroy --help stays quiet" none "helmfile destroy --help"
+# pulumi: destroy, up, refresh and their aliases ask on any stack
+t "pulumi destroy --yes" ask "pulumi destroy --yes"
+t "pulumi down" ask "pulumi down -y"
+t "pulumi up" ask "pulumi up --stack dev"
+t "pulumi refresh" ask "pulumi refresh"
+t "pulumi --cwd before destroy" ask "pulumi --cwd infra destroy"
+t "pulumi stack rm asks" ask "pulumi stack rm dev --yes"
+why "pulumi on a prd stack: reason" "production stack" "pulumi up --stack prd"
+t "pulumi destroy, subagent without token" deny "pulumi destroy --yes" notoken
+t "pulumi behind an unknown sudo option" ask "sudo -iu root pulumi destroy"
+t "pulumi preview stays quiet" none "pulumi preview"
+t "pulumi stack ls stays quiet" none "pulumi stack ls"
+t "pulumi up --help stays quiet" none "pulumi up --help"
+t "echo pulumi destroy is data" none "echo pulumi destroy"
+# Wrappers: nix run maps the installable's attribute to its program; nix shell -c and busybox sh -c are unwrapped
+t "nix run terraform destroy" deny "nix run nixpkgs#terraform -- destroy"
+t "nix run opentofu destroy" deny "nix run nixpkgs#opentofu -- destroy -auto-approve"
+t "nix run a legacyPackages path" deny "nix run nixpkgs#legacyPackages.x86_64-linux.terraform -- destroy"
+t "nix run with an option before the installable" deny "nix run --impure nixpkgs#terraform -- destroy"
+t "nix run kubectl on prod" deny "nix run nixpkgs#kubectl -- --context prod delete pv x"
+t "nix run terraform plan stays quiet" none "nix run nixpkgs#terraform -- plan"
+t "nix build of terraform stays quiet" none "nix build nixpkgs#terraform"
+t "nix shell -c terraform destroy" deny "nix shell nixpkgs#terraform -c terraform destroy"
+t "nix develop --command tofu destroy" deny "nix develop --command tofu destroy"
+t "busybox sh -c terraform destroy" deny "busybox sh -c 'terraform destroy'"
+t "toybox sh -c tofu destroy" deny "toybox sh -c 'tofu destroy'"
+t "fish -c tofu destroy" deny "fish -c 'tofu destroy'"
+t "busybox ash -c kubectl delete pv on prod" deny "busybox ash -c 'kubectl --context prod delete pv x'"
+t "busybox sh -c with a plan still asks" ask "busybox sh -c 'tofu plan'"
+t "busybox sh -c with variable code asks" ask 'X="tofu destroy"; busybox sh -c "$X"'
+t "busybox with a variable applet asks" ask 'busybox $S -c "tofu plan"'
+t "heredoc into busybox sh" ask $'busybox sh <<\'EOF\'\ntofu plan\nEOF'
+# python -m awscli is aws
+t "python3 -m awscli s3 rm" ask "python3 -m awscli s3 rm s3://b --recursive"
+t "python3 -mawscli terminate" ask "python3 -mawscli ec2 terminate-instances --instance-ids i-1"
+t "python3 -Im awscli, subagent without token" deny "python3 -Im awscli s3 ls" notoken
+t "python -m awscli describe stays quiet" none "python -m awscli ec2 describe-instances"
+t "python3 -m pip install awscli stays quiet" none "python3 -m pip install awscli"
+t "aws kms schedule-key-deletion asks" ask "aws kms schedule-key-deletion --key-id k --pending-window-in-days 7"
+
+# V5: the prodPattern option, default prod(uction)?\d*|prd|live
+t "prd is production" deny "kubectl --context prd delete pv x"
+t "prod2 is production" deny "kubectl --context omni-prod2 delete pv x"
+t "live is production" deny "kubectl --context eu-live delete pv x"
+t "deliver is not live" none "kubectl --context deliver apply -f x.yaml"
+t "prd kubeconfig path is production" deny "kubectl --kubeconfig ~/.kube/prd.yaml delete pvc d"
+prodpat='stg' t "custom pattern: stg is production" deny "kubectl --context eu-stg delete pv x"
+prodpat='stg' t "custom pattern: prod no longer is" none "kubectl --context omni-prod apply -f x.yaml"
+prodpat='(' t "invalid pattern asks" ask "kubectl --context omni-dev apply -f x.yaml"
+prodpat='(' t "invalid pattern, get stays quiet" none "kubectl --context omni-dev get pods"
+prodpat='a)|(b' t "unbalanced pattern asks" ask "kubectl --context omni-dev apply -f x.yaml"
+prodpat=$(printf 'a%.0s' $(seq 201)) t "pattern over 200 characters asks" ask "kubectl --context omni-dev apply -f x.yaml"
+prodpat='(' t "invalid pattern leaves terraform checks alone" deny "tofu destroy"
+
+# 3a: a process kubeconfig that is unreadable, or that a command may switch first, is unknown
+kubecfg=$root/missing.yaml t "use-context then delete with no kubeconfig asks" ask "kubectl config use-context production; kubectl delete pvc data"
+t "use-context then apply on the dev process kubeconfig asks" ask "kubectl config use-context omni-dev; kubectl apply -f x.yaml"
+t "nested shell on the process kubeconfig asks" ask "bash -c 'kubectl delete pvc d'"
+t "nested shell with an explicit dev context stays quiet" none "bash -c 'kubectl --context omni-dev delete pvc d'"
+kubecfg=$root/missing.yaml t "unreadable process kubeconfig with an exported dev file asks" ask "export KUBECONFIG=$root/cfg-b.yaml; kubectl delete pv pv-1"
+# Any command outside NO_WRITE (helm itself, kustomize, curl) may write the kubeconfig, so the dev
+# process kubeconfig is not read and these ask. See the follow-up on narrowing writesNothing.
+t "helm upgrade on the dev process kubeconfig asks" ask "helm upgrade x chart"
+t "kustomize piped to kubectl apply asks" ask "kustomize build . | kubectl apply -f -"
+t "helm template piped to kubectl apply asks" ask "helm template x c | kubectl apply -f -"
+t "kubectl apply beside curl asks" ask "kubectl apply -f x.yaml && curl localhost:8080/health"
+t "kubectl apply beside a read-only filter stays quiet" none "kubectl apply -f x.yaml | tail -5"
+
+# The subagent deny names the main session and the user, never the token line itself
+why "subagent deny: ask the user" "ask the user" "tofu plan" notoken
+got=$(mkin "aws s3 ls" notoken | guard 2>/dev/null)
+case $got in *"ALLOW: cloud-ops"*|'') bad "subagent deny omits the token line" "no token line" "$got" ;; *) ok "subagent deny omits the token line" ;; esac
+
 # Non-matching
 t "no tool" none "ls -la"
 t "git commit mentioning tofu" none "git commit -m 'run tofu apply later'"
@@ -728,16 +884,16 @@ t "subagent aws, no token" deny "aws s3 ls" notoken
 t "subagent aws, token" none "aws s3 ls" withtoken
 t "subagent aws, token in content blocks" none "aws s3 ls" listtoken
 t "subagent plan, no token" deny "tofu plan" notoken
-t "subagent plan, token" allow "tofu plan" withtoken
+t "subagent plan, token" none "tofu plan" withtoken
 t "subagent mise plan, no token" deny "mise run tofu core plan" notoken
 t "subagent terragrunt plan, no token" deny "terragrunt plan" notoken
 t "subagent apply saved plan, no token" deny "tofu apply x.tfplan" notoken
 t "subagent apply saved plan, token" none "tofu apply x.tfplan" withtoken
 t "subagent apply still denied with token" deny "tofu apply -auto-approve" withtoken
-t "subagent aws --version needs no token" allow "aws --version" notoken
+t "subagent aws --version needs no token" none "aws --version" notoken
 t "subagent traversal id" ask "aws s3 ls" "../../etc"
 t "subagent meta line cannot grant the token" ask "tofu plan" metatoken
-t "subagent brief after a meta line" allow "tofu plan" metabrief
+t "subagent brief after a meta line" none "tofu plan" metabrief
 t "subagent meta token, brief without it" deny "tofu plan" metanotoken
 t "subagent oversized transcript line" ask "tofu plan" bigline
 
@@ -755,7 +911,7 @@ out=$(mkin "AWS_SECRET_ACCESS_KEY=hunter2 tofu apply -auto-approve" | guard)
 case $out in *hunter2*) bad "output omits command text" "no secret" "leaked" ;; *) ok "output omits command text" ;; esac
 
 # Fuzz: no dangerous suffix, prefix, or inserted shell character turns an allowed command into allow
-fuzz=$(bun --no-env-file --config=/dev/null "$scripts/tests/fuzz.ts" "$root" "$sid")
+fuzz=$(CLAUDE_PLUGIN_OPTION_AUTOALLOWREADONLY=true bun --no-env-file --config=/dev/null "$scripts/tests/fuzz.ts" "$root" "$sid")
 read -r fuzz_n fuzz_bad <<<"$(printf '%s\n' "$fuzz" | head -1)"
 if [ "${fuzz_bad:-x}" = 0 ]; then
   ok "fuzz: $fuzz_n variants of allowed commands, none allowed"

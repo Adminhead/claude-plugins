@@ -1,6 +1,6 @@
 // Fuzz for cloud-ops-guard.ts: no dangerous suffix, prefix, or inserted shell character may turn an
-// allowed command into allow. Usage: bun fuzz.ts <fixture root> <session id>. Prints "<variants> <bad>"
-// and then the first bad variants.
+// allowed command into allow. Usage: CLAUDE_PLUGIN_OPTION_AUTOALLOWREADONLY=true bun fuzz.ts <fixture root>
+// <session id>; the bases allow only with that option on. Prints "<variants> <bad>" and then the first bad variants.
 
 import { decide } from '../cloud-ops-guard.ts'
 

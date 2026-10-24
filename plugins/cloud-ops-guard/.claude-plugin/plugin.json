@@ -1,9 +1,23 @@
 {
   "name": "cloud-ops-guard",
-  "version": "0.2.0",
-  "description": "PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, gates subagent plan, state, output and aws calls, asks before destructive aws operations, and guards kubectl, helm, talosctl and omnictl changes on production clusters.",
+  "version": "0.3.0",
+  "description": "PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, gates subagent plan, init, state, output and aws calls, asks before destructive aws, pulumi and helmfile operations, and guards kubectl, helm, talosctl and omnictl changes on production clusters, through common aliases and wrappers. By default it no longer auto-approves plan, init or other read-only forms (option autoAllowReadOnly).",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "autoAllowReadOnly": {
+      "type": "boolean",
+      "title": "Auto-approve read-only forms",
+      "description": "Approve a few exact forms without a prompt: tofu/terraform plan, init, validate, fmt, version, state list and state show (also through mise run tofu <env> and mise exec), and aws --version or help. plan, init and mise tasks run code from the repo. Off: the guard has no opinion on them and your permission rules decide. Subagents still need the brief token either way.",
+      "default": false
+    },
+    "prodPattern": {
+      "type": "string",
+      "title": "Production name pattern",
+      "description": "Regex (at most 200 characters) matched case-insensitively as a whole word against kube contexts, kubeconfig paths, pulumi stacks and helmfile environments. An invalid pattern makes every production check ask.",
+      "default": "prod(uction)?\\d*|prd|live"
+    }
   }
 }

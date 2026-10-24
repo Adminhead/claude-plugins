@@ -2,11 +2,17 @@
 // PreToolUse hook on Bash: guard OpenTofu, Terraform, Terragrunt, and AWS CLI calls, and the
 // kubectl, helm, talosctl and omnictl calls that change a production cluster.
 //
-// Allow comes only from a strict allowlist: the whole command must be one of a few exact
-// read-only or saved-plan forms, spelled in characters a shell treats as plain text.
+// Allow comes only from a strict allowlist, and only when the user turns on the
+// autoAllowReadOnly option: the whole command must be one of a few exact read-only forms,
+// spelled in characters a shell treats as plain text. plan and init run code from the repo
+// (providers, modules, mise tasks), so by default the guard has no opinion on them and the
+// user's own permission rules decide. A subagent still needs the brief token for them.
 // Everything else goes to a best-effort check on the shell AST walker that denies unsafe
 // applies, destroys, imports, and state surgery, asks when it cannot tell, and otherwise
 // prints nothing so the normal permission flow decides.
+//
+// Options arrive as CLAUDE_PLUGIN_OPTION_<KEY>: AUTOALLOWREADONLY ('true' turns the allowlist
+// on) and PRODPATTERN (the regex source that names a production context, stack or environment).
 //
 // Any exception or malformed input prints `ask` and exits 0, because Claude Code runs the
 // tool call on any other exit code. Reasons are static: the command and environment are
@@ -21,12 +27,47 @@ import type { ShellCommand, ShellHeredoc, ShellRedirect } from './shell/walk.ts'
 
 const TOKEN_LINE = 'ALLOW: cloud-ops'
 const TF: ReadonlySet<string> = new Set(['tofu', 'terraform', 'terragrunt'])
-const TOOLS: ReadonlySet<string> = new Set([...TF, 'aws'])
-const TOOL_RE = /(?<![\w.-])(?:tofu|terraform|terragrunt|aws)(?![\w-])/
+const TOOLS: ReadonlySet<string> = new Set([...TF, 'aws', 'pulumi'])
 // Kubernetes tools, checked on their own path (k8sFindings) and never by the Terraform asks above.
-const K8S: ReadonlySet<string> = new Set(['kubectl', 'helm', 'talosctl', 'omnictl'])
-const K8S_RE = /(?<![\w.-])(?:kubectl|helm|talosctl|omnictl)(?![\w-])/
-const PROD_RE = /(?:^|[^a-z0-9])prod(?:uction)?(?:[^a-z0-9]|$)/i
+const K8S: ReadonlySet<string> = new Set(['kubectl', 'helm', 'talosctl', 'omnictl', 'helmfile'])
+// Common aliases and drop-in replacements, read as the tool they stand for. The one- and two-letter
+// names count only as a command word: as an argument they are far more often data than a wrapped call.
+const ALIASES = new Map([['tf', 'terraform'], ['tg', 'terragrunt'], ['k', 'kubectl'], ['kubecolor', 'kubectl'], ['oc', 'kubectl']])
+const SHORT_ALIASES: ReadonlySet<string> = new Set(['tf', 'tg', 'k', 'oc'])
+// nixpkgs attribute names whose program has another name (nix run nixpkgs#opentofu runs tofu).
+const NIX_PROGRAMS = new Map([['opentofu', 'tofu'], ['awscli2', 'aws'], ['awscli', 'aws'], ['kubernetes-helm', 'helm'],
+  ['pulumi-bin', 'pulumi'], ['openshift', 'kubectl']])
+// A tool name as a word, or as the last part of a nix installable (nixpkgs#legacyPackages.x86_64-linux.terraform).
+const nameRe = (names: readonly string[], nix: readonly string[]): RegExp =>
+  new RegExp(`(?<![\\w.-])(?:${names.join('|')})(?![\\w-])|#(?:[\\w-]+\\.)*(?:${[...names, ...nix].join('|')})(?![\\w-])`)
+// awscli is the module of python -m awscli, also spelled -mawscli or -Imawscli.
+const TOOL_RE = new RegExp(`${nameRe(['tofu', 'terraform', 'terragrunt', 'tf', 'tg', 'aws', 'awscli', 'pulumi'],
+  ['opentofu', 'awscli2', 'pulumi-bin']).source}|(?<=(?:^|\\s)-[A-Za-z]*m)awscli(?![\\w-])`)
+const K8S_RE = nameRe(['kubectl', 'helm', 'talosctl', 'omnictl', 'helmfile', 'kubecolor', 'k', 'oc'], ['kubernetes-helm', 'openshift'])
+// The tool a command word names: its basename, with an alias resolved.
+const toolName = (w: string): string => {
+  const b = basename(w)
+  return ALIASES.get(b) ?? b
+}
+// The tool an argument names, for an unknown command that may wrap it: short aliases are not commands there.
+const argTool = (w: string): string => (SHORT_ALIASES.has(basename(w)) ? basename(w) : toolName(w))
+
+// Production: the prodPattern option, matched as a whole word, case-insensitively. Null when the
+// option is too long or not a valid regex, which makes every production check unknown, so it asks.
+const DEFAULT_PROD = 'prod(uction)?\\d*|prd|live'
+const MAX_PROD_PATTERN = 200
+function prodRegex(src: string | undefined): RegExp | null {
+  const s = src ? src : DEFAULT_PROD
+  if (s.length > MAX_PROD_PATTERN) return null
+  try {
+    new RegExp(s) // alone first, so an unbalanced group cannot pair with the frame's
+    return new RegExp(`(?:^|[^a-z0-9])(?:${s})(?:[^a-z0-9]|$)`, 'i')
+  } catch {
+    return null
+  }
+}
+const PROD_RE = prodRegex(process.env.CLAUDE_PLUGIN_OPTION_PRODPATTERN)
+const isProd = (s: string): boolean => PROD_RE !== null && PROD_RE.test(s)
 
 // gate: a subagent needs the brief token. sensitive: the same, and the main session is asked too.
 type Kind = 'safe' | 'gate' | 'sensitive' | 'ask' | 'deny' | 'neutral'
@@ -53,7 +94,10 @@ const FORMS = new Map<string, readonly [number, number]>([
 const ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*=/
 const SUBST = /\$\(|`/
 const ENV_SPLIT = /^(?:-[^-]*S|--s)/
-const SHELLS: ReadonlySet<string> = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'eval', 'xargs', 'source', '.', 'su', 'ssh'])
+const SHELLS: ReadonlySet<string> = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'eval', 'xargs', 'source', '.', 'su', 'ssh',
+  'busybox', 'toybox'])
+// Multicall binaries whose first argument is the applet: busybox sh -c, toybox sh -c.
+const MULTICALL: ReadonlySet<string> = new Set(['busybox', 'toybox'])
 // Commands for which any `$` in an argument is enough to ask: they join or re-parse their arguments.
 const ANY_DOLLAR: ReadonlySet<string> = new Set(['eval', 'xargs', 'source', '.', 'su', 'ssh'])
 const INTERP = /^(?:python[\d.]*|perl|ruby|node)$/
@@ -74,12 +118,12 @@ const WRAPPERS = new Map<string, ReadonlySet<string>>([
   ['sudo', new Set(['-u', '-g', '-h', '-p', '-U', '-C', '-D', '-R', '-T', '-r', '-t'])],
   ...['nohup', 'command', 'builtin', 'noglob'].map((w): [string, ReadonlySet<string>] => [w, new Set()]),
 ])
-const QUIET_SUBS: ReadonlySet<string> = new Set(['validate', 'fmt', 'init', 'version', '-version', '--version', '-v',
+const QUIET_SUBS: ReadonlySet<string> = new Set(['validate', 'fmt', 'version', '-version', '--version', '-v',
   'help', '-help', '--help', '-h', 'graph', 'metadata'])
 const ASK_SUBS: ReadonlySet<string> = new Set(['taint', 'untaint', 'force-unlock', 'workspace', 'get', 'login', 'logout', 'test',
   'push', 'modules'])
-const SUBCMDS: ReadonlySet<string> = new Set([...QUIET_SUBS, ...ASK_SUBS, 'apply', 'destroy', 'import', 'state', 'plan', 'show',
-  'providers', 'output', 'console', 'refresh'])
+const SUBCMDS: ReadonlySet<string> = new Set([...QUIET_SUBS, ...ASK_SUBS, 'apply', 'destroy', 'import', 'state', 'plan', 'init',
+  'show', 'providers', 'output', 'console', 'refresh'])
 // terragrunt commands that only read or format configuration, found as the first non-flag word.
 const TG_READ_ONLY: ReadonlySet<string> = new Set(['hclfmt', 'list', 'find', 'dag', 'info', 'render'])
 const VALUE_FLAGS: ReadonlySet<string> = new Set(['var', 'var-file', 'target', 'target-file', 'exclude', 'exclude-file', 'replace',
@@ -94,7 +138,9 @@ const LINE_BREAK = /\r\n|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029]/ // ASCII and Unico
 
 const ALLOW_REASON = 'Read-only infrastructure command.'
 const APPLY_REASON = 'Save a plan with -out=tfplan, review it, then run apply tfplan without -auto-approve or -destroy.'
-const SUBAGENT_REASON = `Subagents may not run credentialed aws, plan, or apply. Have the main session run it, or put the line '${TOKEN_LINE}' in the brief.`
+// The token is the user's approval, so the reason never tells the model to add it.
+const SUBAGENT_REASON = 'A subagent cannot run this credentialed infrastructure command. Have the main session run it, or ask the user ' +
+  "whether to approve adding the cloud-ops token to the subagent's brief."
 const BRIEF_REASON = `Cannot read the subagent brief to check for ${TOKEN_LINE}.`
 const PARSE_REASON = 'Cannot parse this command that mentions a guarded tool.'
 const FLAGS_AFTER_REASON = 'Put flags before the plan file: apply -no-color tfplan.'
@@ -129,7 +175,7 @@ function tfForm(args: readonly string[]): Kind | null {
   const names = rest.slice(n)
   const [lo, hi] = FORMS.get(sub) ?? [1, 0]
   if (!(lo <= names.length && names.length <= hi && flags.every(flagOk) && names.every(w => NAME.test(w)))) return null
-  return sub === 'plan' || sub === 'state show' ? 'gate' : 'safe'
+  return sub === 'plan' || sub === 'init' || sub === 'state show' ? 'gate' : 'safe'
 }
 
 // True for aws --version and aws [<service> [<operation>]] help, which call no API.
@@ -166,8 +212,13 @@ function stripWrappers(words: readonly string[]): number | null {
       const rest = words.slice(i + 1)
       if (rest.some(a => a === '-c' || a === '--command' || a.startsWith('--command='))) return null
       if (['which', 'where', 'ls'].includes(rest[0])) return words.length // a lookup, not a run
-      const j = rest.findIndex(a => TOOLS.has(a) || K8S.has(a))
+      const j = rest.findIndex(a => { const t = argTool(a); return TOOLS.has(t) || K8S.has(t) })
       return j < 0 ? i : i + 1 + j
+    } else if (w === 'nix' && words.slice(i + 1).some(a => a === 'shell' || a === 'develop')) {
+      // nix shell <installables> -c <cmd> and nix develop -c <cmd> run the words after -c.
+      const j = words.findIndex((a, n) => n > i && (a === '-c' || a === '--command'))
+      if (j < 0) break
+      i = j + 1
     } else if (wrapper) {
       i++
       while (i < words.length && words[i].startsWith('-')) {
@@ -318,7 +369,7 @@ function tfSub(sub: string, rest: readonly string[], vars: Vars): Finding {
     }
     return ['ask', 'Cannot classify this state command.']
   }
-  if (sub === 'plan') return ['gate', SUBAGENT_REASON]
+  if (sub === 'plan' || sub === 'init') return ['gate', SUBAGENT_REASON]
   if (QUIET_SUBS.has(sub)) return ['neutral', null]
   return ['ask', 'Cannot classify this infrastructure subcommand.']
 }
@@ -349,7 +400,7 @@ function awsOp(args: readonly string[], vars: Vars): [string, string] {
 const awsReadOnly = (op: string): boolean => /^(?:describe-|list-|get-)/.test(op) || op === 'filter-log-events'
 
 // aws operations that delete, stop, or loosen access, as the main session should confirm.
-const AWS_DESTRUCTIVE = /^(?:delete-|terminate-|remove-|deregister-|revoke-|detach-|disassociate-|disable-|stop-|put-[\w-]*-policy$)/
+const AWS_DESTRUCTIVE = /^(?:delete-|terminate-|remove-|deregister-|revoke-|detach-|disassociate-|disable-|stop-|put-[\w-]*-policy$|schedule-key-deletion$)/
 function awsDestructive([service, op]: readonly [string, string], args: readonly string[]): boolean {
   if (AWS_DESTRUCTIVE.test(op)) return true
   return service === 's3' && (['rm', 'rb', 'mv'].includes(op) || (op === 'sync' && args.includes('--delete')))
@@ -409,13 +460,19 @@ function envBefore(seen: readonly [number, string, string][], i: number): Vars {
   return out
 }
 
-// Whether a context name or kubeconfig path is production: true, false, or 'unknown' when an expansion hides it.
+// Whether a context name or kubeconfig path is production: true, false, or 'unknown' when an
+// expansion hides it or the prodPattern option is invalid.
 function prodValue(v: string, vars: Vars): boolean | 'unknown' {
-  if (v.includes(UNKNOWN_ENV)) return PROD_RE.test(v) ? true : 'unknown'
+  if (PROD_RE === null) return 'unknown'
+  if (v.includes(UNKNOWN_ENV)) return isProd(v) ? true : 'unknown'
   const e = expandVars([v], vars)[0]
-  if (PROD_RE.test(v) || PROD_RE.test(e)) return true
+  if (isProd(v) || isProd(e)) return true
   return e === UNKNOWN || SUBST.test(e) || /^\$\{?\w+\}?$/.test(e) ? 'unknown' : false
 }
+
+// Two production verdicts weighed together: true wins, then 'unknown'.
+const either = (a: boolean | 'unknown', b: boolean | 'unknown'): boolean | 'unknown' =>
+  a === true || b === true ? true : a === 'unknown' || b === 'unknown' ? 'unknown' : false
 
 // The value of the last non-empty `--name value` or `--name=value` among args, or undefined. An
 // empty value counts as absent, as kubectl treats it.
@@ -464,21 +521,21 @@ function kubeconfigProd(value: string, vars: Vars, files: boolean): boolean | 'u
     const path = p.startsWith('~/') ? join(homedir(), p.slice(2)) : p
     const ctx = files && path.startsWith('/') ? kubeContext(path) : null
     if (ctx === null) unknown = true
-    else if (PROD_RE.test(ctx)) return true
+    else if (isProd(ctx)) return true
   }
   return unknown ? 'unknown' : false
 }
 
-// Words that are neither flags nor values of the flags in K8S_VALUE_FLAGS.
+// Words that are neither flags nor values of the flags in valueFlags (K8S_VALUE_FLAGS by default).
 // help is set when -h or --help stands where a flag does, not as the value of the flag before it.
-function k8sWords(args: readonly string[]): { pos: string[]; help: boolean } {
+function k8sWords(args: readonly string[], valueFlags: ReadonlySet<string> = K8S_VALUE_FLAGS): { pos: string[]; help: boolean } {
   const pos: string[] = []
   let help = false
   for (let i = 0; i < args.length; i++) {
     const a = args[i]
     if (a.startsWith('-') && a !== '-') {
       if (a === '-h' || a === '--help') help = true
-      else if (!a.includes('=') && K8S_VALUE_FLAGS.has(a.replace(/^-+/, ''))) i++
+      else if (!a.includes('=') && valueFlags.has(a.replace(/^-+/, ''))) i++
     } else pos.push(a)
   }
   return { pos, help }
@@ -490,36 +547,32 @@ function k8sWords(args: readonly string[]): { pos: string[]; help: boolean } {
 // falls back to the process's kubeconfig, so that kubeconfig weighs in too.
 function prodTarget(tool: string, pre: readonly string[], args: readonly string[], vars: Vars, env: Vars, files: boolean): boolean | 'unknown' {
   const prefixed = (name: string): string | undefined => pre.findLast(w => w.startsWith(`${name}=`))?.slice(name.length + 1) || undefined
-  const orProcess = (v: string, r: boolean | 'unknown'): boolean | 'unknown' => (r === false && v.includes('$') && processProd() ? true : r)
+  const orProcess = (v: string, r: boolean | 'unknown'): boolean | 'unknown' => (r === false && v.includes('$') ? processProd(files) : r)
   const cluster = flagValue(args, ['--cluster'])
   if (cluster !== undefined && prodValue(cluster, vars) === true) return true
   const ctx = flagValue(args, ['--context', '--kube-context']) ?? (tool === 'helm' ? prefixed('HELM_KUBECONTEXT') : undefined)
   if (ctx !== undefined) return orProcess(ctx, prodValue(ctx, vars))
   const helmEnv = tool === 'helm' ? env.get('HELM_KUBECONTEXT') : undefined
-  if (helmEnv) {
-    // An earlier export may sit in a subshell, so the process's own context still weighs in.
-    const r = prodValue(helmEnv, vars)
-    return r === true || processProd() ? true : r
-  }
+  // An earlier export may sit in a subshell, so the process's own context still weighs in.
+  if (helmEnv) return either(prodValue(helmEnv, vars), processProd(files))
   // A file not named prod can still select a prod context, so the file is read.
   const flagKc = flagValue(args, ['--kubeconfig'])
   if (flagKc !== undefined) return orProcess(flagKc, kubeconfigProd(flagKc, vars, files))
   const preKc = prefixed('KUBECONFIG')
   if (preKc !== undefined) return orProcess(preKc, kubeconfigProd(preKc, vars, files))
   const envKc = env.get('KUBECONFIG')
-  if (envKc) {
-    const r = kubeconfigProd(envKc, vars, files)
-    return r === true || processProd() ? true : r
-  }
-  return processProd()
+  if (envKc) return either(kubeconfigProd(envKc, vars, files), processProd(files))
+  return processProd(files)
 }
 
 // Whether the hook's own kubeconfig (the first $KUBECONFIG file, else ~/.kube/config) selects a
-// production context. One that cannot be read is not production.
-const processProd = (): boolean => {
+// production context. 'unknown' when it cannot be read, or when files is false: a command in the
+// script may switch its context first (kubectl config use-context), or the command runs nested.
+function processProd(files: boolean): boolean | 'unknown' {
+  if (!files || PROD_RE === null) return 'unknown'
   const kc = process.env.KUBECONFIG
   const cur = kubeContext(kc ? kc.split(':')[0] : join(homedir(), '.kube', 'config'))
-  return cur !== null && PROD_RE.test(cur)
+  return cur === null ? 'unknown' : isProd(cur)
 }
 
 // Commands that write no local file, and kubectl verbs that write or run one (cp, edit's editor, diff's
@@ -539,7 +592,7 @@ function writesNothing(c: ShellCommand): boolean {
   const k = stripWrappers(c.text)
   if (k === null) return false
   if (k >= c.text.length || NO_WRITE.has(c.text[k])) return true
-  if (basename(c.text[k]) !== 'kubectl') return false
+  if (toolName(c.text[k]) !== 'kubectl') return false
   const { pos } = k8sWords(c.text.slice(k + 1))
   if (pos[0] === 'config') return KUBECONFIG_READS.has(pos[1])
   if (pos[0] === 'cluster-info') return !pos.includes('dump')
@@ -552,6 +605,7 @@ function k8sFindings(tool: string, pre: readonly string[], args: readonly string
   const { pos, help } = k8sWords(args)
   if (help) return [] // help text changes nothing
   const gated = (reason: string): Finding[] => [['ask', reason], ['gate', SUBAGENT_REASON]]
+  if (tool === 'helmfile') return helmfileFindings(pre, args, vars, env, files)
   if (tool === 'talosctl') {
     const hit = pos.some(w => TALOS_ASK.has(w)) || (pos.includes('etcd') && pos.includes('leave')) ||
       ((pos[0] === 'patch' || pos[0] === 'edit') && pos.some(w => /^(?:mc|machineconfigs?)$/.test(w)))
@@ -573,6 +627,40 @@ function k8sFindings(tool: string, pre: readonly string[], args: readonly string
     return [['deny', K8S_DENY]]
   }
   return gated(prod === 'unknown' ? 'Cannot tell which cluster this changes.' : 'This changes a production cluster.')
+}
+
+// helmfile verbs that install, upgrade or delete releases, asked in any environment: the state
+// file picks the cluster, so the guard cannot tell a production run apart.
+const HELMFILE_ASK: ReadonlySet<string> = new Set(['destroy', 'delete', 'sync', 'apply'])
+const HELMFILE_VALUE_FLAGS: ReadonlySet<string> = new Set(['e', 'environment', 'f', 'file', 'l', 'selector', 'kube-context', 'n',
+  'namespace', 'b', 'helm-binary', 'state-values-set', 'state-values-set-string', 'state-values-file', 'log-level', 'args', 'set',
+  'values', 'concurrency', 'output-dir', 'context', 'kubeconfig', 'c', 'chart'])
+
+function helmfileFindings(pre: readonly string[], args: readonly string[], vars: Vars, env: Vars, files: boolean): Finding[] {
+  const { pos, help } = k8sWords(args, HELMFILE_VALUE_FLAGS)
+  if (help || !pos.some(w => HELMFILE_ASK.has(w))) return []
+  const name = flagValue(args, ['-e', '--environment']) ?? pre.findLast(w => w.startsWith('HELMFILE_ENVIRONMENT='))?.slice(21)
+  const prod = (name !== undefined && prodValue(name, vars) === true) || prodTarget('helm', pre, args, vars, env, files) === true
+  return [['ask', prod ? 'This helmfile command changes releases on production.' : 'This helmfile command installs, upgrades or deletes releases.'],
+    ['gate', SUBAGENT_REASON]]
+}
+
+// pulumi verbs that change or delete a stack's resources or state, with their aliases. Asked on any stack.
+const PULUMI_ASK: ReadonlySet<string> = new Set(['destroy', 'down', 'dn', 'up', 'update', 'refresh', 'import'])
+const PULUMI_VALUE_FLAGS: ReadonlySet<string> = new Set(['s', 'stack', 'C', 'cwd', 'config-file', 'c', 'config', 't', 'target', 'exclude',
+  'replace', 'p', 'parallel', 'm', 'message', 'color', 'policy-pack', 'policy-pack-config', 'secrets-provider', 'tracing', 'plan',
+  'v', 'verbose', 'target-replace', 'import-file', 'from', 'profiling', 'suppress-permalink'])
+
+function pulumiFindings(args: readonly string[], vars: Vars): Finding[] {
+  const { pos, help } = k8sWords(args, PULUMI_VALUE_FLAGS)
+  if (help) return []
+  const hit = pos.some(w => PULUMI_ASK.has(w)) || (pos[0] === 'stack' && ['rm', 'remove'].includes(pos[1])) ||
+    (pos[0] === 'state' && ['delete', 'edit', 'move', 'rename', 'repair', 'unprotect'].includes(pos[1]))
+  if (!hit) return []
+  const stack = flagValue(args, ['--stack', '-s'])
+  const prod = stack !== undefined && prodValue(stack, vars) === true
+  return [['ask', prod ? 'This pulumi command changes a production stack.' : 'This pulumi command changes or deletes a stack\'s resources or state.'],
+    ['gate', SUBAGENT_REASON]]
 }
 
 // Commands whose arguments are usually data, so a tool name among them is not a wrapped call.
@@ -709,7 +797,7 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   const k = stripWrappers(words)
   if (k === null) return [['ask', 'A wrapper option such as env -S or mise exec -c hides the command.']]
   if (k >= words.length) return []
-  const cmd = basename(words[k])
+  const cmd = toolName(words[k])
   const args = words.slice(k + 1)
   // A path whose last part is literal (`$S/locked.sh`) is a script the wrapped-tool check below sees through.
   // A variable or substitution in the last part (`$D/$T`, `$(echo /usr/bin/tofu)`) may name any command.
@@ -719,7 +807,7 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   const bare = /^\$(\w+)$|^\$\{(\w+)\}$/.exec(words[k])
   const name = bare ? (bare[1] ?? bare[2]) : null
   const held = name === null ? undefined : vars.get(name)
-  if (typeof held === 'string' && held.split(' ').some(w => K8S.has(basename(w)))) {
+  if (typeof held === 'string' && held.split(' ').some(w => K8S.has(toolName(w)))) {
     const parts = held.split(' ')
     return classify([...argv.slice(0, k), ...parts, ...argv.slice(k + 1)], [...words.slice(0, k), ...parts, ...words.slice(k + 1)],
       depth, nesting, vars, env, prefix, k8sOnly, files)
@@ -729,6 +817,16 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   if (/[$`]/.test(words[k]) && !pathLike) {
     return k8sOnly && name !== null && !vars.has(name) ? [] : [['ask', 'A variable or substitution names the command.']]
   }
+  // nix run <installable> runs the installable's program: classify it as that command.
+  const nix = cmd === 'nix' ? nixRun(words, k) : null
+  if (nix) {
+    const [program, from] = nix
+    return classify([...argv.slice(0, k), program, ...argv.slice(from)], [...words.slice(0, k), program, ...words.slice(from)],
+      depth, nesting, vars, env, prefix, k8sOnly, files)
+  }
+  // python -m awscli is the aws CLI.
+  const awscli = !k8sOnly && /^python/.test(cmd) && INTERP.test(cmd) ? awscliStart(args) : null
+  if (awscli !== null) return awsFindings(args.slice(awscli), vars, nesting)
   if (SHELLS.has(cmd) || INTERP.test(cmd)) {
     const script = nestedScript(argv.slice(k))
     const out = script === null ? [] : nestedFindings(script, depth + 1, k8sOnly)
@@ -740,8 +838,12 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
       if (k8sArg) out.push(['ask', 'A shell, eval, or xargs wraps a guarded tool and cannot be checked.'])
       return out
     }
-    const hidden = ANY_DOLLAR.has(cmd) ? args.some(a => a.includes('$')) : operandHidden(cmd, argv.slice(k))
-    if (hidden || k8sArg || args.some(a => TOOL_RE.test(a))) {
+    // A multicall binary's options start after its applet (busybox sh -c "$X"), and a hidden applet hides them all.
+    const multicall = MULTICALL.has(cmd)
+    const hidden = ANY_DOLLAR.has(cmd) ? args.some(a => a.includes('$'))
+      : (multicall && argv[k + 1] === null) || operandHidden(cmd, argv.slice(multicall ? k + 1 : k))
+    // awscli outside `-m awscli` is a package name (python3 -m pip install awscli), not a call.
+    if (hidden || k8sArg || args.some(a => a !== 'awscli' && TOOL_RE.test(a))) {
       out.push(['ask', 'A shell, eval, or xargs wraps a guarded tool and cannot be checked.'])
     }
     return out
@@ -756,15 +858,8 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
     return out
   }
   if (K8S.has(cmd)) return k8sFindings(cmd, [...prefix, ...words.slice(0, k)], args, vars, env, files)
-  if (cmd === 'aws' && !k8sOnly) {
-    if (awsHelp(args)) return []
-    const out: Finding[] = [['gate', SUBAGENT_REASON]]
-    const op = awsOp(args, vars)
-    if (SUBST.test(op[0]) || /[$`]/.test(op[1])) out.push(['ask', 'A variable or substitution as the aws operation cannot be checked.'])
-    else if (awsDestructive(op, args)) out.push(['ask', 'This aws command deletes, stops, or loosens access to resources.'])
-    else if (nesting > 0 && !awsReadOnly(op[1])) out.push(['ask', NESTED_REASON])
-    return out
-  }
+  if (cmd === 'pulumi' && !k8sOnly) return pulumiFindings(args, vars)
+  if (cmd === 'aws' && !k8sOnly) return awsFindings(args, vars, nesting)
   // A package runner or find action runs its arguments as a command, which is classified as one.
   const start = execStart(cmd, args)
   if (start !== null) {
@@ -778,15 +873,63 @@ function classify(argv: readonly (string | null)[], words: readonly string[], de
   }
   // A guarded tool after a command the guard does not know may be a wrapped call. A script path
   // gets the wrapped tool's own findings; other commands only matter when the wrapped call is denied.
-  const i = args.findIndex(a => (!k8sOnly && TF.has(basename(a))) || K8S.has(basename(a)))
+  // Kubernetes and pulumi calls never deny there, so their asks count too.
+  const i = args.findIndex(a => {
+    const t = argTool(a)
+    return (!k8sOnly && (TF.has(t) || t === 'pulumi')) || K8S.has(t)
+  })
   if (i < 0) return []
-  const tool = basename(args[i])
+  const tool = argTool(args[i])
   const wrapped = K8S.has(tool)
     ? k8sFindings(tool, [...prefix, ...words.slice(0, k)], args.slice(i + 1), vars, env, files)
-    : classifyTf(args.slice(i + 1), tool, vars)
+    : tool === 'pulumi' ? pulumiFindings(args.slice(i + 1), vars) : classifyTf(args.slice(i + 1), tool, vars)
   const denied = wrapped.some(([kind]) => kind === 'deny')
-  if (DATA_CMDS.has(cmd)) return denied && !K8S.has(tool) ? [['ask', 'An unrecognized command wraps a guarded tool.']] : []
-  return pathLike || denied || K8S.has(tool) ? wrapped : []
+  if (DATA_CMDS.has(cmd)) return denied && TF.has(tool) ? [['ask', 'An unrecognized command wraps a guarded tool.']] : []
+  return pathLike || denied || K8S.has(tool) || tool === 'pulumi' ? wrapped : []
+}
+
+// Findings for the arguments of aws, or of python -m awscli.
+function awsFindings(args: readonly string[], vars: Vars, nesting: number): Finding[] {
+  if (awsHelp(args)) return []
+  const out: Finding[] = [['gate', SUBAGENT_REASON]]
+  const op = awsOp(args, vars)
+  if (SUBST.test(op[0]) || /[$`]/.test(op[1])) out.push(['ask', 'A variable or substitution as the aws operation cannot be checked.'])
+  else if (awsDestructive(op, args)) out.push(['ask', 'This aws command deletes, stops, or loosens access to resources.'])
+  else if (nesting > 0 && !awsReadOnly(op[1])) out.push(['ask', NESTED_REASON])
+  return out
+}
+
+// Where the aws arguments start after python's `-m awscli` (its own options before it skipped,
+// bundled ones such as -Im included), or null when python runs a script, code or another module.
+function awscliStart(args: readonly string[]): number | null {
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a.startsWith('--') && a !== '--') continue
+    if (!a.startsWith('-') || a === '-' || a === '--') return null
+    for (let j = 1; j < a.length; j++) {
+      const ch = a[j]
+      if (ch === 'c') return null
+      if (ch === 'm' || ch === 'W' || ch === 'X') {
+        const value = j + 1 < a.length ? a.slice(j + 1) : args[++i]
+        if (ch === 'm') return value === 'awscli' ? i + 1 : null
+        break
+      }
+    }
+  }
+  return null
+}
+
+// nix run <installable> [--] <args>: the program, named by the installable's attribute through
+// NIX_PROGRAMS, and the index of its first argument; null when no installable names an attribute.
+function nixRun(words: readonly string[], k: number): [string, number] | null {
+  const r = words.indexOf('run', k + 1)
+  if (r < 0) return null
+  const at = words.findIndex((w, n) => n > r && w.includes('#'))
+  if (at < 0) return null
+  const attr = words[at].slice(words[at].indexOf('#') + 1).split('.').at(-1) ?? ''
+  if (!/^[\w+-]+$/.test(attr)) return null
+  const dd = words.indexOf('--', at + 1)
+  return [NIX_PROGRAMS.get(attr) ?? attr, dd < 0 ? at + 1 : dd + 1]
 }
 
 // A heredoc body that is read as commands rather than data: one whose delimiter never comes (it
@@ -871,12 +1014,13 @@ const mentionedOutsideData = (script: string, data: readonly string[], re: RegEx
 const SHELL_NAMES: ReadonlySet<string> = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh'])
 
 // Whether a command is a shell reading its program from stdin: bash, sh and the like with no -c,
-// also behind wrappers, `xargs` or `busybox`.
+// also behind wrappers, `xargs`, `busybox` or `toybox`.
 function readsShellFromStdin(c: ShellCommand): boolean {
   const k = stripWrappers(c.text)
   if (k === null || k >= c.text.length) return false
   let i = k
-  if (['xargs', 'busybox'].includes(basename(c.text[k]))) i = c.text.findIndex((w, j) => j > k && !w.startsWith('-'))
+  const head = basename(c.text[k])
+  if (head === 'xargs' || MULTICALL.has(head)) i = c.text.findIndex((w, j) => j > k && !w.startsWith('-'))
   return i >= 0 && SHELL_NAMES.has(basename(c.text[i])) && nestedScript(c.argv.slice(i)) === null
 }
 
@@ -885,7 +1029,7 @@ function readsShellFromStdin(c: ShellCommand): boolean {
 const pipedToShell = (c: ShellCommand): boolean =>
   !!c.pipeline && c.pipeline.stage > 0 && readsShellFromStdin(c) &&
   c.pipeline.earlier.some(p => {
-    const first = basename(p.text[0] ?? '')
+    const first = toolName(p.text[0] ?? '')
     const text = p.text.join(' ')
     return !TOOLS.has(first) && !K8S.has(first) && (mentions(text) > 0 || mentions(text, K8S_RE) > 0)
   })
@@ -959,14 +1103,18 @@ export function decide(d: unknown): Decision | null {
   if (!TOOL_RE.test(plain) && !K8S_RE.test(plain)) return null
   if (cmd.length > MAX_CMD) return ['ask', 'Command is too long to check.']
   const kind = allowlisted(cmd)
-  if (kind === 'safe' || (kind === 'gate' && !input.agent_id)) return ['allow', ALLOW_REASON]
-  if (kind === 'gate') {
+  if (kind === null) return check(cmd, input)
+  // The subagent gate comes first and holds whatever the option says.
+  if (kind === 'gate' && input.agent_id) {
     const ok = briefAllows(input)
     if (ok === null) return ['ask', BRIEF_REASON]
-    return ok ? ['allow', ALLOW_REASON] : ['deny', SUBAGENT_REASON]
+    if (!ok) return ['deny', SUBAGENT_REASON]
   }
-  return check(cmd, input)
+  return autoAllow() ? ['allow', ALLOW_REASON] : null
 }
+
+// The autoAllowReadOnly option, which Claude Code passes as the string 'true' or 'false'.
+const autoAllow = (): boolean => process.env.CLAUDE_PLUGIN_OPTION_AUTOALLOWREADONLY === 'true'
 
 function main(): void {
   let out: Decision | null
