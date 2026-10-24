@@ -1,0 +1,65 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install Python tools
+        run: pip install pyyaml pytest
+
+      - name: Marketplace structure and catalog
+        run: |
+          python3 scripts/plugins.py check
+          python3 scripts/plugins.py catalog --check
+
+      - name: Version bumps since the previous commit
+        env:
+          BEFORE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "no previous commit to compare against; skipped"
+          else
+            python3 scripts/plugins.py check --since "$BEFORE"
+          fi
+
+      - name: Script tests
+        run: |
+          pytest -q scripts/test_plugins.py
+          node --test scripts/install.spec.mjs
+
+      - name: Guard and shared-code specs
+        run: >-
+          bun test
+          scripts/shared
+          plugins/check-bypass-guard/scripts/tests
+          plugins/readonly-agent-gate/scripts/tests
+          plugins/cloud-ops-guard/scripts/cloud-ops-guard.spec.ts
+          plugins/usage-log/scripts
+
+      - name: Guard case suites
+        run: |
+          bash plugins/cloud-ops-guard/scripts/tests/check.sh
+          bash plugins/readonly-agent-gate/scripts/tests/readonly-bash.cases.sh
