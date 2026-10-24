@@ -402,8 +402,8 @@ const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh'])
 
 // Multi-call binaries and the shell applets of theirs that take `-c` as sh does. The applet may be a path.
 const MULTICALL = new Map([
-  ['busybox', new Set(['sh', 'ash', 'bash'])],
-  ['toybox', new Set(['sh'])],
+  ['busybox', new Set(['sh', 'ash', 'bash', 'hush'])],
+  ['toybox', new Set(['sh', 'toysh', 'bash'])],
 ])
 
 // fish's long options, each marked when it takes a value. fish reads them with getopt_long, so a
@@ -417,10 +417,22 @@ const FISH_LONG = new Map([
 // fish's short options that take a value; `c` and `C` hold commands.
 const FISH_VALUE = new Set(['c', 'C', 'p', 'd', 'o', 'f', 'D'])
 
+// Callers reparse the script as POSIX sh, so it is returned only when both shells read it alike. fish
+// decodes `\` escapes (`\'` and `\xNN` even inside single quotes), expands `$` and `{…}`, runs `(…)`,
+// and leaves backticks literal, so a script with any of these characters is refused.
+const FISH_UNLIKE_SH = /[\\$(){}`]/
+// fish words that sh reads as plain commands: `true; and kubectl …` runs kubectl under fish only, and
+// `set`, `alias` and `function` define what later words mean. Matched anywhere, quoted or not.
+const FISH_WORDS = new Set([
+  'and', 'or', 'not', 'begin', 'end', 'if', 'else', 'while', 'for', 'switch', 'case', 'function', 'alias', 'abbr', 'set',
+])
+const fishLikeSh = (s: string): boolean => !FISH_UNLIKE_SH.test(s) && !s.split(/[\s;&|<>'"]+/).some(w => FISH_WORDS.has(w))
+
 const base = (w: string | null | undefined): string | undefined => w?.split('/').pop()
 
 // The script text of `sh|bash|zsh|dash|ksh -c STR` (a bare name or a path; bundled flags such as
-// `-lc` included), of the same behind `busybox sh|ash|bash` or `toybox sh`, of `fish -c STR`, and of
+// `-lc` included), of the same behind `busybox sh|ash|bash|hush` or `toybox sh|toysh|bash`, of `fish -c STR`
+// when sh reads STR as fish does (see fishScript), and of
 // `eval` with all-literal arguments. Null for any other command, or when the script is not literal.
 // A caller that wraps shells (sudo, env, ...) strips the wrapper first.
 export function nestedScript(argv: readonly (string | null)[]): string | null {
@@ -439,7 +451,9 @@ export function nestedScript(argv: readonly (string | null)[]): string | null {
 }
 
 // fish runs the value of every `-c` (and first every `-C`, its init commands) in order, and stops
-// reading options at the first operand. Null when there is no `-c` or an option is not literal.
+// reading options at the first operand. The script is the one command text given, when sh reads it as
+// fish does. Null when there is no `-c`, more than one command text (each is parsed alone, so a
+// joined text would read differently), an option that is not literal, or a script sh would misread.
 function fishScript(argv: readonly (string | null)[]): string | null {
   const init: string[] = []
   const cmds: string[] = []
@@ -472,7 +486,7 @@ function fishScript(argv: readonly (string | null)[]): string | null {
       break
     }
   }
-  return cmds.length ? [...init, ...cmds].join('\n') : null
+  return cmds.length === 1 && init.length === 0 && fishLikeSh(cmds[0]) ? cmds[0] : null
 }
 
 // The script of an sh-like shell's argv, read from argv[1] on.
