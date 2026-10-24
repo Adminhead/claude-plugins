@@ -1,6 +1,6 @@
 ---
 name: ssot-consolidate
-description: Finds every copy of one scattered fact, proposes a canonical home and a consolidation plan, and edits only after approval. Use when a value or definition lives in several places or the copies disagree ("the timeout is in four docs"), or when asked to dedupe, unify or find the source of truth. Not for docs-vs-code drift or agent instructions.
+description: Finds every copy of one fact scattered across code, config, CI and docs, proposes a canonical home, and edits only after approval. Use when a value lives in several places or the copies disagree (a timeout in config, a constant and two docs). Not for duplication only in docs or docs-vs-code drift (docs-audit), or agent instructions.
 ---
 
 # SSOT consolidate
@@ -9,9 +9,13 @@ One fact gets one home, and every other place references it. References do not d
 
 Adapted from the `ssotize` skill in LilMGenius/paperthin (MIT).
 
+## Scope
+
+A fact whose copies span mixed surfaces (code constants, config, CI, scripts and docs together), or only code and config. When every copy lives in docs, that is `docs-audit`'s job: it already finds duplication across docs and keeps one canonical owner.
+
 ## Not for
 
-- Checking docs against the code they describe: use `docs-audit`.
+- Duplication confined to docs, and checking docs against the code they describe: use `docs-audit`.
 - Agent instruction files: use `agent-instructions`.
 - Ongoing upkeep. This is a one-time repair of a scattered state; once the fact has one home, leave it.
 
