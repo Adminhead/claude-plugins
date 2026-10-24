@@ -347,7 +347,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 
 ### Agents
 
-Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and effort are defaults; a caller can pass another model per call. An agent without Edit/Write tools can still change state through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash and limits their file-writing tools to scratch paths (`architect` has Write/Edit for scratch docs).
+Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and effort are defaults; a caller can pass another model per call. An agent without Edit/Write tools can still change state through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash and limits their file-writing tools to scratch paths. `architect` can also save its plan as a Markdown file under the project's plan directory (`docs/plans/` by default, gate option `plan_dirs`) with Write or Edit.
 
 | Agent | Plugin | Model | Effort | Edit/Write tools | In |
 | --- | --- | --- | --- | --- | --- |
