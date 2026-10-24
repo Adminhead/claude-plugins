@@ -13,7 +13,7 @@ A PreToolUse hook on Bash (needs `bun`) that guards infrastructure commands: Ope
 | Decision | Examples |
 | --- | --- |
 | deny | `tofu apply` without a saved plan, `apply -auto-approve`, `destroy`, `import`, `state rm`/`mv`/`push`; `kubectl delete` of PVs, PVCs, CRDs or nodes on a production cluster |
-| ask | destructive aws operations (`delete-*`, `terminate-*`, `s3 rm`, `kms schedule-key-deletion`, …); `pulumi destroy`/`up`/`refresh`, `--show-secrets` and `stack export`; `helmfile destroy`/`delete`/`sync`/`apply`; a pulumi or helmfile verb held in a variable; kubectl and helm changes on production or on a cluster it cannot identify; talosctl and omnictl resets, upgrades, deletes and applies anywhere; `output -json`, `state pull`, `console`; commands it cannot parse |
+| ask | destructive aws operations (`delete-*`, `terminate-*`, `s3 rm`, `kms schedule-key-deletion`, …); `pulumi destroy`/`up`/`refresh`/`watch`, `--show-secrets` and `stack export`; `helmfile destroy`/`delete`/`sync`/`apply`; a pulumi or helmfile verb held in a variable; kubectl and helm changes on production or on a cluster it cannot identify; talosctl and omnictl resets, upgrades, deletes and applies anywhere; `output -json`, `state pull`, `console`; commands it cannot parse |
 | subagent gate | a subagent's plan, init, state show, output, apply of a saved plan, `pulumi preview`, aws call or production cluster change is denied unless its brief has a line `ALLOW: cloud-ops`, and asks when the brief cannot be read |
 | allow | only with `autoAllowReadOnly` on (below) |
 
@@ -34,13 +34,13 @@ Set these in `/config` under cloud-ops-guard:
 
 `plan`, `init` and `mise` tasks run code from the repository (providers, modules, the task's own script), so the default leaves them to your permission rules and adds a prompt for users who relied on the old auto-approval. Turn `autoAllowReadOnly` on to restore it. A subagent still needs the brief token with the option on.
 
-A kubeconfig the guard cannot read counts as unknown, so a change through it asks. So does one that a command running first could switch or rewrite: an earlier command such as `kubectl config use-context …`, `aws eks update-kubeconfig` or `talosctl kubeconfig`, a substitution inside the command, or any other command in a script with a loop, function or trap. Commands after the change, kubectl, helm, talosctl and omnictl verbs that keep to the cluster, and `kustomize build` to stdout do not count. A `sh -c`, `bash -c` or `eval` script reads the same kubeconfig. A login or interactive shell, `zsh`, `fish`, `ssh`, `sudo` or `env` in front does not, and neither does a `KUBECONFIG` the outer script sets, so those ask.
+A kubeconfig the guard cannot read counts as unknown, so a change through it asks. So does one that a command running first could switch or rewrite: an earlier command such as `kubectl config use-context …`, `aws eks update-kubeconfig` or `talosctl kubeconfig`, a substitution inside the command, or any other command when the change sits in a pipeline (its stages run at once) or the script has a loop, function, trap, `watch` or background job (`&`). Commands written after the change in plain sequence, kubectl, helm, talosctl and omnictl verbs that keep to the cluster, and `kustomize build` to stdout do not count. A `sh -c`, `bash -c` or `eval` script reads the same kubeconfig. A login or interactive shell, `zsh`, `fish`, `ssh`, `sudo` or `env` in front does not, and neither does a `KUBECONFIG` the outer script sets, so those ask.
 
 ## Limits
 
 This is a guardrail, not a sandbox. Encoded payloads, script files and wrappers it does not know can evade it. Reasons are static: the command and environment are never printed.
 
-The short aliases `tf`, `tg`, `k` and `oc` count as the tool only as the command word or behind a wrapper the guard knows. After a command it does not know (`watch k …`, `doas k …`) they read as data, since as arguments they are far more often something else, so spell out the tool name there. Commands are taken in written order, so a background (`&`) kubectl that races a later write to its kubeconfig is not caught.
+The short aliases `tf`, `tg`, `k` and `oc` count as the tool only as the command word or behind a wrapper the guard knows. After a command it does not know (`watch k …`, `doas k …`) they read as data, since as arguments they are far more often something else, so spell out the tool name there.
 
 ## Tests
 

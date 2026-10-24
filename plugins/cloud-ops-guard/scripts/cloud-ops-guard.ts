@@ -698,8 +698,9 @@ function helmfileFindings(pre: readonly string[], args: readonly string[], vars:
   return [['ask', reason], ['gate', SUBAGENT_REASON]]
 }
 
-// pulumi verbs that change or delete a stack's resources or state, with their aliases. Asked on any stack.
-const PULUMI_ASK: ReadonlySet<string> = new Set(['destroy', 'down', 'dn', 'up', 'update', 'refresh', 'import'])
+// pulumi verbs that change or delete a stack's resources or state, with their aliases (watch deploys
+// on every file change). Asked on any stack.
+const PULUMI_ASK: ReadonlySet<string> = new Set(['destroy', 'down', 'dn', 'up', 'update', 'refresh', 'import', 'watch'])
 const PULUMI_VALUE_FLAGS: ReadonlySet<string> = new Set(['s', 'stack', 'C', 'cwd', 'config-file', 'c', 'config', 't', 'target', 'exclude',
   'replace', 'p', 'parallel', 'm', 'message', 'color', 'policy-pack', 'policy-pack-config', 'secrets-provider', 'tracing', 'plan',
   'v', 'verbose', 'target-replace', 'import-file', 'from', 'profiling', 'suppress-permalink'])
@@ -1056,24 +1057,29 @@ function nixProgram(attr: string): string {
 
 // nix run <installable> [--] <args>: the program, named by the installable's attribute, and the index
 // of its first argument; null when no installable names an attribute. The installable is the first word
-// with a `#` past nix's options and their values. Its arguments start after the first `--` when only
-// options come before it, else at the first word that is not an option.
+// with a `#` past nix's options and their values, or the word right after a `--` that comes before it,
+// whose arguments then start right after it. Otherwise its arguments start after the first `--` when
+// only options come before it, else at the first word that is not an option.
 function nixRun(words: readonly string[], k: number): [string, number] | null {
   const sub = nixSub(words, k)
   if (sub?.[0] !== 'run') return null
   let at = -1
+  let ended = false
   for (let n = sub[1] + 1; n < words.length && at < 0;) {
     const w = words[n]
-    if (w === '--') return null
-    if (w.startsWith('-')) n = nixSkip(words, n)
+    if (w === '--') {
+      if (n + 1 >= words.length) return null
+      at = n + 1
+      ended = true
+    } else if (w.startsWith('-')) n = nixSkip(words, n)
     else if (w.includes('#')) at = n
     else n++
   }
-  if (at < 0) return null
+  if (at < 0 || !words[at].includes('#')) return null
   const attr = words[at].slice(words[at].indexOf('#') + 1).split('.').at(-1) ?? ''
   if (!/^[\w+-]+$/.test(attr)) return null
   let from = at + 1
-  while (from < words.length && words[from].startsWith('-')) {
+  while (!ended && from < words.length && words[from].startsWith('-')) {
     if (words[from] === '--') {
       from++
       break
@@ -1091,16 +1097,19 @@ const runs = (script: string, h: ShellHeredoc): boolean =>
 
 // Findings for the commands of one parsed script, then for each heredoc body it runs. Commands
 // under one compound share their heredoc objects, so each body is parsed once.
-// Loops, functions and traps run commands out of their written order, so any command may run first.
-const UNORDERED_RE = /(?<![\w./-])(?:for|while|until|select|foreach|repeat|function|trap|coproc)(?![\w./-])|\(\s*\)/
+// Loops, functions, traps and watch run commands out of their written order, and a background job
+// (a lone `&`, not `&&`, `|&`, `;&` or a redirect's `>&`, `<&`, `&>`) runs beside the commands after
+// it, so in such a script any command may run first.
+const UNORDERED_RE = /(?<![\w./-])(?:for|while|until|select|foreach|repeat|function|trap|coproc|watch)(?![\w./-])|\(\s*\)|(?<![&|;<>])&(?![&>])/
 
 function scriptFindings(commands: readonly ShellCommand[], script: string, depth: number, k8sOnly: boolean, outer: Files): Finding[] {
   const vars = collectVars(commands, script)
   const envSeen = collectEnv(commands)
   // A kubeconfig is read for a command only when outer allows it and no command that runs before it
-  // can write one: an earlier command, one of its own substitutions (they run first), or, in a script
-  // with a loop, function or trap, any other command. Later commands and pipeline stages cannot
-  // change what it has already read. Each is checked once, and only when a check needs a file.
+  // can write one: an earlier command, one of its own substitutions (they run first), or, for a
+  // command in a pipeline (its stages run at once) or in an unordered script, any other command.
+  // Later commands cannot change what it has already read. Each is checked once, and only when a
+  // check needs a file.
   const writes: (boolean | undefined)[] = []
   const writer = (j: number): boolean => (writes[j] ??= !writesNothing(commands[j]))
   const unordered = UNORDERED_RE.test(plainText(script))
@@ -1109,7 +1118,8 @@ function scriptFindings(commands: readonly ShellCommand[], script: string, depth
     return () => {
       if (memo === undefined) {
         const own = new Set(commands[i].subs)
-        memo = outer() && !commands.some((c, j) => j !== i && (j < i || unordered || own.has(c)) && writer(j))
+        const any = unordered || commands[i].pipeline !== null
+        memo = outer() && !commands.some((c, j) => j !== i && (j < i || any || own.has(c)) && writer(j))
       }
       return memo
     }

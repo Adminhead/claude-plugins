@@ -887,6 +887,21 @@ t "a KUBECONFIG prefix on sh -c reaches the nested kubectl" ask "KUBECONFIG=$roo
 t "an env KUBECONFIG wrapper on sh -c reaches the nested kubectl" ask "env KUBECONFIG=$root/cfg-a.yaml sh -c 'kubectl delete pv x'"
 t "an exported KUBECONFIG reaches the nested kubectl" ask "export KUBECONFIG=$root/cfg-a.yaml; sh -c 'kubectl delete pv x'"
 t "sudo sh -c may read another user's kubeconfig" ask "sudo sh -c 'kubectl delete pv x'"
+# Pipeline stages and background jobs run at once, so a writer written after the judged command may
+# still switch the context before it reads the kubeconfig. watch repeats its command after any writer.
+for c in \
+  '(sleep 2; kubectl delete pv x) | kubectl config use-context prod' \
+  '{ sleep 2; kubectl delete pv x; } | kubectl config use-context prod' \
+  '(sleep 2; kubectl delete pv x) & kubectl config use-context prod' \
+  'sleep 2 && kubectl delete pv x & kubectl config use-context prod; wait' \
+  "timeout 5 sh -c 'sleep 2; kubectl delete pv x' & kubectl config use-context prod" \
+  'watch -n1 kubectl delete pv x & kubectl config use-context prod' \
+  'watch -n1 kubectl delete pv x; kubectl config use-context prod'; do
+  t "concurrent writer: $c" ask "$c"
+  t "concurrent writer, subagent with token: $c" ask "$c" withtoken
+done
+t "a writer after an if block stays quiet" none 'if true; then kubectl delete pv x; fi; kubectl config use-context prod'
+t "a kubeconfig read in another pipeline stage stays quiet" none 'kubectl config current-context | kubectl apply -f -'
 
 # Review round 2: -h as another flag's value cannot turn off the check. With an ask verb among the
 # positional words, help flags are ignored, so asking on `destroy --help` is expected.
@@ -938,6 +953,9 @@ t "nix run kubernetes-helm-wrapped upgrade on prod" ask "nix run nixpkgs#kuberne
 t "nix env shell -c tofu destroy" deny "nix env shell nixpkgs#opentofu -c tofu destroy"
 t "nix --option before shell -c" deny "nix --option sandbox false shell nixpkgs#terraform -c terraform destroy"
 t "nix run terraform-docs is not terraform" none "nix run nixpkgs#terraform-docs -- markdown ."
+t "nix run -- installable bash -c terraform destroy" deny "nix run -- nixpkgs#bash -c 'terraform destroy' --"
+t "nix run -- installable terraform destroy" deny "nix run -- nixpkgs#terraform destroy"
+t "nix run -- installable kubectl delete pv on prod" deny "nix run -- nixpkgs#kubectl --context prod delete pv x"
 # pulumi credentialed reads: preview gates a subagent; --show-secrets and stack export print secrets
 t "pulumi preview, subagent without token" deny "pulumi preview" notoken
 t "pulumi pre, subagent without token" deny "pulumi pre" notoken
@@ -948,6 +966,8 @@ t "pulumi stack output --show-secrets, subagent without token" deny "pulumi stac
 t "pulumi stack export asks" ask "pulumi stack export"
 t "pulumi stack export, subagent without token" deny "pulumi stack export" notoken
 t "pulumi stack export, subagent with token" none "pulumi stack export" withtoken
+t "pulumi watch deploys continuously" ask "pulumi watch"
+t "pulumi watch, subagent without token" deny "pulumi watch --stack dev" notoken
 
 # The subagent deny names the main session and the user, never the token line itself
 why "subagent deny: ask the user" "ask the user" "tofu plan" notoken
