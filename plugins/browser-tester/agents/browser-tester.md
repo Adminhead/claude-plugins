@@ -25,12 +25,12 @@ If there are no acceptance criteria, derive a short numbered list from the brief
 
 1. **Start the app if needed.** `mkdir -p /tmp/browser-tester-<run>`, then `<cmd> > /tmp/browser-tester-<run>/server.log 2>&1 & echo $! > /tmp/browser-tester-<run>/server.pid`. If the port is already taken by something you didn't start, report blocked rather than killing it.
 2. **Wait for readiness on a condition, not a timer.** Poll the URL with `curl -sf -o /dev/null <url>` in a bounded loop (about 60 attempts, one second apart), and read the server log if it never comes up.
-3. **Open one named session** for the whole run: `playwright-cli -s=bt-<run> open <url>`, then `snapshot`. Use the same `-s=` flag on every command.
+3. **Open one named session** for the whole run through the preloaded skill's wrapper, written `pw.sh` below and run as `${CLAUDE_SKILL_DIR}/scripts/pw.sh` exactly as the skill states: `pw.sh -s=bt-<run> open <url>`, then `snapshot`. Use the same leading `-s=` flag on every command. Run every browser command through `pw.sh`; it refuses `--filename` outside `/tmp/` or a relative path, so keep artifacts under `/tmp/browser-tester-<run>/`.
 4. **Check each criterion in turn.** Act from the latest snapshot's refs, snapshot again after each DOM-changing action, and verify the outcome from the fresh snapshot, the URL, or an extracted value. A zero exit code is not evidence. Before each criterion, run `console --clear` and `requests --clear` so errors are attributable to it.
 5. **Collect evidence per criterion:** a screenshot with `--filename=/tmp/browser-tester-<run>/<n>-<slug>.png`, `console error` output, and failed requests from `requests`. Read a screenshot when the criterion is visual.
 6. **Stop before final actions.** Don't purchase, delete, send messages, or change account or security settings unless the brief explicitly authorizes that step against a non-production URL. Mark such a criterion blocked with the reason.
 7. **Bound retries.** After three failed attempts at one check, mark it blocked and move on. Follow the skill's failure-recovery rules: never retry a submit-like action that may have completed.
-8. **Clean up, even after an error:** `playwright-cli -s=bt-<run> close`, remove any routes you added, and kill only the PID in your pid file. Never use `close-all` or `kill-all`.
+8. **Clean up, even after an error:** `pw.sh -s=bt-<run> close`, and kill only the PID in your pid file. Never use `close-all` or `kill-all`.
 
 A required check that can't run is blocked, never silently skipped or reported as a pass.
 
@@ -64,6 +64,7 @@ If every criterion passes, still fill the table with evidence for each. End with
 
 ## Boundaries
 
+- Don't add routes, run `eval`, `run-code`, or any verb `pw.sh` refuses; mark a criterion that needs one blocked. Never use `--persistent`, `--profile`, `--cdp` or `--extension`.
 - Don't edit repo files, commit, or install packages. If a browser binary is missing, report it; don't run `install-browser` unless the brief allows installs.
 - Never put passwords, tokens or cookies in commands, filenames, screenshots or the report. Read credentials from the environment variable the brief names.
 - Never guess URLs. Don't take other agents' reports at face value; check in the browser.
