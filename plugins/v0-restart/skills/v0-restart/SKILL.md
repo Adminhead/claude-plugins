@@ -1,12 +1,12 @@
 ---
 name: v0-restart
-description: Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failure notes the previous attempt proved, and dropping its accidental architecture.
+description: Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failing cases the previous attempt proved, and dropping its accidental architecture.
 disable-model-invocation: true
 ---
 
 # V0 restart
 
-Start over from what the previous attempt proved, not from what it happened to build. A restart is not amnesia: contracts, schemas, vocabulary, real-surface tests, quality gates and the negative corpus survive when they earned it. Scaffold, explanatory UI, debug panels, shallow generated content and code whose only value was learning what not to do do not.
+Start over from what the previous attempt proved, not from what it happened to build. A restart is not amnesia: contracts, schemas, vocabulary, real-surface tests, quality gates and the negative corpus (failing cases and their inputs) survive when they earned it. Scaffold, explanatory UI, debug panels, shallow generated content and code whose only value was learning what not to do do not.
 
 Adapted from the `re0-work` skill in LilMGenius/paperthin (MIT).
 
@@ -30,7 +30,7 @@ Adapted from the `re0-work` skill in LilMGenius/paperthin (MIT).
 - One complete vertical loop beats many shallow surfaces.
 - Keep provenance in local docs, not in the shipped product.
 - Do not rebuild around a vague lesson. Turn it into a gate or leave it out.
-- Archive failed paths, never delete them. Move them to a branch or a `docs/` note where the next cycle will see them.
+- Keep the negative corpus: the executable failing cases and their inputs, so the next cycle cannot repeat the failure unnoticed. Discarded code is not archived; git history holds it, and no archive branch or note is required.
 - When a reusable module survives, name the contract that proves it survives.
 
 ## Before finishing

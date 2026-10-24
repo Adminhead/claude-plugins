@@ -11,7 +11,8 @@ Modifications: rewritten rather than copied, with a descriptive name in place
 of the upstream one, our section order, no em-dashes and no references to
 unported sibling skills. Kept rules: no copy-forward unless the artifact earned
 it; one complete vertical loop beats many shallow surfaces; a vague lesson
-becomes a gate or is left out; failed paths are archived, never deleted; the
+becomes a gate or is left out; failing cases and their inputs are kept as the
+negative corpus, while discarded code is left to git history; the
 contract that proves a surviving module survives is named; the first quality
 gate is named before any code; provenance stays in local docs. Added a planning
 hand-off for multi-slice work and "Not for" lines naming experiment-loop and

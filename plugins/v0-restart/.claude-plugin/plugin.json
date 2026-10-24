@@ -1,7 +1,7 @@
 {
   "name": "v0-restart",
-  "version": "0.1.0",
-  "description": "Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failure notes the previous attempt proved, and dropping its accidental architecture.",
+  "version": "0.1.1",
+  "description": "Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failing cases the previous attempt proved, and dropping its accidental architecture.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
