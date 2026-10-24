@@ -2002,17 +2002,17 @@ function main(input: string): void {
   checkScript(command, 0)
 }
 
-// Checks one hook payload (the raw stdin text). Writes the reason to stderr on a block and
-// returns the exit status: 0 allows, 2 blocks.
-export function run(input: string): number {
+// Checks one hook payload (the raw stdin text). Writes the reason, followed by `hint`, to stderr
+// on a block and returns the exit status: 0 allows, 2 blocks.
+export function run(input: string, hint = ''): number {
   let status = 0
   let message = ''
   try {
     main(input)
   } catch (e) {
     status = 2
-    if (e instanceof Block) message = `readonly-bash: blocked${e.segment ? ` '${e.segment}'` : ''} (${e.reason}). ${SCRATCH_MSG}`
-    else if (e instanceof ParseFailure) message = `readonly-bash: blocked (parse error: ${e.message}). ${SCRATCH_MSG}`
+    if (e instanceof Block) message = `readonly-bash: blocked${e.segment ? ` '${e.segment}'` : ''} (${e.reason}). ${SCRATCH_MSG}${hint}`
+    else if (e instanceof ParseFailure) message = `readonly-bash: blocked (parse error: ${e.message}). ${SCRATCH_MSG}${hint}`
     else message = `readonly-bash: internal error (${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}); blocking.`
   }
   if (message) writeSync(2, `${message}\n`)

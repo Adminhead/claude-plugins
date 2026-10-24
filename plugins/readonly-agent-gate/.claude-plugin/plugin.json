@@ -1,7 +1,7 @@
 {
   "name": "readonly-agent-gate",
   "version": "0.3.0",
-  "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. Needs bun.",
+  "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans under docs/plans with Write/Edit. Needs bun.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
@@ -12,6 +12,18 @@
       "title": "Extra read-only agents",
       "description": "More agent types to gate, separated by commas or spaces. A bare name (security-auditor) also matches any plugin's agent of that name; a scoped name (security-auditor:security-auditor) matches only itself.",
       "default": ""
+    },
+    "plan_writers": {
+      "type": "string",
+      "title": "Plan-writing agents",
+      "description": "More read-only agent types that may save .md plans in the plan directories with Write, Edit or MultiEdit (never Bash or NotebookEdit), separated by commas or spaces. architect is always one. Names match like extra_agents.",
+      "default": ""
+    },
+    "plan_dirs": {
+      "type": "string",
+      "title": "Plan directories",
+      "description": "Where plan-writing agents may save .md files, relative to the project root and separated by commas; subdirectories count. Absolute paths, '..', and paths into .git or .claude are ignored. Blank means docs/plans.",
+      "default": "docs/plans"
     }
   }
 }

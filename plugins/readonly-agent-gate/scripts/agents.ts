@@ -20,11 +20,15 @@ export const DEFAULT_AGENTS: readonly string[] = [
 // and `tofu fmt`. cloud-ops-guard blocks its live verbs instead. web-perf-auditor and
 // browser-tester are not listed either; add them through `extra_agents` if wanted.
 
+// The read-only agents that may also save Markdown plans in the plan directories (plans.ts),
+// plus the plugin's `plan_writers` option. Listed exactly, like DEFAULT_AGENTS.
+export const DEFAULT_PLAN_WRITERS: readonly string[] = ['architect', 'architect:architect']
+
 const NAME = /^[A-Za-z0-9_.@-]+(:[A-Za-z0-9_.@-]+)*$/
 const MAX_OPTION = 4096
 const MAX_NAME = 128
 
-// The `extra_agents` option: names separated by commas or whitespace. A JSON array of strings
+// The `extra_agents` and `plan_writers` options: names separated by commas or whitespace. A JSON array of strings
 // is accepted too, in case the value arrives as a list. Invalid names are ignored.
 export function parseExtra(raw: string | undefined): string[] {
   if (!raw) return []
@@ -43,6 +47,15 @@ export function parseExtra(raw: string | undefined): string[] {
 // agent of that name (`reviewer` matches `security:reviewer`), so a user-listed agent is gated
 // however it is installed; the defaults are listed exactly and match only themselves.
 export function isReadOnly(type: string, extra: readonly string[] = []): boolean {
-  if (DEFAULT_AGENTS.includes(type)) return true
+  return listed(type, DEFAULT_AGENTS, extra)
+}
+
+// Whether a read-only agent may also write plans. The `plan_writers` names match like `extra_agents`.
+export function isPlanWriter(type: string, extra: readonly string[] = []): boolean {
+  return listed(type, DEFAULT_PLAN_WRITERS, extra)
+}
+
+function listed(type: string, defaults: readonly string[], extra: readonly string[]): boolean {
+  if (defaults.includes(type)) return true
   return extra.some((name) => type === name || (!name.includes(':') && type.endsWith(`:${name}`)))
 }

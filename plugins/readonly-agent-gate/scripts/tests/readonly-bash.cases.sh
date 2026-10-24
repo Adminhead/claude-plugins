@@ -18,8 +18,8 @@ READ_ONLY=(architect architect:architect reviewer reviewer:reviewer debugger deb
   open-source-release-audit open-source-release-audit:open-source-release-audit)
 # Every payload carries a subagent identity; the dispatch cases at the end vary it.
 ID='"agent_type":"'"$AGENT"'","agent_id":"a1"'
-# The option is the hook's, never inherited from the shell running the cases.
-unset CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS
+# The options and the project root are the hook's, never inherited from the shell running the cases.
+unset CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS CLAUDE_PLUGIN_OPTION_PLAN_WRITERS CLAUDE_PLUGIN_OPTION_PLAN_DIRS CLAUDE_PROJECT_DIR
 
 invoke() { # invoke <gate path>: runs a gate the way hooks.json does, payload on stdin
   bun --no-env-file --config=/dev/null "$1"
@@ -1318,6 +1318,30 @@ pad allow 'redirect into $TMPDIR' - 'echo x > /var/tmp/u1/r.txt' TMPDIR=/var/tmp
 pad allow 'redirect into /tmp/claude-1000' - 'echo x > /tmp/claude-1000/p/scratchpad/r.sh'
 as block 'agent_id without agent_type' - a1
 as block 'agent_id with empty agent_type' '' a1
+
+# A plan writer's plan directory is open to Write/Edit only: its Bash stays read-only there, and
+# the block message points at the file tools.
+plan() { # plan <expect> <label> <agent_type> <command>
+  local json rc=0 err
+  json=$(jq -n --arg c "$4" --arg t "$3" '{tool_name:"Bash",tool_input:{command:$c},agent_type:$t,agent_id:"a1",cwd:"/home/u/repo"}')
+  err=$(printf '%s' "$json" | CLAUDE_PROJECT_DIR=/home/u/repo invoke "$HOOK" 2>&1 >/dev/null) || rc=$?
+  if { [[ $1 == block && $rc -eq 2 && "$err" != *"internal error"* ]] || [[ $1 == allow && $rc -eq 0 ]]; } &&
+    { [[ $3 != architect* || $1 == allow ]] || [[ "$err" == *"To save a plan, use Write or Edit on a .md file under docs/plans/"* ]]; }; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf 'FAIL (plan dir %s, rc=%s): %s\n  %s\n' "$1" "$rc" "$2" "$err"
+  fi
+}
+for t in architect architect:architect reviewer:reviewer debugger:debugger; do
+  plan block "$t redirect into the plan dir" "$t" 'echo x > docs/plans/a.md'
+  plan block "$t append to a plan file" "$t" 'echo x >> /home/u/repo/docs/plans/a.md'
+  plan block "$t tee into the plan dir" "$t" 'cat /tmp/p.md | tee docs/plans/a.md'
+  plan block "$t cp into the plan dir" "$t" 'cp /tmp/p.md docs/plans/a.md'
+  plan block "$t mkdir in the plan dir" "$t" 'mkdir -p docs/plans/new'
+  plan block "$t sed -i on a plan file" "$t" 'sed -i s/a/b/ docs/plans/a.md'
+  plan allow "$t reads the plan dir" "$t" 'ls docs/plans'
+done
 
 # The checker run directly (no gate, no identity) blocks a write and allows a read.
 for spec in "block:$touch_cmd" "allow:ls"; do

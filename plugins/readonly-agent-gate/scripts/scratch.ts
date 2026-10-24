@@ -83,7 +83,7 @@ const errno = (e: unknown): string => (e as NodeJS.ErrnoException)?.code ?? Stri
 // (`realpathSync.native`, since the JS realpath folds `..` before reading links), a dangling
 // symlink after it through its target, and the missing rest lexically. Returns the resolved
 // path, or an error code when the path cannot be read (ELOOP, EACCES, ...).
-function resolve(path: string, hops = 0): string | { error: string } {
+export function resolve(path: string, hops = 0): string | { error: string } {
   const comps = path.split('/').filter(c => c !== '' && c !== '.')
   let k = comps.length
   let real = ''
@@ -143,10 +143,15 @@ function destCheck(path: string): string | null {
   const real = resolve(path)
   if (typeof real !== 'string') return `'${path}' cannot be resolved (${real.error})`
   if (!underRoots(real)) return `'${path}' resolves to '${real}', outside scratch`
+  return hardLinkCheck(path, real, 'scratch')
+}
+
+// Refuses a resolved regular file with more than one hard link, which may share a file outside
+// `area`. Directories have nlink > 1 by design.
+export function hardLinkCheck(path: string, real: string, area: string): string | null {
   try {
     const st = statSync(real)
-    // Directories have nlink > 1 by design.
-    if (st.isFile() && st.nlink > 1) return `'${path}' is a hard link (${st.nlink} links), which may share a file outside scratch`
+    if (st.isFile() && st.nlink > 1) return `'${path}' is a hard link (${st.nlink} links), which may share a file outside ${area}`
   } catch (e) {
     const code = errno(e)
     if (code !== 'ENOENT' && code !== 'ENOTDIR') return `'${path}' cannot be read (${code})`
@@ -161,23 +166,29 @@ const FILE_TOOLS: Record<string, string> = {
   NotebookEdit: 'notebook_path',
 }
 
-// Checks a file-writing tool call from a parsed hook payload. Returns null to allow, or the
-// reason to block. A relative path resolves against the payload's `cwd`.
-export function checkFileWrite(h: Record<string, unknown>): string | null {
+// The absolute path a file-writing tool call targets, or why it has none. A relative path
+// resolves against the payload's `cwd`.
+export function targetPath(h: Record<string, unknown>): { tool: string; full: string } | { error: string } {
   const tool = h.tool_name
   const key = typeof tool === 'string' && Object.hasOwn(FILE_TOOLS, tool) ? FILE_TOOLS[tool] : null
-  if (key === null) return `tool '${String(tool)}' is not allowed for this agent`
-  setScratchRoots(h.scratchpad_dir)
+  if (key === null) return { error: `tool '${String(tool)}' is not allowed for this agent` }
   const ti = h.tool_input
   const path = typeof ti === 'object' && ti !== null && !Array.isArray(ti) ? (ti as Record<string, unknown>)[key] : undefined
-  if (typeof path !== 'string' || path === '' || path.length > 4096 || path.includes('\0')) return `${tool} input has no usable ${key}`
-  if (path.startsWith('~')) return `${tool} path '${path}' starts with ~, which is not expanded; use an absolute scratch path`
-  let full = path
-  if (!path.startsWith('/')) {
-    const cwd = h.cwd
-    if (typeof cwd !== 'string' || !cwd.startsWith('/')) return `${tool} on relative path '${path}' without an absolute cwd`
-    full = joinPath(cwd, path)
-  }
+  if (typeof path !== 'string' || path === '' || path.length > 4096 || path.includes('\0')) return { error: `${tool} input has no usable ${key}` }
+  if (path.startsWith('~')) return { error: `${tool} path '${path}' starts with ~, which is not expanded; use an absolute path` }
+  if (path.startsWith('/')) return { tool: tool as string, full: path }
+  const cwd = h.cwd
+  if (typeof cwd !== 'string' || !cwd.startsWith('/') || cwd.length > 4096) return { error: `${tool} on relative path '${path}' without an absolute cwd` }
+  return { tool: tool as string, full: joinPath(cwd, path) }
+}
+
+// Checks a file-writing tool call from a parsed hook payload. Returns null to allow, or the
+// reason to block.
+export function checkFileWrite(h: Record<string, unknown>): string | null {
+  const t = targetPath(h)
+  if ('error' in t) return t.error
+  setScratchRoots(h.scratchpad_dir)
+  const { tool, full } = t
   // The kernel reads `a/../b` through the link a may be; a writer that normalizes the path first
   // drops `a/..`. Both readings must stay in scratch.
   const norm = normpath(full)

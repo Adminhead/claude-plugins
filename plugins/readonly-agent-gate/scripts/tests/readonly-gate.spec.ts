@@ -2,7 +2,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { linkSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DEFAULT_AGENTS, isReadOnly, parseExtra } from '../agents.ts'
+import { DEFAULT_AGENTS, DEFAULT_PLAN_WRITERS, isPlanWriter, isReadOnly, parseExtra } from '../agents.ts'
+import { parsePlanDirs, projectRoot } from '../plans.ts'
 
 describe('agents', () => {
   test('defaults gate the scoped and bare read-only agents only', () => {
@@ -35,15 +36,64 @@ describe('agents', () => {
     expect(parseExtra('["x", "y:z", 3]')).toEqual(['x', 'y:z'])
     expect(parseExtra('ok, $bad, a:, :b, ' + 'n'.repeat(200))).toEqual(['ok'])
   })
+
+  test('only architect writes plans by default; plan_writers adds names like extra_agents', () => {
+    expect(DEFAULT_PLAN_WRITERS).toEqual(['architect', 'architect:architect'])
+    expect(isPlanWriter('architect')).toBe(true)
+    expect(isPlanWriter('architect:architect')).toBe(true)
+    for (const t of ['reviewer', 'reviewer:reviewer', 'debugger:debugger', 'security-auditor', 'other:architect', 'coder:coder']) {
+      expect(isPlanWriter(t)).toBe(false)
+    }
+    const extra = parseExtra('reviewer, db:dba')
+    expect(isPlanWriter('reviewer:reviewer', extra)).toBe(true)
+    expect(isPlanWriter('db:dba', extra)).toBe(true)
+    expect(isPlanWriter('other:dba', extra)).toBe(false)
+    expect(isPlanWriter('debugger:debugger', extra)).toBe(false)
+  })
+})
+
+describe('plan options', () => {
+  test('plan_dirs defaults to docs/plans when unset or blank', () => {
+    expect(parsePlanDirs(undefined)).toEqual(['docs/plans'])
+    expect(parsePlanDirs('')).toEqual(['docs/plans'])
+    expect(parsePlanDirs('  \n')).toEqual(['docs/plans'])
+  })
+
+  test('plan_dirs entries are normalized and bad ones ignored', () => {
+    expect(parsePlanDirs(' notes/plans/ , ./design,design , rfcs//drafts')).toEqual(['notes/plans', 'design', 'rfcs/drafts'])
+    expect(parsePlanDirs('["a", "b/c", 3, "/abs"]')).toEqual(['a', 'b/c'])
+    expect(parsePlanDirs('/abs, ../up, a/../b, , ., ./, .git/x, .claude/agents, x/.Claude, ~/p, a\tb, good'))
+      .toEqual(['good'])
+    expect(parsePlanDirs('..')).toEqual([])
+    expect(parsePlanDirs('x'.repeat(600))).toEqual([])
+    expect(parsePlanDirs(Array.from({ length: 40 }, (_, i) => `d${i}`).join(',')).length).toBe(16)
+  })
+
+  test('the project root is CLAUDE_PROJECT_DIR, else the payload cwd', () => {
+    expect(projectRoot('/home/u/proj', '/home/u/other')).toBe('/home/u/proj')
+    expect(projectRoot('/home/u/proj/', undefined)).toBe('/home/u/proj')
+    expect(projectRoot(undefined, '/home/u/other')).toBe('/home/u/other')
+    expect(projectRoot('', '/home/u/other')).toBe('/home/u/other')
+    expect(projectRoot('relative', '/home/u/other')).toBe(null)   // set but unusable: no fallback
+    expect(projectRoot('/', '/home/u/other')).toBe(null)
+    expect(projectRoot(undefined, 5)).toBe(null)
+    expect(projectRoot(`/${'x'.repeat(5000)}`, '/home/u/other')).toBe(null)
+  })
 })
 
 const GATE = join(import.meta.dir, '..', 'readonly-gate.ts')
 const SP = '/home/u/.claude/scratch/abc'
 
-function gate(payload: Record<string, unknown>): { code: number; err: string } {
+// The options and the project root are the hook's, never inherited from the shell running the spec.
+const BASE_ENV = {
+  TMPDIR: '', CLAUDE_PROJECT_DIR: '', CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS: '',
+  CLAUDE_PLUGIN_OPTION_PLAN_WRITERS: '', CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '',
+}
+
+function gate(payload: Record<string, unknown>, env: Record<string, string> = {}): { code: number; err: string } {
   const r = Bun.spawnSync(['bun', '--no-env-file', '--config=/dev/null', GATE], {
     stdin: new TextEncoder().encode(JSON.stringify(payload)), stdout: 'pipe', stderr: 'pipe',
-    env: { ...process.env, TMPDIR: '' },
+    env: { ...process.env, ...BASE_ENV, ...env },
   })
   return { code: r.exitCode ?? -1, err: r.stderr.toString() }
 }
@@ -127,6 +177,192 @@ describe('file tools', () => {
   test('other agents and the main thread pass', () => {
     expect(gate({ agent_type: 'coder:coder', agent_id: 'a2', tool_name: 'Write', tool_input: { file_path: '/home/u/repo/x' } }).code).toBe(0)
     expect(gate({ tool_name: 'Write', tool_input: { file_path: '/home/u/repo/x' } }).code).toBe(0)
+  })
+})
+
+// Plan files under a project root that does not exist: missing parts resolve lexically, so these
+// cases need no filesystem. The root is the payload cwd unless CLAUDE_PROJECT_DIR is set.
+const as = (agent_type: string, tool_name: string, tool_input: unknown, env: Record<string, string> = {}, extra: Record<string, unknown> = {}) =>
+  gate({ agent_type, agent_id: 'a1', tool_name, tool_input, cwd: '/home/u/repo', scratchpad_dir: SP, ...extra }, env)
+
+describe('plan files', () => {
+  const R = '/home/u/repo'
+
+  test('architect may write a new plan file, nested or not, with Write, Edit and MultiEdit', () => {
+    for (const file_path of [`${R}/docs/plans/a.md`, 'docs/plans/a.md', `${R}/docs/plans/sub/deep/b.md`, './docs/plans/c.md', `${R}/docs/plans//d.md`]) {
+      expect(ro('Write', { file_path, content: 'x' }).code).toBe(0)
+    }
+    expect(ro('Edit', { file_path: `${R}/docs/plans/a.md` }).code).toBe(0)
+    expect(ro('MultiEdit', { file_path: `${R}/docs/plans/a.md` }).code).toBe(0)
+    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }).code).toBe(0)
+  })
+
+  test('NotebookEdit and Bash get no plan allowance', () => {
+    expect(ro('NotebookEdit', { notebook_path: `${R}/docs/plans/a.md` }).code).toBe(2)
+    for (const command of ['echo x > docs/plans/a.md', 'tee docs/plans/a.md < /tmp/x', 'cp /tmp/a.md docs/plans/a.md', 'mkdir -p docs/plans/x']) {
+      const r = ro('Bash', { command })
+      expect(r.code).toBe(2)
+      expect(r.err).toContain('To save a plan, use Write or Edit on a .md file under docs/plans/')
+    }
+  })
+
+  test('non-.md files, other repo paths and escapes are blocked', () => {
+    for (const file_path of [`${R}/docs/plans/a.txt`, `${R}/docs/plans/a.md.sh`, `${R}/docs/plans/.md`, `${R}/docs/plans/a.MD`,
+      `${R}/docs/plans/`, `${R}/docs/plans/sub.md/`, `${R}/docs/plans`, `${R}/README.md`, `${R}/docs/a.md`, `${R}/docs/plansx/a.md`,
+      'docs/plans/../a.md', 'docs/plans/../../x.md', `${R}/docs/plans/../../../etc/x.md`, 'docs/plans/missing/../../a.md',
+      `${R}/docs/plans/CLAUDE.md`, `${R}/docs/plans/sub/agents.md`, `${R}/docs/plans/claude.local.md`, '/home/u/other/docs/plans/a.md']) {
+      const r = ro('Write', { file_path })
+      expect(r.code).toBe(2)
+      expect(r.err).toContain('read-only apart from plans')
+      expect(r.err).toContain('docs/plans/')
+    }
+    expect(ro('Write', { file_path: '~/docs/plans/a.md' }).code).toBe(2)
+  })
+
+  test('the other read-only agents are still blocked from the plan directory', () => {
+    for (const t of ['reviewer', 'reviewer:reviewer', 'debugger:debugger', 'security-auditor:security-auditor', 'open-source-release-audit']) {
+      const r = as(t, 'Write', { file_path: `${R}/docs/plans/a.md` })
+      expect(r.code).toBe(2)
+      expect(r.err).not.toContain('apart from plans')
+      expect(as(t, 'Bash', { command: 'echo x > docs/plans/a.md' }).err).not.toContain('To save a plan')
+    }
+  })
+
+  test('CLAUDE_PROJECT_DIR sets the root over the payload cwd', () => {
+    const env = { CLAUDE_PROJECT_DIR: R }
+    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, env, { cwd: '/home/u/elsewhere' }).code).toBe(0)
+    expect(as('architect', 'Write', { file_path: '/home/u/elsewhere/docs/plans/a.md' }, env, { cwd: '/home/u/elsewhere' }).code).toBe(2)
+    expect(as('architect', 'Write', { file_path: 'a.md' }, env, { cwd: `${R}/docs/plans` }).code).toBe(0)
+    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, { CLAUDE_PROJECT_DIR: 'repo' }).code).toBe(2)
+    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, { CLAUDE_PROJECT_DIR: '/' }).code).toBe(2)
+    expect(as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, {}, { cwd: undefined }).code).toBe(2)
+  })
+
+  test('custom plan_dirs replace the default, and bad entries are ignored', () => {
+    const env = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: 'notes/plans, design' }
+    expect(as('architect', 'Write', { file_path: `${R}/notes/plans/a.md` }, env).code).toBe(0)
+    expect(as('architect', 'Write', { file_path: `${R}/design/x/a.md` }, env).code).toBe(0)
+    const r = as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, env)
+    expect(r.code).toBe(2)
+    expect(r.err).toContain('notes/plans/, design/')
+    expect(as('architect', 'Write', { file_path: `${R}/rfcs/a.md` }, { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '["rfcs"]' }).code).toBe(0)
+    const bad = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: `${R}/abs, ../up, a/../b, , ., .claude/agents, ~/p, good` }
+    for (const file_path of [`${R}/abs/a.md`, `${R}${R}/abs/a.md`, '/home/u/up/a.md', `${R}/b/a.md`, `${R}/a/b/a.md`, `${R}/a.md`,
+      `${R}/.claude/agents/a.md`, `${R}/~/p/a.md`, `${R}/docs/plans/a.md`]) {
+      expect(as('architect', 'Write', { file_path }, bad).code).toBe(2)
+    }
+    expect(as('architect', 'Write', { file_path: `${R}/good/a.md` }, bad).code).toBe(0)
+    const none = as('architect', 'Write', { file_path: `${R}/docs/plans/a.md` }, { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '../x' })
+    expect(none.code).toBe(2)
+    expect(none.err).toContain('no plan directories')
+  })
+
+  test('plan_writers adds read-only agents; others stay blocked', () => {
+    const env = { CLAUDE_PLUGIN_OPTION_PLAN_WRITERS: 'reviewer, db:dba', CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS: 'db:dba' }
+    expect(as('reviewer:reviewer', 'Write', { file_path: `${R}/docs/plans/a.md` }, env).code).toBe(0)
+    expect(as('db:dba', 'Write', { file_path: `${R}/docs/plans/a.md` }, env).code).toBe(0)
+    expect(as('db:dba', 'Write', { file_path: `${R}/src/a.md` }, env).code).toBe(2)
+    expect(as('debugger:debugger', 'Write', { file_path: `${R}/docs/plans/a.md` }, env).code).toBe(2)
+    expect(as('reviewer:reviewer', 'Bash', { command: 'echo x > docs/plans/a.md' }, env).code).toBe(2)
+  })
+})
+
+// Plan files in a real project. It sits in this checkout, outside every scratch root (unless the
+// checkout is under /tmp), so only the plan rule can allow a write there.
+describe('plan files on the filesystem', () => {
+  const repoFile = join(import.meta.dir, '..', 'scratch.ts')
+  let p = ''        // the project
+  let out = ''      // a directory outside it
+  let pLink = ''    // a symlink to the project
+  let pOut = ''     // a project whose docs/plans is a symlink out of it
+  let pIn = ''      // a project whose docs/plans is a symlink to another of its directories
+  const w = (root: string, file_path: string, tool = 'Write', cwd = root) =>
+    as('architect:architect', tool, { file_path }, { CLAUDE_PROJECT_DIR: root }, { cwd })
+  beforeAll(() => {
+    p = mkdtempSync(join(import.meta.dir, 'plan-project-'))
+    out = mkdtempSync(join(import.meta.dir, 'plan-outside-'))
+    pOut = mkdtempSync(join(import.meta.dir, 'plan-symdir-'))
+    pIn = mkdtempSync(join(import.meta.dir, 'plan-indir-'))
+    pLink = `${p}-link`
+    symlinkSync(p, pLink)
+    mkdirSync(`${p}/docs/plans/sub`, { recursive: true })
+    mkdirSync(`${p}/src`)
+    writeFileSync(`${p}/README.md`, 'x')
+    writeFileSync(`${p}/docs/plans/existing.md`, 'x')
+    writeFileSync(`${p}/docs/plans/notes.txt`, 'x')
+    writeFileSync(`${out}/target.md`, 'x')
+    symlinkSync(`${p}/README.md`, `${p}/docs/plans/readme.md`)
+    symlinkSync(repoFile, `${p}/docs/plans/repo.md`)
+    symlinkSync(`${out}/target.md`, `${p}/docs/plans/outside.md`)
+    symlinkSync('existing.md', `${p}/docs/plans/inner.md`)
+    symlinkSync('notes.txt', `${p}/docs/plans/txt.md`)
+    symlinkSync(`${p}/src/new.md`, `${p}/docs/plans/dangling.md`)
+    symlinkSync(`${p}/src`, `${p}/docs/plans/srclink`)
+    linkSync(`${p}/README.md`, `${p}/docs/plans/hard.md`)
+    mkdirSync(`${pOut}/docs`)
+    symlinkSync(out, `${pOut}/docs/plans`)
+    mkdirSync(`${pIn}/docs`)
+    mkdirSync(`${pIn}/notes`)
+    symlinkSync(`${pIn}/notes`, `${pIn}/docs/plans`)
+  })
+  afterAll(() => {
+    for (const d of [p, out, pOut, pIn, pLink]) rmSync(d, { recursive: true, force: true })
+  })
+
+  test('new and existing plan files pass, nested or through a link that stays inside', () => {
+    expect(w(p, `${p}/docs/plans/new.md`).code).toBe(0)
+    expect(w(p, `${p}/docs/plans/existing.md`).code).toBe(0)
+    expect(w(p, `${p}/docs/plans/existing.md`, 'Edit').code).toBe(0)
+    expect(w(p, `${p}/docs/plans/existing.md`, 'MultiEdit').code).toBe(0)
+    expect(w(p, `${p}/docs/plans/sub/new.md`).code).toBe(0)
+    expect(w(p, `${p}/docs/plans/sub/newdir/new.md`).code).toBe(0)
+    expect(w(p, `${p}/docs/plans/sub/../new.md`).code).toBe(0)
+    expect(w(p, `${p}/docs/plans/inner.md`).code).toBe(0)
+    expect(w(p, 'docs/plans/new.md').code).toBe(0)
+    expect(w(p, '../docs/plans/new.md', 'Write', `${p}/src`).code).toBe(0)
+  })
+
+  test('a project root that is itself a symlink works either way round', () => {
+    expect(w(pLink, `${pLink}/docs/plans/new.md`).code).toBe(0)
+    expect(w(pLink, `${p}/docs/plans/new.md`).code).toBe(0)
+    expect(w(p, `${pLink}/docs/plans/new.md`).code).toBe(0)
+  })
+
+  test('a plan file that is a symlink or hard link out of the plan directory is blocked', () => {
+    for (const name of ['readme.md', 'repo.md', 'outside.md', 'dangling.md']) {
+      const r = w(p, `${p}/docs/plans/${name}`)
+      expect(r.code).toBe(2)
+      expect(r.err).toContain('resolves to')
+      expect(w(p, `${p}/docs/plans/${name}`, 'Edit').code).toBe(2)
+    }
+    expect(w(p, `${p}/docs/plans/txt.md`).err).toContain('not a .md file')
+    expect(w(p, `${p}/docs/plans/txt.md`).code).toBe(2)
+    const hard = w(p, `${p}/docs/plans/hard.md`)
+    expect(hard.code).toBe(2)
+    expect(hard.err).toContain('hard link')
+  })
+
+  test('.. through a symlinked directory, or after a missing part, is blocked', () => {
+    expect(w(p, `${p}/docs/plans/srclink/new.md`).code).toBe(2)
+    expect(w(p, `${p}/docs/plans/srclink/../new.md`).code).toBe(2)   // the kernel lands in the project root
+    expect(w(p, `${p}/docs/plans/missing/../new.md`).code).toBe(2)
+    expect(w(p, `${p}/docs/plans/notes.txt/../new.md`).code).toBe(2)
+    expect(w(p, `${p}/docs/plans/../../README.md`).code).toBe(2)
+  })
+
+  test('a symlinked plan directory is not used', () => {
+    const r = w(pOut, `${pOut}/docs/plans/a.md`)
+    expect(r.code).toBe(2)
+    expect(r.err).toContain('symlink')
+    expect(w(pOut, `${out}/a.md`).code).toBe(2)
+    expect(w(pIn, `${pIn}/docs/plans/a.md`).code).toBe(2)
+    expect(w(pIn, `${pIn}/notes/a.md`).code).toBe(2)
+  })
+
+  test('the other read-only agents are blocked from a real plan directory', () => {
+    const r = as('reviewer:reviewer', 'Write', { file_path: `${p}/docs/plans/new.md` }, { CLAUDE_PROJECT_DIR: p }, { cwd: p })
+    expect(r.code).toBe(2)
+    expect(as('debugger', 'Edit', { file_path: `${p}/docs/plans/existing.md` }, { CLAUDE_PROJECT_DIR: p }, { cwd: p }).code).toBe(2)
   })
 })
 
