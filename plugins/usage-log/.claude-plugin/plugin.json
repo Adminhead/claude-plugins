@@ -1,6 +1,6 @@
 {
   "name": "usage-log",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mod that logs skill use and the skill listing per prompt to local JSONL, for finding skills that should have fired and didn't. Ships usage-report, which summarizes this log and the bash-rules log.",
   "author": {
     "name": "AdminHead",

@@ -2,8 +2,17 @@
 // under ${CLAUDE_USAGE_LOG_DIR:-${XDG_STATE_HOME:-~/.local/state}/claude-usage}. Pure: the caller runs the argv this
 // returns through `$.process.run` with the line on stdin, because `$.fs.write` replaces a whole file and has no append.
 // Canonical copy in scripts/shared/log/; `scripts/plugins.py sync-shared` copies it into each plugin.
+//
+// Trust model: the directory comes from the user's environment and is trusted, and the override stays because
+// usage-report points a child `claude -p` at a scratch directory with it. The prune deletes only regular files named
+// `<stream>-YYYY-MM-DD.jsonl` for a stream in STREAMS, directly in that directory, so a misconfigured or project-set
+// directory cannot lose unrelated files (session transcripts are `<uuid>.jsonl`). It makes no claim against someone
+// who controls the filesystem, so there is no ownership or link check on the directory.
 
 export const SCHEMA = 1
+
+// Every stream written to the log directory, and so every file name the prune may delete.
+export const STREAMS: readonly string[] = ['usage-log', 'bash-rules']
 
 // A logged string field is cut to this many characters, after redaction.
 export const MAX_FIELD = 4000
@@ -48,20 +57,23 @@ export function line(kind: string, fields: Readonly<Record<string, unknown>>, no
 
 // `<stream>-YYYY-MM-DD.jsonl` in UTC. Each writer has its own stream, so no two processes append to one file.
 export function logFile(stream: string, now: number): string {
-  if (!/^[a-z][a-z0-9-]*$/.test(stream)) throw new Error(`bad log stream name: ${stream}`)
+  if (!STREAMS.includes(stream)) throw new Error(`unknown log stream: ${stream}`)
   return `${stream}-${new Date(now).toISOString().slice(0, 10)}.jsonl`
 }
+
+// A `find` test matching the files logFile names, and nothing else.
+const OWN_FILES = `\\( ${STREAMS.map(s => `-name '${s}-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].jsonl'`).join(' -o ')} \\)`
 
 const DIR = 'd="${CLAUDE_USAGE_LOG_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/claude-usage}"'
 
 // Appends stdin to the stream's file. The directory and files are private to the user.
 export const appendArgv = (file: string): string[] => ['sh', '-c', `umask 077; ${DIR}; mkdir -p "$d" && cat >> "$d/$1"`, 'sh', file]
 
-// Deletes log files older than `days` days.
+// Deletes this log's own files older than `days` days.
 export const pruneArgv = (days: number): string[] => [
   'sh',
   '-c',
-  `${DIR}; [ -d "$d" ] && find "$d" -maxdepth 1 -type f -name '*.jsonl' -mtime +"$1" -delete; exit 0`,
+  `${DIR}; [ -d "$d" ] && find "$d" -maxdepth 1 -type f ${OWN_FILES} -mtime +"$1" -delete; exit 0`,
   'sh',
   String(Math.max(1, Math.floor(days))),
 ]

@@ -400,16 +400,83 @@ export function reparse(text: string, depth: number): ShellParse {
 
 const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh'])
 
-// The script text of `sh|bash|zsh|dash -c STR` (a bare name or a path; bundled flags such as
-// `-lc` included) and of `eval` with all-literal arguments. Null for any other command, or when
-// the script is not literal. A caller that wraps shells (sudo, env, ...) strips the wrapper first.
+// Multi-call binaries and the shell applets of theirs that take `-c` as sh does. The applet may be a path.
+const MULTICALL = new Map([
+  ['busybox', new Set(['sh', 'ash', 'bash'])],
+  ['toybox', new Set(['sh'])],
+])
+
+// fish's long options, each marked when it takes a value. fish reads them with getopt_long, so a
+// unique prefix (`--comm`) stands for the whole name.
+const FISH_LONG = new Map([
+  ['command', true], ['init-command', true], ['features', true], ['debug', true], ['debug-output', true],
+  ['debug-stack-frames', true], ['profile', true], ['profile-startup', true], ['interactive', false], ['login', false],
+  ['no-config', false], ['no-execute', false], ['private', false], ['print-rusage-self', false],
+  ['print-debug-categories', false], ['help', false], ['version', false],
+])
+// fish's short options that take a value; `c` and `C` hold commands.
+const FISH_VALUE = new Set(['c', 'C', 'p', 'd', 'o', 'f', 'D'])
+
+const base = (w: string | null | undefined): string | undefined => w?.split('/').pop()
+
+// The script text of `sh|bash|zsh|dash|ksh -c STR` (a bare name or a path; bundled flags such as
+// `-lc` included), of the same behind `busybox sh|ash|bash` or `toybox sh`, of `fish -c STR`, and of
+// `eval` with all-literal arguments. Null for any other command, or when the script is not literal.
+// A caller that wraps shells (sudo, env, ...) strips the wrapper first.
 export function nestedScript(argv: readonly (string | null)[]): string | null {
-  const name = argv[0]?.split('/').pop()
+  const name = base(argv[0])
   if (name === 'eval') {
     const args = argv[1] === '--' ? argv.slice(2) : argv.slice(1)
     return args.length > 0 && args.every(a => a !== null) ? args.join(' ') : null
   }
-  if (!name || !SHELLS.has(name)) return null
+  if (name === 'fish') return fishScript(argv)
+  const applets = name === undefined ? undefined : MULTICALL.get(name)
+  if (applets) {
+    const applet = base(argv[1])
+    return applet !== undefined && applets.has(applet) ? shScript(argv.slice(1)) : null
+  }
+  return name !== undefined && SHELLS.has(name) ? shScript(argv) : null
+}
+
+// fish runs the value of every `-c` (and first every `-C`, its init commands) in order, and stops
+// reading options at the first operand. Null when there is no `-c` or an option is not literal.
+function fishScript(argv: readonly (string | null)[]): string | null {
+  const init: string[] = []
+  const cmds: string[] = []
+  const take = (opt: string, value: string | null | undefined): boolean => {
+    if (value === null || value === undefined) return false
+    if (opt === 'c' || opt === 'command') cmds.push(value)
+    else if (opt === 'C' || opt === 'init-command') init.push(value)
+    return true
+  }
+  for (let i = 1; i < argv.length; i++) {
+    const a = argv[i]
+    if (a === null) return null
+    if (a === '--') break
+    if (a[0] !== '-' || a === '-') break
+    if (a.startsWith('--')) {
+      const eq = a.indexOf('=')
+      const given = eq < 0 ? a.slice(2) : a.slice(2, eq)
+      const hits = FISH_LONG.has(given) ? [given] : [...FISH_LONG.keys()].filter(k => k.startsWith(given))
+      if (hits.length !== 1) return null
+      const opt = hits[0]
+      if (!FISH_LONG.get(opt)) continue
+      if (!take(opt, eq < 0 ? argv[++i] : a.slice(eq + 1))) return null
+      continue
+    }
+    for (let j = 1; j < a.length; j++) {
+      const ch = a[j]
+      if (!FISH_VALUE.has(ch)) continue
+      // The value is the rest of the word, or the next word.
+      if (!take(ch, j + 1 < a.length ? a.slice(j + 1) : argv[++i])) return null
+      break
+    }
+  }
+  return cmds.length ? [...init, ...cmds].join('\n') : null
+}
+
+// The script of an sh-like shell's argv, read from argv[1] on.
+function shScript(argv: readonly (string | null)[]): string | null {
   // The script is the first word after the options, and `-c` may sit anywhere among them.
   let sawC = false
   let i = 1
