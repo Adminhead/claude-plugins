@@ -485,6 +485,14 @@ No meta or bundle is bumped, because no `dependencies` list changes.
   - inline-suppression asks in check-bypass-guard
   - bash-rules scan caching and timing tests
   - a shared `wrappers.ts`
+- **F9. Leftovers from the slice reviews (2026-10-23).** Each was reviewed, fixed to the level below and re-checked; these remain:
+  - check-bypass-guard: `env -C`, `sudo -D` and `doas -C` change directory without the new-file rule noticing. An alias already in a config file can still be called with `--no-verify`. Direct writes to `~/.gitconfig` or `~/.config/git/config`, `GIT_CONFIG_GLOBAL=…`, `install` or `dd` into `.git/hooks`, submodule `.git/modules/*/hooks`, lint sections of `pyproject.toml`/`setup.cfg`/`tox.ini`, writes through an existing symlink, and NotebookEdit are not covered.
+  - cloud-ops-guard: dynamic verbs for talosctl and omnictl, legacy `nix-shell -p … --run`, `uvx --from awscli aws …`, short aliases behind unknown wrappers (`watch k …`, `doas k …`, documented), and `-h` beside an unknown kubectl verb. `watch …; kubectl config use-context …` asks although it runs in sequence (kept on purpose).
+  - bash-rules: a brace list over 64 alternatives stays unknown (fails open), quotes inside a brace alternative are not stripped, GNU parallel templates with quote characters in their arguments are denied as parse errors, stdin-fed `xargs -I{}` templates and `{a..b}` sequence braces are not expanded, and masking misses `sshpass -p`, `redis-cli -a` and `docker login -p`.
+  - readonly-agent-gate: a planted relative symlink inside a tree copied with `cp -r/-a`, rsync or tar is not checked; `mv` of a hard-linked scratch file is over-blocked; `patch -r` and `sort --compress-program` are not checked.
+  - playwright-cli: `pw.sh` refuses any argument starting with `-s` (for example typing `-secret`), because playwright-cli also reads `-s<value>` as a session.
+  - Live checks still to run: the coder tiers and scribe with their new `tools:` allowlists (foreground and background, an MCP call, handback), browser-tester's `pw.sh` path, and architect writing a plan under `docs/plans/` (needs `CLAUDE_PROJECT_DIR` in subagent hooks).
+  - The planning skill saves plans to `.agents/plans/` (`plugins/planning/skills/planning/references/closing-review.md:29`), which is not a default `plan_dirs` entry.
 - **F8. Stale facts that need a source check (no edits planned):**
   - the .NET 8/9 end-of-support date and dotnet-upgrade-guide's chain
   - xunit.v3 4.x and MTP v2
