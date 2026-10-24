@@ -212,7 +212,7 @@
       "name": "coder",
       "source": "./plugins/coder",
       "description": "Coder agent, haiku tier. most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -435,7 +435,7 @@
     {
       "name": "mcp-health",
       "source": "./plugins/mcp-health",
-      "description": "A mod that shows `mcp: <server> \u2717` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
+      "description": "A mod that shows `mcp: <server> ✗` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -456,8 +456,8 @@
     {
       "name": "playwright-cli",
       "source": "./plugins/playwright-cli",
-      "description": "Drive a headless, isolated browser from Bash with playwright-cli: inspect pages, fill forms, take screenshots, debug console and network errors, and run smoke QA.",
-      "version": "0.1.0",
+      "description": "Drive a headless, isolated browser from Bash with playwright-cli through a verb-checked wrapper: inspect pages, fill forms, take screenshots, debug console and network errors, and run smoke QA.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -555,7 +555,7 @@
       "name": "scribe",
       "source": "./plugins/scribe",
       "description": "A documentation subagent that writes and updates READMEs, guides, docstrings, changelogs and Outline wiki documents, checking every claim against the code and marking anything it could not verify.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -596,8 +596,8 @@
     {
       "name": "test-run",
       "source": "./plugins/test-run",
-      "description": "Manual test-run command: detects the test runner, runs the tests affected by your changes, prints only compact failures, and fixes them in a bounded loop.",
-      "version": "0.1.0",
+      "description": "Manual test-run command: detects the test runner, runs the tests affected by your changes, prints only compact failures, and fixes them in a bounded loop. A custom --cmd needs run_custom.py and a prompt.",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -779,7 +779,7 @@
       "name": "aws-cloudwatch",
       "source": "./plugins/aws-cloudwatch",
       "description": "AWS incident investigation from CloudWatch alarms, metrics, Logs Insights and CloudTrail: blast radius, change correlation, timeline and per-resource health, with mutating fixes only after approval.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -793,7 +793,7 @@
       "name": "aws-well-architected",
       "source": "./plugins/aws-well-architected",
       "description": "AWS Well-Architected and cost review of a workload from its IaC and read-only live calls: per-pillar findings rated High, Medium or Low, plus right-sizing candidates backed by CloudWatch and Cost Explorer.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -806,7 +806,7 @@
     {
       "name": "cache-clock",
       "source": "./plugins/cache-clock",
-      "description": "A mod that shows when the prompt cache likely expires (`cache warm \u2192 ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
+      "description": "A mod that shows when the prompt cache likely expires (`cache warm → ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1087,7 +1087,7 @@
       "name": "security-scan",
       "source": "./plugins/security-scan",
       "description": "Manual security audit of a branch: gitleaks, semgrep, trivy, govulncheck and pip-audit in one script, subagent verification, a ranked findings table, plus CI and supply-chain trust checks and SBOM guidance.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -1142,7 +1142,7 @@
     {
       "name": "turn-stats",
       "source": "./plugins/turn-stats",
-      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s \u00b7 41k out \u00b7 cache 92%`).",
+      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s · 41k out · cache 92%`).",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1367,7 +1367,7 @@
       "name": "godot-mcp-setup",
       "source": "./plugins/godot-mcp-setup",
       "description": "Manual /godot-mcp-setup: installs the voidrot/godot-mcp editor addon into a Godot 4 project, enables it, reads its port and writes the project .mcp.json godot-editor entry after you approve the diff.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -1444,21 +1444,21 @@
       "name": "coder-critical",
       "source": "./plugins/coder-critical",
       "description": "Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "coder-high",
       "source": "./plugins/coder-high",
       "description": "Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "coder-max",
       "source": "./plugins/coder-max",
       "description": "Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. Not in orchestration-meta: install it per repo at local scope.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -1654,7 +1654,7 @@
       "name": "forgejo-release",
       "source": "./plugins/forgejo-release",
       "description": "Cut, edit and publish Forgejo or Codeberg releases with fj: tags, release notes, drafts and prereleases, and release assets.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
