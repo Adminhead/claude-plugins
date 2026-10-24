@@ -1,8 +1,9 @@
 ---
 name: coder-high
-description: Coder tier for deeper judgment (sonnet): a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.
+description: 'Coder tier for deeper judgment (sonnet): a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.'
 model: sonnet
 effort: medium
+tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding

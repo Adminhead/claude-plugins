@@ -1,8 +1,9 @@
 ---
 name: coder
-description: Default coder tier (haiku): most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.
+description: 'Default coder tier (haiku): most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.'
 model: haiku
 effort: medium
+tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding

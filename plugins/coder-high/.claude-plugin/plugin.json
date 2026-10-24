@@ -1,6 +1,6 @@
 {
   "name": "coder-high",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.",
   "author": {
     "name": "AdminHead",

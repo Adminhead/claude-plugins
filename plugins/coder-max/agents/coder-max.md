@@ -1,8 +1,9 @@
 ---
 name: coder-max
-description: Last-resort coder tier (fable): the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations.
+description: 'Last-resort coder tier (fable): the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations.'
 model: fable
 effort: high
+tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding
