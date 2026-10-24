@@ -30,7 +30,7 @@ aws cloudwatch get-metric-statistics --namespace AWS/Lambda --metric-name Durati
   --period 86400 --statistics Average Maximum
 ```
 
-`get-metric-statistics` returns at most 1,440 datapoints per call, which fits 7 days at hourly periods. Memory and disk for EC2 need the CloudWatch agent, and without it the right-sizing call rests on CPU alone, which you should say. When Compute Optimizer is enabled, `aws compute-optimizer get-ec2-instance-recommendations` and `get-lambda-function-recommendations` are a better starting point than raw CPU. `aws ce get-rightsizing-recommendation --service AmazonEC2 --region us-east-1` also exists.
+`get-metric-statistics` returns at most 1,440 datapoints per call, which fits 7 days at hourly periods. Memory and disk for EC2 need the CloudWatch agent, and without it the right-sizing call rests on CPU alone, which you should say. When Compute Optimizer is enabled, `aws compute-optimizer get-ec2-instance-recommendations` and `get-lambda-function-recommendations` are a better starting point than raw CPU. `aws ce get-rightsizing-recommendation --profile <profile> --service AmazonEC2 --region us-east-1` also exists.
 
 ## Candidate patterns
 

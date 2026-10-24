@@ -1,6 +1,6 @@
 {
   "name": "aws-well-architected",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "AWS Well-Architected and cost review of a workload from its IaC and read-only live calls: per-pillar findings rated High, Medium or Low, plus right-sizing candidates backed by CloudWatch and Cost Explorer.",
   "author": {
     "name": "AdminHead",
