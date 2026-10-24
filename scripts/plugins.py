@@ -3,7 +3,7 @@
 
   plugins.py new <name> --kind skill|agent|hook|mcp --description TEXT [--meta META ...]
   plugins.py register [--meta META=PLUGIN,PLUGIN ...]
-  plugins.py check
+  plugins.py check [--since REF]
   plugins.py sync-shared
   plugins.py upstream [PLUGIN ...] [--fetch]
   plugins.py catalog [--check]
@@ -152,7 +152,10 @@ def exclusive_meta_errors(manifests, own=None):
     return errors
 
 
-def check(root):
+def check(root, since=None, warnings=None):
+    """Return the list of errors. Warnings (optional checkouts, no node) are added to the `warnings` set."""
+    yaml = require_yaml()
+    warnings = set() if warnings is None else warnings
     market, entries, manifests = load_plugins(root)
     allowed = set(market.get("allowCrossMarketplaceDependenciesOn", []))
     own = market.get("name")
@@ -213,14 +216,20 @@ def check(root):
 
     if catalog_section(root, entries, manifests) not in (root / README).read_text():
         errors.append("README.md: plugin catalog is stale; run scripts/plugins.py catalog")
-    errors += eval_frontmatter_errors(root)
-    errors += godot_version_errors(root, entries, manifests)
-    errors += agent_spawn_errors(root)
+    docs = Docs(yaml)
+    skills = {}
+    errors += component_doc_errors(root, manifests, docs, skills)
+    errors += godot_version_errors(root, entries, manifests, docs)
+    errors += agent_spawn_errors(root, docs)
+    errors += category_errors(entries)
+    errors += eval_errors(root, entries, manifests, docs, skills, own, warnings)
     errors += exclusive_meta_errors(manifests, own)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
                 errors.append(f"{copy.relative_to(root)}: differs from {canonical.relative_to(root)}; run scripts/plugins.py sync-shared")
+    if since:
+        errors += since_errors(root, since)
     return errors
 
 
@@ -237,27 +246,163 @@ MAIN_THREAD_AGENTS = {"orchestration"}
 SPAWN_TOOLS = ("Agent", "Task", "Workflow")
 
 
-def agent_spawn_errors(root):
+# --- Frontmatter -------------------------------------------------------------
+
+YAML_HINT = "PyYAML is required: pip install pyyaml, or run: uv run --with pyyaml python3 scripts/plugins.py check"
+
+
+def require_yaml():
+    try:
+        import yaml
+    except ImportError:
+        print(YAML_HINT, file=sys.stderr)
+        raise SystemExit(2)
+    return yaml
+
+
+def strict_loader(yaml):
+    """A SafeLoader that rejects duplicate mapping keys."""
+    class Strict(yaml.SafeLoader):
+        pass
+
+    def mapping(loader, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = loader.construct_object(key_node, deep=True)
+            try:
+                hash(key)
+            except TypeError:
+                continue
+            if key in seen:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"duplicate key {key!r}", key_node.start_mark)
+            seen.add(key)
+        return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+    Strict.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)
+    return Strict
+
+
+class Docs:
+    """Parsed YAML frontmatter and case.yaml files, cached per path for one check run."""
+
+    def __init__(self, yaml):
+        self.yaml = yaml
+        self.loader = strict_loader(yaml)
+        self.cache = {}
+
+    def load_yaml(self, text, offset=0):
+        """Return (data, error) for a YAML document; `offset` is added to reported line numbers."""
+        try:
+            return self.yaml.load(text, Loader=self.loader), None
+        except self.yaml.YAMLError as e:
+            problem = getattr(e, "problem", None) or str(e).splitlines()[0]
+            mark = getattr(e, "problem_mark", None) or getattr(e, "context_mark", None)
+            where = f", line {mark.line + 1 + offset}" if mark else ""
+            return None, f"invalid YAML ({problem}{where})"
+
+    def md(self, path):
+        """Return (data, body, error) for a Markdown file with frontmatter. data is None on any error."""
+        if path not in self.cache:
+            self.cache[path] = self._md(path)
+        return self.cache[path]
+
+    def _md(self, path):
+        text = path.read_text(errors="replace")
+        start = re.match(r"---[ \t]*\r?\n", text)
+        if not start:
+            return None, text, "no YAML frontmatter"
+        rest = text[start.end():]
+        end = re.search(r"^---[ \t]*\r?$", rest, re.M)
+        if not end:
+            return None, text, "frontmatter is not closed with ---"
+        data, err = self.load_yaml(rest[:end.start()], offset=1)
+        body = rest[end.end():].lstrip("\r\n")
+        if err:
+            return None, body, err
+        if not isinstance(data, dict):
+            return None, body, "frontmatter must be a mapping"
+        return data, body, None
+
+    def yaml_file(self, path):
+        if path not in self.cache:
+            data, err = self.load_yaml(path.read_text(errors="replace"))
+            if err is None and not isinstance(data, dict):
+                data, err = None, "case.yaml must be a mapping"
+            self.cache[path] = (data, "", err)
+        return self.cache[path]
+
+
+NAME_FM_RE = re.compile(r"^[a-z0-9-]{1,64}$")
+DESCRIPTION_MAX = 1024
+
+
+def as_text(value):
+    """A frontmatter list-or-string field as one comma-separated string."""
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    return "" if value is None else str(value)
+
+
+def component_doc_errors(root, manifests, docs, skills):
+    """Parse every SKILL.md, agent and command; check name, description and agent-only fields.
+
+    Fills `skills` with {(plugin, skill): data} for the eval target rules."""
+    errors = []
+    for plugin, manifest in manifests.items():
+        if manifest is None:
+            continue
+        pdir = root / "plugins" / plugin
+        files = [(f, f.parent.name, "skill") for f in sorted(pdir.glob("skills/*/SKILL.md"))]
+        files += [(f, f.stem, "agent") for f in sorted(pdir.glob("agents/*.md"))]
+        files += [(f, f.stem, "command") for f in sorted(pdir.glob("commands/*.md"))]
+        for f, ident, kind in files:
+            rel = f.relative_to(root)
+            data, _, err = docs.md(f)
+            if err:
+                if kind != "command" or err != "no YAML frontmatter":
+                    errors.append(f"{rel}: {err}")
+                if kind == "skill":
+                    skills[(plugin, ident)] = {}  # still a skill, so eval graders aimed at it resolve
+                continue
+            name = data.get("name")
+            if kind != "command":
+                if not isinstance(name, str) or not name:
+                    errors.append(f"{rel}: frontmatter has no name")
+                elif name != ident:
+                    errors.append(f"{rel}: name {name!r} must equal {ident!r}")
+                elif not NAME_FM_RE.match(name):
+                    errors.append(f"{rel}: name {name!r} must match [a-z0-9-]{{1,64}}")
+            desc = data.get("description")
+            if desc is None and kind == "command":
+                pass
+            elif not isinstance(desc, str) or not desc.strip():
+                errors.append(f"{rel}: description must be a non-empty string")
+            elif len(desc) > DESCRIPTION_MAX:
+                errors.append(f"{rel}: description is {len(desc)} chars, the limit is {DESCRIPTION_MAX}")
+            if kind == "agent" and "autoCompactWindow" in data:
+                errors.append(f"{rel}: agents inherit the session window; remove autoCompactWindow")
+            if kind == "skill":
+                skills[(plugin, ident)] = data
+    return errors
+
+
+def agent_spawn_errors(root, docs):
     """Subagents must not start agents: no Agent/Task/Workflow in `tools`, or all denied in `disallowedTools`."""
     errors = []
     for f in sorted((root / "plugins").glob("*/agents/*.md")):
-        text = f.read_text(errors="replace")
-        if not text.startswith("---\n") or "\n---" not in text[4:]:
+        data, _, _ = docs.md(f)
+        if data is None or str(data.get("name", f.stem)) in MAIN_THREAD_AGENTS:
             continue
-        fm = text[4:text.index("\n---", 4)]
-        name = re.search(r"^name:\s*(\S+)", fm, re.M)
-        if (name.group(1) if name else f.stem) in MAIN_THREAD_AGENTS:
-            continue
-        tools = re.search(r"^tools:\s*(.+)$", fm, re.M)
-        denied = re.search(r"^disallowedTools:\s*(.+)$", fm, re.M)
+        tools, denied = data.get("tools"), as_text(data.get("disallowedTools"))
         listed = lambda line, tool: re.search(rf"(^|[,\s]){tool}($|[,\s(])", line) is not None
         rel = f.relative_to(root)
-        if tools:
-            bad = [t for t in SPAWN_TOOLS if listed(tools.group(1), t)]
+        if tools is not None:
+            bad = [t for t in SPAWN_TOOLS if listed(as_text(tools), t)]
             if bad:
                 errors.append(f"{rel}: a subagent must not list {', '.join(bad)} in tools")
         else:
-            missing = [t for t in ("Agent", "Workflow") if not (denied and listed(denied.group(1), t))]
+            missing = [t for t in ("Agent", "Workflow") if not listed(denied, t)]
             if missing:
                 errors.append(f"{rel}: without a tools allowlist, disallowedTools must include {', '.join(missing)}")
     return errors
@@ -266,7 +411,7 @@ def agent_spawn_errors(root):
 GODOT_MINOR = re.compile(r"\b4\.\d+")
 
 
-def godot_version_errors(root, entries, manifests):
+def godot_version_errors(root, entries, manifests, docs):
     """Godot plugin descriptions say only "Godot 4"; minor versions live in bodies and version-notes.md."""
     errors = []
     for name, manifest in manifests.items():
@@ -274,31 +419,450 @@ def godot_version_errors(root, entries, manifests):
             continue
         texts = {"plugin.json": manifest.get("description", "")}
         for skill in (root / "plugins" / name).glob("skills/*/SKILL.md"):
-            m = re.search(r"^description:\s*(.+)$", skill.read_text(errors="replace"), re.M)
-            if m:
-                texts[skill.relative_to(root / "plugins" / name).as_posix()] = m.group(1)
+            data, _, _ = docs.md(skill)
+            if data is not None and isinstance(data.get("description"), str):
+                texts[skill.relative_to(root / "plugins" / name).as_posix()] = data["description"]
         for where, text in texts.items():
             if GODOT_MINOR.search(text):
                 errors.append(f"{name}: {where} description names a Godot minor version; say \"Godot 4\"")
     return errors
 
 
-EVAL_FM_KEY = re.compile(r"^(name|description): (.*)$")
+# --- Marketplace categories --------------------------------------------------
+
+CATEGORIES = ("development", "meta", "bundle")
 
 
-def eval_frontmatter_errors(root):
-    """Unquoted `: ` in an eval's name or description breaks its YAML, and the case silently fails to load."""
+def category_errors(entries):
     errors = []
-    for f in sorted((root / "plugins").glob("*/evals/**/*.md")):
-        if "results" in f.parts:
+    for name, entry in entries.items():
+        cat = entry.get("category")
+        if cat not in CATEGORIES:
+            errors.append(f"{name}: marketplace category {cat!r} must be one of {', '.join(CATEGORIES)}")
+        elif (cat == "meta") != is_meta(name):
+            want = "meta" if is_meta(name) else "development or bundle"
+            errors.append(f"{name}: marketplace category is {cat!r}; it must be {want}")
+    return errors
+
+
+# --- Eval cases --------------------------------------------------------------
+
+# Skills that live outside this marketplace. An entry ending in `:*` is a plugin whose skill names are not listed here;
+# a regex naming that plugin counts as aimed at it.
+EXTERNAL_SKILLS = ("gradle-skills:*", "create-skill", "skill-creator")
+
+# Root suites that load the plugins of whole metas: expected plugins = closure of the metas, minus meta and bundle
+# plugins, minus `exclude`, plus `extra`. `3rd-party/<dir>` names an external checkout.
+ROOT_SUITES = {
+    "forges": {"metas": ("github-meta", "forgejo-meta"),
+               "extra": ("forgejo-release", "gh-release", "git-commit"), "exclude": ()},
+    "godot-meta": {"metas": ("godot-meta",), "extra": (), "exclude": ("grep-app",)},
+    "jvm": {"metas": ("java-meta", "scala-meta"),
+            "extra": ("play-framework", "spring-boot", "spring-boot-testing", "3rd-party/gradle-skills"),
+            "exclude": ("grep-app", "context7")},
+}
+
+PROMPT_KEYS = {"schema_version", "name", "description", "tags", "plugins", "runs", "expected_outcome", "model",
+               "max_turns", "timeout_seconds", "allowed_tools", "append_system_prompt", "env"}
+CASE_KEYS = {"schema_version", "name", "description", "tags", "plugins", "runs", "expected_outcome",
+             "execution", "context", "graders"}
+EXECUTION_KEYS = {"model", "max_turns", "timeout_seconds", "allowed_tools", "append_system_prompt", "env", "prompt"}
+CONTEXT_KEYS = {"scaffold_script", "history_file", "add_dirs"}
+GRADER_COMMON = {"type", "weight", "arm"}
+GRADER_KEYS = {
+    "regex": {"pattern", "flags", "match", "target"},
+    "tool_used": {"tool", "input_match", "min", "max"},
+    "tool_order": {"before", "after"},
+    "file_exists": {"path", "exists"},
+    "llm": {"criteria", "focus"},
+    "baseline": {"baseline_file", "criteria"},
+}
+GRADER_REQUIRED = {"regex": ("pattern",), "tool_used": ("tool",), "tool_order": ("before", "after"),
+                   "file_exists": ("path",), "baseline": ("baseline_file",)}
+TARGETS = ("last_message", "trace", "files", "mock_calls")
+MATCH_RE = re.compile(r"^(contains|not_contains|count:\d+)$")
+INLINE_FLAGS_RE = re.compile(r"\(\?[a-zA-Z-]+[:)]")
+ENV_KEY_RE = re.compile(r"^EVAL_[A-Z0-9_]*$")
+
+
+def is_int(value, low=0, high=None):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= low and (high is None or value <= high)
+
+
+def is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def check_keys(where, data, allowed, errors, label=""):
+    for key in sorted(map(str, set(data) - allowed)):
+        errors.append(f"{where}: unknown {label}key {key!r}")
+
+
+def case_dirs(root):
+    """Yield (case_dir, enclosing plugin or None, root suite or None) for every eval case."""
+    bases = [(b, b.parent.name, None) for b in sorted((root / "plugins").glob("*/evals"))]
+    bases += [(b, None, b.parent.name) for b in sorted((root / "evals").glob("*/evals"))]
+    for base, plugin, suite in bases:
+        for d in sorted(p for p in base.rglob("*") if p.is_dir()):
+            if "results" in d.relative_to(base).parts:
+                continue
+            if (d / "prompt.md").is_file() or (d / "case.yaml").is_file():
+                yield d, plugin, suite
+
+
+def grader_schema_errors(where, g, errors):
+    """Check one grader mapping (type, common keys, per-type keys and values)."""
+    gtype = g.get("type")
+    if gtype not in GRADER_KEYS:
+        errors.append(f"{where}: grader type {gtype!r} must be one of {', '.join(GRADER_KEYS)}")
+        return False
+    check_keys(where, g, GRADER_COMMON | GRADER_KEYS[gtype] | {"name"}, errors, f"{gtype} grader ")
+    for key in GRADER_REQUIRED.get(gtype, ()):
+        if g.get(key) in (None, ""):
+            errors.append(f"{where}: {gtype} grader needs {key}")
+    if "weight" in g and not (is_number(g["weight"]) and g["weight"] > 0):
+        errors.append(f"{where}: weight must be a positive number")
+    if "arm" in g and g["arm"] not in ("with-only", "both"):
+        errors.append(f"{where}: arm must be with-only or both")
+    if gtype in ("regex", "llm"):
+        target = g.get("target" if gtype == "regex" else "focus")
+        if target is not None and target not in TARGETS and not (
+                isinstance(target, dict) and target.get("source") == "file" and isinstance(target.get("path"), str)):
+            errors.append(f"{where}: {'target' if gtype == 'regex' else 'focus'} {target!r} is not a valid target")
+    if gtype == "regex":
+        if "match" in g and not (isinstance(g["match"], str) and MATCH_RE.match(g["match"])):
+            errors.append(f"{where}: match must be contains, not_contains or count:N")
+        if "flags" in g and not isinstance(g["flags"], str):
+            errors.append(f"{where}: flags must be a string")
+    if gtype == "tool_used":
+        for key in ("min", "max"):
+            if key in g and not is_int(g[key]):
+                errors.append(f"{where}: {key} must be a non-negative integer")
+        if is_int(g.get("min", 0)) and is_int(g.get("max", 0)) and "max" in g and g.get("min", 1) > g["max"]:
+            errors.append(f"{where}: min exceeds max")
+    if gtype == "tool_order":
+        for key in ("before", "after"):
+            v = g.get(key)
+            if v is not None and not isinstance(v, str) and not (isinstance(v, dict) and isinstance(v.get("tool"), str)):
+                errors.append(f"{where}: {key} must be a tool name or {{tool, input_match}}")
+    if gtype == "file_exists" and "exists" in g and not isinstance(g["exists"], bool):
+        errors.append(f"{where}: exists must be true or false")
+    return True
+
+
+def case_schema_errors(rel, prompt, case, errors):
+    """Validate prompt.md frontmatter, case.yaml and the merged values (prompt.md wins)."""
+    if prompt is not None:
+        check_keys(f"{rel}/prompt.md", prompt, PROMPT_KEYS, errors)
+    if case is not None:
+        where = f"{rel}/case.yaml"
+        check_keys(where, case, CASE_KEYS, errors)
+        if case.get("schema_version") != "1.1":
+            errors.append(f"{where}: schema_version must be \"1.1\"")
+        if not isinstance(case.get("name"), str) or not case.get("name"):
+            errors.append(f"{where}: name is required")
+        if not isinstance(case.get("execution", {}), dict):
+            errors.append(f"{where}: execution must be a mapping")
+        else:
+            check_keys(where, case.get("execution", {}), EXECUTION_KEYS, errors, "execution ")
+        if not isinstance(case.get("context", {}), dict):
+            errors.append(f"{where}: context must be a mapping")
+        else:
+            check_keys(where, case.get("context", {}), CONTEXT_KEYS, errors, "context ")
+        if not isinstance(case.get("graders", []), list):
+            errors.append(f"{where}: graders must be a list")
+    effective = {}
+    if case is not None:
+        effective.update({k: v for k, v in case.items() if k not in ("execution", "context", "graders")})
+        if isinstance(case.get("execution"), dict):
+            effective.update(case["execution"])
+    if prompt is not None:
+        effective.update(prompt)
+    if "runs" in effective and not is_int(effective["runs"], 1, 50):
+        errors.append(f"{rel}: runs must be an integer from 1 to 50")
+    if "max_turns" in effective and not is_int(effective["max_turns"], 1, 200):
+        errors.append(f"{rel}: max_turns must be an integer from 1 to 200")
+    if "timeout_seconds" in effective and not is_int(effective["timeout_seconds"], 1, 3600):
+        errors.append(f"{rel}: timeout_seconds must be an integer from 1 to 3600")
+    for key in ("tags", "allowed_tools", "plugins"):
+        v = effective.get(key)
+        if v is not None and not (isinstance(v, list) and all(isinstance(x, str) for x in v)):
+            errors.append(f"{rel}: {key} must be a list of strings")
+    env = effective.get("env")
+    if env is not None:
+        if not isinstance(env, dict):
+            errors.append(f"{rel}: env must be a mapping")
+        else:
+            errors += [f"{rel}: env key {k!r} must match EVAL_[A-Z0-9_]*" for k in env if not ENV_KEY_RE.match(str(k))]
+    return effective
+
+
+def resolve_plugin_paths(root, case_dir, rel, plugins, errors, warnings):
+    """Map a case's `plugins:` entries to marketplace plugin names or `3rd-party/<dir>`; report bad paths."""
+    names = []
+    base = root.resolve()
+    for entry in plugins:
+        target = (case_dir / entry).resolve()
+        try:
+            parts = target.relative_to(base).parts
+        except ValueError:
+            errors.append(f"{rel}: plugins entry {entry!r} resolves outside the repo")
             continue
-        text = f.read_text(errors="replace")
-        if not text.startswith("---\n") or "\n---" not in text[4:]:
+        if len(parts) >= 2 and parts[0] == "plugins":
+            if target.is_dir():
+                names.append(parts[1])
+            else:
+                errors.append(f"{rel}: plugins entry {entry!r} does not resolve to a plugin directory")
+        elif len(parts) >= 2 and parts[0] == "3rd-party":
+            token = f"3rd-party/{parts[1]}"
+            names.append(token)
+            if not (base / "3rd-party" / parts[1]).is_dir():
+                warnings.add(f"optional checkout missing: {token} (clone it as the suite README says)")
+        elif target.is_dir() and len(parts) >= 3 and parts[0] == "evals":
+            names.append("/".join(parts))  # a test-only fixture plugin inside a root suite
+        else:
+            errors.append(f"{rel}: plugins entry {entry!r} does not resolve to a plugin directory")
+    return names
+
+
+def skill_test_strings(plugin, skill):
+    out = []
+    for name in (skill, f"{plugin}:{skill}"):
+        out += [json.dumps({"skill": name}, separators=(",", ":")), json.dumps({"skill": name})]
+    return out
+
+
+def run_regex_batch(items, skill_ids, warnings):
+    """Compile every item as JavaScript through regex_check.mjs. Returns a result list, or None without node."""
+    payload = {"items": items,
+               "skills": [{"id": sid, "tests": tests} for sid, tests in skill_ids.items()]}
+    script = Path(__file__).resolve().parent / "regex_check.mjs"
+    try:
+        run = subprocess.run(["node", str(script)], input=json.dumps(payload), capture_output=True, text=True)
+    except FileNotFoundError:
+        warnings.add("node is not on PATH: eval regexes were not compiled and Skill graders were not resolved")
+        return None
+    if run.returncode != 0:
+        raise SystemExit(f"regex_check.mjs failed: {run.stderr.strip()}")
+    return json.loads(run.stdout)
+
+
+def eval_errors(root, entries, manifests, docs, skills, own, warnings):
+    errors = []
+    jobs = []        # (where, label, pattern, flags, skill_ctx or None)
+    expected = {}    # suite -> expected plugin set
+    market_skills = {(p, s): data for (p, s), data in skills.items()}
+    for suite, spec in ROOT_SUITES.items():
+        want = set()
+        for meta in spec["metas"]:
+            want |= closure(meta, manifests, own)
+        want = {n for n in want if not is_group(n)} - set(spec["exclude"]) | set(spec["extra"])
+        expected[suite] = want
+
+    loaded_cache = {}
+
+    def loaded(names):
+        key = tuple(sorted(names))
+        if key not in loaded_cache:
+            out = set()
+            for n in names:
+                out |= closure(n, manifests, own) | {n}
+            loaded_cache[key] = out
+        return loaded_cache[key]
+
+    for case_dir, plugin, suite in case_dirs(root):
+        rel = case_dir.relative_to(root).as_posix()
+        prompt = case = None
+        body = ""
+        problem = False
+        if (case_dir / "prompt.md").is_file():
+            prompt, body, err = docs.md(case_dir / "prompt.md")
+            if err:
+                errors.append(f"{rel}/prompt.md: {err}")
+                problem = True
+        if (case_dir / "case.yaml").is_file():
+            case, _, err = docs.yaml_file(case_dir / "case.yaml")
+            if err:
+                errors.append(f"{rel}/case.yaml: {err}")
+                problem = True
+        graders = []  # (where, mapping, body)
+        if case is not None and isinstance(case.get("graders"), list):
+            for i, g in enumerate(case["graders"]):
+                if isinstance(g, dict):
+                    graders.append((f"{rel}/case.yaml graders[{i}]", g, ""))
+                else:
+                    errors.append(f"{rel}/case.yaml: graders[{i}] must be a mapping")
+        for gf in sorted((case_dir / "graders").glob("*.md")) if (case_dir / "graders").is_dir() else []:
+            data, gbody, err = docs.md(gf)
+            if err:
+                errors.append(f"{gf.relative_to(root)}: {err}")
+                problem = True
+            else:
+                graders.append((gf.relative_to(root).as_posix(), data, gbody))
+        if not problem:
+            if prompt is None and not (case and isinstance(case.get("execution"), dict) and case["execution"].get("prompt")):
+                errors.append(f"{rel}: no prompt (prompt.md or execution.prompt)")
+            elif prompt is not None and not body.strip() and not (case and isinstance(case.get("execution"), dict) and case["execution"].get("prompt")):
+                errors.append(f"{rel}/prompt.md: the body is empty, it is the user message")
+        effective = case_schema_errors(rel, prompt, case, errors)
+        if not graders and not problem:
+            errors.append(f"{rel}: a case needs at least one grader")
+
+        plugin_paths = effective.get("plugins")
+        if isinstance(plugin_paths, list) and all(isinstance(x, str) for x in plugin_paths):
+            names = resolve_plugin_paths(root, case_dir, rel, plugin_paths, errors, warnings)
+        else:
+            names = []
+        in_scope = set(names) | ({plugin} if plugin else set())
+        if suite in expected and isinstance(plugin_paths, list):
+            have, want = set(names), expected[suite]
+            if have != want:
+                detail = []
+                if want - have:
+                    detail.append(f"missing {', '.join(sorted(want - have))}")
+                if have - want:
+                    detail.append(f"unexpected {', '.join(sorted(have - want))}")
+                errors.append(f"{rel}: plugins list drifts from the {suite} closure; {'; '.join(detail)}")
+        elif suite in expected:
+            errors.append(f"{rel}: a {suite} case must list its plugins")
+
+        seen_names = set()
+        for where, g, gbody in graders:
+            gname = g.get("name") if "graders[" in where else Path(where).stem
+            if gname in seen_names:
+                errors.append(f"{where}: duplicate grader name {gname!r}")
+            seen_names.add(gname)
+            if not grader_schema_errors(where, g, errors):
+                continue
+            gtype = g["type"]
+            if gtype == "llm" and not (g.get("criteria") or gbody.strip()):
+                errors.append(f"{where}: llm grader needs criteria (the body or criteria)")
+            if gtype == "regex" and isinstance(g.get("pattern"), str):
+                jobs.append((where, "pattern", g["pattern"], g.get("flags") or "", None))
+            if gtype == "tool_order":
+                for key in ("before", "after"):
+                    v = g.get(key)
+                    if isinstance(v, dict) and isinstance(v.get("input_match"), str):
+                        jobs.append((where, f"{key}.input_match", v["input_match"], "", None))
+            if gtype == "tool_used":
+                is_skill = g.get("tool") == "Skill"
+                if is_skill and g.get("max") == 0 and g.get("arm") != "both":
+                    errors.append(f"{where}: a Skill grader with max: 0 needs arm: both, or it is not scored in the baseline arm")
+                if isinstance(g.get("input_match"), str):
+                    ctx = {"g": g, "in_scope": in_scope} if is_skill else None
+                    jobs.append((where, "input_match", g["input_match"], "", ctx))
+
+    errors += regex_job_errors(jobs, market_skills, manifests, loaded, own, warnings)
+    return errors
+
+
+def regex_job_errors(jobs, skills, manifests, loaded, own, warnings):
+    """Compile all patterns; resolve Skill graders to marketplace skills; apply rules 3 to 5."""
+    errors = []
+    if not jobs:
+        return errors
+    skill_ids = {f"{p}:{s}": skill_test_strings(p, s) for (p, s) in skills}
+    externals = [e for e in EXTERNAL_SKILLS if not e.endswith(":*")]
+    for e in externals:
+        skill_ids[f"external:{e}"] = skill_test_strings("external", e)
+    items = []
+    for where, label, pattern, flags, ctx in jobs:
+        if len(pattern) > 20000:
+            errors.append(f"{where}: {label} is unreasonably long")
+            pattern = ""
+        items.append({"pattern": pattern, "flags": flags, "skill": ctx is not None})
+    results = run_regex_batch(items, skill_ids, warnings)
+    if results is None:
+        return errors
+    prefixes = [e[:-1] for e in EXTERNAL_SKILLS if e.endswith(":*")]
+    for (where, label, pattern, flags, ctx), res in zip(jobs, results):
+        if INLINE_FLAGS_RE.search(pattern):
+            errors.append(f"{where}: {label} uses an inline (?i)-style flag group, which JavaScript does not support; use the flags field")
+        if "error" in res:
+            errors.append(f"{where}: {label} does not compile as JavaScript ({res['error']})")
             continue
-        for line in text[4:text.index("\n---", 4)].splitlines():
-            m = EVAL_FM_KEY.match(line)
-            if m and ": " in m.group(2) and not m.group(2).startswith(('"', "'")):
-                errors.append(f"{f.relative_to(root)}: quote the {m.group(1)} value, it contains ': '")
+        if ctx is None:
+            continue
+        g = ctx["g"]
+        matched = [m for m in res["matched"] if not m.startswith("external:")]
+        external = any(m.startswith("external:") for m in res["matched"]) or any(p in pattern for p in prefixes)
+        if not matched and not external:
+            errors.append(f"{where}: Skill input_match matches no known skill; fix the name, or add an external skill to EXTERNAL_SKILLS")
+            continue
+        if g.get("max") == 0:
+            plugins_hit = {m.split(":", 1)[0] for m in matched}
+            if matched and not external and not (plugins_hit & loaded(ctx["in_scope"])):
+                names = ", ".join(sorted(m.split(":", 1)[1] for m in matched))
+                errors.append(f"{where}: inert sibling grader; it targets {names}, which the case does not load")
+        else:
+            manual = [m for m in matched if skills[tuple(m.split(":", 1))].get("disable-model-invocation") is True]
+            if matched and len(manual) == len(matched) and not external:
+                errors.append(f"{where}: manual-only skill {', '.join(m.split(':', 1)[1] for m in manual)} never fires on its own; use a slash-invoked outcome case")
+    return errors
+
+
+# --- Version bumps -----------------------------------------------------------
+
+VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+
+class RefError(Exception):
+    pass
+
+
+def since_errors(root, ref):
+    """Plugins changed since `ref` (outside evals/ and README.md) must carry a higher plugin.json version."""
+    if git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").returncode != 0:
+        raise RefError(f"cannot resolve {ref!r} to a commit (a shallow clone may lack it; fetch more history)")
+    diff = git(root, "diff", "-z", "--name-status", "--find-renames", ref, "--")
+    if diff.returncode != 0:
+        raise RefError(f"git diff failed: {diff.stderr.strip()}")
+    changed = set()
+    tokens = [t for t in diff.stdout.split("\0")]
+    i = 0
+    while i < len(tokens) and tokens[i]:
+        status = tokens[i]
+        width = 2 if status[0] in "RC" else 1
+        paths = tokens[i + 1:i + 1 + width]
+        i += 1 + width
+        changed.update(paths[-1:] if status[0] == "R" else paths)
+    others = git(root, "ls-files", "-z", "--others", "--exclude-standard")
+    if others.returncode != 0:
+        raise RefError(f"git ls-files failed: {others.stderr.strip()}")
+    changed.update(p for p in others.stdout.split("\0") if p)
+
+    plugins = set()
+    for path in changed:
+        parts = path.split("/")
+        if len(parts) < 3 or parts[0] != "plugins":
+            continue
+        if parts[2] == "evals" or (len(parts) == 3 and parts[2] == "README.md"):
+            continue
+        plugins.add(parts[1])
+
+    errors = []
+    for name in sorted(plugins):
+        manifest_path = root / "plugins" / name / ".claude-plugin/plugin.json"
+        if not manifest_path.is_file():
+            continue
+        old = git(root, "show", f"{ref}:plugins/{name}/.claude-plugin/plugin.json")
+        if old.returncode != 0:
+            continue
+        try:
+            old_version = json.loads(old.stdout).get("version")
+        except ValueError:
+            old_version = None
+        new_version = load_json(manifest_path).get("version")
+        parsed = []
+        for label, v in (("new", new_version), (f"{ref}", old_version)):
+            m = VERSION_RE.match(v) if isinstance(v, str) else None
+            if not m:
+                errors.append(f"{name}: version {v!r} at {label} is not MAJOR.MINOR.PATCH")
+            parsed.append(tuple(map(int, m.groups())) if m else None)
+        if None in parsed:
+            continue
+        if parsed[0] <= parsed[1]:
+            errors.append(f"{name}: changed since {ref} but version {new_version} is not greater than {old_version}; bump plugin.json and marketplace.json")
     return errors
 
 
@@ -576,7 +1140,9 @@ def main(argv=None, root=ROOT):
     p_reg = sub.add_parser("register", help="add marketplace entries for unlisted plugin dirs")
     p_reg.add_argument("--meta", action="append", default=[], metavar="META=PLUGIN,PLUGIN",
                        help="also add these plugins to a meta plugin or core bundle (repeatable)")
-    sub.add_parser("check", help="check structure rules and catalog freshness")
+    p_check = sub.add_parser("check", help="check structure rules, frontmatter, eval cases and catalog freshness")
+    p_check.add_argument("--since", metavar="REF",
+                         help="also require a version bump for each plugin changed since REF (a commit, tag or branch)")
     sub.add_parser("sync-shared", help="copy scripts/shared files over their plugin copies")
     p_up = sub.add_parser("upstream", help="list upstream commits since each port's recorded NOTICE commit")
     p_up.add_argument("plugins", nargs="*", help="limit to these plugins")
@@ -594,7 +1160,14 @@ def main(argv=None, root=ROOT):
     elif args.cmd == "sync-shared":
         sync_shared(root)
     elif args.cmd == "check":
-        errors = check(root)
+        warnings = set()
+        try:
+            errors = check(root, args.since, warnings)
+        except RefError as e:
+            print(f"--since: {e}", file=sys.stderr)
+            return 2
+        for w in sorted(warnings):
+            print(f"warning: {w}", file=sys.stderr)
         for e in errors:
             print(e, file=sys.stderr)
         if errors:
