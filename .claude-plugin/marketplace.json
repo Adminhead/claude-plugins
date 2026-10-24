@@ -212,7 +212,7 @@
       "name": "coder",
       "source": "./plugins/coder",
       "description": "Coder agent, haiku tier. most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -555,7 +555,7 @@
       "name": "scribe",
       "source": "./plugins/scribe",
       "description": "A documentation subagent that writes and updates READMEs, guides, docstrings, changelogs and Outline wiki documents, checking every claim against the code and marking anything it could not verify.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "category": "development"
     },
     {
@@ -1444,21 +1444,21 @@
       "name": "coder-critical",
       "source": "./plugins/coder-critical",
       "description": "Coder agent, opus tier. concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "coder-high",
       "source": "./plugins/coder-high",
       "description": "Coder agent, sonnet tier. a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "coder-max",
       "source": "./plugins/coder-max",
       "description": "Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. Not in orchestration-meta: install it per repo at local scope.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {

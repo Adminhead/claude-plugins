@@ -1,6 +1,6 @@
 {
   "name": "coder-max",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Coder agent, fable tier. the hardest changes, like a large cross-cutting refactor or a novel algorithm, or work coder-critical could not finish. Most expensive tier; reserve it for escalations. Not in orchestration-meta: install it per repo at local scope.",
   "author": {
     "name": "AdminHead",

@@ -1,6 +1,6 @@
 {
   "name": "coder",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Coder agent, haiku tier. most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.",
   "author": {
     "name": "AdminHead",
