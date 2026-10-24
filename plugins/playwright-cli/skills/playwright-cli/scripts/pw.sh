@@ -35,11 +35,39 @@ case $verb in
   *) die "verb not allowed: $verb (run playwright-cli directly; it will prompt)" ;;
 esac
 
-# --config can point at a file that changes launch options, so it is not pre-approved.
+# Flags are scanned in every position, because playwright-cli reads them anywhere.
+# --config can change launch options; --cdp, --endpoint, --extension, --profile and
+# --persistent attach to or persist a real browser; -s/--session builds a file path.
+# --filename is limited to a relative path without '..' or an absolute /tmp/ path.
+check_filename() {
+  case $1 in
+    '' | *..* | -*) die "--filename must be a relative path without '..' or an absolute /tmp/ path" ;;
+    /tmp/*) ;;
+    /*) die "--filename must be a relative path without '..' or an absolute /tmp/ path" ;;
+  esac
+}
+n=0
+want_filename=0
 for arg in "$@"; do
+  n=$((n + 1))
+  if [ "$want_filename" -eq 1 ]; then
+    check_filename "$arg"
+    want_filename=0
+    continue
+  fi
   case $arg in
+    -s* | --session*)
+      if [ "$n" -ne 1 ] || [ "${arg#-s=}" = "$arg" ]; then
+        die "session flag only allowed as the first argument: -s=<name>"
+      fi
+      ;;
     --config | --config=*) die "--config is not allowed here (run playwright-cli directly)" ;;
+    --cdp* | --endpoint* | --extension* | --profile* | --persistent*)
+      die "$arg attaches to or persists a real browser (run playwright-cli directly; it will prompt)" ;;
+    --filename) want_filename=1 ;;
+    --filename=*) check_filename "${arg#--filename=}" ;;
   esac
 done
+[ "$want_filename" -eq 0 ] || die "--filename needs a value"
 
 exec playwright-cli "$@"

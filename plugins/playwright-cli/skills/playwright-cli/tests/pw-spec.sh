@@ -66,6 +66,29 @@ check_reject --json snapshot
 check_reject -s snapshot
 check_reject open --config=evil.json
 check_reject -s=x open --config evil.json
+check_reject snapshot -s=../../x
+check_reject open --session=../../x
+check_reject -s=x snapshot -s=y
+check_reject -s=x snapshot --session=y
+check_reject snapshot -s
+check_reject open --session x
+check_reject open https://x --cdp=http://localhost:9222
+check_reject -s=x open --cdp-endpoint=ws://x
+check_reject open --endpoint=ws://x
+check_reject open --extension
+check_reject open --profile=/home/u/.config/chrome
+check_reject -s=x open --profile /tmp/p
+check_reject open --persistent
+check_reject -s=x open --persistent https://x
+check_reject -s=x screenshot --filename=/etc/cron.d/x
+check_reject -s=x screenshot --filename=../x.png
+check_reject -s=x screenshot --filename=/tmp/../etc/x
+check_reject -s=x screenshot --filename ../x.png
+check_reject -s=x screenshot --filename
+check_pass -s=x open https://x
+check_pass -s=x screenshot
+check_pass -s=x screenshot --filename=/tmp/bt-1/a.png
+check_pass -s=x snapshot --filename=artifacts/a.md
 
 [ "$fail" -eq 0 ] && echo "pw-spec: ok"
 exit "$fail"

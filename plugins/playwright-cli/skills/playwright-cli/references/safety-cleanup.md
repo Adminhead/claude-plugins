@@ -6,7 +6,7 @@ Read this reference before handling authentication, persisted browser data, file
 
 - The default session is in-memory: state survives CLI commands in that session but is lost when the browser closes. Prefer it for ordinary work.
 - Use `-s=<purpose>` for work that must not share cookies, storage, tabs, or history with another workflow. Keep the same session flag on every command.
-- Use `open --persistent` or `open --profile=<path>` only when persistence is required. A persistent profile can contain account data. Use a dedicated, approved directory; never point at a person's normal browser profile.
+- `pw.sh` refuses `--persistent` and `--profile`; run `playwright-cli open --persistent` or `open --profile=<path>` directly (it prompts) only when persistence is required. A persistent profile can contain account data. Use a dedicated, approved directory; never point at a person's normal browser profile.
 - Inspect sessions with `playwright-cli list`. Close only the session you own with `playwright-cli -s=<purpose> close`. `close-all` and `kill-all` affect other work and require explicit authorization.
 - `delete-data` permanently removes session data. Use it only for the session and profile intended, after confirming it contains no needed state.
 
