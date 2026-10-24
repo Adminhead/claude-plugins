@@ -44,7 +44,8 @@ describe('redaction', () => {
       ["curl -H 'x-api-key:abc123' https://x", "curl -H 'x-api-key:<redacted>' https://x"],
       ['curl -H "Authorization: raw-token-value" https://x', 'curl -H "Authorization: <redacted>" https://x'],
       ['curl -H "Authorization: Bearer abcdefghijklmnop123"', 'curl -H "Authorization: Bearer <token>"'],
-      ['curl -H "Authorization: Digest abc"', 'curl -H "Authorization: Digest abc"'],
+      ['curl -H "Authorization: Digest abc"', 'curl -H "Authorization: Digest <redacted>"'],
+      ['curl -H "Authorization: Negotiate YIIBhjCCAY"', 'curl -H "Authorization: Negotiate <redacted>"'],
       ['curl -H "X-Auth-Token: t0k3n" https://x', 'curl -H "X-Auth-Token: <redacted>" https://x'],
     ]
     for (const [input, want] of cases) expect([input, redact(input)]).toEqual([input, want])

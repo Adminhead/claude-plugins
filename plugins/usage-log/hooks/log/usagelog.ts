@@ -32,6 +32,8 @@ const SECRETS: readonly [RegExp, string][] = [
   [/\bnpm_[A-Za-z0-9]{30,}/g, '<npm-token>'],
   [/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, '<jwt>'],
   [/\b(Bearer|Basic|token)(\s+)[A-Za-z0-9._~+/=-]{12,}/gi, '$1$2<token>'],
+  // Digest and Negotiate headers: everything after the scheme word up to the end of the quoted or bare value.
+  [/\b(Authorization\s*:\s*)(Digest|Negotiate)(\s+)[^\n"';&|]{1,2048}/gi, '$1$2$3<redacted>'],
   // A credential header's value, unless the rule above already masked it after its scheme word.
   [/\b((?:X-)?Api-?Key|X-Auth-Token|(?:Proxy-)?Authorization)(\s*:\s*)(?!<)(?!(?:Bearer|Basic|token|Digest|Negotiate)\s)("[^"]*"|'[^']*'|[^\s"';&|]+)/gi, '$1$2<redacted>'],
   [/\b([A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIALS?)[A-Za-z0-9_]*)(\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s"';&|]+)/gi, '$1$2<redacted>'],
