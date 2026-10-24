@@ -60,13 +60,14 @@ function cpTargets(argv: Argv): string[] {
   return isDir ? [dest, ...words.map(s => `${dest.replace(/\/+$/, '')}/${base(s.replace(/\/+$/, ''))}`)] : [dest]
 }
 
-// The paths a command writes, as far as its name and words tell.
-function writtenPaths(argv: Argv): string[] {
+// The paths a command writes, as far as its name and words tell. `creates` marks a write that makes the file when it is
+// not there (a cp destination), as opposed to one that removes, moves or edits what is there.
+function writtenPaths(argv: Argv): { paths: string[]; creates: boolean } {
   const name = base(argv[0])
-  if (name === 'cp') return cpTargets(argv)
+  if (name === 'cp') return { paths: cpTargets(argv), creates: true }
   const inPlace = IN_PLACE[name]
-  if (!ANY_OPERAND.has(name) && !(inPlace && argv.some(a => a !== null && inPlace(a)))) return []
-  return argv.slice(1).flatMap(a => (a === null ? [] : (operand(a) ?? [])))
+  if (!ANY_OPERAND.has(name) && !(inPlace && argv.some(a => a !== null && inPlace(a)))) return { paths: [], creates: false }
+  return { paths: argv.slice(1).flatMap(a => (a === null ? [] : (operand(a) ?? []))), creates: false }
 }
 
 const HOOK_MANAGERS = new Set(['pre-commit', 'prek', 'husky', 'lefthook'])
@@ -84,11 +85,14 @@ const RUNNERS: Record<string, { subs: string[]; needSub?: boolean }> = {
 }
 const RUNNER_VALUED = new Set(['-p', '--package', '--from', '--with', '--python', '--spec'])
 
-// The hook manager a command uninstalls (`pre-commit uninstall`, `npx husky@9 uninstall`, `python -m pre_commit
-// uninstall`), or null.
+const MAX_RUNNERS = 8
+const DEEP_RUNNERS = 'check-bypass-guard: this command nests more package runners than the guard reads, so it could not be checked for a hook-manager uninstall. Confirm it leaves the git hooks installed.'
+
+// The reason to ask about a hook-manager uninstall (`pre-commit uninstall`, `npx husky@9 uninstall`, `python -m
+// pre_commit uninstall`), also when a runner is still in front after MAX_RUNNERS levels, or null.
 function uninstalls(argv: Argv): string | null {
   let a = argv
-  for (let level = 0; level < 4; level++) {
+  for (let level = 0; ; level++) {
     const name = base(a[0])
     if (/^python[0-9.]*$/.test(name) && a[1] === '-m' && a[2] === 'pre_commit') {
       a = ['pre-commit', ...a.slice(3)]
@@ -96,6 +100,7 @@ function uninstalls(argv: Argv): string | null {
     }
     const r = RUNNERS[name]
     if (!r) break
+    if (level === MAX_RUNNERS) return DEEP_RUNNERS
     let i = 1
     while (i < a.length && r.subs.includes(a[i] ?? '')) i++
     if (r.needSub && i === 1) return null
@@ -115,7 +120,7 @@ function uninstalls(argv: Argv): string | null {
   const tool = base(a[0]).replace(/(?<=.)[@=<>~!].*$/, '')
   if (!HOOK_MANAGERS.has(tool)) return null
   const sub = a.slice(1).find(w => w === null || w[0] !== '-')
-  return sub === 'uninstall' ? tool : null
+  return sub === 'uninstall' ? uninstallReason(tool) : null
 }
 
 const writeReason = (p: ProtectedPath) =>
@@ -137,22 +142,38 @@ function tokenScan(text: string): string | null {
   return m ? uninstallReason(m[1] === 'pre_commit' ? 'pre-commit' : m[1]) : null
 }
 
-// The reason to ask about a Bash command, or null.
-export function checkBashWrites(command: string): string | null {
+// Whether something is at a path, as the caller resolves it (against the session's cwd). It stays out of this module so
+// the check is pure.
+export type Exists = (path: string) => boolean
+
+// The reason to ask about a Bash command, or null. A redirect or cp that would create a lint, format or hook-manager
+// config that is not there yet passes, as a new file does for Edit and Write; hooks and git config files always ask, and
+// so do rm, mv and the other operand writers. `~` paths count as present, since home is not resolved here, and so does
+// a relative path in a command that changes directory, since it may resolve elsewhere.
+export function checkBashWrites(command: string, exists: Exists = () => true): string | null {
   if (command.length > MAX_COMMAND) return tokenScan(command)
   const { commands, ok } = scan(command)
+  const moves = commands.some(c => base(c.argv[0]) === 'cd' || base(c.argv[0]) === 'pushd')
+  const asks = (path: string, creates: boolean): string | null => {
+    const p = protectedPath(path)
+    if (!p) return null
+    const known = path.startsWith('/') || (!moves && !path.startsWith('~'))
+    if (p.kind === 'config' && creates && known && !exists(path)) return null
+    return writeReason(p)
+  }
   for (const c of commands) {
     for (const r of c.redirects) {
-      const p = WRITE_OPS.has(r.op) && r.target !== null ? protectedPath(r.target) : null
-      if (p) return writeReason(p)
+      const reason = WRITE_OPS.has(r.op) && r.target !== null ? asks(r.target, true) : null
+      if (reason) return reason
     }
     for (const v of views(c)) {
-      for (const path of writtenPaths(v.argv)) {
-        const p = protectedPath(path)
-        if (p) return writeReason(p)
+      const { paths, creates } = writtenPaths(v.argv)
+      for (const path of paths) {
+        const reason = asks(path, creates)
+        if (reason) return reason
       }
-      const tool = uninstalls(v.argv)
-      if (tool) return uninstallReason(tool)
+      const reason = uninstalls(v.argv)
+      if (reason) return reason
     }
   }
   return ok ? null : tokenScan(command)

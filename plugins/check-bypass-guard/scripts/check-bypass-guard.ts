@@ -3,8 +3,9 @@
 //
 // - Bash: denies git commands that skip hooks or signing (--no-verify, commit -n, --no-gpg-sign, -c core.hooksPath=...,
 //   SKIP=/HUSKY=0/LEFTHOOK=0) or turn them off for good (git config setting, unsetting or dropping core.hooksPath,
-//   include paths or gpgsign). Asks on git config --edit, on a git command too long or too odd to parse, and on a Bash
-//   write, move, removal or chmod of a protected config, a git hook or .git/config, or a hook-manager uninstall.
+//   include paths or gpgsign, or defining an alias that skips them). Asks on git config --edit, on a git command too
+//   long or too odd to parse, and on a Bash write, move, removal or chmod of a protected config, a git hook or
+//   .git/config, or a hook-manager uninstall. A redirect or cp that creates a config not there yet passes.
 // - Edit, Write, MultiEdit: asks before changing an existing lint, format or hook config, or its ignore file (creating
 //   a new one passes), and before writing anything under .husky/ or .git/hooks/, or .git/config, new or not.
 //
@@ -39,11 +40,13 @@ function existing(path: string, needText: boolean): string | null | false {
 export function decide(input: any): Decision {
   const tool = input?.tool_name
   const ti = input?.tool_input ?? {}
+  const cwd = typeof input?.cwd === 'string' ? input.cwd : '.'
+  const resolve = (p: string) => (isAbsolute(p) ? p : join(cwd, p))
   if (tool === 'Bash') {
     if (typeof ti.command !== 'string') return null
     const hit = checkGit(ti.command)
     if (hit && !isAsk(hit)) return { decision: 'deny', reason: hit.message }
-    const write = checkBashWrites(ti.command)
+    const write = checkBashWrites(ti.command, p => existing(resolve(p), false) !== null)
     if (write) return { decision: 'ask', reason: write }
     return hit ? { decision: 'ask', reason: hit.message } : null
   }
@@ -56,9 +59,7 @@ export function decide(input: any): Decision {
     const name = ti.file_path.slice(ti.file_path.replace(/\\/g, '/').lastIndexOf('/') + 1)
     const named = prot !== null
     if (!named && !sectionRule(name)) return null
-    const cwd = typeof input.cwd === 'string' ? input.cwd : '.'
-    const path = isAbsolute(ti.file_path) ? ti.file_path : join(cwd, ti.file_path)
-    const reason = configVerdict(tool, ti, existing(path, !named))
+    const reason = configVerdict(tool, ti, existing(resolve(ti.file_path), !named))
     return reason ? { decision: 'ask', reason } : null
   }
   return null

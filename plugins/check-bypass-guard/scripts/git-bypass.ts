@@ -1,10 +1,11 @@
 // Finds git commands that skip or redirect git hooks or signing, for one command (`-c`, `--config-env`, the
-// environment, `--no-verify`) or for good (`git config` setting, unsetting or dropping the keys and sections). Pure: no I/O.
+// environment, `--no-verify`) or for good (`git config` setting, unsetting or dropping the keys and sections, or
+// defining an alias that skips them). Pure: no I/O.
 //
 // Adapted from ECC's scripts/hooks/block-no-verify.js (MIT, (c) 2026 Affaan Mustafa) and wshobson's
 // block-no-verify plugin (MIT, (c) 2024 Seth Hobson), rewritten on the shell AST walker so words inside
 // quotes (a commit message that mentions --no-verify) are never read as flags. It targets model habits,
-// not a determined adversary: variable indirection, aliases and script files are out of scope.
+// not a determined adversary: variable indirection, aliases already in a config file and script files are out of scope.
 
 import { nestedScript, parse, reparse } from './shell/walk.ts'
 import type { ShellCommand } from './shell/walk.ts'
@@ -22,13 +23,13 @@ const MAX_REPARSE = 256 * 1024
 
 const FIX = 'Fix what the hook reports and commit again; if a hook itself is broken, tell the user.'
 const MESSAGES: Record<Rule, string> = {
-  'no-verify': `check-bypass-guard: --no-verify (or commit -n) skips the git hooks. ${FIX}`,
+  'no-verify': `check-bypass-guard: --no-verify (or commit -n), also inside a git alias, skips the git hooks. ${FIX}`,
   'no-gpg-sign': `check-bypass-guard: --no-gpg-sign, or setting gpgsign to false or removing it (with -c or git config), skips commit signing. Sign the commit, or ask the user.`,
   'hooks-path': `check-bypass-guard: setting, overriding or removing core.hooksPath or an include path (with -c, the environment or git config) redirects the git hooks. ${FIX}`,
   'skip-env': `check-bypass-guard: SKIP, HUSKY=0 and LEFTHOOK=0 turn off pre-commit, husky or lefthook hooks. ${FIX}`,
-  'config-edit': 'check-bypass-guard: this git config command opens an editor, has a key or value that could not be read, or uses an option the guard does not know, so it may change core.hooksPath, include paths or signing. Confirm it leaves the hooks and signing on.',
+  'config-edit': 'check-bypass-guard: this git config change opens an editor, has a key or value that could not be read (a gpgsign value that is not plainly true or false, a shell alias that names a bypass), or uses an option the guard does not know, so it may change core.hooksPath, include paths, signing or an alias that skips them. Confirm it leaves the hooks and signing on.',
 }
-const UNPARSED = 'check-bypass-guard: this git command could not be checked for hook bypasses (too long or not plain bash). Confirm it skips no hooks.'
+const UNPARSED = 'check-bypass-guard: this git command could not be checked for hook bypasses (too long, not plain bash, or behind too many wrappers). Confirm it skips no hooks.'
 
 type Argv = readonly (string | null)[]
 const base = (t: string | null) => (t ?? '').slice((t ?? '').lastIndexOf('/') + 1)
@@ -53,14 +54,21 @@ const ASSIGN = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/s
 
 export type View = { argv: Argv; env: { name: string; value: string | null }[] }
 
-// The command and what its wrappers run, each with the NAME=value words in front of it (env's included).
-export function views(c: ShellCommand): View[] {
+const MAX_WRAPPERS = 8
+
+// The command and what its wrappers run, each with the NAME=value words in front of it (env's included). `deep` is set
+// when a wrapper is still in front after MAX_WRAPPERS levels, so what it runs was not read.
+export function views(c: ShellCommand): View[] & { deep?: boolean } {
   const env = c.assigns.filter(a => a.name !== null).map(a => ({ name: a.name!, value: a.value }))
-  const out: View[] = [{ argv: c.argv, env }]
+  const out: View[] & { deep?: boolean } = [{ argv: c.argv, env }]
   let argv = c.argv
-  for (let level = 0; level < 8; level++) {
+  for (let level = 0; ; level++) {
     const w = WRAPPERS[base(argv[0])]
     if (!w) break
+    if (level === MAX_WRAPPERS) {
+      out.deep = true
+      break
+    }
     let i = 1
     const extra: View['env'] = []
     for (; i < argv.length; i++) {
@@ -97,15 +105,47 @@ export function views(c: ShellCommand): View[] {
 // git config keys that move or drop the hooks, or turn signing off.
 const isHookKey = (k: string) => /^(?:core\.hookspath|include\.path|includeif\..*\.path)$/.test(k.toLowerCase())
 const isSignKey = (k: string) => /^(?:commit|tag|push|rebase)\.gpgsign$/.test(k.toLowerCase())
-const isFalse = (v: string) => /^(?:false|no|off|0|)$/i.test(v.trim())
-const isSignOff = (k: string, v: string) => isSignKey(k) && isFalse(v)
+const isAliasKey = (k: string) => /^alias\../i.test(k)
+// git reads a boolean as true, yes, on, false, no, off or the empty string (any case), or as an integer with an optional
+// k, m or g unit, where any spelling of zero (`00`, `0x0`, `0k`, ` 0`) is false.
+const isTrue = (v: string) => /^(?:true|yes|on|1)$/i.test(v.trim())
+const isFalse = (v: string) => /^(?:false|no|off|)$/i.test(v.trim()) || /^[+-]?(?:0x0+|0+)[kmg]?$/i.test(v.trim())
 
-function configHit(setting: string): GitHit['rule'] | null {
+// The verdict for setting a signing key to a value: off denies, on passes, and anything else (`2`, `if-asked`) asks.
+const signValueRule = (v: string): Rule | null => (isFalse(v) ? 'no-gpg-sign' : isTrue(v) ? null : 'config-edit')
+
+// `-c key=value`: the verdict for one setting.
+function configHit(setting: string): Rule | null {
   const eq = setting.indexOf('=')
   const key = eq < 0 ? setting : setting.slice(0, eq)
   if (isHookKey(key)) return 'hooks-path'
-  // `-c key` with no value means true, which never turns signing off.
-  return eq >= 0 && isSignOff(key, setting.slice(eq + 1)) ? 'no-gpg-sign' : null
+  // `-c key` with no value means true, which never turns signing off or defines an alias.
+  if (eq < 0) return null
+  if (isSignKey(key)) return signValueRule(setting.slice(eq + 1))
+  return isAliasKey(key) ? aliasRule(setting.slice(eq + 1)) : null
+}
+
+// A shell alias (`!…`) that names a bypass asks, since what it runs is shell, not one git command.
+const SHELL_ALIAS_BYPASS = /--no-verify|--no-gpg-sign|hookspath|gpgsign|\bcommit\b[^\n;&|]{0,200}?\s-[A-Za-z]*n/i
+
+// The verdict for defining an alias with this value: the alias's own command read as `git <value>`, so an alias that
+// skips hooks or signing (`commit --no-verify`, `-c core.hooksPath=x commit`) is denied like the command it runs.
+function aliasRule(value: string): Rule | null {
+  const v = value.trimStart()
+  if (v.startsWith('!')) {
+    const script = v.slice(1)
+    return SHELL_ALIAS_BYPASS.test(script) || checkGit(script) !== null ? 'config-edit' : null
+  }
+  const r = parse(v)
+  if (r.errors.length > 0) return 'config-edit'
+  let ask = false
+  for (const c of r.commands) {
+    if (c.depth !== 0 || c.nesting !== 0) continue
+    const rule = gitHit({ argv: ['git', ...c.argv], env: [] })
+    if (rule === 'config-edit') ask = true
+    else if (rule) return rule
+  }
+  return ask ? 'config-edit' : null
 }
 
 // Environment that turns hook managers off, or feeds git config through the environment.
@@ -114,8 +154,9 @@ function envHit(env: View['env']): GitHit['rule'] | null {
     if (name === 'SKIP' && value !== '') return 'skip-env'
     if ((name === 'HUSKY' || name === 'LEFTHOOK') && (value === null || value === '0' || value === 'false')) return 'skip-env'
     if ((name === 'HUSKY_SKIP_HOOKS' || name === 'LEFTHOOK_EXCLUDE') && value !== '') return 'skip-env'
-    if (name === 'GIT_CONFIG_PARAMETERS' && (value === null || /hookspath|include|gpgsign/i.test(value))) return 'hooks-path'
-    if (/^GIT_CONFIG_(?:KEY|VALUE)_\d+$/.test(name) && (value === null || /hookspath|include|gpgsign|^(?:false|no|off|0)$/i.test(value))) return 'hooks-path'
+    // An alias that skips hooks or signing names the option in its value.
+    if (name === 'GIT_CONFIG_PARAMETERS' && (value === null || /hookspath|include|gpgsign|no-verify|no-gpg-sign/i.test(value))) return 'hooks-path'
+    if (/^GIT_CONFIG_(?:KEY|VALUE)_\d+$/.test(name) && (value === null || /hookspath|include|gpgsign|no-verify|no-gpg-sign|^(?:false|no|off|0)$/i.test(value))) return 'hooks-path'
   }
   return null
 }
@@ -151,7 +192,8 @@ const CONFIG_ACTIONS = new Set(['add', 'replace-all', 'unset', 'unset-all', 'ren
 const CONFIG_READS = new Set(['get', 'get-all', 'get-regexp', 'get-urlmatch', 'get-color', 'get-colorbool', 'list'])
 const CONFIG_SUBS = new Set(['list', 'get', 'set', 'unset', 'rename-section', 'remove-section', 'edit'])
 // Sections whose removal or renaming drops a hooks path, an include, or a signing setting. `[core "x"]` is another section.
-const isGuardedSection = (s: string) => /^(?:core|commit|tag|include)$|^includeif(?:\..*)?$/i.test(s)
+const isGuardedSection = (s: string) => /^(?:core|commit|tag|push|include)$|^includeif(?:\..*)?$/i.test(s)
+const isSignSection = (s: string) => /^(?:commit|tag|push)$/i.test(s)
 
 // The option a long-option word names, `no-` forms as `!name`, or null when git would reject it as unknown or ambiguous.
 function configLong(word: string): string | null {
@@ -170,6 +212,10 @@ type ConfigChange = { op: 'set' | 'unset' | 'section'; key: string | null; value
 // A `git config` command's verdict, read from the word after `config` on: a deny rule, `config-edit` for an editor or a
 // change whose key or value is an expansion, or null for a read or a change to other keys. Every scope and file option
 // counts the same.
+//
+// git stops reading options at the first operand in both forms (git 2.56): after it every word is an operand, `--`
+// and `--get` included, so `git config core.hooksPath x --get` sets the key with `--get` as its value-pattern. A
+// leading subcommand word (`set`, `unset`) reads its own options up to its first operand.
 function configRule(argv: Argv, start: number): Rule | null {
   const actions: string[] = []
   const ops: (string | null)[] = []
@@ -180,6 +226,8 @@ function configRule(argv: Argv, start: number): Rule | null {
     const a = argv[i]
     if (!options || a === null || a === '-' || a[0] !== '-') {
       ops.push(a)
+      const subWord = ops.length === 1 && actions.length === 0 && !read && a !== null && CONFIG_SUBS.has(a)
+      if (!subWord) options = false
       continue
     }
     if (a === '--') {
@@ -223,12 +271,13 @@ function configRule(argv: Argv, start: number): Rule | null {
   for (const c of changes) {
     if (c.key === null) ask = true
     else if (c.op === 'section') {
-      if (isGuardedSection(c.key)) return /^(?:commit|tag)$/i.test(c.key) ? 'no-gpg-sign' : 'hooks-path'
+      if (isGuardedSection(c.key)) return isSignSection(c.key) ? 'no-gpg-sign' : 'hooks-path'
     } else if (isHookKey(c.key)) return 'hooks-path'
-    else if (isSignKey(c.key)) {
+    else if (isSignKey(c.key) || (c.op === 'set' && isAliasKey(c.key))) {
       if (c.op === 'unset') return 'no-gpg-sign'
-      if (c.value === null || c.value === undefined) ask = true
-      else if (isFalse(c.value)) return 'no-gpg-sign'
+      const rule = c.value === null || c.value === undefined ? 'config-edit' : isSignKey(c.key) ? signValueRule(c.value) : aliasRule(c.value)
+      if (rule === 'config-edit') ask = true
+      else if (rule) return rule
     }
   }
   // An option this table does not know may be a newer action, so a guarded key among the operands asks.
@@ -243,16 +292,16 @@ function gitHit(v: View): Rule | null {
   if (fromEnv) return fromEnv
   let i = 1
   let sub: string | null = null
+  // A `-c` value that asks; a deny later in the command still wins.
+  let ask = false
   for (; i < argv.length; i++) {
     const a = argv[i]
-    if (a === null) return null
-    if (a === '-c') {
-      const s = argv[++i]
+    if (a === null) return ask ? 'config-edit' : null
+    if (a === '-c' || (a.startsWith('-c') && a.length > 2)) {
+      const s = a === '-c' ? argv[++i] : a.slice(2)
       const hit = s ? configHit(s) : null
-      if (hit) return hit
-    } else if (a.startsWith('-c') && a.length > 2) {
-      const hit = configHit(a.slice(2))
-      if (hit) return hit
+      if (hit === 'config-edit') ask = true
+      else if (hit) return hit
     } else if (a === '--config-env' || a.startsWith('--config-env=')) {
       const s = a === '--config-env' ? argv[++i] : a.slice('--config-env='.length)
       if (s && isHookKey(s.split('=')[0])) return 'hooks-path'
@@ -264,8 +313,9 @@ function gitHit(v: View): Rule | null {
       break
     }
   }
-  if (sub === null) return null
-  if (sub === 'config') return configRule(argv, i)
+  const asked: Rule | null = ask ? 'config-edit' : null
+  if (sub === null) return asked
+  if (sub === 'config') return configRule(argv, i) ?? asked
   const valued = SHORT_VALUED[sub] ?? ''
   const optional = SHORT_OPTIONAL[sub] ?? ''
   for (; i < argv.length; i++) {
@@ -292,7 +342,7 @@ function gitHit(v: View): Rule | null {
       }
     }
   }
-  return null
+  return asked
 }
 
 // `export SKIP=x; git commit`: an exported or bare assignment of a hook-off variable earlier in the script.
@@ -310,16 +360,23 @@ function exportedSkip(commands: readonly ShellCommand[]): boolean {
   return false
 }
 
-// Parses a command and the scripts it hands to `sh -c` or `eval`, behind wrappers too.
-export function scan(command: string): { commands: ShellCommand[]; ok: boolean } {
+// Parses a command and the scripts it hands to `sh -c` or `eval`, behind wrappers too. `deep` is set when a command
+// sits behind more wrappers than `views` reads; `ok` is false then too, and on a parse error.
+export function scan(command: string): { commands: ShellCommand[]; ok: boolean; deep: boolean } {
   const commands: ShellCommand[] = []
   let ok = true
+  let deep = false
   let reparsed = 0
   const add = (r: ReturnType<typeof parse>) => {
     if (r.errors.length > 0) ok = false
     for (const c of r.commands) {
       commands.push(c)
-      for (const v of views(c)) {
+      const vs = views(c)
+      if (vs.deep) {
+        ok = false
+        deep = true
+      }
+      for (const v of vs) {
         const script = nestedScript(v.argv)
         if (script === null) continue
         reparsed += script.length
@@ -329,18 +386,21 @@ export function scan(command: string): { commands: ShellCommand[]; ok: boolean }
     }
   }
   add(parse(command))
-  return { commands, ok }
+  return { commands, ok, deep }
 }
 
-const MENTIONS_GIT = /\bgit\b/
+// `git`, also with quotes or backslashes inside it (`g''it`, `"g"it`, `gi\t`). Linear, so it may run on the whole text.
+const MENTIONS_GIT = /\bg["'\\]*i["'\\]*t\b/
 
 // The verdict for a Bash command: a hit (deny); `config-edit` (ask) for a git config change that could not be read, or
 // `unparsed` (ask) for a git command that could not be checked; or null. A deny anywhere wins over an ask.
+//
+// Every bounded command is parsed, since quotes can hide the name from a text match; git is found by the parsed command
+// name. The text match only decides text the parser could not read (too long, a parse error). A command behind more
+// wrappers than are read always asks, since what it runs is unknown.
 export function checkGit(command: string): GitVerdict {
-  // The regex is linear, so it may run on the whole text; the parser only runs on bounded input.
-  if (!MENTIONS_GIT.test(command)) return null
-  if (command.length > MAX_COMMAND) return { rule: 'unparsed', message: UNPARSED }
-  const { commands, ok } = scan(command)
+  if (command.length > MAX_COMMAND) return MENTIONS_GIT.test(command) ? { rule: 'unparsed', message: UNPARSED } : null
+  const { commands, ok, deep } = scan(command)
   const gits = commands.flatMap(c => views(c)).filter(v => base(v.argv[0]) === 'git')
   let edit = false
   for (const v of gits) {
@@ -350,6 +410,6 @@ export function checkGit(command: string): GitVerdict {
   }
   if (gits.length > 0 && exportedSkip(commands)) return { rule: 'skip-env', message: MESSAGES['skip-env'] }
   if (edit) return { rule: 'config-edit', message: MESSAGES['config-edit'] }
-  if (!ok) return { rule: 'unparsed', message: UNPARSED }
+  if (deep || (!ok && (gits.length > 0 || MENTIONS_GIT.test(command)))) return { rule: 'unparsed', message: UNPARSED }
   return null
 }

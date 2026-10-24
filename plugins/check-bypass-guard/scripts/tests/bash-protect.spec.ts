@@ -1,8 +1,19 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, describe, expect, test } from 'bun:test'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { decide } from '../check-bypass-guard.ts'
 import { MAX_COMMAND } from '../git-bypass.ts'
 
-const verdict = (command: string) => decide({ tool_name: 'Bash', tool_input: { command }, cwd: '/nonexistent' })?.decision ?? null
+// The session's cwd holds the configs the ask cases write to; nothing else, so hooks and .git/config are absent.
+const dir = mkdtempSync(join(tmpdir(), 'cbg-bash-'))
+for (const f of ['.eslintignore', 'web/.eslintignore', '.prettierignore', '.lintstagedrc.json', '.eslintrc.json', 'config/.eslintrc.json', 'deep/.prettierrc']) {
+  mkdirSync(join(dir, f, '..'), { recursive: true })
+  writeFileSync(join(dir, f), '')
+}
+afterAll(() => rmSync(dir, { recursive: true, force: true }))
+
+const verdict = (command: string) => decide({ tool_name: 'Bash', tool_input: { command }, cwd: dir })?.decision ?? null
 
 describe('Bash writes to protected configs and hooks ask', () => {
   test('redirects', () => {
@@ -88,6 +99,53 @@ describe('Bash writes to protected configs and hooks ask', () => {
   test('unparseable or over-long commands that name a protected path ask', () => {
     expect(verdict('rm .eslintignore $(')).toBe('ask')
     expect(verdict('echo ' + 'x '.repeat(MAX_COMMAND) + '> .eslintignore')).toBe('ask')
+  })
+
+  test('a wrapper or package runner still in front after the depth limit asks', () => {
+    for (const c of ['nice '.repeat(9) + 'rm .eslintignore', 'npx '.repeat(5) + 'husky uninstall', 'npx '.repeat(9) + 'husky uninstall']) {
+      expect([c, verdict(c)]).toEqual([c, 'ask'])
+    }
+  })
+
+  test('configs that are not there yet still ask for rm, mv and tee; hooks and .git/config ask either way', () => {
+    for (const c of [
+      'rm .prettierrc',
+      'mv /tmp/x .prettierrc',
+      'echo x | tee .prettierrc',
+      'echo x > .husky/pre-commit',
+      'cp /tmp/x .git/hooks/pre-commit',
+      "echo '[core]' > .git/config",
+      'echo {} > ~/.prettierrc',
+    ]) expect([c, verdict(c)]).toEqual([c, 'ask'])
+  })
+})
+
+describe('creating a config that is not there yet', () => {
+  test('a redirect or cp to a new config passes', () => {
+    const fresh = join(dir, 'scratch-new', '.prettierrc')
+    expect(existsSync(fresh)).toBe(false)
+    for (const c of [
+      `echo {} > ${fresh}`,
+      'echo {} > .prettierrc',
+      'echo {} > new/.eslintrc.json',
+      'cp /tmp/x .prettierrc',
+      'cp template/.prettierrc .',
+      'nice '.repeat(8) + 'echo {} > .prettierrc',
+    ]) expect([c, verdict(c)]).toEqual([c, null])
+  })
+
+  test('the same redirect or cp to an existing config asks', () => {
+    for (const c of [
+      'echo {} > .eslintrc.json',
+      'echo {} > web/.eslintignore',
+      `echo {} > ${join(dir, '.eslintrc.json')}`,
+      'cp template/.eslintrc.json config/',
+      // After a cd the relative path may name a config elsewhere, so it counts as present.
+      'cd deep && echo {} > .prettierrc',
+      '(cd deep; cp /tmp/x .prettierrc)',
+    ]) {
+      expect([c, verdict(c)]).toEqual([c, 'ask'])
+    }
   })
 })
 

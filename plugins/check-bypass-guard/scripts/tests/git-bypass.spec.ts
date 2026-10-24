@@ -180,8 +180,129 @@ describe('persistent git config changes', () => {
 
   test('a deny later in the script wins over an earlier ask', () => {
     expect(rule('git config "$K" x; git commit --no-verify')).toBe('no-verify')
+    expect(rule('git -c commit.gpgsign=2 commit --no-verify')).toBe('no-verify')
   })
 
+  // git stops reading options at the first operand, so a later `--get`, `-l` or `--` is a value-pattern or the value.
+  test('options after the first operand are operands, so the command still sets the key', () => {
+    for (const [c, r] of [
+      ['git config core.hooksPath /dev/null --get', 'hooks-path'],
+      ['git config --global core.hooksPath /dev/null --list', 'hooks-path'],
+      ['git config include.path /tmp/x --get-all', 'hooks-path'],
+      ['git config core.hooksPath x -e', 'hooks-path'],
+      ['git config core.hooksPath x --unset', 'hooks-path'],
+      ['git config core.hooksPath -- /dev/null', 'hooks-path'],
+      ['git config --file x -- core.hooksPath y', 'hooks-path'],
+      ['git config set --file x core.hooksPath y', 'hooks-path'],
+      ['git config set -- core.hooksPath y', 'hooks-path'],
+      ['git config commit.gpgsign false -l', 'no-gpg-sign'],
+      ['git config commit.gpgsign false --get', 'no-gpg-sign'],
+    ]) expect([c, rule(c)]).toEqual([c, r])
+  })
+
+  test('any spelling of false or zero turns signing off; push signing is guarded too', () => {
+    for (const c of [
+      'git config commit.gpgsign 00',
+      'git config commit.gpgsign 0x0',
+      'git config commit.gpgsign 0k',
+      "git config commit.gpgsign ' 0'",
+      'git config commit.gpgsign FALSE',
+      'git config push.gpgsign false',
+      'git -c commit.gpgsign=00 commit -m x',
+      'git -c tag.gpgsign=0x0 tag -s v1',
+      'git -ccommit.gpgsign=0k commit -m x',
+      'git config --remove-section push',
+      'git config --rename-section push x',
+    ]) expect([c, rule(c)]).toEqual([c, 'no-gpg-sign'])
+  })
+
+  test('a signing value that is neither plainly true nor false asks', () => {
+    for (const c of ['git config commit.gpgsign 2', 'git config push.gpgsign if-asked', 'git -c commit.gpgsign=maybe commit -m x']) {
+      expect([c, rule(c)]).toEqual([c, 'config-edit'])
+    }
+  })
+
+  test('plainly true signing values pass', () => {
+    for (const c of ['git config commit.gpgsign TRUE', 'git config commit.gpgsign yes', 'git config tag.gpgsign on', 'git config commit.gpgsign 1', 'git -c commit.gpgsign=1 commit -m x']) {
+      expect([c, rule(c)]).toEqual([c, null])
+    }
+  })
+})
+
+describe('quoted command names', () => {
+  test('quotes or a backslash inside `git` do not hide it', () => {
+    for (const [c, r] of [
+      ["g''it config core.hooksPath x", 'hooks-path'],
+      ['"g"it config commit.gpgsign false', 'no-gpg-sign'],
+      ['gi\\t config core.hooksPath x', 'hooks-path'],
+      ["'git' commit --no-verify", 'no-verify'],
+    ]) expect([c, rule(c)]).toEqual([c, r])
+  })
+})
+
+describe('wrapper depth', () => {
+  const nices = (n: number) => 'nice '.repeat(n)
+  test('a wrapper still in front after the depth limit asks', () => {
+    expect(rule(`${nices(9)}git config core.hooksPath x`)).toBe('unparsed')
+    expect(rule(`${nices(9)}g''it commit -m x`)).toBe('unparsed')
+    expect(rule(`${nices(9)}$'\\x67it' config core.hooksPath x`)).toBe('unparsed')
+    expect(rule(`${nices(9)}ls`)).toBe('unparsed')
+  })
+
+  test('up to the limit the command is still read', () => {
+    expect(rule(`${nices(8)}git config core.hooksPath x`)).toBe('hooks-path')
+    expect(rule(`${nices(8)}git status`)).toBeNull()
+    expect(rule(`${nices(8)}ls`)).toBeNull()
+  })
+})
+
+describe('aliases that skip hooks or signing', () => {
+  test('defining one is denied like the command it runs', () => {
+    for (const [c, r] of [
+      ['git config --global alias.ci "commit --no-verify"', 'no-verify'],
+      ["git config alias.ci 'commit -n'", 'no-verify'],
+      ["git config alias.ci 'commit -anm'", 'no-verify'],
+      ["git config alias.ci 'commit --no-veri'", 'no-verify'],
+      ["git config alias.pu 'push --no-verify'", 'no-verify'],
+      ["git config set alias.ci 'commit --no-verify'", 'no-verify'],
+      ["git config --add alias.ci 'commit --no-verify'", 'no-verify'],
+      ["git config alias.cs 'commit --no-gpg-sign'", 'no-gpg-sign'],
+      ["git config alias.ci '-c commit.gpgsign=false commit'", 'no-gpg-sign'],
+      ["git config alias.ci '-c core.hooksPath=/dev/null commit'", 'hooks-path'],
+      ["git config alias.off 'config core.hooksPath /dev/null'", 'hooks-path'],
+      ["git config ALIAS.ci 'commit --no-verify'", 'no-verify'],
+      ["git -c alias.ci='commit --no-verify' ci -m x", 'no-verify'],
+    ]) expect([c, rule(c)]).toEqual([c, r])
+  })
+
+  test('a shell alias that names a bypass, or an alias value that cannot be read, asks', () => {
+    for (const c of [
+      "git config alias.ci '!git commit --no-verify'",
+      'git config alias.ci \'!f() { git commit -n "$@"; }; f\'',
+      "git config alias.ci '!git -c core.hooksPath=/dev/null commit'",
+      "git config alias.ci '!SKIP=ruff git commit'",
+      'git config alias.ci "$V"',
+      "git config alias.ci 'commit -m \"x'",
+    ]) expect([c, rule(c)]).toEqual([c, 'config-edit'])
+  })
+
+  test('ordinary aliases pass', () => {
+    for (const c of [
+      'git config alias.st status',
+      "git config --global alias.ci 'commit -v'",
+      "git config alias.lg 'log --oneline --graph'",
+      "git config alias.amend 'commit --amend --no-edit'",
+      "git config alias.cm 'commit -m'",
+      "git config alias.pr '!gh pr create'",
+      "git config alias.up '!git fetch && git rebase'",
+      'git config alias.ci',
+      'git config --unset alias.ci',
+      "git -c alias.st=status st",
+    ]) expect([c, rule(c)]).toEqual([c, null])
+  })
+})
+
+describe('persistent git config reads', () => {
   test('reads, signing on and other keys pass', () => {
     for (const c of [
       'git config user.name x',
@@ -209,6 +330,8 @@ describe('persistent git config changes', () => {
       'git config core.editor vim',
       'git config --global core.excludesFile ~/.gitignore',
       'git config "$K"',
+      'git config --get core.hooksPath --global',
+      'git config -l --show-origin',
     ]) expect([c, rule(c)]).toEqual([c, null])
   })
 })

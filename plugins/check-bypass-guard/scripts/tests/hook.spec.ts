@@ -6,6 +6,7 @@ import { join } from 'node:path'
 const SCRIPT = join(import.meta.dir, '..', 'check-bypass-guard.ts')
 const dir = mkdtempSync(join(tmpdir(), 'cbg-'))
 writeFileSync(join(dir, '.eslintrc.json'), '{}')
+writeFileSync(join(dir, '.eslintignore'), '')
 mkdirSync(join(dir, '.husky'))
 writeFileSync(join(dir, '.husky', 'commit-msg'), 'npx commitlint --edit "$1"\n')
 mkdirSync(join(dir, '.git', 'hooks'), { recursive: true })
@@ -42,6 +43,11 @@ describe('the hook as Claude Code runs it', () => {
     expect(hook('Bash', { command: 'git config --edit' }).out?.permissionDecision).toBe('ask')
     expect(hook('Bash', { command: 'echo x >> .eslintignore' }).out?.permissionDecision).toBe('ask')
     expect(hook('Bash', { command: 'rm build/out.js' }).out).toBeNull()
+  })
+
+  test('a Bash redirect that creates a new config passes; one onto an existing config asks', () => {
+    expect(hook('Bash', { command: 'echo {} > .prettierrc' }).out).toBeNull()
+    expect(hook('Bash', { command: 'echo {} > .eslintrc.json' }).out?.permissionDecision).toBe('ask')
   })
 
   test('hook scripts and .git/config ask whether or not they exist', () => {
