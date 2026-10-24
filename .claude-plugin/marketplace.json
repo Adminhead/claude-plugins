@@ -1129,7 +1129,7 @@
       "name": "the-fool",
       "source": "./plugins/the-fool",
       "description": "Devil's advocate skill that steelmans an idea or decision, then challenges it in one chosen mode (Socratic, dialectic, pre-mortem, red team, evidence audit) and drives to a stronger position.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -1751,8 +1751,8 @@
     {
       "name": "ssot-consolidate",
       "source": "./plugins/ssot-consolidate",
-      "description": "Finds every copy of one scattered fact, proposes a canonical home and a consolidation plan, and edits only after approval.",
-      "version": "0.1.0",
+      "description": "Finds every copy of one fact scattered across code, config, CI and docs, proposes a canonical home and a consolidation plan, and edits only after approval.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1793,15 +1793,15 @@
     {
       "name": "v0-restart",
       "source": "./plugins/v0-restart",
-      "description": "Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failure notes the previous attempt proved, and dropping its accidental architecture.",
-      "version": "0.1.0",
+      "description": "Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failing cases the previous attempt proved, and dropping its accidental architecture.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "catchup",
       "source": "./plugins/catchup",
-      "description": "Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and an optional single next move.",
-      "version": "0.1.0",
+      "description": "Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and a single next move when asked what to do.",
+      "version": "0.1.1",
       "category": "development"
     },
     {

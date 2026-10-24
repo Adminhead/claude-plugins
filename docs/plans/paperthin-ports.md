@@ -38,7 +38,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 | Upstream | Verdict | Target | Reason |
 | --- | --- | --- | --- |
 | `shower` | **Port** | `cold-read` (model) | Comprehension check by a context-free subagent given only the artifact's contents. doubt-review tries to *disprove* a decision; this asks whether a stranger can follow the artifact. There's no equivalent. |
-| `ssotize` | **Port** | `ssot-consolidate` (model) | Audit scattered copies of one fact, get approval, then consolidate. docs-audit checks docs against code, not copies against each other. |
+| `ssotize` | **Port** | `ssot-consolidate` (model) | Audit scattered copies of one fact, get approval, then consolidate. docs-audit checks docs against code, not copies against each other. (Correction 2026-10-23: docs-audit does find duplication across docs, so ssot-consolidate is narrowed to mixed surfaces; see the note under Approach.) |
 | `re0` | **Port** | `v0-rewrite` (model) | Rewrite a drifted doc as a clean v0 ("what is true now", not "what changed"). Nothing here does this for prose. `simplify` is code-only. |
 | `debloat` | **Port** | `debloat` (manual) | Density pass that cuts words but never rules. It differs from avoid-ai-writing (AI tells) and from v0-rewrite (drift). |
 | `reorder` | **Port** | `reorder` (manual) | Move items only, under one named principle. Small and cheap as a manual command. |
@@ -107,6 +107,7 @@ Each new skill keeps upstream's Goal/Workflow/Rules/Verification content in our 
   7. Fold unique details into the canonical home, reconcile contradictions there first, then replace each copy with a reference.
 
   Keep: an empty result is valid; never decide a contradiction silently; no consolidation across a trust boundary without confirmation; code moves use language-aware tools. "Not for": docs-audit, `agent-instructions`.
+  - Correction 2026-10-23 (codex review): docs-audit already handles duplication across docs with one canonical owner, so the line above that says it does not compare copies was wrong. ssot-consolidate now covers facts scattered across mixed surfaces (code constants, config, CI, scripts and docs) or code and config only. Copies that all live in docs go to docs-audit. Its evals use a mixed-surface positive and a docs-only hard negative.
 - **v0-rewrite** (`re0`). Read the target end to end. Check nearby artifacts that must stay aligned. Remove residue, stale deltas and history, fold lessons into the place they belong, rewrite instead of appending, then re-read and cut again.
   - Keep: a pass that finds nothing changes nothing; "what changed" becomes "what is true now"; no old/new traces unless it is a changelog; repair from the source of truth; surface judgment calls; no new files.
   - "Not for": changelogs, ADRs and plans (an append-only history by design), debloat (density only) and docs-audit.
@@ -193,7 +194,9 @@ Workflow:
 4. Write a v0 plan with one complete vertical loop. If the work is multi-slice, the plan goes to `docs/plans/` through the planning skill.
 5. Build only that loop until it clears the gate.
 
-Keep: no copy-forward unless the artifact earned it; one vertical loop beats many shallow surfaces; turn a vague lesson into a gate or leave it out; archive failed paths, never delete them (move them to a branch or a `docs/` note); name the contract that proves a surviving module survives.
+Keep: no copy-forward unless the artifact earned it; one vertical loop beats many shallow surfaces; turn a vague lesson into a gate or leave it out; archive failed paths, never delete them (move them to a branch or a `docs/` note) (superseded 2026-10-23, see below); name the contract that proves a surviving module survives.
+
+Correction 2026-10-23 (codex review): the archive rule over-broadened upstream. re0-work keeps the negative corpus, meaning the executable failing cases and their inputs, and lets throwaway code go. The shipped rule is: keep the failing cases and inputs; discarded code is left to git history, with no archive branches or notes required.
 
 "Not for": experiment-loop (metric-driven iteration) and git-history (rewriting commits). There are no evals, because it is manual.
 

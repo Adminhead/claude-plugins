@@ -335,14 +335,14 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`necromancy`](plugins/necromancy) | skill | Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session. | `baseline` |
 | [`vet`](plugins/vet) | skill | Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted. | - |
 | [`cold-read`](plugins/cold-read) | skill | Cold-reads an artifact through a fresh subagent that sees only its contents and reports where a stranger would stall. | `baseline` |
-| [`ssot-consolidate`](plugins/ssot-consolidate) | skill | Finds every copy of one scattered fact, proposes a canonical home and a consolidation plan, and edits only after approval. | `baseline` |
+| [`ssot-consolidate`](plugins/ssot-consolidate) | skill | Finds every copy of one fact scattered across code, config, CI and docs, proposes a canonical home and a consolidation plan, and edits only after approval. | `baseline` |
 | [`v0-rewrite`](plugins/v0-rewrite) | skill | Rewrites a drifted document as a clean v0 that says what is true now, with no trace of the edits that produced it. | `baseline` |
 | [`debloat`](plugins/debloat) | skill | Manual command that compresses correct but accreted prose to its load-bearing density, cutting words and never rules. | `baseline` |
 | [`reorder`](plugins/reorder) | skill | Manual command that realigns an arbitrarily ordered list, table or section set under one stated principle, moving items only. | `baseline` |
 | [`macrothink`](plugins/macrothink) | skill | Manual command that strips the session's framing and fans out fresh reads to check whether the current direction is tunnel-visioned. | `baseline` |
 | [`prism`](plugins/prism) | skill | Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement. | `baseline` |
-| [`v0-restart`](plugins/v0-restart) | skill | Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failure notes the previous attempt proved, and dropping its accidental architecture. | `baseline` |
-| [`catchup`](plugins/catchup) | skill | Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and an optional single next move. | `baseline` |
+| [`v0-restart`](plugins/v0-restart) | skill | Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failing cases the previous attempt proved, and dropping its accidental architecture. | `baseline` |
+| [`catchup`](plugins/catchup) | skill | Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and a single next move when asked what to do. | `baseline` |
 | [`leakage-audit`](plugins/leakage-audit) | skill | Audits an eval, metric, experiment or benchmark for leakage and reports which independence checks fail, each with a fix. | `programming-core` |
 
 ### Agents
