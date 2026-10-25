@@ -1,7 +1,7 @@
 {
   "name": "coder",
-  "version": "0.1.3",
-  "description": "Coder agent, haiku tier. most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.",
+  "version": "0.2.0",
+  "description": "Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. The orchestrator sets model and effort per call by risk (haiku for mechanical edits, sonnet by default, opus for concurrency, security or data).",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

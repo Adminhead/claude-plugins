@@ -1,7 +1,7 @@
 {
   "name": "orchestration-meta",
-  "version": "0.2.0",
-  "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. coder-max is not included; install it per repo at local scope. Ships no components of its own.",
+  "version": "0.3.0",
+  "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
@@ -14,8 +14,6 @@
     "reviewer",
     "debugger",
     "scribe",
-    "readonly-agent-gate",
-    "coder-high",
-    "coder-critical"
+    "readonly-agent-gate"
   ]
 }
