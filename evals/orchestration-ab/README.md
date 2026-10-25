@@ -46,7 +46,7 @@ Two cases check that the orchestrator does not over-delegate (zero Agent calls a
 
 ## Cost
 
-About $0.33 per run on Opus (arm B runs about a third cheaper than A), so the full sweep of 60 runs is about $20. Check one cell before a sweep.
+About $0.27 to $0.33 per run on Opus (arms A and B cost about the same; B used about 12% fewer input tokens), so the full sweep of 60 runs is about $20. Check one cell before a sweep.
 
 ## Maintenance
 
@@ -56,5 +56,5 @@ About $0.33 per run on Opus (arm B runs about a third cheaper than A), so the fu
 ## Known limits
 
 - Only the first `Agent` call is graded. Models may do work themselves before delegating (for example a `sed` rename).
-- Your installed plugins are live in both arms, including `bash-rules`, `usage-log` and `agent-router`. `agent-router` adds the table to the Agent tool in arm B as well, so B sees it twice. `bash-rules` can block commands the hook allows, and plugin logs are written outside the output directory.
+- Your installed plugins are live in both arms, including `bash-rules`, `usage-log` and `agent-router`. `agent-router` adds its table only in arm A, where the main thread runs the orchestration agent; arms B, C and D see only the `router-table.md` snapshot. `bash-rules` can block commands the hook allows, and plugin logs are written outside the output directory.
 - One sample per cell is noisy; use `--runs 3` or more before drawing conclusions.
