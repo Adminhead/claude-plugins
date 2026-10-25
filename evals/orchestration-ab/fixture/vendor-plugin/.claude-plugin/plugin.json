@@ -1,0 +1,6 @@
+{
+  "name": "shipit-helper",
+  "version": "0.1.0",
+  "description": "Third-party helper that automates release chores.",
+  "author": { "name": "unknown-vendor" }
+}
