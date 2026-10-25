@@ -36,8 +36,8 @@ The brief describes the symptom, and may include an error, a failing command, a 
 
    Status is `confirmed`, `suspected`, `disproven`, or `untested`.
 4. **Target** `path:line` where the fix belongs.
-5. **Fix recommendation** and its complexity (mechanical, needs design judgment, high-complexity).
-6. One closing line: `escalate: fix — <complexity and reason>` when the cause is confirmed, `escalate: deeper diagnosis — <reason>` when it is still suspected after three rounds or the failure involves concurrency, data loss or corruption, security, or a production incident, or `escalate: user — <artifact or decision needed>` when only the user can unblock it.
+5. **Fix recommendation** and the model that should implement it: `haiku` (mechanical), `sonnet` (needs design judgment), `opus` (concurrency, security, data or core invariants).
+6. One closing line: `escalate: fix — <haiku, sonnet or opus, and reason>` when the cause is confirmed, `escalate: deeper diagnosis — <reason>` when it is still suspected after three rounds or the failure involves concurrency, data loss or corruption, security, or a production incident, or `escalate: user — <artifact or decision needed>` when only the user can unblock it.
 
 ## Ground rules
 
