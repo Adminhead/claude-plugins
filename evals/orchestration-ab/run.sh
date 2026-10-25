@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# A/B runner. Usage: run.sh [--out DIR] [--runs N] [--case NAME[,NAME...]] [--arms A,B,C,D] [--jobs N]
-# Arms: A agent + system_override; B default prompt + HEAD orchestrator body; C same with the working-tree
-# body; D = B plus the routing-decisions skill plugin.
+# A/B runner. Usage: run.sh [--out DIR] [--runs N] [--case NAME[,NAME...]] [--arms B,L] [--jobs N]
+# Arms: A (historical) agent + system_override.md from git history; B default prompt + HEAD orchestrator
+# body + static router table; C same with the working-tree body; D = B plus the routing-decisions skill
+# plugin; L = shipped route: default prompt + working-tree body, no static table, working-tree
+# agent-router via --plugin-dir, CLAUDE_ORCHESTRATE=1.
+# Every arm runs with CLAUDE_ORCHESTRATE unset except L, so a harness started from a launcher session
+# does not leak the router table into the other arms.
 # Output dir: --out, else $AB_OUT, else a new mktemp -d. Printed at start.
 # Internal: run.sh --one OUT CASE ARM N
 set -uo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SRC/../.." && pwd)"
-SYSOVR="$ROOT/plugins/orchestration/prompts/system_override.md"
 
 if [[ "${1:-}" == "--one" ]]; then
   OUT=$2 CASE=$3 ARM=$4 N=$5
@@ -23,14 +26,17 @@ if [[ "${1:-}" == "--one" ]]; then
   PROMPT="$(field prompt)"
   COMMON=(--model opus --output-format stream-json --verbose --max-turns 8
           --settings "$OUT/settings.json" --permission-mode bypassPermissions --no-session-persistence)
+  ARMENV=(-u CLAUDE_ORCHESTRATE)
   case "$ARM" in
-    A) ARMFLAGS=(--agent orchestration:orchestration --append-system-prompt-file "$SYSOVR");;
+    A) ARMFLAGS=(--agent orchestration:orchestration --append-system-prompt-file "$OUT/system_override.md");;
     B) ARMFLAGS=(--append-system-prompt-file "$OUT/arm-b-append.md");;
     C) ARMFLAGS=(--append-system-prompt-file "$OUT/arm-c-append.md");;
     D) ARMFLAGS=(--append-system-prompt-file "$OUT/arm-b-append.md" --plugin-dir "$OUT/skill-plugin");;
+    L) ARMFLAGS=(--append-system-prompt-file "$OUT/arm-l-append.md" --plugin-dir "$ROOT/plugins/agent-router")
+       ARMENV=(CLAUDE_ORCHESTRATE=1);;
   esac
   cd "$RUN/repo" || exit 1
-  AB_LOG="$RUN/hook.log" timeout 900 claude -p "$PROMPT" "${ARMFLAGS[@]}" "${COMMON[@]}" \
+  AB_LOG="$RUN/hook.log" timeout 900 env "${ARMENV[@]}" claude -p "$PROMPT" "${ARMFLAGS[@]}" "${COMMON[@]}" \
     > "$RUN/transcript.jsonl" 2> "$RUN/stderr.txt" < /dev/null
   echo "$?" > "$RUN/exit_code"
   touch "$RUN/hook.log"
@@ -38,7 +44,7 @@ if [[ "${1:-}" == "--one" ]]; then
   exit 0
 fi
 
-RUNS=1 CASE="" ARMS="A,B" JOBS=4 OUT="${AB_OUT:-}"
+RUNS=1 CASE="" ARMS="B,L" JOBS=4 OUT="${AB_OUT:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --out) OUT=${2:?}; shift 2;;
@@ -59,7 +65,7 @@ if [[ -n "$CASE" ]]; then
   done
 fi
 for a in $ARMS; do
-  [[ "$a" == A || "$a" == B || "$a" == C || "$a" == D ]] || { echo "--arms entries must be A, B, C or D, got '$a'" >&2; exit 2; }
+  [[ "$a" == A || "$a" == B || "$a" == C || "$a" == D || "$a" == L ]] || { echo "--arms entries must be A, B, C, D or L, got '$a'" >&2; exit 2; }
 done
 [[ "$RUNS" =~ ^[1-9][0-9]*$ && "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "--runs and --jobs must be positive integers" >&2; exit 2; }
 [[ -n "$OUT" ]] || OUT="$(mktemp -d)"

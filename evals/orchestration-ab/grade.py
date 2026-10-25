@@ -111,11 +111,11 @@ def mean(xs):
 def main():
     args = sys.argv[1:]
     only = args[args.index("--case") + 1].split(",") if "--case" in args else None
-    arms = args[args.index("--arms") + 1].split(",") if "--arms" in args else ["A", "B"]
+    arms = args[args.index("--arms") + 1].split(",") if "--arms" in args else ["B", "L"]
     verbose = "-v" in args
     pos = [a for i, a in enumerate(args) if not a.startswith("-") and (i == 0 or args[i - 1] not in ("--case", "--arms"))]
     if not pos:
-        sys.exit("usage: grade.py RUN_DIR [--case NAME[,NAME]] [--arms A,B,C,D] [-v]")
+        sys.exit("usage: grade.py RUN_DIR [--case NAME[,NAME]] [--arms B,L] [-v]")
     out = Path(pos[0]).resolve()
     cases = json.loads((AB / "cases.json").read_text())
     agg = {a: [] for a in arms}

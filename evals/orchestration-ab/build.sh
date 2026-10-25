@@ -3,6 +3,8 @@
 # Generates, inside OUT_DIR (never in the repo tree):
 #   arm-b-append.md  committed (HEAD) orchestrator body (no frontmatter) + router-table.md
 #   arm-c-append.md  working-tree orchestrator body + router-table.md
+#   arm-l-append.md  working-tree orchestrator body, no table (arm L; agent-router adds it live)
+#   system_override.md  arm A's prompt, from git history (c67e66c)
 #   skill-plugin/    arm D's throwaway plugin (routing-decisions skill)
 #   settings.json    PreToolUse hook settings pointing at this directory's hook.py
 #   fixture-base/    git repo (one commit) made from fixture/
@@ -23,6 +25,12 @@ git -C "$ROOT" show "HEAD:$REL" | body > "$OUT/arm-b-append.md"
 cat "$SRC/router-table.md" >> "$OUT/arm-b-append.md"
 body < "$AGENT" > "$OUT/arm-c-append.md"
 cat "$SRC/router-table.md" >> "$OUT/arm-c-append.md"
+
+# L: the shipped route. Working-tree body only; agent-router supplies the table live.
+body < "$AGENT" > "$OUT/arm-l-append.md"
+
+# A (historical): system_override.md was retired from the plugin; read the last copy from history.
+git -C "$ROOT" show c67e66c:plugins/orchestration/prompts/system_override.md > "$OUT/system_override.md"
 
 # D: throwaway plugin with an on-demand skill built from the working-tree text.
 SK="$OUT/skill-plugin"
