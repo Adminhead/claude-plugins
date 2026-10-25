@@ -37,6 +37,7 @@ Run in order on local `main`, one commit set per slice. Bump `version` in `plugi
 - Effort check: one `claude -p` session that spawns `coder` twice, once with `effort: "high"` and once with none; read the subagent's resolved effort from the new `turn.step` lines.
 - Gate for slice 3: if per-call effort reaches the agent, merge into one `coder`. If not, merge into two agents: `coder` (sonnet/medium, haiku by `model`) and `coder-critical` (opus/high, fable by `model`), so risky work keeps high effort.
 - Acceptance: a session's log shows resolved model and effort per subagent request; the effort result and the chosen merge shape are recorded in this plan.
+- Result (2026-10-25, `e79cbe5`): usage-log writes a `model-step` line per loop when its resolved model/effort changes, and `agent-call` carries the requested `model`/`effort`; the report gains a "Models by loop" table. Effort probe (`claude -p --model sonnet`, PreToolUse hook logging `CLAUDE_EFFORT` and the payload `effort.level`): a `coder:coder` spawned with `effort: "high"` ran at `high` while the main loop was at `medium`; one spawned without effort ran at the session's `medium`. Per-call effort reaches plugin agents, so slice 3 merges into one `coder`. Not yet seen live: the installed usage-log updates on ship.
 
 ### 2. Launcher appends to the default prompt
 
