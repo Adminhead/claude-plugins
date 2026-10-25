@@ -12,7 +12,7 @@ The main-session orchestrator agent. It plans work, routes it to the installed a
 
 ## Start a session
 
-With `--agent`, an agent's prompt replaces Claude Code's default system prompt. `prompts/system_override.md` carries the core default guidance (tools, safety, communication), and the `claude-orchestrate` launcher appends it:
+The `claude-orchestrate` launcher appends the orchestration prompt to Claude Code's default system prompt, so the default tool and safety guidance stays in place:
 
 ```
 claude-orchestrate [OPTIONS] [DIR] [CLAUDE_ARGS...]
@@ -20,11 +20,11 @@ claude-orchestrate ~/code/api --resume
 claude-orchestrate -H ~/code/api -- --model opus
 ```
 
-It runs `claude --agent orchestration:orchestration --append-system-prompt-file <plugin root>/prompts/system_override.md` in DIR (default: the current directory). `-a AGENT` picks another agent (or set `CLAUDE_ORCHESTRATE_AGENT`), `-p FILE` appends a different prompt, `--no-prompt` appends none, and `-n` prints the commands without running them. `claude-orchestrate -h` lists every option.
+At each launch it writes `agents/orchestration.md` without its frontmatter to `${XDG_STATE_HOME:-~/.local/state}/claude-orchestrate/orchestration.md`, then runs `claude --append-system-prompt-file <that file>` in DIR (default: the current directory) with `CLAUDE_ORCHESTRATE=1` set. That variable tells `agent-router` to list the installed agents in the Agent tool's description. `-a AGENT` (or `CLAUDE_ORCHESTRATE_AGENT`) runs another agent through `--agent` instead, without the orchestration prompt or `CLAUDE_ORCHESTRATE`; `-p FILE` appends that file instead of the orchestration prompt, `--no-prompt` appends none, and `-n` prints the commands without running them. `claude-orchestrate -h` lists every option.
 
 The plugin's SessionStart hook ([`scripts/link-launcher.sh`](scripts/link-launcher.sh)) links `~/.local/bin/claude-orchestrate` to the installed copy each time a session starts, so the link follows plugin updates. A regular file at that path is never replaced. Make sure `~/.local/bin` is on your `PATH`. Before the first session, run it from `<plugin root>/scripts/claude-orchestrate`.
 
-`claude --agent orchestration:orchestration` or the `agent` setting also work, but start without the core prompt.
+`claude --agent orchestration:orchestration` or the `agent` setting also work, but the agent's prompt then replaces Claude Code's default system prompt.
 
 ### Agent shell
 
@@ -39,13 +39,3 @@ The launcher sets `CLAUDE_CODE_SHELL` to bash, so Claude's Bash tool doesn't loa
 - The agent is named after the repo (`api`, then `api-2`, and so on) so `herdr agent` commands can target it.
 - If Claude stops at a dialog on startup, such as the folder trust check, the launcher says so and you answer it after attaching.
 - To let herdr resume Claude sessions after a restart, install its integration once with `herdr integration install claude`. The launcher reminds you while it is missing.
-
-## Keeping the prompt current
-
-`system_override.md` is adapted from Claude Code's built-in system prompt, so it drifts as Claude Code changes. After a Claude Code upgrade, run:
-
-```
-<plugin root>/scripts/prompt-drift.sh [VERSION|PATH]
-```
-
-It reads the `claude` binary (default: the one on `PATH`; a VERSION names one under `~/.local/share/claude/versions`) and exits 1 listing any drift: the `--agent` plus `--append-system-prompt-file` route no longer appending last, the system prompt's section list gaining, losing or reordering a section, or a phrase this prompt copies verbatim disappearing. It needs `strings` and `rg` with PCRE2. The expected state is pinned to Claude Code 2.1.302. When it reports drift, update `system_override.md` and the expected lists in the script together. `scripts/prompt-drift.test.sh` tests the script against a synthetic binary.

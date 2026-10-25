@@ -149,7 +149,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`javascript`](plugins/javascript) | skill | Covers JavaScript runtime semantics, meaning ESM vs CommonJS, import side effects, promises and the event loop, async cleanup and cancellation, browser vs Node/Bun/Deno/edge, measured performance and JS tests. Use when writing, reviewing or debugging *.js/*.mjs/*.cjs or runtime behavior of JS/TS code (import errors, unhandled rejections, leaks, ordering bugs). | `node-typescript-meta` |
 | [`kubernetes`](plugins/kubernetes) | skill | Writes and reviews Kubernetes manifests (probes, resources, RBAC, NetworkPolicy, Pod Security Standards and admission, Jobs, HPA, PDB, Kustomize) and triages failing workloads with read-only kubectl. | `kubernetes-meta` |
 | [`mcp-health`](plugins/mcp-health/README.md) | hook | A mod that shows `mcp: <server> ✗` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error. | `baseline` |
-| [`orchestration`](plugins/orchestration/README.md) | agent + hook | Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the core Claude Code system prompt that --agent would otherwise replace and can start Claude inside herdr. | `orchestration-meta` |
+| [`orchestration`](plugins/orchestration/README.md) | agent + hook | Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr. | `orchestration-meta` |
 | [`planning`](plugins/planning) | skill | Writes, reviews, or revises implementation plans whose scope, verification, and reruns are proportionate to risk. Use for "plan this", "review this plan", "cheapest way to verify", work spanning several slices or risky boundaries, acceptance criteria for an ambiguous change, multi-agent or multi-session plans, and "grill me" stress-tests. | `programming-core` |
 | [`playwright-cli`](plugins/playwright-cli) | skill | Drive a headless, isolated browser from Bash with playwright-cli through a verb-checked wrapper: inspect pages, fill forms, take screenshots, debug console and network errors, and run smoke QA. | `web-meta` |
 | [`pr-comments`](plugins/pr-comments) | skill | Manual /pr-comments: pull a PR's unresolved review threads and review summaries into context, triage them, and fix the ones you pick. Read-only on GitHub. Not for Forgejo or Codeberg PRs (/forgejo-pr-comments). | `github-meta` |
@@ -436,8 +436,6 @@ Run these from the repo root.
 | Check structure rules and the catalog | `python3 scripts/plugins.py check` |
 | Register new plugin dirs and add them to metas | `python3 scripts/plugins.py register --meta <meta>=<plugin>,...` |
 | Copy the shared Bash parser into the guard plugins | `python3 scripts/plugins.py sync-shared` |
-| Check a Claude Code upgrade against the orchestration prompt | `plugins/orchestration/scripts/prompt-drift.sh [VERSION\|PATH]` |
-| Test the drift check | `bash plugins/orchestration/scripts/prompt-drift.test.sh` |
 | Test `plugins.py` | `uv run --with pytest pytest scripts/test_plugins.py` |
 | Validate the marketplace | `claude plugin validate --strict .` |
 | Validate one plugin | `claude plugin validate --strict plugins/<name>` |
