@@ -1,6 +1,6 @@
 ---
 name: coder
-description: 'Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. The orchestrator sets `model` and `effort` per call by risk (haiku for mechanical edits, sonnet by default, opus for concurrency, security or data).'
+description: 'Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical edits, sonnet/medium by default, opus/high for concurrency, security, data or core invariants.'
 model: sonnet
 effort: medium
 tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, ToolSearch, Monitor, TaskStop, NotebookEdit, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code

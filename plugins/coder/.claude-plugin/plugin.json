@@ -1,7 +1,7 @@
 {
   "name": "coder",
-  "version": "0.2.0",
-  "description": "Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. The orchestrator sets model and effort per call by risk (haiku for mechanical edits, sonnet by default, opus for concurrency, security or data).",
+  "version": "0.2.1",
+  "description": "Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical edits, sonnet/medium by default, opus/high for concurrency, security, data or core invariants.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
