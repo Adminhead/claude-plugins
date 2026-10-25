@@ -45,6 +45,23 @@ def skill_loaded(tr):
                    for u in tool_uses(tr)))
 
 
+def init_agents(tr):
+    """Agent types the run's init message offered, or None when it lists none."""
+    init = next((m for m in tr if m.get("type") == "system" and m.get("subtype") == "init"), {})
+    return init.get("agents") or None
+
+
+def not_applicable(expect, tr):
+    """True when the expected first agent is not installed in this run, so the case can't be judged."""
+    if "first_agent" not in expect:
+        return False
+    have = init_agents(tr)
+    if have is None:
+        return False
+    want = expect["first_agent"]
+    return not any(w in have for w in (want if isinstance(want, list) else [want]))
+
+
 def grade(expect, tr, log):
     """Return (passed, reason)."""
     uses = list(tool_uses(tr))
@@ -115,7 +132,7 @@ def main():
     verbose = "-v" in args
     pos = [a for i, a in enumerate(args) if not a.startswith("-") and (i == 0 or args[i - 1] not in ("--case", "--arms"))]
     if not pos:
-        sys.exit("usage: grade.py RUN_DIR [--case NAME[,NAME]] [--arms B,L] [-v]")
+        sys.exit("usage: grade.py RUN_DIR [--case NAME[,NAME]] [--arms A,B,C,D,L] [-v]")
     out = Path(pos[0]).resolve()
     cases = json.loads((AB / "cases.json").read_text())
     agg = {a: [] for a in arms}
@@ -129,7 +146,7 @@ def main():
         for arm in arms:
             cdir = out / "runs" / c["name"]
             runs = sorted(cdir.glob(f"{arm}-*")) if cdir.exists() else []
-            res, nerr = [], 0
+            res, nerr, nna = [], 0, 0
             for r in runs:
                 tr, log = load(r)
                 err = errored(r, tr)
@@ -138,19 +155,23 @@ def main():
                     errs[arm] += 1
                     print(f"  [{c['name']} {r.name}] ERROR: {err} (excluded)")
                     continue
-                ok, why = grade(c["expect"], tr, log)
                 m = metrics(tr)
-                res.append(ok)
                 skill[arm][1] += 1
                 skill[arm][0] += skill_loaded(tr)
                 if m:
                     agg[arm].append(m)
+                if not_applicable(c["expect"], tr):
+                    nna += 1
+                    print(f"  [{c['name']} {r.name}] N/A: expected agent not installed in this run")
+                    continue
+                ok, why = grade(c["expect"], tr, log)
+                res.append(ok)
                 if verbose or not ok:
                     first = next((u["input"].get("subagent_type") for u in tool_uses(tr) if u["name"] in AGENT_TOOLS), None)
                     print(f"  [{c['name']} {r.name}] {'PASS' if ok else 'FAIL'}: {why} (first agent: {first})")
-            cell[arm] = (f"{sum(res)}/{len(res)}" if res else "-") + (f"+{nerr}E" if nerr else "")
+            cell[arm] = (f"{sum(res)}/{len(res)}" if res else ("n/a" if nna else "-")) + (f"+{nna}n/a" if nna and res else "") + (f"+{nerr}E" if nerr else "")
         rows.append((c["name"], [cell[a] for a in arms]))
-    print(f"\n{'case':<24}" + "".join(f"{a + ' pass':>10}" for a in arms) + "   (nE = errored runs, excluded)")
+    print(f"\n{'case':<24}" + "".join(f"{a + ' pass':>10}" for a in arms) + "   (nE = errored runs, n/a = expected agent not installed in the run; both excluded)")
     for n, cells in rows:
         print(f"{n:<24}" + "".join(f"{x:>10}" for x in cells))
     print(f"\n{'arm':<5}{'runs':>5}{'errors':>7}{'skill loaded':>13}{'mean in-tokens':>16}{'mean cost $':>13}{'mean turns':>12}{'mean ms':>10}")

@@ -49,11 +49,11 @@ Two cases check that the orchestrator does not over-delegate (zero Agent calls a
 
 ## Cost
 
-About $0.27 to $0.33 per run on Opus (arms A and B cost about the same; B used about 12% fewer input tokens), so the full sweep of 60 runs is about $20. Check one cell before a sweep.
+About $0.27 to $0.33 per run on Opus for each of arms A, B, C, D and L; arms A and B cost about the same, and B used about 12% fewer input tokens. A sweep costs runs x cases x arms: 10 cases x 2 arms x 3 runs = 60 runs, about $20. Check one cell before a sweep.
 
 ## Maintenance
 
-- `router-table.md` is a snapshot of the `agent-router` section of the Agent tool description. Refresh it when the agent roster changes, or arm B stops matching arm A.
+- `router-table.md` is a snapshot of the `agent-router` section of the Agent tool description. Refresh it when the agent roster changes, or arm B stops matching arm A. It can also list agents the run does not have: the fixture cwd is a temp dir, so project- and local-scope plugins (such as `plugin-vetter`) do not load there. Static-table arms (B, C, D) may then call an agent that does not exist, while arm L lists only what is installed. `grade.py` marks a run `n/a` (excluded from pass rates) when the case's expected `first_agent` is missing from the run's init `agents` list.
 - `fixture/` carries a deliberate failing test (`test_weekly_buckets`), a racy `HitCounter`, and a hostile third-party plugin in `vendor-plugin/`. Don't fix them. Several cases rely on them.
 
 ## Known limits

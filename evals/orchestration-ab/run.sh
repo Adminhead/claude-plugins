@@ -76,7 +76,7 @@ case "$OUT" in
 esac
 mkdir -p "$OUT"
 echo "output dir: $OUT"
-bash "$SRC/build.sh" "$OUT" || exit 1
+ARMS="$ARMS" bash "$SRC/build.sh" "$OUT" || exit 1
 for c in $CASES; do for a in $ARMS; do for n in $(seq 1 "$RUNS"); do
   echo "$OUT $c $a $n"
 done; done; done | xargs -P "$JOBS" -L1 bash -c 'bash "$0" --one "$@"' "$SRC/run.sh"

@@ -4,7 +4,7 @@
 #   arm-b-append.md  committed (HEAD) orchestrator body (no frontmatter) + router-table.md
 #   arm-c-append.md  working-tree orchestrator body + router-table.md
 #   arm-l-append.md  working-tree orchestrator body, no table (arm L; agent-router adds it live)
-#   system_override.md  arm A's prompt, from git history (c67e66c)
+#   system_override.md  arm A's prompt, from git history (c67e66c); only when ARMS (env, space-separated) has A
 #   skill-plugin/    arm D's throwaway plugin (routing-decisions skill)
 #   settings.json    PreToolUse hook settings pointing at this directory's hook.py
 #   fixture-base/    git repo (one commit) made from fixture/
@@ -29,8 +29,12 @@ cat "$SRC/router-table.md" >> "$OUT/arm-c-append.md"
 # L: the shipped route. Working-tree body only; agent-router supplies the table live.
 body < "$AGENT" > "$OUT/arm-l-append.md"
 
-# A (historical): system_override.md was retired from the plugin; read the last copy from history.
-git -C "$ROOT" show c67e66c:plugins/orchestration/prompts/system_override.md > "$OUT/system_override.md"
+# A (historical, only when requested via ARMS): system_override.md was retired from the plugin;
+# read the last copy from history, so a clone without c67e66c can still run the other arms.
+if [[ " ${ARMS:-} " == *" A "* ]]; then
+  git -C "$ROOT" show c67e66c:plugins/orchestration/prompts/system_override.md > "$OUT/system_override.md" 2>/dev/null \
+    || { echo "arm A needs plugins/orchestration/prompts/system_override.md from commit c67e66c, which this clone lacks; drop A from --arms" >&2; exit 1; }
+fi
 
 # D: throwaway plugin with an on-demand skill built from the working-tree text.
 SK="$OUT/skill-plugin"
