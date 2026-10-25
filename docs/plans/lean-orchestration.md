@@ -68,6 +68,7 @@ Shape from slice 1's gate (one `coder`, or `coder` plus `coder-critical`).
 - Harness: one frozen roster snapshot per arm (`router-table-head.md` for B, the new roster for C), since B's old tier prompt can't be tested against a roster without its tiers. `grade.py:57-63` and `cases.json` expectations check `model` as a JSON field next to `subagent_type`.
 - `evals/orchestration/`: update the 11 `prompt.md` `plugins:` lists that point at `../../../../plugins/coder-high` and the others, and the graders that name tiers (`grep -rl coder- evals/orchestration`).
 - Acceptance: arm C (new prompt, new roster) against B (HEAD prompt, old roster) over the retest set, scored by model; no case regresses; `plugins.py check` passes.
+- Result (2026-10-25, `8424307..926f7c7`): one `coder` (sonnet/medium, model and effort per call), tiers archived, model table and model-based examples in the prompt, fable only after an opus attempt fails and a coder's `escalate:` asks for more, or when the user asks. Arm B is pinned with `CONTROL_REF=8f8bd5f`; the grader takes the roster from the arm. B 24/24, C (final prompt) 23/24: C passed `model` and `effort` on every coder call (rename haiku/medium, race-fix opus/high, multi-slice and api-redesign sonnet/medium); its one miss per sweep is a call to the still-installed `coder-high`, which goes away once the tier plugins are uninstalled. Cost per run within 1% of B in the paired sweep.
 
 ### 4. One author per change, reviewer as verifier
 
