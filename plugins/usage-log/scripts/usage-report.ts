@@ -4,8 +4,9 @@
 //   usage-report.ts [--days N] [--dir PATH] [--judge [--limit N] [--model M]]
 //
 // Skills: uses per skill, by the Skill tool or otherwise, main loop or subagent; listed skills never used; listing cuts.
-// Agents: Agent tool calls per type, with the model and effort each requested, and the resolved model and effort per loop. Bash: decisions by stage, rule and category, the model stages' sources, confidence
-// and time, and what the next Bash call in the same loop was after a deny.
+// Agents: Agent tool calls per type, with the model and effort each requested, and the resolved model and effort per
+// loop. Bash: decisions by stage, rule and category, the model stages' sources, confidence and time, and what the
+// next Bash call in the same loop was after a deny.
 // --judge asks a model (claude -p, haiku by default) which listed skills each logged prompt should have loaded, and
 // compares that with what loaded: missed and unneeded skills. It sends the prompts and skill descriptions to the model
 // and costs tokens, so it is opt-in and capped by --limit.

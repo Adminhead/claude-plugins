@@ -107,6 +107,41 @@ describe('register', () => {
     ])
   })
 
+  test('session.start clears the model-step dedupe', async ($, on) => {
+    const lines = capture(on)
+    on('session.start', async (_$: any, e: any) => ({ cwd: e.cwd }) as any)
+    on('turn.step', async function* (_$: any, e: any) {
+      return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null }
+    } as any)
+    const step = async () => {
+      for await (const _ of $.turn.step({ turnId: 't', index: 0, messageCount: 1, model: 'm1', effort: 'medium' } as never)) void _
+    }
+    await step()
+    await $.session.start({ cwd: '/x', surface: 'terminal', isInteractive: true } as never)
+    await step()
+    expect(lines.filter(l => l.kind === 'model-step')).toHaveLength(2)
+  })
+
+  test('a failing log write never blocks a model step', async ($, on) => {
+    on('ui.log', async () => ({ value: undefined }))
+    on('session.id', async () => ({ value: 's1' }))
+    on('process.run', async () => ({ deny: 'no process' }))
+    on('turn.step', async function* (_$: any, e: any) {
+      return { turnId: e.turnId, index: e.index, answer: 'ok', toolUses: [], stopReason: 'end_turn', usage: null }
+    } as any)
+    let result: any
+    const stream: any = $.turn.step({ turnId: 't', index: 0, messageCount: 1, model: 'm1' } as never)
+    const it = stream[Symbol.asyncIterator]()
+    for (;;) {
+      const r = await it.next()
+      if (r.done) {
+        result = r.value
+        break
+      }
+    }
+    expect(result?.answer).toBe('ok')
+  })
+
   test('a failing log write never blocks the prompt', async ($, on) => {
     on('ui.log', async () => ({ value: undefined }))
     on('session.id', async () => ({ value: 's1' }))

@@ -95,7 +95,12 @@ export const register: Register = (on, options) => {
     const pair = `${e.model}/${e.effort ?? ''}`
     if (lastStep.get(loop) !== pair) {
       lastStep.set(loop, pair)
-      await write($, 'model-step', { prompt: promptNo, agentId: e.agentId, model: e.model, effort: e.effort })
+      // The stream has no .catch form, so a failure here is reported and the step still goes on.
+      try {
+        await write($, 'model-step', { prompt: promptNo, agentId: e.agentId, model: e.model, effort: e.effort })
+      } catch (err) {
+        report($, err)
+      }
     }
     return yield* next(e)
   })

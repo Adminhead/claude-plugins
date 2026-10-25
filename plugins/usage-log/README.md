@@ -20,7 +20,7 @@ Lines go to `~/.local/state/claude-usage/usage-log-<date>.jsonl`, one JSON objec
 | `skill` | each time a skill loads: the Skill tool, a typed `/name`, or a preload into a subagent | `prompt`, `skill` |
 | `skill-call` | each Skill tool call | `prompt`, `agentId` (absent on the main loop), `skill`, `args`, `isError` or `denied` |
 | `agent-call` | each Agent tool call | `prompt`, `agentId`, `type`, `description`, `model` and `effort` as the call requested them (when set), `isError` or `denied` |
-| `model-step` | a loop's first model request, and each time its resolved model or effort changes | `prompt`, `agentId` (absent on the main loop), `model`, `effort` as the engine resolved them |
+| `model-step` | a loop's first model request, and each time its resolved model or effort changes | `prompt`, `agentId` (absent on the main loop), `model`, `effort` as they stand at usage-log's point in the hook chain (a mod beneath it may still rewrite them) |
 | `session-end` | session end | `prompts` |
 
 Claude Code reports a skill when it loads, not when Claude reads its description and decides against it. That decision isn't observable. The report's `--judge` mode estimates it afterwards (see below).
