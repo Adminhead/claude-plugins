@@ -1,0 +1,16 @@
+
+## Installed agent routes (agent-router)
+
+For the orchestrating main thread: the agent types installed in this session, each with when to use it. Pass the name exactly as `subagent_type`. Prefer a specialized type over general-purpose when its line fits the task.
+
+- `Explore`: Fast read-only search agent for locating code. Use it to find files by pattern (eg. "src/components/**/*.tsx"), grep for symbols or keywords (eg. "API endpoints"), or answer "where is X defined / which files reference Y." Do NOT use it for code review, design-doc auditing, cross-file consistency checks, or open-ended…
+- `Plan`: Software architect agent for designing implementation plans. Use this when you need to plan the implementation strategy for a task. Returns step-by-step plans, identifies critical files, and considers architectural trade-offs.
+- `architect:architect`: Read-only planner that returns a sliced plan with risks, rejected alternatives and open questions. Use before multi-slice, cross-cutting, risky or unclear-approach work, or when choosing between designs. Not for bounded changes with an obvious approach (coder) or failures with an unknown cause (debugger).
+- `coder-critical:coder-critical`: Coder tier for costly mistakes (opus): concurrency, security-sensitive code, data migrations, core invariants, or a change a lower tier failed. Slower and dearer; use coder-max only if this tier fails.
+- `coder-high:coder-high`: Coder tier for deeper judgment (sonnet): a change coder struggled with or that needs careful design, like a tricky refactor, an API redesign or intricate tests. Use coder-critical for risky logic.
+- `coder:coder`: Default coder tier (haiku): most bounded changes with a known approach, such as features, fixes, refactors, multi-file edits and their tests. Escalate to coder-high when a change needs deeper judgment.
+- `debugger:debugger`: Read-only root-cause diagnosis for failing or flaky tests, regressions and unexplained errors, before anyone edits code. Not for fixes with a known cause (coder). For high-stakes failures (concurrency, data loss, security, production) the caller passes a stronger model. Returns root cause, repro, hypotheses and a fix.
+- `general-purpose`: General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks.
+- `plugin-vetter:plugin-vetter`: Read-only security review of a third-party plugin, skill, agent, hooks.json or .mcp.json before it is installed or trusted. Not for your own active config (agent-config-audit). Checks hidden directives, invisible unicode, encoded payloads, tool shadowing and unpinned fetches; returns PASS, FAIL or NEEDS HUMAN REVIEW.
+- `reviewer:reviewer`: Read-only reviewer that checks a plan, design or diff against its brief and acceptance criteria and returns verified findings by severity. Use after a slice lands or before a risky plan runs; the caller asks for a quick or thorough pass. Not for an open-ended bug hunt (/code-review) or attack paths (security-auditor).
+- `scribe:scribe`: Writes and updates docs (READMEs, guides, docstrings, changelogs, CLAUDE.md or AGENTS.md) and resyncs them after a code change, verifying every claim against the code. Use when a change leaves docs stale or a doc needs writing. Not for code changes (coder). Returns the files changed and claims marked UNVERIFIED.

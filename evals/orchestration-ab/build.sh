@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Usage: build.sh OUT_DIR
 # Generates, inside OUT_DIR (never in the repo tree):
-#   arm-b-append.md  committed (HEAD) orchestrator body (no frontmatter) + router-table.md
-#   arm-c-append.md  working-tree orchestrator body + router-table.md
+#   arm-b-append.md  control orchestrator body (CONTROL_REF, no frontmatter) + router-table-head.md (old tier roster)
+#   arm-c-append.md  working-tree orchestrator body + router-table.md (merged-coder roster)
 #   arm-l-append.md  working-tree orchestrator body, no table (arm L; agent-router adds it live)
 #   system_override.md  arm A's prompt, from git history (c67e66c); only when ARMS (env, space-separated) has A
 #   skill-plugin/    arm D's throwaway plugin (routing-decisions skill)
@@ -20,9 +20,12 @@ REL=plugins/orchestration/agents/orchestration.md
 # frontmatter ends at the second '---' line; drop leading blanks
 body() { awk 'BEGIN{n=0} n>=2{print} /^---$/{n++}' | awk 'NF||started{started=1;print}'; }
 
-# B (control) and D use the committed body; C uses the working-tree body.
-git -C "$ROOT" show "HEAD:$REL" | body > "$OUT/arm-b-append.md"
-cat "$SRC/router-table.md" >> "$OUT/arm-b-append.md"
+# B (control) and D use the control body (CONTROL_REF, default the last commit with the coder-tier ladder);
+# C uses the working-tree body. Each arm gets its own frozen roster: B and D the old tier roster
+# (router-table-head.md), C the merged-coder roster (router-table.md).
+CONTROL_REF="${CONTROL_REF:-8f8bd5f}"
+git -C "$ROOT" show "$CONTROL_REF:$REL" | body > "$OUT/arm-b-append.md"
+cat "$SRC/router-table-head.md" >> "$OUT/arm-b-append.md"
 body < "$AGENT" > "$OUT/arm-c-append.md"
 cat "$SRC/router-table.md" >> "$OUT/arm-c-append.md"
 
@@ -47,7 +50,7 @@ EXAMPLES="$(awk '/^Routing examples/{p=1} /^Escalation rules/{p=0} p' "$AGENT")"
   cat <<'EOF'
 ---
 name: routing-decisions
-description: Decides whether to do a piece of work yourself or delegate it, and which agent type and model to route it to. Use when you are about to start work, edit files, or call the Agent tool and must choose between doing it inline and delegating, or between coder tiers, debugger, architect, scribe, plugin-vetter and other agents.
+description: Decides whether to do a piece of work yourself or delegate it, and which agent type and model to route it to. Use when you are about to start work, edit files, or call the Agent tool and must choose between doing it inline and delegating, or between coder models, debugger, architect, scribe, plugin-vetter and other agents.
 ---
 
 # Routing decisions

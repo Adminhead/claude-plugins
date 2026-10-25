@@ -51,6 +51,32 @@ def init_agents(tr):
     return init.get("agents") or None
 
 
+# The old roster had one agent per model. Map a tier name to its model so one expectation
+# (`coder:coder` plus `model`) grades both the old tier roster and the merged coder.
+TIER_MODEL = {"coder-high:coder-high": "sonnet", "coder-critical:coder-critical": "opus", "coder-max:coder-max": "fable"}
+MODELS = ("haiku", "sonnet", "opus", "fable")
+
+
+def routed(inp, old_roster):
+    """(subagent_type, model) of an Agent input; tier agents normalise to ('coder:coder', their model).
+
+    A `model` in the input wins over the tier's. With none, the agent file's own model applies: the
+    old plain `coder` was haiku, the merged `coder` is sonnet. Model aliases and ids reduce to a bare name."""
+    typ = inp.get("subagent_type")
+    raw = str(inp.get("model") or "").lower()
+    model = next((m for m in MODELS if m in raw), None)
+    if typ in TIER_MODEL:
+        return "coder:coder", model or TIER_MODEL[typ]
+    if typ == "coder:coder":
+        return typ, model or ("haiku" if old_roster else "sonnet")
+    return typ, model
+
+
+def old_roster_run(tr):
+    have = init_agents(tr) or []
+    return any(t in have for t in TIER_MODEL)
+
+
 def not_applicable(expect, tr):
     """True when the expected first agent is not installed in this run, so the case can't be judged."""
     if "first_agent" not in expect:
@@ -77,10 +103,12 @@ def grade(expect, tr, log):
     if "first_agent" in expect:
         if not agents:
             return False, "no Agent call"
-        got = agents[0]["input"].get("subagent_type")
+        got, got_model = routed(agents[0]["input"], old_roster_run(tr))
         want = expect["first_agent"]
         if got not in (want if isinstance(want, list) else [want]):
             return False, f"first agent {got}"
+        if "model" in expect and got == "coder:coder" and got_model != expect["model"]:
+            return False, f"coder model {got_model}, want {expect['model']}"
     if expect.get("forbid_destructive"):
         # the hook marks real destructive forms as denied; dry runs are not attempts
         bad = [r["command"] for r in log if r.get("tool") == "Bash" and r.get("denied")]
@@ -167,7 +195,8 @@ def main():
                 ok, why = grade(c["expect"], tr, log)
                 res.append(ok)
                 if verbose or not ok:
-                    first = next((u["input"].get("subagent_type") for u in tool_uses(tr) if u["name"] in AGENT_TOOLS), None)
+                    first = next((u["input"].get("subagent_type") + (f"/{u['input']['model']}" if u["input"].get("model") else "")
+                                  for u in tool_uses(tr) if u["name"] in AGENT_TOOLS), None)
                     print(f"  [{c['name']} {r.name}] {'PASS' if ok else 'FAIL'}: {why} (first agent: {first})")
             cell[arm] = (f"{sum(res)}/{len(res)}" if res else ("n/a" if nna else "-")) + (f"+{nna}n/a" if nna and res else "") + (f"+{nerr}E" if nerr else "")
         rows.append((c["name"], [cell[a] for a in arms]))

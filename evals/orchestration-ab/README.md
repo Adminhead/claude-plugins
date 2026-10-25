@@ -3,17 +3,17 @@
 Compares how the main Claude Code session routes work under different system-prompt setups, on the same model (`--model opus`):
 
 - Arm A (historical): `--agent orchestration:orchestration --append-system-prompt-file system_override.md`. The launcher no longer uses this route, and `system_override.md` was retired from the plugin; `build.sh` reads its last copy from `git show c67e66c:plugins/orchestration/prompts/system_override.md` into the output dir. Arm A needs that commit in your clone.
-- Arm B (static table): Claude Code's default prompt plus the orchestrator. `build.sh` appends the body of `plugins/orchestration/agents/orchestration.md` (frontmatter removed) and then `router-table.md`.
+- Arm B (static table, old roster): Claude Code's default prompt plus the orchestrator as it was before the coder merge. `build.sh` appends the body of `plugins/orchestration/agents/orchestration.md` at `CONTROL_REF` (default `8f8bd5f`, the last commit with the coder-tier ladder; frontmatter removed) and then `router-table-head.md`, the frozen roster with `coder`, `coder-high`, `coder-critical`.
 - Arm L (shipped route, live router): like what `claude-orchestrate` launches. The working-tree orchestration body (no static table) is appended to the default prompt, the working-tree `plugins/agent-router` is loaded with `--plugin-dir`, and `CLAUDE_ORCHESTRATE=1` makes it add the live routing table to the Agent tool. `--plugin-dir` takes precedence over an installed `agent-router` of the same name (checked: the init message lists only the `--plugin-dir` copy).
 
 Every other arm runs under `env -u CLAUDE_ORCHESTRATE`, so a harness started from a launcher session does not leak the table into them.
 
-Two more arms test a change to the orchestrator prompt. B is the control, so its body comes from `git show HEAD:plugins/orchestration/agents/orchestration.md`:
+Two more arms test a change to the orchestrator prompt. B is the control, so its body comes from `git show $CONTROL_REF:plugins/orchestration/agents/orchestration.md`:
 
-- Arm C: like B, but the body comes from the working-tree `orchestration.md`, so uncommitted prompt edits are what is measured.
-- Arm D: B plus an on-demand skill. `build.sh` writes a throwaway plugin (`skill-plugin/` in the output dir, skill `routing-decisions`) loaded with `--plugin-dir`. Its text is the working-tree "Do it yourself" rule plus the "Routing examples" section, extracted at build time, with a description that fires when deciding whether to do work inline or delegate it. `grade.py` reports a per-arm "skill loaded" count (the Skill tool was called for `routing-decisions`).
+- Arm C: like B, but the body comes from the working-tree `orchestration.md` and the roster is `router-table.md`, the merged-coder roster (one `coder`, no tier agents), so the prompt edits and the new roster are what is measured.
+- Arm D: B (old roster) plus an on-demand skill. `build.sh` writes a throwaway plugin (`skill-plugin/` in the output dir, skill `routing-decisions`) loaded with `--plugin-dir`. Its text is the working-tree "Do it yourself" rule plus the "Routing examples" section, extracted at build time, with a description that fires when deciding whether to do work inline or delegate it. `grade.py` reports a per-arm "skill loaded" count (the Skill tool was called for `routing-decisions`).
 
-Arms A and L get their routing table from the `agent-router` plugin. Arm B appends a snapshot of the same table, so the arms see the same roster.
+Arms A and L get their routing table from the `agent-router` plugin, so they see whatever agents are installed. Arms B and D append `router-table-head.md` and arm C appends `router-table.md`: one frozen roster per arm, because the old prompt can't be tested against a roster without its tiers. Expectations in `cases.json` are roster-neutral: `first_agent: "coder:coder"` plus `model`. `grade.py` reads the Agent input's `subagent_type` and `model` as JSON fields and maps the old tier names to their models (`coder-high` sonnet, `coder-critical` opus, `coder-max` fable; the old plain `coder` is haiku, the merged one sonnet), so one expectation grades both rosters, old sweeps included. The `model` check applies only when the first agent is a coder.
 
 ## How it differs from `evals/orchestration`
 
@@ -53,7 +53,7 @@ About $0.27 to $0.33 per run on Opus for each of arms A, B, C, D and L; arms A a
 
 ## Maintenance
 
-- `router-table.md` is a snapshot of the `agent-router` section of the Agent tool description. Refresh it when the agent roster changes, or arm B stops matching arm A. It can also list agents the run does not have: the fixture cwd is a temp dir, so project- and local-scope plugins (such as `plugin-vetter`) do not load there. Static-table arms (B, C, D) may then call an agent that does not exist, while arm L lists only what is installed. `grade.py` marks a run `n/a` (excluded from pass rates) when the case's expected `first_agent` is missing from the run's init `agents` list.
+- `router-table.md` is a snapshot of the `agent-router` section of the Agent tool description for the current roster (arm C); `router-table-head.md` is the frozen pre-merge roster for arms B and D. Refresh `router-table.md` when the agent roster changes; leave the head copy alone. It can also list agents the run does not have: the fixture cwd is a temp dir, so project- and local-scope plugins (such as `plugin-vetter`) do not load there. Static-table arms (B, C, D) may then call an agent that does not exist, while arm L lists only what is installed. `grade.py` marks a run `n/a` (excluded from pass rates) when the case's expected `first_agent` is missing from the run's init `agents` list.
 - `fixture/` carries a deliberate failing test (`test_weekly_buckets`), a racy `HitCounter`, and a hostile third-party plugin in `vendor-plugin/`. Don't fix them. Several cases rely on them.
 
 ## Known limits
