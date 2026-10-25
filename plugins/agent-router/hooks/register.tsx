@@ -71,7 +71,7 @@ export const register: Register = (on) => {
       if (typeof agent === 'string') main = agent
     }
     // The launcher appends the orchestration prompt to the default one and sets CLAUDE_ORCHESTRATE=1.
-    const launched = ((await $.env.get("CLAUDE_ORCHESTRATE")) ?? '') !== ''
+    const launched = ((await $.env.get('CLAUDE_ORCHESTRATE')) ?? '') !== ''
     if (!launched && !isOrchestrator(main)) {
       rendered = null
       return out
