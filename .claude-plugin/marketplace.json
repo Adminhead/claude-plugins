@@ -155,8 +155,8 @@
     {
       "name": "agent-router",
       "source": "./plugins/agent-router",
-      "description": "Mod that lists the installed agent types, each with when to use it, in the Agent tool's description when the main thread runs the orchestration agent, so new agents get routes without editing it.",
-      "version": "0.2.0",
+      "description": "Mod that lists the installed agent types, each with when to use it, in the Agent tool's description in an orchestration session (CLAUDE_ORCHESTRATE set, or the main thread runs the orchestration agent), so new agents get routes without editing it.",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -443,7 +443,7 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {

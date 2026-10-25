@@ -81,8 +81,11 @@ if [[ -z $agent && $prompt_set == 0 ]]; then
   [[ -f $root/agents/orchestration.md ]] || die "missing $root/agents/orchestration.md"
   if ((!dry)); then
     mkdir -p "$state"
-    awk 'BEGIN{n=0} n>=2{print} /^---$/{n++}' "$root/agents/orchestration.md" | awk 'NF||started{started=1;print}' >"$prompt.tmp.$$"
-    mv -f "$prompt.tmp.$$" "$prompt"
+    tmp=$prompt.tmp.$$
+    trap 'rm -f "$tmp"' EXIT
+    awk 'BEGIN{n=0} n>=2{print} /^---$/{n++}' "$root/agents/orchestration.md" | awk 'NF||started{started=1;print}' >"$tmp"
+    [[ -s $tmp ]] || die "$root/agents/orchestration.md has no body after its frontmatter"
+    mv -f "$tmp" "$prompt"
   fi
 fi
 [[ -z $prompt || -f $prompt ]] || ((dry)) || die "missing $prompt"
@@ -96,7 +99,9 @@ claude_args+=("$@")
 # CLAUDE_ENV_FILE is sourced before every Bash command.
 bash_path=$(command -v bash) || die "bash not found"
 launch_env=("CLAUDE_CODE_SHELL=$bash_path")
-[[ -n $agent ]] || launch_env+=("CLAUDE_ORCHESTRATE=1")
+# The -a route clears an inherited CLAUDE_ORCHESTRATE (empty counts as unset in agent-router);
+# `env` and herdr's --env both take the NAME= form.
+if [[ -n $agent ]]; then launch_env+=("CLAUDE_ORCHESTRATE="); else launch_env+=("CLAUDE_ORCHESTRATE=1"); fi
 bashrc=${XDG_CONFIG_HOME:-$HOME/.config}/claude-orchestrate/agent.bashrc
 if [[ ! -e $bashrc && -f $root/templates/agent.bashrc ]] && ((!dry)); then
   mkdir -p "$(dirname "$bashrc")"

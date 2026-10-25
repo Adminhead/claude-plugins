@@ -1,6 +1,6 @@
 {
   "name": "orchestration",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
   "author": {
     "name": "AdminHead",
