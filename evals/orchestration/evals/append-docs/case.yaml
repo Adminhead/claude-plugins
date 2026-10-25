@@ -58,11 +58,11 @@ execution:
 
     Escalation rules, keyed on an agent's closing `escalate:` line:
 
-    - debugger `fix — <complexity>`: hand the diagnosis to a `coder` on the model the debugger names (haiku, sonnet or opus, with effort from the model table). Repeated failures climb one model at a time through new `coder` calls that carry the failed attempt's report.
+    - debugger `fix — <model and reason>`: hand the diagnosis to a `coder` on the model the debugger names (haiku, sonnet or opus, with effort from the model table). Repeated failures climb one model at a time through new `coder` calls that carry the failed attempt's report.
     - debugger `deeper diagnosis`: re-spawn the debugger with `model: opus` and pass its hypotheses table.
     - dba `apply — <what to run>`: applying touches shared state, so confirm with the user before anyone runs it.
     - reviewer `thorough review`: continue the same reviewer with `SendMessage` and ask for a thorough pass.
-    - `<agent> — <reason>` (`coder`, security-auditor and others): route the work to that agent; a `coder` that asks for a stronger model gets a new call on the next model in the table. When fable fails, or the user hasn't asked for it, send the failing check to a deeper diagnosis or report to the user.
+    - `<agent> — <reason>` (`coder`, security-auditor and others): route the work to that agent; a `coder` that asks for a stronger model gets a new call on the next model in the table. When opus has failed and the user hasn't asked for fable, or fable has failed, send the failing check to a deeper diagnosis or report to the user.
     - `user`: stop and ask the user. `caller` or `main` means you.
     - A terminal audit may end with `next:` instead; relay it.
 
