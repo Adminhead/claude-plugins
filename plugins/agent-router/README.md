@@ -13,8 +13,8 @@ Builds the `orchestration` agent's routing rules from the agents that are actual
 ## How it works
 
 - It records each agent type the engine offers (`agent.offer`: name, description, source, provider) and never changes what is offered.
-- When the main thread runs `orchestration`, it adds a compact routing table (agent name and a one-line when-to-use) to the Agent tool's description through `tool.describe`.
-- It uses the Agent tool description rather than a system prompt section because, with `--agent`, prompt sections also reach subagents.
+- In an orchestration session it adds a compact routing table (agent name and a one-line when-to-use) to the Agent tool's description through `tool.describe`. A session counts as orchestration when `CLAUDE_ORCHESTRATE` is set (the `claude-orchestrate` launcher sets it and appends the orchestration prompt to the default one), or when the main thread runs the `orchestration` agent (`claude --agent`, the `agent` setting).
+- It uses the Agent tool description rather than a system prompt section because prompt sections can also reach subagents.
 
 ## Known limitation
 

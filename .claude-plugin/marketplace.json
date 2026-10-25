@@ -156,7 +156,7 @@
       "name": "agent-router",
       "source": "./plugins/agent-router",
       "description": "Mod that lists the installed agent types, each with when to use it, in the Agent tool's description when the main thread runs the orchestration agent, so new agents get routes without editing it.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {

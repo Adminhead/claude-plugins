@@ -1,5 +1,6 @@
 // agent-router: appends a routing table of the installed agent types to the Agent tool's
-// description, only when the main thread runs the orchestration agent.
+// description, only in an orchestration session: CLAUDE_ORCHESTRATE is set, or the main thread
+// runs the orchestration agent.
 //
 // Event order, checked live on Claude Code 2.1.302 (`claude -p --agent <plugin>:<agent>` with a
 // probe mod): classic.SessionStart (agent_type set, no agent_id) -> session.start ->
@@ -69,7 +70,9 @@ export const register: Register = (on) => {
       const agent = (await $.settings.read().catch(() => ({}) as Record<string, unknown>))?.agent
       if (typeof agent === 'string') main = agent
     }
-    if (!isOrchestrator(main)) {
+    // The launcher appends the orchestration prompt to the default one and sets CLAUDE_ORCHESTRATE=1.
+    const launched = ((await $.env.get("CLAUDE_ORCHESTRATE")) ?? '') !== ''
+    if (!launched && !isOrchestrator(main)) {
       rendered = null
       return out
     }

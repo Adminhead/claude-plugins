@@ -1,11 +1,11 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect, mock, test } from 'claude-code/testing'
 
 const ENGINE = { plugin: 'engine', tier: 'core' } as never
 const PLUGIN = { plugin: 'reviewer@adminhead', tier: 'user' } as never
 const BASE = 'Launch a new agent.'
 
 // Stubs the engine beneath the mod and offers the given types the way a request lists them.
-async function session($: any, on: any, settings: Record<string, unknown> = {}) {
+async function session($: any, on: any, settings: Record<string, unknown> = {}, flag?: string) {
   let invalidations = 0
   on('agent.offer', async () => ({ isOffered: true }))
   on('tool.describe', async (_$: any, e: any) => ({ description: e.description }))
@@ -14,6 +14,7 @@ async function session($: any, on: any, settings: Record<string, unknown> = {}) 
     invalidations++
     return { value: undefined }
   })
+  mock.env(on, flag === undefined ? {} : { CLAUDE_ORCHESTRATE: flag })
   on('classic.SessionStart', async () => ({}))
   on('classic.UserPromptSubmit', async () => ({}))
   const offer = (agent: string, description: string, provider = PLUGIN, source = 'plugin') =>
@@ -41,6 +42,18 @@ describe('register', () => {
     await s.offer('Explore', 'Fast read-only search.', ENGINE, 'built-in')
     expect(await s.describe()).toBe(BASE)
     await $.classic.SessionStart({ hook_event_name: 'SessionStart', source: 'startup', agent_type: 'coder:coder', session_id: 's', transcript_path: '/t', cwd: '/' } as never)
+    expect(await s.describe()).toBe(BASE)
+  })
+
+  test('CLAUDE_ORCHESTRATE marks the session as orchestration without an agent', async ($, on) => {
+    const s = await session($, on, {}, '1')
+    await s.offer('Explore', 'Fast read-only search.', ENGINE, 'built-in')
+    expect(await s.describe()).toContain('`Explore`')
+  })
+
+  test('an empty CLAUDE_ORCHESTRATE does not count', async ($, on) => {
+    const s = await session($, on, {}, '')
+    await s.offer('Explore', 'Fast read-only search.', ENGINE, 'built-in')
     expect(await s.describe()).toBe(BASE)
   })
 
