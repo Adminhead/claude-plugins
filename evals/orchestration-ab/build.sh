@@ -43,9 +43,10 @@ fi
 SK="$OUT/skill-plugin"
 rm -rf "$SK"; mkdir -p "$SK/.claude-plugin" "$SK/skills/routing-decisions"
 printf '{\n  "name": "ab-routing",\n  "version": "0.0.1",\n  "description": "A/B test skill: routing decisions"\n}\n' > "$SK/.claude-plugin/plugin.json"
-RULE="$(grep -m1 '^- Do it yourself' "$AGENT")"
-EXAMPLES="$(awk '/^Routing examples/{p=1} /^Escalation rules/{p=0} p' "$AGENT")"
-[[ -n "$RULE" && -n "$EXAMPLES" ]] || { echo "working-tree orchestration.md lacks the do-it-yourself rule or Routing examples" >&2; exit 1; }
+CONTROL_MD="$(git -C "$ROOT" show "$CONTROL_REF:$REL")"
+RULE="$(grep -m1 '^- Do it yourself' <<<"$CONTROL_MD")"
+EXAMPLES="$(awk '/^Routing examples/{p=1} /^Escalation rules/{p=0} p' <<<"$CONTROL_MD")"
+[[ -n "$RULE" && -n "$EXAMPLES" ]] || { echo "orchestration.md at $CONTROL_REF lacks the do-it-yourself rule or Routing examples" >&2; exit 1; }
 {
   cat <<'EOF'
 ---

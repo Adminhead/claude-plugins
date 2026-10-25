@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # A/B runner. Usage: run.sh [--out DIR] [--runs N] [--case NAME[,NAME...]] [--arms B,L] [--jobs N]
-# Arms: A (historical) agent + system_override.md from git history; B default prompt + HEAD orchestrator
-# body + static router table; C same with the working-tree body; D = B plus the routing-decisions skill
-# plugin; L = shipped route: default prompt + working-tree body, no static table, working-tree
-# agent-router via --plugin-dir, CLAUDE_ORCHESTRATE=1.
+# Arms: A (historical) agent + system_override.md from git history; B = CONTROL_REF prompt + old roster
+# (router-table-head.md); C = working-tree prompt + new roster (router-table.md); D = B plus the
+# routing-decisions skill (built from the CONTROL_REF text); L = shipped route: default prompt +
+# working-tree body, no static table, working-tree agent-router via --plugin-dir, CLAUDE_ORCHESTRATE=1
+# (live router).
 # Every arm runs with CLAUDE_ORCHESTRATE unset except L, so a harness started from a launcher session
 # does not leak the router table into the other arms.
 # Output dir: --out, else $AB_OUT, else a new mktemp -d. Printed at start.

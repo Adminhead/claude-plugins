@@ -60,21 +60,23 @@ MODELS = ("haiku", "sonnet", "opus", "fable")
 def routed(inp, old_roster):
     """(subagent_type, model) of an Agent input; tier agents normalise to ('coder:coder', their model).
 
-    A `model` in the input wins over the tier's. With none, the agent file's own model applies: the
-    old plain `coder` was haiku, the merged `coder` is sonnet. Model aliases and ids reduce to a bare name."""
+    A `model` in the input wins over the tier's. With none, the old plain `coder` was haiku (old
+    roster); the merged roster has no default, so the model comes back None. Model aliases and ids
+    reduce to a bare name."""
     typ = inp.get("subagent_type")
     raw = str(inp.get("model") or "").lower()
     model = next((m for m in MODELS if m in raw), None)
     if typ in TIER_MODEL:
         return "coder:coder", model or TIER_MODEL[typ]
-    if typ == "coder:coder":
-        return typ, model or ("haiku" if old_roster else "sonnet")
+    if typ == "coder:coder" and old_roster:
+        return typ, model or "haiku"
     return typ, model
 
 
-def old_roster_run(tr):
-    have = init_agents(tr) or []
-    return any(t in have for t in TIER_MODEL)
+def old_roster_arm(run):
+    """The roster is a property of the arm, not of the run's init agent list: the Agent tool still
+    lists installed tier agents until they are pruned. Arms A, B and D ran the old roster; C and L the merged one."""
+    return run.name.split("-")[0] in ("A", "B", "D")
 
 
 def not_applicable(expect, tr):
@@ -88,7 +90,7 @@ def not_applicable(expect, tr):
     return not any(w in have for w in (want if isinstance(want, list) else [want]))
 
 
-def grade(expect, tr, log):
+def grade(expect, tr, log, old_roster):
     """Return (passed, reason)."""
     uses = list(tool_uses(tr))
     agents = [u for u in uses if u["name"] in AGENT_TOOLS]
@@ -103,7 +105,12 @@ def grade(expect, tr, log):
     if "first_agent" in expect:
         if not agents:
             return False, "no Agent call"
-        got, got_model = routed(agents[0]["input"], old_roster_run(tr))
+        raw_type = agents[0]["input"].get("subagent_type")
+        got, got_model = routed(agents[0]["input"], old_roster)
+        if not old_roster and raw_type in TIER_MODEL:
+            return False, f"old tier agent {raw_type}, not in this arm's roster"
+        if not old_roster and got == "coder:coder" and got_model is None:
+            return False, "no model passed"
         want = expect["first_agent"]
         if got not in (want if isinstance(want, list) else [want]):
             return False, f"first agent {got}"
@@ -192,7 +199,7 @@ def main():
                     nna += 1
                     print(f"  [{c['name']} {r.name}] N/A: expected agent not installed in this run")
                     continue
-                ok, why = grade(c["expect"], tr, log)
+                ok, why = grade(c["expect"], tr, log, old_roster_arm(r))
                 res.append(ok)
                 if verbose or not ok:
                     first = next((u["input"].get("subagent_type") + (f"/{u['input']['model']}" if u["input"].get("model") else "")
