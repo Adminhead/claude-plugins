@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# claude-orchestrate: start Claude Code as the orchestration agent with the plugin's core
-# system prompt appended, its Bash tool running bash with agent.bashrc, optionally inside
-# herdr. With --agent, an agent's prompt replaces Claude Code's default system prompt, so
-# prompts/system_override.md restores the base guidance.
+# claude-orchestrate: start Claude Code as an orchestrator: the orchestration agent's prompt
+# (frontmatter stripped) is appended to Claude Code's default system prompt, CLAUDE_ORCHESTRATE=1
+# tells agent-router to list the installed agents, and the Bash tool runs bash with agent.bashrc.
+# Optionally inside herdr. With -a, the named agent runs through --agent instead.
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
 Usage: claude-orchestrate [OPTIONS] [DIR] [CLAUDE_ARGS...]
 
-Runs Claude Code in DIR (default: $PWD) as AGENT, with this plugin's
-prompts/system_override.md appended to the system prompt. The agent's Bash tool runs
+Runs Claude Code in DIR (default: $PWD) with the orchestration prompt (agents/orchestration.md
+without its frontmatter) appended to the default system prompt, and CLAUDE_ORCHESTRATE=1 set
+so agent-router lists the installed agents in the Agent tool. The Bash tool runs
 bash with ~/.config/claude-orchestrate/agent.bashrc sourced before each command; the
 first run copies templates/agent.bashrc there for you to edit.
 
@@ -19,8 +20,9 @@ variables, so herdr can track and resume the session. With --herdr outside herdr
 starts the herdr server if needed, opens a workspace for DIR running Claude, and attaches.
 HERDR_SESSION=NAME picks a named herdr session.
 
-  -a, --agent AGENT   agent to run (default: $CLAUDE_ORCHESTRATE_AGENT or orchestration:orchestration)
-  -p, --prompt FILE   append FILE instead of prompts/system_override.md
+  -a, --agent AGENT   run AGENT with --agent instead (default: $CLAUDE_ORCHESTRATE_AGENT); it
+                      gets no orchestration prompt and no CLAUDE_ORCHESTRATE
+  -p, --prompt FILE   append FILE instead of the orchestration prompt
       --no-prompt     append nothing
   -H, --herdr         launch in a new herdr workspace (default when CLAUDE_ORCHESTRATE_HERDR=1)
       --no-herdr      run here even when CLAUDE_ORCHESTRATE_HERDR=1
@@ -38,8 +40,9 @@ EOF
 die() { echo "claude-orchestrate: $*" >&2; exit 1; }
 
 root=$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")
-agent=${CLAUDE_ORCHESTRATE_AGENT:-orchestration:orchestration}
-prompt=$root/prompts/system_override.md
+agent=${CLAUDE_ORCHESTRATE_AGENT:-}
+prompt=
+prompt_set=0
 herdr_mode=${CLAUDE_ORCHESTRATE_HERDR:-0}
 tab=0
 attach=1
@@ -48,8 +51,8 @@ while (($#)); do
   case $1 in
     -h|--help) usage; exit 0 ;;
     -a|--agent) (($# > 1)) || die "$1 needs an agent"; agent=$2; shift 2 ;;
-    -p|--prompt) (($# > 1)) || die "$1 needs a file"; prompt=$(realpath -e -- "$2" 2>/dev/null) || die "no such prompt file: $2"; shift 2 ;;
-    --no-prompt) prompt=; shift ;;
+    -p|--prompt) (($# > 1)) || die "$1 needs a file"; prompt=$(realpath -e -- "$2" 2>/dev/null) || die "no such prompt file: $2"; prompt_set=1; shift 2 ;;
+    --no-prompt) prompt=; prompt_set=1; shift ;;
     -H|--herdr) herdr_mode=1; shift ;;
     --no-herdr) herdr_mode=0; shift ;;
     -t|--tab) tab=1; shift ;;
@@ -70,9 +73,22 @@ fi
 dir=$(cd "$dir" && pwd)
 
 command -v claude >/dev/null || die "claude not found"
-[[ -z $prompt || -f $prompt ]] || die "missing $prompt"
+# Default route: the orchestration body appended to the default prompt. It is stripped at each
+# launch into a real file, so the herdr paths can read it and it follows the installed plugin.
+if [[ -z $agent && $prompt_set == 0 ]]; then
+  state=${XDG_STATE_HOME:-$HOME/.local/state}/claude-orchestrate
+  prompt=$state/orchestration.md
+  [[ -f $root/agents/orchestration.md ]] || die "missing $root/agents/orchestration.md"
+  if ((!dry)); then
+    mkdir -p "$state"
+    awk 'BEGIN{n=0} n>=2{print} /^---$/{n++}' "$root/agents/orchestration.md" | awk 'NF||started{started=1;print}' >"$prompt.tmp.$$"
+    mv -f "$prompt.tmp.$$" "$prompt"
+  fi
+fi
+[[ -z $prompt || -f $prompt ]] || ((dry)) || die "missing $prompt"
 
-claude_args=(--agent "$agent")
+claude_args=()
+[[ -z $agent ]] || claude_args+=(--agent "$agent")
 [[ -z $prompt ]] || claude_args+=(--append-system-prompt-file "$prompt")
 claude_args+=("$@")
 
@@ -80,6 +96,7 @@ claude_args+=("$@")
 # CLAUDE_ENV_FILE is sourced before every Bash command.
 bash_path=$(command -v bash) || die "bash not found"
 launch_env=("CLAUDE_CODE_SHELL=$bash_path")
+[[ -n $agent ]] || launch_env+=("CLAUDE_ORCHESTRATE=1")
 bashrc=${XDG_CONFIG_HOME:-$HOME/.config}/claude-orchestrate/agent.bashrc
 if [[ ! -e $bashrc && -f $root/templates/agent.bashrc ]] && ((!dry)); then
   mkdir -p "$(dirname "$bashrc")"
