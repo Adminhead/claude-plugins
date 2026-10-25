@@ -19,7 +19,8 @@ Lines go to `~/.local/state/claude-usage/usage-log-<date>.jsonl`, one JSON objec
 | `listing` | with a prompt, when the skill listing changed | `total` and `included` skill counts, `tokens`, `skills` (name, source, plugin, tokens) |
 | `skill` | each time a skill loads: the Skill tool, a typed `/name`, or a preload into a subagent | `prompt`, `skill` |
 | `skill-call` | each Skill tool call | `prompt`, `agentId` (absent on the main loop), `skill`, `args`, `isError` or `denied` |
-| `agent-call` | each Agent tool call | `prompt`, `agentId`, `type`, `description`, `isError` or `denied` |
+| `agent-call` | each Agent tool call | `prompt`, `agentId`, `type`, `description`, `model` and `effort` as the call requested them (when set), `isError` or `denied` |
+| `model-step` | a loop's first model request, and each time its resolved model or effort changes | `prompt`, `agentId` (absent on the main loop), `model`, `effort` as the engine resolved them |
 | `session-end` | session end | `prompts` |
 
 Claude Code reports a skill when it loads, not when Claude reads its description and decides against it. That decision isn't observable. The report's `--judge` mode estimates it afterwards (see below).
@@ -38,7 +39,7 @@ bun <plugin root>/scripts/usage-report.ts --judge [--limit 20] [--model haiku]
 It prints Markdown with these sections:
 
 - **Skills:** loads per skill, how many came through the Skill tool and how many from subagents, the share of prompts that loaded any skill, typed commands, listed skills that never loaded, and listing cuts.
-- **Agents:** Agent tool calls per type.
+- **Agents:** Agent tool calls per type with the model and effort each requested, and a Models by loop table of the resolved model and effort in the main loop and in subagents.
 - **Bash guard:** decisions, denies by stage and rule, the denied programs, the model stage's sources, time and low-confidence answers, what the next Bash call in the same loop did after a deny, and how many allowed commands then failed.
 
 `--judge` sends each of the last `--limit` logged prompts with the skills listed at the time (descriptions read from installed `SKILL.md` files) to `claude -p --model haiku`. It asks which skills fit, then lists **missed** skills (fit but never loaded, so the description may not trigger) and **unneeded** ones (loaded but didn't fit). This sends your prompt text to the model and costs tokens, so it is opt-in. Its own session logs to a temporary folder, not your log. Typed `/commands` are skipped.

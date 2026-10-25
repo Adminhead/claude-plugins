@@ -1500,7 +1500,7 @@
       "name": "usage-log",
       "source": "./plugins/usage-log",
       "description": "Mod that logs skill use and the skill listing per prompt to local JSONL, for finding skills that should have fired and didn't. Ships usage-report, which summarizes this log and the bash-rules log.",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "category": "development"
     },
     {

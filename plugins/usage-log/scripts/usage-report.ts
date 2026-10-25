@@ -4,7 +4,7 @@
 //   usage-report.ts [--days N] [--dir PATH] [--judge [--limit N] [--model M]]
 //
 // Skills: uses per skill, by the Skill tool or otherwise, main loop or subagent; listed skills never used; listing cuts.
-// Agents: Agent tool calls per type. Bash: decisions by stage, rule and category, the model stages' sources, confidence
+// Agents: Agent tool calls per type, with the model and effort each requested, and the resolved model and effort per loop. Bash: decisions by stage, rule and category, the model stages' sources, confidence
 // and time, and what the next Bash call in the same loop was after a deny.
 // --judge asks a model (claude -p, haiku by default) which listed skills each logged prompt should have loaded, and
 // compares that with what loaded: missed and unneeded skills. It sends the prompts and skill descriptions to the model
@@ -98,7 +98,13 @@ export function skillSection(lines: Line[]): string {
 
 export function agentSection(lines: Line[]): string {
   const calls = lines.filter(l => l.kind === 'agent-call')
-  return `## Agents\n\n${table(['Agent type', 'Calls', 'From subagents'], count(calls, c => c.type).map(([t, n]) => [cell(t), n, calls.filter(c => c.type === t && c.agentId).length]))}`
+  const asked = (c: Line) => [c.model, c.effort].filter(Boolean).join('/') || '-'
+  const out = [`## Agents\n\n${table(['Agent type', 'Calls', 'From subagents', 'Requested model/effort'], count(calls, c => c.type).map(([t, n]) => [cell(t), n, calls.filter(c => c.type === t && c.agentId).length, cell(count(calls.filter(c => c.type === t), asked).map(([k, m]) => `${k} x${m}`).join(', '))]))}`]
+  // model-step lines are logged when a loop's resolved pair changes, so these count loops, not requests.
+  const steps = lines.filter(l => l.kind === 'model-step')
+  out.push(`\n### Models by loop\n\nResolved model and effort, one count per change within a loop (a subagent's first request always counts).\n\n`)
+  out.push(table(['Loop', 'Model', 'Effort', 'Count'], count(steps, s => `${s.agentId ? 'subagent' : 'main'}\t${s.model}\t${s.effort ?? '-'}`).map(([k, n]) => [...k.split('\t').map(cell), n])))
+  return out.join('')
 }
 
 // What the next Bash call in the same session and loop did after each deny.

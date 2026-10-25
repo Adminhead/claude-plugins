@@ -65,7 +65,7 @@ describe('register', () => {
     await $.prompt.submit({ text: '/a:a do the thing' } as never)
     await $.tool.call({ tool: 'Skill', skill: 'b:b', agentId: 'ag1' } as never)
     await $.skill.prompt({ skill: 'b:b', text: 'body' } as never)
-    await $.tool.call({ tool: 'Agent', subagent_type: 'coder:coder', description: 'fix it', prompt: 'p' } as never)
+    await $.tool.call({ tool: 'Agent', subagent_type: 'coder:coder', description: 'fix it', prompt: 'p', model: 'sonnet', effort: 'high' } as never)
     await $.tool.call({ tool: 'Read', file_path: 'x' } as never)
     expect(lines.map(l => l.kind)).toEqual(['prompt', 'listing', 'skill-call', 'skill', 'agent-call'])
     expect(lines[0]).toMatchObject({ session: 's1', prompt: 1, text: '/a:a do the thing', slash: 'a:a', chars: 17 })
@@ -73,7 +73,7 @@ describe('register', () => {
     expect(lines[1]).toMatchObject({ prompt: 1, total: 2, included: 2, commands: [{ name: 'c:c', description: 'Does c.', plugin: 'c' }] })
     expect(lines[2]).toMatchObject({ prompt: 1, skill: 'b:b', agentId: 'ag1', isError: false })
     expect(lines[3]).toMatchObject({ prompt: 1, skill: 'b:b' })
-    expect(lines[4]).toMatchObject({ type: 'coder:coder', description: 'fix it' })
+    expect(lines[4]).toMatchObject({ type: 'coder:coder', description: 'fix it', model: 'sonnet', effort: 'high' })
   })
 
   test('an unchanged listing is not logged twice', async ($, on) => {
@@ -83,6 +83,28 @@ describe('register', () => {
     await $.prompt.submit({ text: 'two' } as never)
     expect(lines.map(l => l.kind)).toEqual(['prompt', 'listing', 'prompt'])
     expect(lines[2].prompt).toBe(lines[0].prompt + 1)
+  })
+
+  test('model-step is logged per loop only when the resolved model or effort changes', async ($, on) => {
+    const lines = capture(on)
+    on('turn.step', async function* (_$: any, e: any) {
+      return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null }
+    } as any)
+    const step = async (e: any) => {
+      for await (const _ of $.turn.step({ turnId: 't', index: 0, messageCount: 1, ...e } as never)) void _
+    }
+    await step({ model: 'm1', effort: 'medium' })
+    await step({ model: 'm1', effort: 'medium' })
+    await step({ model: 'm1', effort: 'medium', agentId: 'a1' })
+    await step({ model: 'm1', effort: 'medium', agentId: 'a1' })
+    await step({ model: 'm1', effort: 'high' })
+    await step({ model: 'm1', effort: 'high', agentId: 'a1' })
+    expect(lines.map(l => [l.kind, l.agentId, l.model, l.effort])).toEqual([
+      ['model-step', undefined, 'm1', 'medium'],
+      ['model-step', 'a1', 'm1', 'medium'],
+      ['model-step', undefined, 'm1', 'high'],
+      ['model-step', 'a1', 'm1', 'high'],
+    ])
   })
 
   test('a failing log write never blocks the prompt', async ($, on) => {

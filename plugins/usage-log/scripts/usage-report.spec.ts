@@ -3,7 +3,7 @@ import { expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterDeny, bashSection, candidates, describe, judgePrompt, logDir, parseJudge, readLog, skillDescriptions, skillSection } from './usage-report'
+import { afterDeny, agentSection, bashSection, candidates, describe, judgePrompt, logDir, parseJudge, readLog, skillDescriptions, skillSection } from './usage-report'
 
 const at = (i: number) => new Date(Date.UTC(2026, 9, 18, 12, 0, i)).toISOString()
 const L = (i: number, kind: string, f: Record<string, unknown> = {}) => ({ v: 1, ts: at(i), kind, session: 's1', ...f })
@@ -36,6 +36,19 @@ test('skills: loads, Skill tool calls, subagent use, unused listed skills and li
   expect(md).toContain('Listed, never loaded (1 of 2)')
   expect(md).toContain('`b:b`')
   expect(md).toContain('worst 2 of 3')
+})
+
+test('agents: requested model and effort, resolved models by loop', () => {
+  const md = agentSection([
+    L(0, 'agent-call', { type: 'coder:coder', model: 'sonnet', effort: 'high' }),
+    L(1, 'agent-call', { type: 'coder:coder' }),
+    L(2, 'model-step', { model: 'claude-sonnet-5-5', effort: 'medium' }),
+    L(3, 'model-step', { agentId: 'a1', model: 'claude-sonnet-5-5', effort: 'high' }),
+    L(4, 'model-step', { agentId: 'a2', model: 'claude-sonnet-5-5', effort: 'high' }),
+  ])
+  expect(md).toContain('| coder:coder | 2 | 0 | - x1, sonnet/high x1 |')
+  expect(md).toContain('| main | claude-sonnet-5-5 | medium | 1 |')
+  expect(md).toContain('| subagent | claude-sonnet-5-5 | high | 2 |')
 })
 
 test('bash: denies by reason, model sources and what followed a deny', () => {

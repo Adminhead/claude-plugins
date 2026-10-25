@@ -9,6 +9,8 @@ import { appendArgv, line, logFile, pruneArgv } from './log/usagelog'
 // Per session: the user prompt number skill events belong to, and the listing last logged.
 let promptNo = 0
 let lastListing = ''
+// Per loop (agentId, or main): the `model/effort` last logged, so only a change writes a line.
+const lastStep = new Map<string, string>()
 let lastError: string | null = null
 
 function report($: any, err: unknown) {
@@ -51,6 +53,7 @@ export const register: Register = (on, options) => {
     const out = await next(e)
     promptNo = 0
     lastListing = ''
+    lastStep.clear()
     try {
       await $.process.run(pruneArgv(o.retentionDays), { timeoutMs: 10000 })
     } catch (err) {
@@ -81,9 +84,21 @@ export const register: Register = (on, options) => {
     const out: any = await next(e)
     const outcome = out?.deny !== undefined ? { denied: true } : { isError: out?.isError === true }
     if (e.tool === 'Skill') await write($, 'skill-call', { prompt: promptNo, agentId: e.agentId, skill: e.skill, args: e.args, ...outcome })
-    else await write($, 'agent-call', { prompt: promptNo, agentId: e.agentId, type: e.subagent_type ?? 'general-purpose', description: e.description, ...outcome })
+    else await write($, 'agent-call', { prompt: promptNo, agentId: e.agentId, type: e.subagent_type ?? 'general-purpose', description: e.description, model: e.model, effort: e.effort, ...outcome })
     return out
   }).catch(($, e, next) => next(e))
+
+  // The model and effort the engine resolved for each loop's requests, logged when a loop's pair changes: a call that
+  // omits `model` or `effort` still shows what ran. `turn.step` fires on every request, so most steps write nothing.
+  on('turn.step', async function* ($, e, next) {
+    const loop = e.agentId ?? 'main'
+    const pair = `${e.model}/${e.effort ?? ''}`
+    if (lastStep.get(loop) !== pair) {
+      lastStep.set(loop, pair)
+      await write($, 'model-step', { prompt: promptNo, agentId: e.agentId, model: e.model, effort: e.effort })
+    }
+    return yield* next(e)
+  })
 
   on('session.end', async ($, e, next) => {
     await write($, 'session-end', { prompts: promptNo })
