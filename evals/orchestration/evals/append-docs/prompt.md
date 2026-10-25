@@ -2,7 +2,7 @@
 name: append-docs
 description: "full set, append route: orchestration body appended to the default prompt, CLAUDE_ORCHESTRATE=1; routes to scribe."
 tags: [routing, full, append]
-plugins: ["../../fixtures/orchestrator-append", "../../../../plugins/agent-router", "../../../../plugins/coder", "../../../../plugins/coder-high", "../../../../plugins/coder-critical", "../../../../plugins/coder-max", "../../../../plugins/architect", "../../../../plugins/reviewer", "../../../../plugins/debugger", "../../../../plugins/scribe", "../../../../plugins/readonly-agent-gate"]
+plugins: ["../../fixtures/orchestrator-append", "../../../../plugins/agent-router", "../../../../plugins/coder", "../../../../plugins/architect", "../../../../plugins/reviewer", "../../../../plugins/debugger", "../../../../plugins/scribe", "../../../../plugins/readonly-agent-gate"]
 runs: 3
 max_turns: 4
 timeout_seconds: 300

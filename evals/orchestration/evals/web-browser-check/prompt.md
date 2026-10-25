@@ -2,7 +2,7 @@
 name: web-browser-check
 description: "web set: routes to browser-tester."
 tags: [routing, web]
-plugins: ["../../fixtures/orchestrator-main", "../../../../plugins/orchestration", "../../../../plugins/agent-router", "../../../../plugins/coder", "../../../../plugins/coder-high", "../../../../plugins/coder-critical", "../../../../plugins/coder-max", "../../../../plugins/architect", "../../../../plugins/reviewer", "../../../../plugins/debugger", "../../../../plugins/scribe", "../../../../plugins/readonly-agent-gate", "../../../../plugins/browser-tester", "../../../../plugins/web-perf-auditor", "../../../../plugins/playwright-cli"]
+plugins: ["../../fixtures/orchestrator-main", "../../../../plugins/orchestration", "../../../../plugins/agent-router", "../../../../plugins/coder", "../../../../plugins/architect", "../../../../plugins/reviewer", "../../../../plugins/debugger", "../../../../plugins/scribe", "../../../../plugins/readonly-agent-gate", "../../../../plugins/browser-tester", "../../../../plugins/web-perf-auditor", "../../../../plugins/playwright-cli"]
 runs: 3
 max_turns: 4
 timeout_seconds: 300

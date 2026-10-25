@@ -25,35 +25,44 @@ execution:
     Routing by role, whatever the installed names. Names below are bare for brevity; pass `subagent_type` exactly as the routing table names it (`<plugin>:<agent>`, such as `coder:coder` or `reviewer:reviewer`).
 
     - **Locating code.** Delegate when you must locate or understand code across more than one file; don't when you know the path or are about to edit the file, so read it yourself. One round of search calls per question (parallel is fine), a second only if the first failed, and stop once you can name the files to change. Search agents usually have no shell, so run tests yourself or leave them to the agent doing the work.
-    - **Planning.** Delegate when work is multi-slice, cross-cutting, risky, or has an unclear approach, or a design choice is open; don't when the approach is obvious and bounded. In a small codebase you may settle a small design choice yourself and skip the planner, but then send a feature spanning several modules to `coder-high`, not `coder`. Save the plan to the repo's plan location before executing it, then execute slice by slice.
+    - **Planning.** Delegate when work is multi-slice, cross-cutting, risky, or has an unclear approach, or a design choice is open; don't when the approach is obvious and bounded. In a small codebase you may settle a small design choice yourself and skip the planner, but then send a feature spanning several modules to a coder on sonnet, not haiku. Save the plan to the repo's plan location before executing it, then execute slice by slice.
     - **Diagnosis.** Delegate when a test fails or flakes, a regression appears, or a bug has an unknown cause; don't when the cause is known, and don't send these to the planner. Spawn it with `isolation: "worktree"` when bisect may help, and hand its diagnosis to the implementer it names. For a high-stakes failure (concurrency, data loss, security, a production incident) pass a stronger `model`.
-    - **Implementation.** Delegate a bounded change with a known approach, including mechanical multi-file edits, to an implementer tier chosen by difficulty, not by setting `model`: start with `coder` (haiku), the default for most implementation work; step up to `coder-high` when a change needs deeper judgment, `coder-critical` for risky logic, and `coder-max` only as the last resort. When an attempt fails with a known cause, retry on the next tier up and pass the failed attempt's report along; when it fails with no known cause, send the failing check to diagnosis instead.
+    - **Implementation.** Delegate a bounded change with a known approach, including mechanical multi-file edits, to `coder`, with `model` and `effort` from the model table below. Implementation never goes to `general-purpose`, which runs on the session model. When an attempt fails with a known cause, retry on the next model up as a new `coder` call that carries the failed attempt's report; `SendMessage` keeps the original model, so it can't step up. When it fails with no known cause, send the failing check to diagnosis instead.
     - **Specialists.** Infrastructure, database, security, browser and other specialized agents take their own domain when the table lists them. That includes design questions in their domain, such as a schema change, migration or backfill plan: delegate it to the specialist instead of answering it yourself, even when no code changes yet. Infrastructure and database output gets a thorough reviewer pass, and a security auditor runs alongside infrastructure work that touches IAM, secrets or CI trust boundaries. A specialist that ends with `escalate: caller` gets one changed brief, a diagnosis of its failing check, or a report to the user.
     - **Docs.** Delegate docs, READMEs, changelogs or ADR prose beyond the do-it-yourself threshold to a docs agent; give it the code or diff the docs describe. Outline (wiki) documents go to the docs agent too: name the collection or document, and pass along the user's go-ahead when it is to create a document or rewrite most of one.
     - **Review.** Delegate the reviewer pass on implementation output, and on high-stakes plans before execution. Ask for a quick pass on a small, task-scoped diff and a thorough one on large, risky or security-relevant changes. For a high-stakes thorough review (auth, data, concurrency, migrations, IaC or CI), pass `model: opus`. Run a security reviewer in parallel when a change touches auth, permissions, crypto, secrets, untrusted input parsing or dependencies, if one is installed.
     - **Browser checks.** When acceptance criteria need a real browser and a browser-testing agent is installed, run it after the reviewer pass and route its failures back to the implementer. When it reports something missing (a running server, credentials, a URL), supply it or report the gap.
 
+    Model table. Pass `model` and `effort` on every `coder` call; a forgotten `model` falls back to the agent file's sonnet.
+
+    | work | model | effort |
+    | :- | :- | :- |
+    | Mechanical, fully specified edits (renames, find-and-replace across files, a change you could dictate line by line) | haiku | medium |
+    | Default: features, refactors, tests, bounded multi-file work | sonnet | medium |
+    | Concurrency, security, data, core invariants | opus | high |
+    | Last resort: only on an explicit escalation after opus failed, or when the user asks | fable | high |
+
     Routing examples. Pairs that look alike but route differently:
 
     - "Fix the typo in the CONTRIBUTING heading": do it yourself.
-    - "Rename `get_user` to `fetch_user` across the 9 files that call it": `coder`. Mechanical, but past two files.
+    - "Rename `get_user` to `fetch_user` across the 9 files that call it": `coder` on haiku/medium. Mechanical, but past two files.
     - "Make `retry()` default to 3 attempts instead of 5": do it yourself. Known change, one line, no shared state.
-    - "Two workers sometimes write the same cache entry twice" (the fix is a few lines around a lock): `coder-critical`. Concurrency outranks size.
+    - "Two workers sometimes write the same cache entry twice" (the fix is a few lines around a lock): `coder` on opus/high. Concurrency outranks size.
     - "The login test started failing this morning, no idea why": `debugger` first, even if the fix later turns out to be one line.
     - "The login test fails because the fixture's expiry date is in the past, `tests/conftest.py:30`": do it yourself. Known cause, one line.
-    - "Add a `--verbose` flag the CLI already parses but ignores": `coder`. Bounded, obvious approach.
-    - "Redesign the client library's public API without breaking existing callers": `coder-high`.
+    - "Add a `--verbose` flag the CLI already parses but ignores": `coder` on sonnet/medium. Bounded, obvious approach.
+    - "Redesign the client library's public API without breaking existing callers": `coder` on sonnet/medium.
     - "Add rate limiting to the API; we haven't picked token bucket or fixed window": `architect` first. Open design choice with real trade-offs across several modules.
-    - "Add a per-user quota stored either on the account row or in its own table, with API and CLI support" (a few hundred lines in total): settle the storage choice yourself and send the build to `coder-high`. Several modules rule out `coder`.
+    - "Add a per-user quota stored either on the account row or in its own table, with API and CLI support" (a few hundred lines in total): settle the storage choice yourself and send the build to `coder` on sonnet/medium. Several modules rule out haiku.
     - "Is this MCP server someone sent me safe to add?": `plugin-vetter`, even when its files are short enough to read yourself.
 
     Escalation rules, keyed on an agent's closing `escalate:` line:
 
-    - debugger `fix — <complexity>`: hand the diagnosis to a coder tier by that complexity. Simple goes to `coder`, needs judgment to `coder-high`, risky, concurrency, security or data work to `coder-critical`, and repeated failures to `coder-max`. Climb one rung at a time and pass the failed attempt's report along.
+    - debugger `fix — <complexity>`: hand the diagnosis to a `coder` on the model the debugger names (haiku, sonnet or opus, with effort from the model table). Repeated failures climb one model at a time through new `coder` calls that carry the failed attempt's report.
     - debugger `deeper diagnosis`: re-spawn the debugger with `model: opus` and pass its hypotheses table.
     - dba `apply — <what to run>`: applying touches shared state, so confirm with the user before anyone runs it.
     - reviewer `thorough review`: continue the same reviewer with `SendMessage` and ask for a thorough pass.
-    - `<agent> — <reason>` (a coder tier, security-auditor and others): route the work to that agent. When `coder-max` fails, or isn't in the routing table (it is installed per repo), send the failing check to a deeper diagnosis or report to the user.
+    - `<agent> — <reason>` (`coder`, security-auditor and others): route the work to that agent; a `coder` that asks for a stronger model gets a new call on the next model in the table. When fable fails, or the user hasn't asked for it, send the failing check to a deeper diagnosis or report to the user.
     - `user`: stop and ask the user. `caller` or `main` means you.
     - A terminal audit may end with `next:` instead; relay it.
 
