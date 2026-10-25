@@ -1,0 +1,5 @@
+{
+  "name": "orchestrator-append",
+  "version": "0.0.0",
+  "description": "Test fixture: sets CLAUDE_ORCHESTRATE=1 so agent-router lists the installed agents, as the claude-orchestrate launcher does. Not shipped."
+}
