@@ -268,7 +268,7 @@
       "name": "devops",
       "source": "./plugins/devops",
       "description": "Read-only-by-default infrastructure agent that reviews, validates and plans Terraform, Ansible, Docker, Kubernetes, Helm and GitOps changes using the matching skills.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -443,7 +443,7 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "category": "development"
     },
     {
@@ -526,8 +526,8 @@
     {
       "name": "reviewer",
       "source": "./plugins/reviewer",
-      "description": "A read-only review subagent for implementation plans, designs and diffs, checked against the brief and its acceptance criteria, returning verified findings ranked by severity. The caller picks quick or thorough depth.",
-      "version": "0.1.1",
+      "description": "A read-only review subagent for implementation plans, designs and diffs. It runs the checks and verifies the work against the brief and its acceptance criteria, returning pass or fail per criterion with evidence and findings ranked by severity. The caller picks quick or thorough depth.",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -554,8 +554,8 @@
     {
       "name": "scribe",
       "source": "./plugins/scribe",
-      "description": "A documentation subagent that writes and updates READMEs, guides, docstrings, changelogs and Outline wiki documents, checking every claim against the code and marking anything it could not verify.",
-      "version": "0.2.3",
+      "description": "A documentation subagent that writes and updates standalone docs (READMEs, guides, changelogs and Outline wiki documents), checking every claim against the code and marking anything it could not verify. Docs that a code change makes stale stay with the coder making the change.",
+      "version": "0.2.4",
       "category": "development"
     },
     {
@@ -849,7 +849,7 @@
       "name": "dba",
       "source": "./plugins/dba",
       "description": "A database subagent: designs and reviews schemas and migrations, writes migration, schema and query changes in the repo when asked, and diagnoses slow queries with EXPLAIN. Never writes to shared databases.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {

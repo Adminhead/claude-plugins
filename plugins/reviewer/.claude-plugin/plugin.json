@@ -1,7 +1,7 @@
 {
   "name": "reviewer",
-  "version": "0.1.1",
-  "description": "A read-only review subagent for implementation plans, designs and diffs, checked against the brief and its acceptance criteria, returning verified findings ranked by severity. The caller picks quick or thorough depth.",
+  "version": "0.1.2",
+  "description": "A read-only review subagent for implementation plans, designs and diffs. It runs the checks and verifies the work against the brief and its acceptance criteria, returning pass or fail per criterion with evidence and findings ranked by severity. The caller picks quick or thorough depth.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
