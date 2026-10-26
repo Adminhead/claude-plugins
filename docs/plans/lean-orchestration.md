@@ -96,6 +96,8 @@ Read `plugins/shipper` and `plugins/forgejo-shipper`; fold each into its ship sk
 
 With the ladders gone, remove duplicated rules from `orchestration.md` and measure its tokens before and after. Acceptance: arm C holds its slice-3 score over the retest set.
 
+- Result (2026-10-25): removed the review "when" rule repeated between the Review bullet and Review rules, the model-climb rule stated three times (Implementation, debugger and generic escalation lines), and the docs-ownership rule repeated in Briefs. Body 2,450 → 2,343 words; measured as one `-p` turn with `--append-system-prompt-file` on the default prompt, 29,088 → 28,974 input tokens (the body itself about 4,740 → 4,630). The ladders that carried most of the duplication went in slice 3, so the gain is small. Retest set, arm C, 3 runs each: 24/24 (vet-plugin n/a), $0.358 per run.
+
 ### 8. Measure after a week
 
 From slice 1's `turn.step` lines: calls per session, reviewer share, and the resolved opus vs sonnet vs haiku split for the main loop and subagents.

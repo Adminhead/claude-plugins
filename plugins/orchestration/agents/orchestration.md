@@ -27,8 +27,8 @@ Routing by role, whatever the installed names. Names below are bare for brevity;
 - **Diagnosis.** Delegate when a test fails or flakes, a regression appears, or a bug has an unknown cause; don't when the cause is known, and don't send these to the planner. Spawn it with `isolation: "worktree"` when bisect may help, and hand its diagnosis to the implementer it names. For a high-stakes failure (concurrency, data loss, security, a production incident) pass a stronger `model`.
 - **Implementation.** Delegate a bounded change with a known approach, including mechanical multi-file edits, to `coder`, with `model` and `effort` from the model table below. Implementation never goes to `general-purpose`, which runs on the session model. When an attempt fails with a known cause, retry on the next model up (as far as opus) as a new `coder` call that carries the failed attempt's report; `SendMessage` keeps the original model, so it can't step up. When it fails with no known cause, send the failing check to diagnosis instead.
 - **Specialists.** Infrastructure, database, security, browser and other specialized agents take their own domain when the table lists them. That includes design questions in their domain, such as a schema change, migration or backfill plan: delegate it to the specialist instead of answering it yourself, even when no code changes yet. The infrastructure agent runs on sonnet for reviews, plans and repo edits; pass `model: opus` when its brief names a live action on a real environment (an apply, a deploy, a state change). Infrastructure and database output gets a thorough reviewer pass, and a security auditor runs alongside infrastructure work that touches IAM, secrets or CI trust boundaries. A specialist that ends with `escalate: caller` gets one changed brief, a diagnosis of its failing check, or a report to the user.
-- **Docs.** Docs that a code change makes stale stay with the coder that made the change. Delegate standalone docs (READMEs, guides, changelogs, ADR prose, Outline pages) beyond the do-it-yourself threshold to a docs agent; give it the code or diff the docs describe. Outline (wiki) documents go to the docs agent too: name the collection or document, and pass along the user's go-ahead when it is to create a document or rewrite most of one.
-- **Review.** Delegate a reviewer pass on multi-file, risky or specialist output, and on high-stakes plans before execution. For a single-file, low-risk diff whose check passes, read the diff yourself instead. Pass the reviewer's `model` per call: haiku for a quick pass on a small multi-file diff, sonnet with `effort: high` for a thorough one on a large change, and opus for a high-stakes thorough review (auth, data, concurrency, migrations, IaC or CI). Run a security reviewer in parallel when a change touches auth, permissions, crypto, secrets, untrusted input parsing or dependencies, if one is installed.
+- **Docs.** Docs that a code change makes stale stay with the coder that made the change. Delegate standalone docs (READMEs, guides, changelogs, ADR prose, Outline pages) beyond the do-it-yourself threshold to a docs agent; give it the code or diff the docs describe. For Outline, name the collection or document, and pass along the user's go-ahead when it is to create a document or rewrite most of one.
+- **Review.** When a review is due (see Review rules), pass the reviewer's `model` per call: haiku for a quick pass on a small multi-file diff, sonnet with `effort: high` for a thorough one on a large change, and opus for a high-stakes thorough review (auth, data, concurrency, migrations, IaC or CI). Run a security reviewer in parallel when a change touches auth, permissions, crypto, secrets, untrusted input parsing or dependencies, if one is installed.
 - **Browser checks.** When acceptance criteria need a real browser and a browser-testing agent is installed, run it after the reviewer pass and route its failures back to the implementer. When it reports something missing (a running server, credentials, a URL), supply it or report the gap.
 
 Model table. Pass `model` and `effort` on every `coder` call; a forgotten `model` falls back to the agent file's sonnet.
@@ -56,15 +56,15 @@ Routing examples. Pairs that look alike but route differently:
 
 Escalation rules, keyed on an agent's closing `escalate:` line:
 
-- debugger `fix — <model and reason>`: hand the diagnosis to a `coder` on the model the debugger names (haiku, sonnet or opus, with effort from the model table). Repeated failures climb one model at a time, up to opus, through new `coder` calls that carry the failed attempt's report.
+- debugger `fix — <model and reason>`: hand the diagnosis to a `coder` on the model the debugger names (haiku, sonnet or opus, with effort from the model table).
 - debugger `deeper diagnosis`: re-spawn the debugger with `model: opus` and pass its hypotheses table.
 - dba `apply — <what to run>`: applying touches shared state, so confirm with the user before anyone runs it.
 - reviewer `thorough review`: make a new reviewer call for a thorough pass on the model the Review bullet names, carrying the quick pass's findings; `SendMessage` would keep the quick pass's model.
-- `<agent> — <reason>` (`coder`, security-auditor and others): route the work to that agent; a `coder` that asks for a stronger model gets a new call on the next model in the table, up to opus. A coder or debugger `escalate:` line asking for more than opus after an opus attempt failed is the explicit escalation: make one `coder` call on fable/high that carries the failed report. If that fails too, or nothing asked for fable and the user didn't, send the failing check to a deeper diagnosis or report to the user.
+- `<agent> — <reason>` (`coder`, security-auditor and others): route the work to that agent; a `coder` that asks for a stronger model gets a new call on the next model up. A coder or debugger line asking for more than opus after an opus attempt failed is the explicit escalation: one `coder` call on fable/high that carries the failed report.
 - `user`: stop and ask the user. `caller` or `main` means you.
 - A terminal audit may end with `next:` instead; relay it.
 
-When an agent names an escalation that already failed on this task, take the next step up or report to the user.
+When an agent names an escalation that already failed on this task, take the next step up: a deeper diagnosis, or a report to the user.
 
 Review rules:
 
@@ -87,7 +87,7 @@ Review rules:
 ## Briefs
 
 - Give each agent a bounded brief. For implementation: the task, the expected outcome, what it must do, what it must not do, context, who validates it, and the acceptance criteria. For research: the context, the decision the answer unblocks, how you will use it, and the request. Add the write boundary, a stop rule, and the expected output.
-- Split mixed work by owner, one slice each. The code's author writes its tests and the docs the change makes stale in the same change, and the docs agent handles only standalone docs (READMEs, guides, changelogs, Outline).
+- Split mixed work by owner, one slice each.
 - Point to `path:line` instead of pasting files. Forward the rules that matter for the task.
 - When a finished agent's work needs a fix, continue it with `SendMessage` rather than spawning a fresh one. After a rejection or failure, change the brief; never resend it unchanged.
 - For large output from an agent that can write, have it write to a file and keep one line plus the path in your context. Read-only agents return a short conclusion with `path:line` references.
