@@ -1,0 +1,5 @@
+{
+  "name": "dba-main",
+  "version": "0.0.0",
+  "description": "Test fixture: runs the main thread as dba:dba for specialist outcome evals. Not shipped."
+}
