@@ -16,4 +16,21 @@ claude plugin eval . --eval-dir evals/orchestration/evals --trust-plugin --scaff
 
 Add `--model claude-sonnet-5-5` to run the orchestrator on Sonnet instead of the session default; the subagents keep their own pinned models.
 
-Read `fixtures/express-api.sh` before passing `--scaffold`; it runs as you. After changing it, copy it to each case's `scaffold.sh`. Keep the plugin lists in step with the metas.
+Read `fixtures/express-api.sh` and `fixtures/node-test-api.sh` before passing `--scaffold`; they run as you. After changing one, copy it to each case's `scaffold.sh` that uses it. Keep the plugin lists in step with the metas.
+
+## Outcome cases (real subagents)
+
+`append-feature-docs`, `append-small-no-review` and `append-multi-review` check second-call behaviour the routing cases can't see, because the coder and reviewer actually run and write files. They use the append route, so `gen-append.py` fills their `case.yaml`, and their scaffold is `fixtures/node-test-api.sh` (copied to each case's `scaffold.sh`): a dependency-free `node:http` API with a README, whose `npm test` (`node --test`) passes offline in the eval sandbox. `express-api.sh` installs nothing, so its tests can't run. Each case sets `allowed_tools` with Edit, Write and Bash, `max_turns: 14`, `timeout_seconds: 900` and `runs: 3`. Subagents inherit the granted tools, and their tool calls appear in the trace (so `tool_used` graders see them), but a case can't grant write tools itself: the run needs `--allow-tools Edit Write Bash` and `--scaffold`.
+
+- `append-feature-docs`: pagination for `GET /users` makes the README stale. Passes when a coder is called, no scribe is called, the README gained `limit` and `npm test` reported `fail 0`.
+- `append-small-no-review`: a larger-than-30-line change confined to `src/db/users.js`. Passes when a coder is called, no reviewer is called, `searchUsers` exists in the final file and the tests pass. If the orchestrator ever does the edit itself, `routes-coder` fails, so the no-reviewer grader can't pass vacuously; make the prompt larger if it starts doing that.
+- `append-multi-review`: `POST /users` across the db, routes, server and tests. Passes with a coder call, one or two reviewer calls (a pass, plus a re-check or a thorough escalation after a fix) and tests passing.
+
+Run them from the repo root (about $4 and 5 minutes for the set; the glob also picks up `append-docs`):
+
+```
+claude plugin eval . --eval-dir evals/orchestration/evals --case 'append-*' --trust-plugin --scaffold --allow-tools Edit Write Bash --ablation none --no-publish -j 4
+```
+
+`--case` takes a plain glob (no character classes). `--keep-temp` leaves the run's directory in `/tmp/claude-eval-*` with `home/cwd` holding the final repo, sealed mode 000 until you `chmod 700` it and its `sealed/` subdirectory. The `fail 0` graders read `node --test` output from the trace, so they pass only if some agent ran the tests.
+
