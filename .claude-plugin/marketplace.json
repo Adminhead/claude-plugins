@@ -114,14 +114,14 @@
       "name": "iac-meta",
       "source": "./plugins/iac-meta",
       "description": "Plugin set for infrastructure-as-code projects, installed at project scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "meta"
     },
     {
       "name": "aws-meta",
       "source": "./plugins/aws-meta",
       "description": "Plugin set for AWS projects (credentials and IAM, CLI, the AWS MCP Server, inspection, incidents, reviews), installed at project or local scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "meta"
     },
     {
@@ -205,7 +205,7 @@
       "name": "cloud-ops-guard",
       "source": "./plugins/cloud-ops-guard",
       "description": "PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, gates subagent plan, init, state, output and aws calls, asks before destructive aws, pulumi and helmfile operations, and guards kubectl, helm, talosctl and omnictl changes on production clusters, through common aliases and wrappers. By default it no longer auto-approves plan, init or other read-only forms (option autoAllowReadOnly).",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "development"
     },
     {
@@ -520,7 +520,7 @@
       "name": "recommend-plugins",
       "source": "./plugins/recommend-plugins",
       "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "category": "development"
     },
     {

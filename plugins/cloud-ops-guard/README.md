@@ -8,6 +8,10 @@ A PreToolUse hook on Bash (needs `bun`) that guards infrastructure commands: Ope
 /plugin install cloud-ops-guard --marketplace Adminhead/claude-plugins
 ```
 
+This is a direct install. `iac-meta` and `aws-meta` do not include it. Install it at the project's scope (`--scope project` or `--scope local`).
+
+Migration: a project that got the guard through either meta before `iac-meta`/`aws-meta` 0.2.0 should run `claude plugin install cloud-ops-guard@adminhead --scope <same scope as the meta>` before `claude plugin prune`, or prune removes it as an orphan.
+
 ## What it decides
 
 | Decision | Examples |

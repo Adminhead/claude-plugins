@@ -1,6 +1,6 @@
 {
   "name": "aws-meta",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plugin set for AWS projects (credentials and IAM, CLI, the AWS MCP Server, inspection, incidents, reviews), installed at project or local scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -10,7 +10,6 @@
     "aws-resource-query",
     "aws-cloudwatch",
     "aws-well-architected",
-    "cloud-ops-guard",
     "aws",
     "aws-cli",
     "aws-mcp"

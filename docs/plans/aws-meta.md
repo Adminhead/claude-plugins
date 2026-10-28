@@ -22,6 +22,8 @@ The user asked for both on 2026-10-18. Slice 5 updates that file.
 | `aws-well-architected` | existing | skill: review and cost |
 | `cloud-ops-guard` | existing | hook: already gates subagent `aws` calls (also in `iac-meta`) |
 
+Superseded: `docs/plans/cloud-ops-guard-optional.md` removed `cloud-ops-guard` from `aws-meta` and `iac-meta`; it is now a separate opt-in install.
+
 `aws-knowledge` (new, docs-only MCP) is a direct install, not a member of `aws-meta`, for repos that touch AWS without credentials. Its 5 tools are an exact subset of `aws-mcp`'s 8 under the same `aws___*` names. Installing both registers the docs tools twice, so its README says to install one or the other.
 
 ## Skill sources (skills.sh, ranked by installs)

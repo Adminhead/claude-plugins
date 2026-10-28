@@ -53,9 +53,9 @@ All of these metas and the bundle exist now, with empty dependency lists.
 | `design-core` (bundle) | via metas | `ui-direction`, `ui-critic` (A), `web-design`, `screen-reader-testing`, `accessibility-review`, `ux-copy`. See decision 9. |
 | `web-meta` | project | `programming-core`, `design-core`, `web-development`, `react`, `vite`, `e2e-testing`, `playwright-cli`, `browser-tester` (A), `web-perf-auditor` (A) |
 | `design-meta` | project | `design-core`, `uiux-lookup`, `design-critique`, `design-system`, `design-handoff`. No `programming-core`. |
-| `iac-meta` | project | `terraform`, `ansible`, `docker`, `bash`, `cloud-ops-guard` (H), `devops` (A), `bash-language-server@claude-code-lsps` |
+| `iac-meta` | project | `terraform`, `ansible`, `docker`, `bash`, `devops` (A), `bash-language-server@claude-code-lsps` |
 | `kubernetes-meta` | project | `kubernetes`, `helm`, `gitops`, `tilt` |
-| `aws-meta` | project or local | `aws`, `aws-cli`, `aws-mcp`, `aws-resource-query`, `aws-cloudwatch`, `aws-well-architected`, `cloud-ops-guard` |
+| `aws-meta` | project or local | `aws`, `aws-cli`, `aws-mcp`, `aws-resource-query`, `aws-cloudwatch`, `aws-well-architected`. `cloud-ops-guard` (H) left both metas on 2026-10-28 and is a direct install (`docs/plans/cloud-ops-guard-optional.md`). |
 | `github-meta` | project | `gh-issues`, `gh-pr`, `pr-comments` (manual), `ship`, `shipper` (A), `gh-actions`, `dependabot` |
 | `orchestration-meta` | user or project | `orchestration` (A), `agent-router` (M), the general agents `coder`, `architect`, `reviewer`, `debugger`, `scribe`, and `readonly-agent-gate` (H). See decision 6. |
 
@@ -251,7 +251,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | `ansible` | S | archive infra/ansible | iac-meta | |
 | `docker` | S | archive deploy/docker | iac-meta | + daemon hardening reference. |
 | `bash` | S | archive coding-shell/bash | iac-meta | + wshobson shellcheck and bats deltas. |
-| `cloud-ops-guard` | H | archive infra hook | iac-meta | Needs bun. |
+| `cloud-ops-guard` | H | archive infra hook | direct install (was iac-meta) | Needs bun. |
 | `devops` | A | archive crew/devops | iac-meta | Read-only by default; points at the terraform, docker and kubernetes skills. |
 | `kubernetes`, `helm`, `gitops` | S | archive deploy | kubernetes-meta or direct | + Pod Security Admission reference. |
 | `java` | S | ECC java-coding-standards (MIT); decebals java-code-review and concurrency-review; awesome-copilot java-upgrade and javax-to-jakarta-migration | java-meta | Shared sections only; upgrade and jakarta material in references. Decision 12. |
