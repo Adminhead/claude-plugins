@@ -1,7 +1,7 @@
 {
   "name": "bash-rules",
-  "version": "0.5.0",
-  "description": "Mod that denies Bash used to show file contents (use Read; searching with grep and find stays in Bash), write or edit files (use Write/Edit), smuggle encoded or env-var payloads, destroy systems, infra and data, kill processes by name, or pass grep --no-ignore, and denies any Bash or file-tool touch of Claude Code's credentials file. Commands the parser is unsure about go, with common secrets masked, to a local Ollama, then to Haiku; a :cloud model or a remote Ollama server is used only with ollamaCloud on.",
+  "version": "0.6.0",
+  "description": "Mod that denies Bash used to smuggle encoded or env-var payloads, destroy systems, infra and data, kill processes by name, or pass grep --no-ignore, and denies any Bash or file-tool touch of Claude Code's credentials file. With toolSteering on (off by default), it also denies Bash that shows file contents (use Read) or writes and edits files (use Write/Edit). Commands the parser is unsure about go, with common secrets masked, to a local Ollama, then to Haiku; a :cloud model or a remote Ollama server is used only with ollamaCloud on.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
@@ -53,10 +53,16 @@
       "description": "Model alias or id for the second, final check, billed to the session. Empty skips it.",
       "default": "haiku"
     },
+    "toolSteering": {
+      "type": "boolean",
+      "title": "Tool steering",
+      "description": "Deny Bash that shows file contents or writes and edits files, and point at Read, Write and Edit instead. Off: those commands run; smuggled payloads, dangerous commands and the credentials-file check stay denied.",
+      "default": false
+    },
     "primer": {
       "type": "boolean",
       "title": "Rules primer",
-      "description": "Add a short note on the read and write rules to the Bash tool's description, so the model and its subagents avoid the denied commands. Off: the description is unchanged.",
+      "description": "With tool steering on, add a short note on the read and write rules to the Bash tool's description, so the model and its subagents avoid the denied commands. Off: the description is unchanged.",
       "default": true
     },
     "usageLog": {

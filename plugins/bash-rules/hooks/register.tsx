@@ -142,7 +142,7 @@ async function judge($: any, o: JudgeOptions, command: string, entry: BashEntry)
   if ((await checkSqlFiles($, sqlFiles(scan.commands))).status === 'destroys') {
     return (Object.assign(entry, { stage: 'sql', rule: 'db-drop' }), DANGER_MESSAGES['db-drop'])
   }
-  const v = hygiene(scan.commands)
+  const v = hygiene(scan.commands, o.steering)
   entry.stage = 'hygiene'
   if (v.kind === 'deny') return (Object.assign(entry, { category: v.category, tool: v.tool }), v.message)
   if (v.kind === 'pass') return null
@@ -165,7 +165,7 @@ async function judge($: any, o: JudgeOptions, command: string, entry: BashEntry)
     cache.set(command, verdict)
     entry.model = { source, category: verdict.category, confidence: verdict.confidence, ms: Math.round((await $.clock.now()) - started) }
   }
-  return modelNudge(verdict)
+  return modelNudge(verdict, o.steering)
 }
 
 // Appends one line to today's bash-rules usage log. Never throws: logging must not change a verdict.
@@ -184,8 +184,9 @@ export const register: Register = (on, options) => {
   const o = parseOptions(options)
   const logging = options?.usageLog !== false
 
-  // Tells the model the read and write rules in the Bash tool's description, which subagents see too. Off with `primer: false`.
-  if (options?.primer !== false) on('tool.describe', { tool: 'Bash' }, async ($, e: any, next) => {
+  // Tells the model the read and write rules in the Bash tool's description, which subagents see too. Only with `toolSteering` on, since
+  // the rules are not enforced otherwise; off with `primer: false`.
+  if (o.steering && options?.primer !== false) on('tool.describe', { tool: 'Bash' }, async ($, e: any, next) => {
     const out: any = await next(e)
     return { ...out, description: `${out?.description ?? e.description}\n\n${PRIMER}` }
   })

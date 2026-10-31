@@ -1,6 +1,6 @@
 # bash-rules
 
-A mod that checks every Bash call before it runs. It denies destructive commands, and it denies Bash used for work the built-in tools do, with a deny message that names the tool to use instead. It supersedes `bash-danger-guard`.
+A mod that checks every Bash call before it runs. It denies destructive commands, kill-by-name, smuggled payloads, `grep --no-ignore`, and any touch of Claude Code's credentials file. With `toolSteering` on (off by default), it also denies Bash used to read or write files, with a deny message that names the built-in tool to use instead. It supersedes `bash-danger-guard`.
 
 Searching is left to the shell. Claude Code no longer has Grep or Glob tools: its Bash `grep` and `find` are shell functions that run the search tools bundled in the `claude` binary, so `grep`, `rg`, `find`, `fd` and `ls` all run.
 
@@ -16,13 +16,15 @@ Searching is left to the shell. Claude Code no longer has Grep or Glob tools: it
 
 | Category | Examples | Instead |
 | --- | --- | --- |
-| read | `sed -n 1,5p f`, `cat f`, `head`/`tail` of a file, `awk '{print}' f` | Read (offset/limit) |
-| write | `cat > f <<EOF`, `echo x >> f`, `echo x \| tee f`, `sed -i`, `perl -pi`, `python -c "open(...,'w')"` | Write, Edit |
+| read (only with `toolSteering` on) | `sed -n 1,5p f`, `cat f`, `head`/`tail` of a file, `awk '{print}' f` | Read (offset/limit) |
+| write (only with `toolSteering` on) | `cat > f <<EOF`, `echo x >> f`, `echo x \| tee f`, `sed -i`, `perl -pi`, `python -c "open(...,'w')"` | Write, Edit |
 | smuggle | `echo … \| base64 -d \| sh`, `X='…'; bash -c "$X"`, `python -c "exec(b64decode(…))"` | a scratch script written with Write |
 | destructive | `rm -rf /` (also `/private/etc` on macOS, `/mnt`, `/proc`), `rm` of system files, `~/.ssh` or shell rc files, `find /etc \| xargs rm`, `npx rimraf ~`, disk wipes, `sudo`, `terraform destroy`, `kubectl delete ns`, `helm uninstall`, `docker system prune -a`, `docker compose down -v`, `docker volume rm $(docker volume ls -q)`, `dropdb`, `dropuser`, `DROP TABLE` via a client or in a `psql -f`/`mysql <` script file, `prisma migrate reset`, `rails db:drop`, `manage.py flush`, `mongosh --eval 'db.x.drop()'` | hand it to the user |
 | kill by name | `pkill -f vite`, `killall node`, `kill $(pgrep -f node)`, `pgrep x \| xargs kill`, `kill -1`; `kill 1234`, `kill $(cat app.pid)` and `kill $(lsof -t -i:5173)` pass | `pgrep -a <name>`, then `kill <pid>` of the process you started |
 | credentials | any command that touches `~/.claude/.credentials.json` (`cat`, `jq`, `cp`, a `python -c` that opens it, `rm`, a glob or brace list such as `~/.cla*/.credentials.json`, in any letter case); `ls`, `stat` and `test` on it pass. Read, Edit, MultiEdit, Write and NotebookEdit of the file (also under `$CLAUDE_CONFIG_DIR`), and, where a Grep tool exists, a Grep of it, of its directory, or of a directory above it with a glob or `type: json` that can match it. A Grep of a directory above it with neither runs with `glob: "!**/.credentials.json"` added | read `rate_limits` from the JSON Claude Code passes to a statusline command |
 | flag | `grep --no-ignore` (Claude Code's `grep` is ugrep, which rejects it with exit 2 and no output) | `grep --no-ignore-files`, or `rg --no-ignore` |
+
+With `toolSteering` off, shell redirects that write files are not denied, including appends to `~/.bashrc` or `~/.ssh/authorized_keys`; the danger rules cover only `rm` of critical paths.
 
 The rules see through wrappers such as `timeout`, `nice`, `env`, `xargs`, `busybox`, `flock`, `taskset`, `systemd-run`, `watch`, `parallel`, `npx`, `pnpm dlx` and `bundle exec` (also `pnpm --filter web exec`), and they check the script of `flock -c`, `npx -c`, `npm exec -c`, a quoted `watch` command and a `parallel` command template as they check `sh -c`. Path names are compared without letter case, and a brace list (`/{etc,x}`) is written out.
 
@@ -46,7 +48,7 @@ If both models are unavailable, the command runs. The error is logged once to th
 
 ## Primer
 
-The mod appends a short note (the `PRIMER` constant in `hooks/rules/hygiene.ts`, at most 600 characters) to the Bash tool's description: shell file viewers are denied even inside `;` and `&&` chains, use parallel Read calls, write with Write or Edit, and grep, rg, find, ls and git stay in Bash. Most denials happen in subagents, which see the tool description but not the main session's instructions. Turn `primer` off to leave the description unchanged.
+With `toolSteering` on, the mod appends a short note (the `PRIMER` constant in `hooks/rules/hygiene.ts`, at most 600 characters) to the Bash tool's description: shell file viewers are denied even inside `;` and `&&` chains, use parallel Read calls, write with Write or Edit, and grep, rg, find, ls and git stay in Bash. Most denials happen in subagents, which see the tool description but not the main session's instructions. Turn `primer` off to leave the description unchanged.
 
 ## Usage log
 
@@ -67,5 +69,6 @@ Set these in `/config` under bash-rules:
 | `ollamaTimeoutMs` | `8000` | At most 9000, because the wait counts against the hook's 10 s budget |
 | `confidence` | `0.8` | Below this, the fallback model decides |
 | `fallbackModel` | `haiku` | Empty skips the fallback |
-| `primer` | `true` | Off: the Bash tool's description is not extended with the read and write rules |
+| `toolSteering` | `false` | On: Bash that reads or writes files is denied with a pointer to Read, Write or Edit (the read and write rows above), and a model check's read or write verdict denies too. Off: those commands run; smuggle, flag, destructive, kill-by-name, credentials and SQL-file checks still apply |
+| `primer` | `true` | Only used with `toolSteering` on. Off: the Bash tool's description is not extended with the read and write rules |
 | `usageLog` | `true` | Off: no usage log is written |

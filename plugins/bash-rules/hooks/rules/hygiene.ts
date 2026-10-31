@@ -406,7 +406,8 @@ const EVAL_OK = new Set([
 // ---------------------------------------------------------------------------------------------------------------
 // The verdict
 
-export function hygiene(commands: readonly ShellCommand[]): Verdict {
+// Without `steering`, the read and write findings are dropped: smuggle and flag still deny.
+export function hygiene(commands: readonly ShellCommand[], steering = true): Verdict {
   if (commands.length > MAX_COMMANDS) return { kind: 'unsure', reasons: ['too many commands to check one by one'] }
   const unsure: string[] = []
   const hits: Finding[] = []
@@ -544,6 +545,7 @@ export function hygiene(commands: readonly ShellCommand[]): Verdict {
 
   const order: Category[] = ['smuggle', 'write', 'read', 'flag']
   for (const cat of order) {
+    if (!steering && (cat === 'read' || cat === 'write')) continue
     const h = hits.find(x => x.category === cat)
     if (h) return { kind: 'deny', category: h.category, tool: h.tool, message: cat === 'read' ? readNudge(h) : nudge(h.tool, h.what, h.note) }
   }

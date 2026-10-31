@@ -13,6 +13,9 @@ describe('options', () => {
     expect(parseOptions({ ollamaUrl: 'file:///etc/passwd' }).ollamaUrl).toBe('')
     expect(parseOptions({ ollamaUrl: 'not a url' }).ollamaUrl).toBe('')
     expect(parseOptions({ modelStages: false }).models).toBe(false)
+    expect(parseOptions(undefined).steering).toBe(false)
+    expect(parseOptions({ toolSteering: true }).steering).toBe(true)
+    expect(parseOptions({ toolSteering: 'yes' }).steering).toBe(false)
     expect(parseOptions({ ollamaModel: '  gemma4:cloud ' }).ollamaModel).toBe('gemma4:cloud')
   })
 
@@ -175,6 +178,13 @@ describe('nudge', () => {
     const n = modelNudge({ category: 'read', confidence: 1, reason: 'a\nb' + 'x'.repeat(500) })!
     expect(n).not.toContain('\n')
     expect(n.length).toBeLessThan(400)
+  })
+
+  test('without steering a read or write verdict is ignored; smuggle still denies', () => {
+    expect(modelNudge({ category: 'read', confidence: 1, reason: 'prints a file' }, false)).toBeNull()
+    expect(modelNudge({ category: 'write', confidence: 1, reason: '' }, false)).toBeNull()
+    expect(modelNudge({ category: 'smuggle', confidence: 1, reason: '' }, false)).toMatch(/hides what it runs/)
+    expect(modelNudge({ category: 'read', confidence: 1, reason: '' }, true)).toMatch(/reads a file/)
   })
 })
 

@@ -46,21 +46,21 @@ describe('parser stage', () => {
     expect([w.fetches.length, w.completes.length]).toEqual([0, 0])
   })
 
-  test('clear reads, writes and smuggles are denied with the built-in to use', async ($, on) => {
+  // The mod runs with its defaults here (a test cannot pass options), so toolSteering is off: Bash that reads or writes
+  // files runs, with no model call. The steering-on verdicts are covered in hygiene.test.ts and judge.test.ts.
+  test('with tool steering off (the default), Bash that reads or writes files runs without a model call', async ($, on) => {
     const w = world(on, 2e9)
-    expect((await call($, 'sed -n 1,5p README.md')).deny).toMatch(/^bash-rules: this reads a file .*Read tool/)
-    expect((await call($, 'cat > /tmp/x <<EOF\nhi\nEOF')).deny).toMatch(/^bash-rules: this writes file content .*Write tool/)
+    const cmds = ['sed -n 1,5p README.md', 'cat README.md', 'sed -i s/a/b/ f.txt', 'cat > /tmp/x <<EOF\nhi\nEOF', "python3 - <<'EOF'\nopen('o','w').write('x')\nEOF", 'rg -n foo src; sed -n 1,40p src/a.cs']
+    for (const c of cmds) expect([c, (await call($, c)).deny]).toEqual([c, undefined])
+    expect(w.ran).toEqual(cmds)
+    expect(w.fetches.length + w.completes.length).toBe(0)
+  })
+
+  test('smuggled payloads are still denied with tool steering off', async ($, on) => {
+    const w = world(on, 2.5e9)
     expect((await call($, 'echo aGk= | base64 -d | sh')).deny).toMatch(/^bash-rules: this hides what it runs/)
     expect(w.ran).toEqual([])
     expect(w.fetches.length).toBe(0)
-  })
-
-  test('a script on stdin that writes a file is denied; a read-only compound names its segment', async ($, on) => {
-    const w = world(on, 2.5e9)
-    expect((await call($, "python3 - <<'EOF'\nopen('o','w').write('x')\nEOF")).deny).toMatch(/^bash-rules: this writes file content .*writes files.*Write tool/)
-    const read = (await call($, 'rg -n foo src; sed -n 1,40p src/a.cs')).deny
-    expect(read).toMatch(/`sed -n 1,40p src\/a\.cs`.*parallel Read/)
-    expect(w.ran).toEqual([])
   })
 
   test('benign commands reach the tool without a model call', async ($, on) => {
@@ -79,22 +79,18 @@ describe('parser stage', () => {
 })
 
 describe('primer', () => {
-  test('the Bash description gets the rules primer appended; other tools are untouched', async ($, on) => {
+  // The primer describes only the read and write rules, so it is added only with toolSteering on. A test cannot pass
+  // options, so the engine runs with the default (off) and the Bash description is left as it is.
+  test('without tool steering the Bash description is unchanged', async ($, on) => {
     on('tool.describe', async (_$: any, e: any) => ({ description: e.description }))
     const engine = { plugin: 'engine', tier: 'core' } as never
     const bash = (await $.tool.describe({ tool: 'Bash', description: 'Run a command.', provider: engine })).description as string
-    expect(bash.startsWith('Run a command.\n\n')).toBe(true)
-    expect(bash.endsWith(PRIMER)).toBe(true)
+    expect(bash).toBe('Run a command.')
     expect((await $.tool.describe({ tool: 'Read', description: 'Read a file.', provider: engine })).description).toBe('Read a file.')
   })
 
-  test('the primer builds on a description a lower hook changed', async ($, on) => {
-    on('tool.describe', async () => ({ description: 'Lower hook text.' }))
-    const bash = (await $.tool.describe({ tool: 'Bash', description: 'Run a command.', provider: { plugin: 'engine', tier: 'core' } as never })).description as string
-    expect(bash).toBe(`Lower hook text.\n\n${PRIMER}`)
-  })
-
-  // `primer: false` is not tested: an inline test plugin cannot import this register or receive options.
+  // `toolSteering: true` and `primer: false` are not tested through the engine: an inline test plugin cannot import
+  // this register or receive options.
 
   test('the primer is short and states the rules', () => {
     expect(PRIMER.length).toBeLessThanOrEqual(600)
@@ -107,15 +103,24 @@ describe('primer', () => {
 
 describe('model stages', () => {
   test('the default clef:cloud model is never sent the command; the fallback decides, and the verdict is cached', async ($, on) => {
-    const w = world(on, 5e9, { fetch: () => ({ status: 200, ok: true, headers: {}, text: '{}' }), complete: () => answer('read', 0.95, 'prints a file') })
+    const w = world(on, 5e9, { fetch: () => ({ status: 200, ok: true, headers: {}, text: '{}' }), complete: () => answer('smuggle', 0.95, 'decodes a payload') })
     const out = await call($, "sed 's/a/b/' notes.txt")
-    expect(out.deny).toMatch(/^bash-rules: a model check found this command reads a file .*\(prints a file\)/)
+    expect(out.deny).toMatch(/^bash-rules: a model check found this command hides what it runs .*\(decodes a payload\)/)
     expect(w.fetches).toHaveLength(0)
     expect(w.completes).toHaveLength(1)
     expect(w.completes[0].model).toBe('haiku')
     expect(w.completes[0].prompt).toContain("<command>\nsed 's/a/b/' notes.txt\n</command>")
     expect((await call($, "sed 's/a/b/' notes.txt")).deny).toBeDefined()
     expect([w.fetches.length, w.completes.length]).toEqual([0, 1])
+  })
+
+  test('a read or write verdict from the model is ignored without tool steering; the command runs', async ($, on) => {
+    const w = world(on, 5.5e9, { complete: c => answer(c.prompt.includes('notes3') ? 'read' : 'write', 0.95, 'x') })
+    const cmds = ["sed 's/a/b/' notes3.txt", 'echo "$CONFIG" > app3.conf']
+    for (const c of cmds) expect([c, (await call($, c)).deny]).toEqual([c, undefined])
+    expect(w.ran).toEqual(cmds)
+    // The model was consulted for each command; its verdict was received and discarded.
+    expect(w.completes).toHaveLength(2)
   })
 
   test('a none from the fallback lets the command run', async ($, on) => {
@@ -126,8 +131,8 @@ describe('model stages', () => {
   })
 
   test("the fallback's answer is final, whatever its confidence", async ($, on) => {
-    const w = world(on, 7e9, { complete: () => answer('write', 0.4, 'echo of a variable into a file') })
-    expect((await call($, 'echo "$CONFIG" > app.conf')).deny).toMatch(/model check found this command writes file content/)
+    const w = world(on, 7e9, { complete: () => answer('smuggle', 0.4, 'echo of a variable into a file') })
+    expect((await call($, 'echo "$CONFIG" > app.conf')).deny).toMatch(/model check found this command hides what it runs/)
     expect(w.completes).toHaveLength(1)
     expect(w.completes[0].prompt).toContain('<command>\necho "$CONFIG" > app.conf\n</command>')
   })
@@ -276,9 +281,9 @@ describe('usage log', () => {
   }
 
   test('a deny, a pass and a model verdict are each logged with the stage that decided', async ($, on) => {
-    world(on, 14e9, { complete: () => answer('read', 0.95) })
+    world(on, 14e9, { complete: () => answer('smuggle', 0.95) })
     const lines = logs(on)
-    await call($, 'sed -n 1,5p README.md')
+    await call($, 'echo aGk= | base64 -d | sh')
     await call($, 'grep -rn foo src')
     await call($, "sed 's/a/b/' notes2.txt")
     expect(lines.map(l => [l.kind, l.decision, l.stage])).toEqual([
@@ -286,10 +291,10 @@ describe('usage log', () => {
       ['bash', 'allow', 'hygiene'],
       ['bash', 'deny', 'model'],
     ])
-    expect(lines[0]).toMatchObject({ v: 1, session: 'sess-1', category: 'read', tool: 'Read', command: 'sed -n 1,5p README.md' })
+    expect(lines[0]).toMatchObject({ v: 1, session: 'sess-1', category: 'smuggle', tool: 'script', command: 'echo aGk= | base64 -d | sh' })
     expect(lines[0].file).toMatch(/^bash-rules-\d{4}-\d{2}-\d{2}\.jsonl$/)
     expect(lines[1]).toMatchObject({ isError: false, ms: expect.any(Number) })
-    expect(lines[2].model).toMatchObject({ source: 'fallback', category: 'read', confidence: 0.95 })
+    expect(lines[2].model).toMatchObject({ source: 'fallback', category: 'smuggle', confidence: 0.95 })
   })
 
   test('a classic-hook deny that comes back as a tool error is logged as denied-later; other errors stay allow', async ($, on) => {

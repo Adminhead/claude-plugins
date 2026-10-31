@@ -21,6 +21,8 @@ export type JudgeOptions = {
   confidence: number
   // '' skips the Haiku stage.
   fallbackModel: string
+  // false: Bash that reads or writes files (the read and write categories) is not denied; smuggle and flag still are.
+  steering: boolean
 }
 
 export const DEFAULTS: JudgeOptions = {
@@ -32,6 +34,7 @@ export const DEFAULTS: JudgeOptions = {
   ollamaSkip: 'clef:cloud is a cloud model and ollamaCloud is off',
   confidence: 0.8,
   fallbackModel: 'haiku',
+  steering: false,
 }
 
 // Ollama's cloud tags: `clef:cloud`, `gpt-oss:120b-cloud`.
@@ -87,6 +90,7 @@ export function parseOptions(raw: Readonly<Record<string, unknown>> | undefined)
     ollamaSkip: ollamaSkip(ollamaUrl, ollamaModel, ollamaCloud),
     confidence: num(o.confidence, 0, 1, DEFAULTS.confidence),
     fallbackModel: str(o.fallbackModel, DEFAULTS.fallbackModel),
+    steering: typeof o.toolSteering === 'boolean' ? o.toolSteering : DEFAULTS.steering,
   }
 }
 
@@ -266,9 +270,11 @@ const MODEL_LEAD: Record<Exclude<ModelCategory, 'none'>, string> = {
   smuggle: 'hides what it runs',
 }
 
-// The deny text for a model's hit. The reason is model text about model-controlled input: one line, capped.
-export function modelNudge(v: ModelVerdict): string | null {
+// The deny text for a model's hit. The reason is model text about model-controlled input: one line, capped. Without
+// `steering`, a read or write verdict is ignored.
+export function modelNudge(v: ModelVerdict, steering = true): string | null {
   if (v.category === 'none') return null
+  if (!steering && (v.category === 'read' || v.category === 'write')) return null
   const reason = v.reason.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 160)
   return `bash-rules: a model check found this command ${MODEL_LEAD[v.category]}${reason ? ` (${reason})` : ''}. ${MODEL_INSTEAD[v.category]}`
 }

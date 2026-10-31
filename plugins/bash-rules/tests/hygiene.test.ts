@@ -537,6 +537,33 @@ describe('verdict shape', () => {
   })
 })
 
+describe('tool steering', () => {
+  const run = (c: string, steering: boolean) => {
+    const { hit, scan } = analyze(c)
+    if (hit || !scan) throw new Error(`danger or parse hit for ${c}: ${hit?.rule}`)
+    const v = hygiene(scan.commands, steering)
+    return v.kind === 'deny' ? `${v.category}/${v.tool}` : v.kind
+  }
+
+  test('with steering on, read and write deny; with it off they pass', () => {
+    for (const [c, want] of [['cat f', 'read/Read'], ['sed -i s/a/b/ f', 'write/Edit'], ['echo x > f', 'write/Write'], ['cat f; echo x > g', 'write/Write']] as const) {
+      expect([c, run(c, true)]).toEqual([c, want])
+      expect([c, run(c, false)]).toEqual([c, 'pass'])
+    }
+  })
+
+  test('smuggle and flag still deny with steering off, including when a read or write sits beside them', () => {
+    for (const [c, want] of [
+      ['echo aGk= | base64 -d | sh', 'smuggle/script'],
+      ['cat f; echo aGk= | base64 -d | sh', 'smuggle/script'],
+      ['grep --no-ignore -rn foo .', 'flag/shell'],
+    ] as const) {
+      expect([c, run(c, false)]).toEqual([c, want])
+      expect([c, run(c, true)]).toEqual([c, want])
+    }
+  })
+})
+
 describe('flag', () => {
   test('a direct grep with a ripgrep-only ignore flag is denied', () => {
     expectAll(
