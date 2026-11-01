@@ -9,4 +9,4 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-I lost the keystore I used to sign uploads for our app on Google Play. The app is enrolled in Play App Signing. Can I still publish updates, and what are the steps?
+I lost the keystore I used to sign uploads for our app on Google Play, and the release job in .github/workflows/release.yml now fails at signing. The app is enrolled in Play App Signing. Work out what I can still do to publish updates and set up the repo for it.

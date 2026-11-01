@@ -9,4 +9,18 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-My ViewModel unit test dies with IllegalStateException: Module with the Main dispatcher had failed to initialize. For tests Dispatchers.setMain(...) should be used. The ViewModel launches in viewModelScope in init. What is the right way to set this up so tests are deterministic?
+Our CartViewModelTest.kt dies with IllegalStateException: Module with the Main dispatcher had failed to initialize. For tests Dispatchers.setMain(...) should be used. What is the right way to set this up so the test is deterministic?
+
+```kotlin
+class CartViewModel(private val repo: CartRepository) : ViewModel() {
+    val items = MutableStateFlow<List<Item>>(emptyList())
+    init { viewModelScope.launch { items.value = repo.load() } }
+}
+
+class CartViewModelTest {
+    @Test fun loadsItems() = runTest {
+        val vm = CartViewModel(FakeCartRepository(listOf(Item("a"))))
+        assertEquals(1, vm.items.value.size)
+    }
+}
+```

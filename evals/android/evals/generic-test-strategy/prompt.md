@@ -9,4 +9,4 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-We are starting a new billing module and I want to decide how to test it: what should be unit tests versus integration tests, how to name them, and how to avoid tests that break whenever we refactor. No particular framework yet, just give me the principles and a structure I can follow.
+We are starting a new billing module (src/billing) and I need to decide how to test it before anyone writes code: what should be unit tests versus integration tests, how to name them, and how to avoid tests that break on every refactor. The module has an InvoiceCalculator, a TaxRules table and a PaymentGateway client. Give me a test strategy I can follow.

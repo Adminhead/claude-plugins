@@ -9,4 +9,12 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-In our Ktor server module a MutableSharedFlow<Event>() is used to broadcast domain events. Events emitted right at startup are lost because the collector subscribes a moment later. It is a plain Kotlin/JVM service, no Android anywhere. What should the flow be configured as?
+In our Ktor server module, EventBus.kt broadcasts domain events, but events emitted at startup are lost because the collector in Projector.kt subscribes a moment later. It is a plain Kotlin/JVM service, no Android anywhere. What should the flow be configured as?
+
+```kotlin
+class EventBus {
+    private val _events = MutableSharedFlow<Event>()
+    val events: SharedFlow<Event> = _events
+    suspend fun publish(e: Event) = _events.emit(e)
+}
+```

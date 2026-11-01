@@ -9,4 +9,10 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Debug builds work, but the release build crashes with ClassNotFoundException for com.example.api.UserDto when Gson parses a response. Only that one model is affected and proguard-rules.pro is empty. What is the narrowest fix?
+Debug builds work, but the release build crashes with ClassNotFoundException for com.example.api.UserDto when Gson parses the /me response. Only that one model is affected and our app/proguard-rules.pro is empty. What is the narrowest fix?
+
+```kotlin
+data class UserDto(val id: String, val displayName: String)
+
+val user = Gson().fromJson(body, UserDto::class.java)
+```

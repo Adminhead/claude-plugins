@@ -9,4 +9,10 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-A plain JVM unit test of our UserRepository throws RuntimeException: Method d in android.util.Log not mocked. See https://developer.android.com/r/studio-ui/build/not-mocked for details. The repository calls Log.d for diagnostics. How do I get this test to run without an emulator?
+A plain JVM unit test of our UserRepository (UserRepositoryTest.kt) throws RuntimeException: Method d in android.util.Log not mocked. See https://developer.android.com/r/studio-ui/build/not-mocked for details. The repository calls Log.d for diagnostics. How do I get this test to run without an emulator?
+
+```kotlin
+class UserRepository(private val api: UserApi) {
+    suspend fun load(id: String): User { Log.d("UserRepository", "load $id"); return api.get(id) }
+}
+```

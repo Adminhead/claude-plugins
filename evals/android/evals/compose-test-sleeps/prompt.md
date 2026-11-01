@@ -9,4 +9,14 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Our existing Compose UI test is flaky on CI. It clicks 'Load', calls Thread.sleep(2000), then asserts onNodeWithText("3 items").assertIsDisplayed(). Fix the test so it is not timing dependent.
+Our LoadItemsTest.kt is flaky on CI. Fix the test so it is not timing dependent.
+
+```kotlin
+@get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
+@Test fun loadsItems() {
+    rule.onNodeWithText("Load").performClick()
+    Thread.sleep(2000)
+    rule.onNodeWithText("3 items").assertIsDisplayed()
+}
+```

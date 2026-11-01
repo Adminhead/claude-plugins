@@ -9,4 +9,12 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-In our Kotlin Spring Boot service I want a slice test for OrderController using @WebMvcTest with a mocked OrderService, checking that GET /orders/42 returns 404 with a problem JSON when the service returns null. Show me how to write it.
+In our Kotlin Spring Boot service I want a slice test for OrderController (OrderControllerTest.kt) using @WebMvcTest with a mocked OrderService, checking that GET /orders/42 returns 404 with a problem JSON when the service returns null. Show me the test.
+
+```kotlin
+@RestController
+class OrderController(private val orders: OrderService) {
+    @GetMapping("/orders/{id}")
+    fun get(@PathVariable id: Long): Order = orders.find(id) ?: throw OrderNotFound(id)
+}
+```

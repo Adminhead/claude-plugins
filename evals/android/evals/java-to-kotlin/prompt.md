@@ -9,4 +9,17 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Convert this class to idiomatic Kotlin: public class Account { private final String id; private String owner; private final List<Transaction> history = new ArrayList<>(); public Account(String id, String owner) { this.id = id; this.owner = owner; } public String getId() { return id; } public String getOwner() { return owner; } public void setOwner(String o) { this.owner = o; } public List<Transaction> getHistory() { return Collections.unmodifiableList(history); } }
+Convert this Account.java to idiomatic Kotlin:
+
+```java
+public class Account {
+    private final String id;
+    private String owner;
+    private final List<Transaction> history = new ArrayList<>();
+    public Account(String id, String owner) { this.id = id; this.owner = owner; }
+    public String getId() { return id; }
+    public String getOwner() { return owner; }
+    public void setOwner(String o) { this.owner = o; }
+    public List<Transaction> getHistory() { return Collections.unmodifiableList(history); }
+}
+```

@@ -9,4 +9,13 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-In our Android repo, builds with --configuration-cache fail: 'Task.project' invocation not supported at execution time, task ':app:generateVersionInfo' of type VersionInfoTask. The custom task in buildSrc reads project.version inside its @TaskAction. How should the task be rewritten so it is cache-safe?
+Builds with --configuration-cache fail in our Android repo: 'Task.project' invocation not supported at execution time, task ':app:generateVersionInfo' of type VersionInfoTask. The task is in buildSrc/src/main/kotlin/VersionInfoTask.kt. How should it be rewritten so it is cache-safe?
+
+```kotlin
+abstract class VersionInfoTask : DefaultTask() {
+    @get:OutputFile abstract val out: RegularFileProperty
+    @TaskAction fun run() {
+        out.get().asFile.writeText(project.version.toString())
+    }
+}
+```

@@ -9,4 +9,20 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-In our pure Kotlin library module (no Android code at all) a test using runTest fails after one minute with kotlinx.coroutines.test.UncompletedCoroutinesError: Test finished with active jobs. The class under test launches a background poller in its own CoroutineScope(Dispatchers.Default). How do I make the test finish?
+In our pure Kotlin :core module (no Android code at all), PollerTest.kt fails after one minute with kotlinx.coroutines.test.UncompletedCoroutinesError: Test finished with active jobs. How do I fix the test and the class?
+
+```kotlin
+class Poller(private val source: Source) {
+    private val scope = CoroutineScope(Dispatchers.Default)
+    fun start() { scope.launch { while (true) { source.poll(); delay(1000) } } }
+}
+
+class PollerTest {
+    @Test fun polls() = runTest {
+        val source = FakeSource()
+        Poller(source).start()
+        advanceTimeBy(3000)
+        assertEquals(3, source.polls)
+    }
+}
+```

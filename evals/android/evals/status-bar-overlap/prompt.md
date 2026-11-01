@@ -9,4 +9,13 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-After we raised targetSdk to 36 on Android 15 devices our screens now draw underneath the status bar and the gesture navigation bar, and the toolbar is half hidden. Fix the insets handling across the app.
+After we raised targetSdk to 36 in app/build.gradle.kts, our screens draw underneath the status bar and the gesture navigation bar and the toolbar is half hidden on Android 15 devices. Fix the insets handling. MainActivity.kt looks like this:
+
+```kotlin
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { AppTheme { Scaffold(topBar = { AppBar() }) { padding -> Home(Modifier.padding(padding)) } } }
+    }
+}
+```

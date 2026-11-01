@@ -9,4 +9,13 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-This Kotlin code does not compile: 'when' expression must be exhaustive, add necessary 'is Failure' branch or 'else' branch instead. The subject is a sealed interface Result with Success, Failure and Loading. I would rather not add an else because we want new subtypes to break the build. What is the idiomatic fix?
+In ResultRenderer.kt this does not compile: 'when' expression must be exhaustive, add necessary 'is Failure' branch or 'else' branch instead. I do not want an else, because new subtypes should break the build. What is the idiomatic fix?
+
+```kotlin
+sealed interface Result { data class Success(val data: String) : Result; data class Failure(val error: Throwable) : Result; data object Loading : Result }
+
+fun render(r: Result) = when (r) {
+    is Result.Success -> show(r.data)
+    Result.Loading -> spinner()
+}
+```

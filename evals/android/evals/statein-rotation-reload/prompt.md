@@ -9,4 +9,12 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Our ViewModel exposes uiState = repo.items().stateIn(viewModelScope, SharingStarted.WhileSubscribed(0), Loading). Every time the user rotates the screen the list flashes back to the loading spinner and refetches. What should I change so rotation does not reload?
+In our ItemsViewModel.kt, whenever the user rotates the screen the list flashes back to the loading spinner and refetches. What should I change so rotation does not reload?
+
+```kotlin
+class ItemsViewModel(repo: ItemsRepository) : ViewModel() {
+    val uiState: StateFlow<ItemsUiState> = repo.items()
+        .map { ItemsUiState.Content(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(0), ItemsUiState.Loading)
+}
+```

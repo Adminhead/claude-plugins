@@ -9,4 +9,12 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Play Console shows ANRs for us. The stack dump of the main thread is blocked in android.app.SharedPreferencesImpl$EditorImpl.commit called from SettingsRepository.save. Find and fix the cause of this ANR.
+Play Console shows ANRs for us. The main thread dump is blocked in android.app.SharedPreferencesImpl$EditorImpl.commit, called from SettingsRepository.save in SettingsRepository.kt. Find and fix the cause of the ANR.
+
+```kotlin
+class SettingsRepository(private val prefs: SharedPreferences) {
+    fun save(settings: Settings) {
+        prefs.edit().putString("theme", settings.theme).putBoolean("push", settings.push).commit()
+    }
+}
+```

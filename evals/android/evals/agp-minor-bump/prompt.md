@@ -9,4 +9,13 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Please bump the Android Gradle Plugin from 9.4.0 to 9.5.0 in libs.versions.toml. The wrapper is already on Gradle 9.6, which 9.5.0 supports, so no wrapper change is needed. What else needs to change and what should I check afterwards?
+Please bump the Android Gradle Plugin in our gradle/libs.versions.toml from 9.4.0 to 9.5.0. The wrapper is already on Gradle 9.6, which AGP 9.5.0 supports, so no wrapper change is needed. What else changes and what should I check afterwards?
+
+```toml
+[versions]
+agp = "9.4.0"
+kotlin = "2.3.0"
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+```

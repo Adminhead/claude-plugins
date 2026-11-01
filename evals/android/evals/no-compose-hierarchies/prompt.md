@@ -9,4 +9,13 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-Our instrumented test fails with IllegalStateException: No compose hierarchies found in the app. Possibly you are missing a call to setContent() in your test. The test uses createAndroidComposeRule<MainActivity>() and then calls onNodeWithText("Pay").performClick() straight away. What is wrong with the test setup?
+Our PayScreenTest.kt fails with IllegalStateException: No compose hierarchies found in the app. Possibly you are missing a call to setContent() in your test. What is wrong with the test?
+
+```kotlin
+@get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
+@Test fun payButtonWorks() {
+    rule.onNodeWithText("Pay").performClick()
+    rule.onNodeWithText("Paid").assertExists()
+}
+```

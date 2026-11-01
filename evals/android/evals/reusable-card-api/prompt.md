@@ -9,4 +9,9 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-I'm designing a reusable ProductCard composable for our design system. Help me decide its parameters, modifiers, slots and how callers customise it so the API stays clean.
+Our ProductCard.kt composable has six boolean flags and every screen is a mess of combinations. Redesign its API as a clean reusable component.
+
+```kotlin
+@Composable
+fun ProductCard(product: Product, showBadge: Boolean, showPrice: Boolean, compact: Boolean, highlighted: Boolean, showFavorite: Boolean, clickable: Boolean) { /* ... */ }
+```

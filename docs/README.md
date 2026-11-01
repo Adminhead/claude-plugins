@@ -39,6 +39,7 @@ Research files with no verdict, one bullet each.
 - [git-branching-models.md](research/git-branching-models.md) — git-flow, HubFlow and trunk-based development.
 - [evals-2026-10-17.md](research/evals-2026-10-17.md) — eval run, 2026-10-17.
 - [evals-2026-10-20.md](research/evals-2026-10-20.md) — eval run, 2026-10-20 (JVM plugin set).
+- [evals-2026-11-01.md](research/evals-2026-11-01.md) — eval run, 2026-11-01 (Android and Kotlin plugin set).
 - [consult-lock-probes-2026-10-23.md](research/consult-lock-probes-2026-10-23.md) — codex app server lock probes for the consult per-thread lock checks (codex-cli 0.163.0).
 - [evals-2026-10-23.md](research/evals-2026-10-23.md) — eval run, 2026-10-23 (paperthin ports, five trigger suites).
 - [evals-2026-10-21.md](research/evals-2026-10-21.md) — eval run, 2026-10-21 (vet triggers; dependency breaks the eval sandbox).

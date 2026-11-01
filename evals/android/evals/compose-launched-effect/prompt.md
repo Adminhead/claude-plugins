@@ -9,4 +9,14 @@ model: claude-sonnet-5-5
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-My search screen re-runs its network call on every keystroke even though I only wanted it to run when the query is submitted. The call lives in a LaunchedEffect(uiState.query) { repository.search(uiState.query) } inside the composable and it seems to restart constantly. Why does it behave like this and how should the effect be keyed?
+In our SearchScreen.kt the search call restarts on every keystroke, but I only want it to run when the user submits. Why, and how should the effect be keyed?
+
+```kotlin
+@Composable
+fun SearchScreen(uiState: SearchUiState, repository: SearchRepository, onSubmit: () -> Unit) {
+    LaunchedEffect(uiState.query) {
+        repository.search(uiState.query)
+    }
+    SearchField(value = uiState.query, onSubmit = onSubmit)
+}
+```
