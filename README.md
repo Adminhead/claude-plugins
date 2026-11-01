@@ -434,6 +434,8 @@ A meta that depends on another marketplace needs that marketplace registered fir
 
 `android-meta` needs three marketplaces registered: `android-skills`, `gradle-skills` and `claude-plugins-official`. Until all three are, it doesn't load. Add the Android one with `claude plugin marketplace add android/skills`, then run `/reload-plugins`. Its `android-skills` dependency is unversioned and tracks upstream, which publishes often; re-review it when upstream adds a skill, a hook, an MCP server, an agent or a script.
 
+`android-skills` adds 36 skill descriptions to the skill listing, which Claude Code caps at 1% of the context window by default and fills by dropping the descriptions of the least-used skills. Past that cap, skills list by name only and trigger less. Set `skillListingBudgetFraction` to `0.02` or `0.03` in your settings (the example in `examples/claude-settings/settings.global.json` uses `0.03`, and `scripts/install.mjs` merges it).
+
 ### Checks
 
 Run these from the repo root.

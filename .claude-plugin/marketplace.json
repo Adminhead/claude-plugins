@@ -521,7 +521,7 @@
       "name": "recommend-plugins",
       "source": "./plugins/recommend-plugins",
       "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
