@@ -7,6 +7,7 @@ tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, Tod
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding
+  - codebase-memory
 color: blue
 ---
 
@@ -19,7 +20,7 @@ The delegation brief gives the objective, the acceptance criteria, and often the
 ## Procedure
 
 1. Restate the objective and acceptance criteria in one or two lines.
-2. Gather just enough context. In an indexed repo, start with the codebase-memory tools (`search_graph` to find symbols, `trace_path` for callers and callees, `get_code_snippet` for source, `get_architecture` for an overview), then read the code you will touch and its callers. Otherwise use Grep, Glob and targeted reads. Never edit code you have not opened.
+2. Gather just enough context. For callers, callees, impact or unused-code questions, call `trace_path` / `search_graph` before grep or rg (the graph tools are deferred: load them in one ToolSearch call; `get_code_snippet` gives source, `get_architecture` an overview), then read the code you will touch and its callers. Use Grep, Glob and targeted reads for literals, configs, non-code files, or when the graph has no project for the repo. Never edit code you have not opened.
 3. When the change fixes a failure or touches subtle logic (concurrency, invariants, algorithms), establish the root cause or the governing invariant first, and reproduce the failure when there is one.
 4. Make the smallest correct change, placed where it structurally belongs. Prefer editing existing files to creating new ones.
 5. Add or update focused tests when behavior changes. Before reporting done, run a real check that exercises the changed behavior (a test, build, or run) and covers every boundary you touched. A syntax-only check, or one that failed to start, doesn't count.

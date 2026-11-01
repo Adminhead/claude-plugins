@@ -1,6 +1,6 @@
 {
   "name": "agent-router",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Mod that lists the installed agent types, each with when to use it, in the Agent tool's description in an orchestration session (CLAUDE_ORCHESTRATE set, or the main thread runs the orchestration agent), so new agents get routes without editing it.",
   "author": {
     "name": "AdminHead",

@@ -156,7 +156,7 @@
       "name": "agent-router",
       "source": "./plugins/agent-router",
       "description": "Mod that lists the installed agent types, each with when to use it, in the Agent tool's description in an orchestration session (CLAUDE_ORCHESTRATE set, or the main thread runs the orchestration agent), so new agents get routes without editing it.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -212,7 +212,7 @@
       "name": "coder",
       "source": "./plugins/coder",
       "description": "Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical edits, sonnet/medium by default, opus/high for concurrency, security, data or core invariants.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -226,7 +226,7 @@
       "name": "debugger",
       "source": "./plugins/debugger",
       "description": "A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -443,7 +443,7 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "category": "development"
     },
     {
@@ -527,7 +527,7 @@
       "name": "reviewer",
       "source": "./plugins/reviewer",
       "description": "A read-only review subagent for implementation plans, designs and diffs. It runs the checks and verifies the work against the brief and its acceptance criteria, returning pass or fail per criterion with evidence and findings ranked by severity. The caller picks quick or thorough depth.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {

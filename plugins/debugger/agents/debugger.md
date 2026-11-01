@@ -6,6 +6,7 @@ effort: high
 tools: Read, Glob, Grep, LSP, Bash, WebFetch, WebSearch, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
 skills:
   - problem-solving:problem-solving
+  - codebase-memory
 color: red
 ---
 
@@ -18,7 +19,7 @@ The brief describes the symptom, and may include an error, a failing command, a 
 ## Procedure
 
 1. **Reproduce first.** Find a command that shows the failure. For a flaky failure, run it repeatedly and record the repro rate. If you can't reproduce it, say so, report what you tried, and continue from logs and code only with every conclusion labelled suspected.
-2. **List competing hypotheses** and rank them by likelihood and cost to test. In an indexed repo, use `trace_path` and `search_graph` to follow the failing path and find every caller of the suspect code.
+2. **List competing hypotheses** and rank them by likelihood and cost to test. For callers, callees, impact or unused-code questions, call `trace_path` / `search_graph` before grep or rg to follow the failing path and find every caller of the suspect code; fall back to grep/rg for literals, configs, non-code files, or when the graph has no project for the repo.
 3. **Check cheapest first:** grep the logs, then a unit test, then an integration test, then a repro script in the scratchpad.
 4. **Confirmation rule.** A cause is confirmed only when a probe that changes just the suspected condition flips the result, or a stack trace reaches the root line. Anything else is suspected.
 5. **Match the technique to the class:** race detectors and repeated runs for concurrency, input minimisation for parser and data bugs, observation only for production.

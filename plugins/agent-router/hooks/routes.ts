@@ -15,8 +15,9 @@ export const MAX_NAME = 80
 // Guard on what is ever stored, so a hostile or broken offer can't grow module memory.
 export const MAX_TRACKED = 200
 
-// Types that never belong in the table: helpers the orchestrator should not route work to.
-const NEVER_LIST = new Set(['statusline-setup'])
+// Types that never belong in the table: helpers, and agents whose work goes straight to tools
+// (the codebase-memory tiers: the orchestrator calls the graph tools itself).
+const NEVER_LIST = new Set(['statusline-setup', 'codebase-memory', 'codebase-memory-scout', 'codebase-memory-auditor'])
 
 // The main-thread agent this mod serves: `orchestration` itself or any plugin's `<plugin>:orchestration`.
 export function isOrchestrator(type: unknown): boolean {
