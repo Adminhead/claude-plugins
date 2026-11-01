@@ -906,10 +906,12 @@ def upstream_records(root, names):
         if names and plugin not in names:
             continue
         text = notice.read_text(errors="replace")
-        paths_m = PATHS_RE.search(text)
-        paths = [p.strip() for p in paths_m.group(1).split(",") if p.strip()] if paths_m else []
-        for url, sha in UPSTREAM_RE.findall(text):
-            yield plugin, url, sha, paths
+        ups = list(UPSTREAM_RE.finditer(text))
+        for i, up in enumerate(ups):
+            end = ups[i + 1].start() if i + 1 < len(ups) else len(text)
+            paths_m = PATHS_RE.search(text, up.end(), end)
+            paths = [p.strip() for p in paths_m.group(1).split(",") if p.strip()] if paths_m else []
+            yield plugin, up.group(1), up.group(2), paths
 
 
 def checkouts(root):

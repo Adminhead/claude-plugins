@@ -267,6 +267,19 @@ def test_upstream_lists_commits_since_notice(root, capsys):
 
 
 
+def test_upstream_records_pair_each_upstream_with_its_own_paths(root):
+    run(root, "new", "port", "--kind", "skill", "--description", "Ported.")
+    (root / "plugins/port/NOTICE").write_text(
+        "Upstream: https://github.com/a/one @ abcdef1\nPaths: x/one.md, y\n\n"
+        "Upstream: https://github.com/b/two @ 1234567\nPaths: z/two.md\n\n"
+        "Upstream: https://github.com/c/three @ fedcba9\n")
+    assert list(plugins.upstream_records(root, set())) == [
+        ("port", "https://github.com/a/one", "abcdef1", ["x/one.md", "y"]),
+        ("port", "https://github.com/b/two", "1234567", ["z/two.md"]),
+        ("port", "https://github.com/c/three", "fedcba9", []),
+    ]
+
+
 def test_godot_descriptions_name_no_minor_version(root):
     run(root, "new", "godot-foo", "--kind", "skill", "--description", "Foo for Godot 4.7 projects.")
     assert any("names a Godot minor version" in e for e in plugins.check(root))
