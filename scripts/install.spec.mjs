@@ -54,6 +54,11 @@ test('android-skills is registered by the global and the project examples', () =
   }
 })
 
+test('the project example registers claude-plugins-official', () => {
+  const project = JSON.parse(readFileSync(new URL('../examples/claude-settings/settings.project.json', import.meta.url)))
+  assert.ok(marketplacesOf(project).some(([name, repo]) => name === 'claude-plugins-official' && repo === 'anthropics/claude-plugins-official'))
+})
+
 test('plugins are baseline plus enabled marketplace plugins, not built-in or disabled ones', () => {
   const ids = pluginsOf(example, marketplacesOf(example))
   assert.equal(ids[0], 'baseline@adminhead')

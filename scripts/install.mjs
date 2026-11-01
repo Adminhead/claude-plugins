@@ -80,7 +80,7 @@ export function offPluginsOf(example, marketplaces) {
     .map(([id]) => id)
 }
 
-// claude-plugins-official is not declared by the example; the installer adds it when it is missing.
+// claude-plugins-official is not declared by the global example; the installer adds it when it is missing.
 function installableFrom(id, marketplaces) {
   const name = id.split('@')[1]
   return name === BUILTIN_MARKETPLACE || marketplaces.some(([n]) => n === name)
