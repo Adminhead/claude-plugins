@@ -7,7 +7,7 @@ description: 'Diagnoses and writes Gradle build logic, including configuration c
 
 Fix the cause the build reports and keep its observable outputs (task names, artifacts, dependency versions) unless the request changes them.
 
-Not for: audits and "check my build" requests (`gradle-skills:gradle-best-practices`), wrapper upgrades (`gradle-skills:gradle-wrapper-upgrade`), Maven POMs (`maven`), and tests with no Gradle question (`java-testing`).
+Not for: audits and "check my build" requests (`gradle-skills:gradle-best-practices`), wrapper upgrades (`gradle-skills:gradle-wrapper-upgrade`), Maven POMs (`maven`), tests with no Gradle question (`java-testing`, `kotlin-testing`), Android Gradle Plugin DSL, variants, signing and release builds (`android-build`), and the AGP 8 → 9 migration (`android-skills:agp-9-upgrade`).
 
 Verified on 2026-10-20 against docs.gradle.org: Gradle 9 runs on a JVM from 17 through 27, and the configuration cache is off by default in 9.x.
 

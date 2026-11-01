@@ -7,7 +7,7 @@ description: Writes and fixes Spring Boot 3/4 tests that need a Spring context. 
 
 Pick the narrowest test that proves the behavior, then keep the application context cache warm. Match the Boot line first: read the parent or `org.springframework.boot` plugin version (3.5.x vs 4.x). Boot 4 changed packages, starters and a few test types; see [references/sb4-migration.md](references/sb4-migration.md).
 
-Not for: plain JUnit or Mockito with no Spring context (`java-testing`), application code, configuration or wiring (`spring-boot`), general test strategy (`unit-testing`), or build files (`maven`, `gradle`).
+Not for: plain JUnit or Mockito with no Spring context (`java-testing` or `kotlin-testing`), application code, configuration or wiring (`spring-boot`), general test strategy (`unit-testing`), or build files (`maven`, `gradle`).
 
 ## Choose the test
 

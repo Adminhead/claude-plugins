@@ -7,11 +7,12 @@ description: 'Writes, reviews, debugs and upgrades modern Java (17+) code: recor
 
 Keep the existing observable contract (public API, exception behavior, thread-safety guarantees) unless the request changes it.
 
-Not for: Maven POM and dependency work (`maven`), Gradle builds (`gradle`), JUnit, Mockito and Testcontainers (`java-testing`), Spring Boot code (`spring-boot`), Play controllers (`play-framework`).
+Not for: Maven POM and dependency work (`maven`), Gradle builds (`gradle`), JUnit, Mockito and Testcontainers (`java-testing`), Spring Boot code (`spring-boot`), Play controllers (`play-framework`), Kotlin (`kotlin`), Android framework code (`android`).
 
 ## Orient
 
 - Find the language level before writing: `maven.compiler.release` or `<release>` in `pom.xml`, `java.toolchain.languageVersion` in `build.gradle*`, `.java-version` or `.sdkmanrc`, and the CI JDK. Use no API or syntax newer than that level, whatever JDK is installed.
+- Under a `com.android.*` plugin, the language level comes from `compileOptions` and the runtime from `minSdk` plus desugaring, not from the installed JDK. Use no virtual threads, and no API above `minSdk` without a version check (`java.time` on `minSdk` below 26 needs core library desugaring).
 - Use no preview features unless the build already enables them (`--enable-preview`).
 - Read the class, its callers and its tests. With an indexed repo use `search_graph` and `trace_path`; otherwise Grep or the LSP.
 - Follow the project's formatter, null-annotation library (JSpecify, Checker, JetBrains) and logging facade. Add none.

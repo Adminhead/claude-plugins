@@ -1,6 +1,6 @@
 {
   "name": "spring-boot-testing",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context.",
   "author": {
     "name": "AdminHead",

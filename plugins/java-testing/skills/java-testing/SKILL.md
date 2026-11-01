@@ -7,7 +7,7 @@ description: 'Writes, runs, debugs and fixes Java tests with JUnit Jupiter 5/6, 
 
 Test behavior through the public API with the framework the project already uses. Read the build file first: JUnit 4 vs Jupiter, AssertJ vs Hamcrest, Mockito version, and the Java release.
 
-Not for: general test strategy and what to test (`unit-testing`); anything that needs a Spring context, such as `@WebMvcTest`, `@DataJpaTest`, `@SpringBootTest`, `@MockitoBean` (`spring-boot-testing`); build wiring (`maven`, `gradle`); production code design (`java`).
+Not for: general test strategy and what to test (`unit-testing`); anything that needs a Spring context, such as `@WebMvcTest`, `@DataJpaTest`, `@SpringBootTest`, `@MockitoBean` (`spring-boot-testing`); Kotlin tests (`kotlin-testing`); tests that need Android, such as Robolectric and instrumented tests (`android-testing`); build wiring (`maven`, `gradle`); production code design (`java`).
 
 Verified on 2026-10-20: JUnit 6 requires Java 17 at runtime (code compiled for older releases can still be tested), and Platform, Jupiter and Vintage share one version (6.1.3); Vintage, the JUnit 3/4 engine, is deprecated. Mockito 5 uses the inline mock maker by default. On Java 21+ Mockito self-attaching prints a JVM warning and may fail later; configure `-javaagent` (see [references/mockito.md](references/mockito.md)).
 

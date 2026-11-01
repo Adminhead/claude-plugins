@@ -1,6 +1,6 @@
 {
   "name": "java-testing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Writes, runs, debugs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers. Use whenever editing or debugging JUnit test code (*Test.java, *IT.java): rewriting copy-pasted cases as one @ParameterizedTest with @CsvSource or @MethodSource, @Nested tests, Mockito UnnecessaryStubbingException or a when(...) stub that is never used, strict stubs, \"No tests found for given includes\", filtering with -Dtest or --tests, Surefire versus Failsafe, flaky tests that sleep or depend on the clock, a slow suite that starts a container per class, and Mockito agent warnings on Java 21+.",
   "author": {
     "name": "AdminHead",

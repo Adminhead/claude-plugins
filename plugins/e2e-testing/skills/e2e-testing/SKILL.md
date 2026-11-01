@@ -9,7 +9,7 @@ Add, update, run, or diagnose a few browser-level tests that prove a critical us
 
 Use the repo's installed runner and browser matrix. Don't install a runner, add dependencies, chase coverage targets, or rewrite the suite. Before relying on a runner API, check the installed version's docs, through the Context7 MCP tools if available (Playwright and Cypress APIs change across versions).
 
-Not for unit or API tests, or ad-hoc browser driving. Related skills, each if installed:
+Not for unit or API tests, Android UI and device tests (`android-testing`), or ad-hoc browser driving. Related skills, each if installed:
 
 - `unit-testing` covers non-browser tests.
 - `web-development` covers fixing the browser-facing behavior itself.

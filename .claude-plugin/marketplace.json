@@ -283,7 +283,7 @@
       "name": "e2e-testing",
       "source": "./plugins/e2e-testing",
       "description": "Write, run and diagnose browser end-to-end tests (Playwright, Cypress) for critical user journeys, with accessible locators, condition-based waits and flake triage.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -436,7 +436,7 @@
     {
       "name": "mcp-health",
       "source": "./plugins/mcp-health",
-      "description": "A mod that shows `mcp: <server> \u2717` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
+      "description": "A mod that shows `mcp: <server> ✗` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -807,7 +807,7 @@
     {
       "name": "cache-clock",
       "source": "./plugins/cache-clock",
-      "description": "A mod that shows when the prompt cache likely expires (`cache warm \u2192 ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
+      "description": "A mod that shows when the prompt cache likely expires (`cache warm → ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1143,7 +1143,7 @@
     {
       "name": "turn-stats",
       "source": "./plugins/turn-stats",
-      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s \u00b7 41k out \u00b7 cache 92%`).",
+      "description": "A mod that shows a toast after long main-loop turns with the duration, output tokens and cache hit rate (`turn 3m12s · 41k out · cache 92%`).",
       "version": "0.1.0",
       "category": "development"
     },
@@ -1641,14 +1641,14 @@
       "name": "java",
       "source": "./plugins/java",
       "description": "Writes, reviews, debugs and upgrades modern Java (17+) code: records, sealed types, pattern-matching switch, streams, Optional, exceptions, equals/hashCode, executors, CompletableFuture, virtual threads, JDK upgrades and javax.* to jakarta.* migration. Use whenever editing or debugging Java source (*.java), such as a switch over a sealed interface or enum that throws MatchException or is not exhaustive after a new subtype was added, javax.servlet or javax.persistence imports that no longer compile on Tomcat 10 or Jakarta EE 9+, a record whose List changes after construction, a thread-pool or interrupt bug, \"review this Java class\", or moving a project to a newer JDK.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "java-testing",
       "source": "./plugins/java-testing",
       "description": "Writes, runs, debugs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers. Use whenever editing or debugging JUnit test code (*Test.java, *IT.java): rewriting copy-pasted cases as one @ParameterizedTest with @CsvSource or @MethodSource, @Nested tests, Mockito UnnecessaryStubbingException or a when(...) stub that is never used, strict stubs, \"No tests found for given includes\", filtering with -Dtest or --tests, Surefire versus Failsafe, flaky tests that sleep or depend on the clock, a slow suite that starts a container per class, and Mockito agent warnings on Java 21+.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1662,7 +1662,7 @@
       "name": "gradle",
       "source": "./plugins/gradle",
       "description": "Diagnoses and writes Gradle build logic, including configuration cache failures, Could not resolve and no matching variant errors from conflicting versions or platforms, dependencyInsight, build cache misses, Kotlin DSL build scripts, libs.versions.toml version catalogs, convention plugins in build-logic, and toolchains. Use for symptoms such as \"invocation of Task.project at execution time is unsupported\", \"Configuration cache problems found in this build\", \"Could not resolve\" with a platform or BOM, \"Unresolved reference: libs\", or a request to add a task, dependency or convention plugin to build.gradle.kts or settings.gradle.kts.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1697,7 +1697,7 @@
       "name": "spring-boot-testing",
       "source": "./plugins/spring-boot-testing",
       "description": "Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {

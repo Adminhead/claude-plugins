@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: java-android-time
+context:
+  scaffold_script: scaffold.sh
