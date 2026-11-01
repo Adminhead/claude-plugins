@@ -1,6 +1,6 @@
 {
   "name": "recommend-plugins",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
   "author": {
     "name": "AdminHead",

@@ -28,11 +28,11 @@ This overrides the wshobson reviewer's `port` rows for `terraform`, `helm`, `git
 
 ### 2. Cross-marketplace dependencies stay minimal
 
-- **Allowlisted marketplaces are `claude-code-lsps`, `claude-plugins-official` (for `csharp-lsp`, `context7` and `jdtls-lsp`) and `gradle-skills` (decision 12).** The stack metas depend on `claude-code-lsps`' LSP plugins, as the archived coding plugins did: `pyright`, `gopls`, `rust-analyzer`, `vtsls`, `bash-language-server`.
+- **Allowlisted marketplaces are `claude-code-lsps`, `claude-plugins-official` (for `csharp-lsp`, `context7`, `jdtls-lsp` and `kotlin-lsp`), `gradle-skills` (decision 12) and `android-skills` (decision 13).** The stack metas depend on `claude-code-lsps`' LSP plugins, as the archived coding plugins did: `pyright`, `gopls`, `rust-analyzer`, `vtsls`, `bash-language-server`.
 - **`avoid-ai-writing@conorbronsdon-skills` is a direct user-scope install**, not a dependency. It wins the writing-style comparison (single skill, MIT, maintained, deterministic detector). wshobson's marketplace only mirrors it. It is already in `examples/claude-settings/settings.global.json`.
 - **Don't allowlist `claude-code-workflows` (wshobson).** Only 2 of its 92 plugins are single-component, and allowlisting exposes the other 90. Port `file-conversion` if wanted.
-- **`claude-plugins-official` is allowlisted for `csharp-lsp`, `context7` and `jdtls-lsp`.** `jdtls-lsp` is a `java-meta` dependency (decision 12). `csharp-lsp` (csharp-ls) is a `dotnet-meta` dependency (user decision, 2026-10-17; claude-code-lsps' `omnisharp` runs the legacy server and a `brew install` hook). `context7` is a `programming-core` dependency (user decision, 2026-10-18); it runs anonymously, or with OAuth via `/mcp`, because the official config sends no API-key header. `exa@claude-plugins-official` is a direct user-scope install, not a dependency, and is off by default (user decision, 2026-10-18; a dependency can't default to off): it is for sessions without the built-in `WebSearch` (Bedrock, older Vertex models, a `WebSearch` deny rule). Don't add other dependencies on it: the official pr-review-toolkit and feature-dev agents stay direct installs.
-- **Never depend on a mega-plugin:** ECC, mattpocock, agent-skills, taste-skill, claude-skills, claude-seo, ponytail. Port the pieces instead, or install upstream directly for SEO and game-dev work.
+- **`claude-plugins-official` is allowlisted for `csharp-lsp`, `context7`, `jdtls-lsp` and `kotlin-lsp`.** `jdtls-lsp` is a `java-meta` dependency (decision 12). `kotlin-lsp` is a `kotlin-core` dependency (decision 13). `csharp-lsp` (csharp-ls) is a `dotnet-meta` dependency (user decision, 2026-10-17; claude-code-lsps' `omnisharp` runs the legacy server and a `brew install` hook). `context7` is a `programming-core` dependency (user decision, 2026-10-18); it runs anonymously, or with OAuth via `/mcp`, because the official config sends no API-key header. `exa@claude-plugins-official` is a direct user-scope install, not a dependency, and is off by default (user decision, 2026-10-18; a dependency can't default to off): it is for sessions without the built-in `WebSearch` (Bedrock, older Vertex models, a `WebSearch` deny rule). Don't add other dependencies on it: the official pr-review-toolkit and feature-dev agents stay direct installs.
+- **Never depend on a mega-plugin:** ECC, mattpocock, agent-skills, taste-skill, claude-skills, claude-seo, ponytail. Port the pieces instead, or install upstream directly for SEO and game-dev work. One named exception: `android-skills@android-skills` (Google's official set; user decision 2026-11-01; decision 13).
 
 ### 3. Meta layout
 
@@ -57,6 +57,9 @@ All of these metas and the bundle exist now, with empty dependency lists.
 | `kubernetes-meta` | project | `kubernetes`, `helm`, `gitops`, `tilt` |
 | `aws-meta` | project or local | `aws`, `aws-cli`, `aws-mcp`, `aws-resource-query`, `aws-cloudwatch`, `aws-well-architected`. `cloud-ops-guard` (H) left both metas on 2026-10-28 and is a direct install (`docs/plans/cloud-ops-guard-optional.md`). |
 | `github-meta` | project | `gh-issues`, `gh-pr`, `pr-comments` (manual), `ship`, `shipper` (A), `gh-actions`, `dependabot` |
+| `kotlin-core` (bundle) | via metas | `kotlin`, `kotlin-testing`, `gradle`, `gradle-skills@gradle-skills`, `kotlin-lsp@claude-plugins-official`. See decision 13. |
+| `kotlin-meta` | project | `programming-core`, `kotlin-core`. For Kotlin on the JVM without Android. |
+| `android-meta` | project | `programming-core`, `kotlin-core`, `android-skills@android-skills`, `android`, `jetpack-compose`, `android-build`, `android-testing`, `android-device`. See decision 13. |
 | `orchestration-meta` | user or project | `orchestration` (A), `agent-router` (M), the general agents `coder`, `architect`, `reviewer`, `debugger`, `scribe`, and `readonly-agent-gate` (H). See decision 6. |
 
 Reviewers also proposed `aws-meta`, `api-meta`, `observability-meta` and `database-meta`. Each is a 3- to 6-skill cluster that suits only some repos, and a meta's members can't be turned off one by one. They stay direct installs until a real project needs the whole set. `aws-meta` is the exception: the user adopted it on 2026-10-18 at project or local scope, so it installs only in repos that need AWS. The other three stay direct installs.
@@ -214,6 +217,46 @@ Plan: [`docs/plans/jvm-meta.md`](jvm-meta.md). Shape approved 2026-10-20.
 
   No marketplace was found for decebals/claude-code-java, sanssushi/skills, majk-p/scala-skills, alexandru/skills, JetBrains/skills, LambdaTest/agent-skills, personamanagmentlayer/pcl or spring-ai-community/spring-testing-skills. No official Spring, Play or scalameta skill repo exists, and `claude-plugins-official` has no Gradle, Spring or Scala plugin. The sources those repos supply are ported as described in the plan's skill-sources table.
 
+### 13. Kotlin and Android (added 2026-11-01)
+
+Plan: [`docs/plans/android-meta.md`](android-meta.md). Shape approved 2026-11-01.
+
+- **Shape.** `kotlin-core` is a core bundle (deps only: `kotlin`, `kotlin-testing`, `gradle`, `gradle-skills@gradle-skills`, `kotlin-lsp@claude-plugins-official`). Two metas list it: `kotlin-meta` (`programming-core`, `kotlin-core`) and `android-meta` (those plus `android-skills@android-skills`, `android`, `jetpack-compose`, `android-build`, `android-testing`, `android-device`). A bundle is needed because both metas share five dependencies and a meta's members can't be turned off one by one. `android-performance` and `play-publishing` are direct installs: most Android apps don't benchmark or publish from this machine. `gradle` and `gradle-skills` stay in `java-meta` too; Kotlin-on-Maven repos get direct installs.
+- **`android-skills@android-skills`** ([android/skills](https://github.com/android/skills), Apache-2.0): one plugin, 36 skills, skills only (no hooks, MCP, agents, LSP or commands). Allowlisted in `allowCrossMarketplaceDependenciesOn` and registered through both settings examples. Reviewed at SHA `6daa53ef` (2026-10-29, v1.0.19). It is a mega-plugin, accepted as the one named exception to decision 2 (user decision, 2026-11-01): the authors own the platform and update often, and the alternative was a fork to re-port. **Unpinned tracking:** `source: "./"` and tags that don't follow `<name>--v<ver>` rule out a version range. Re-review when upstream adds a skill, a non-skill component (hook, MCP, agent) or a script; removing it is one line in `android-meta`. **Accepted description cost:** the 36 descriptions total 16,808 characters per session in which `android-meta` is enabled; most cover form factors and SDKs a given app doesn't use. **Recorded risks** in upstream text we can't edit: `android-cli` tells the agent to pipe a Google install script into `bash` (`bash-rules` asks first, and Bash isn't pre-approved); `r8-analyzer` runs `pip install` and project-local Python; `play-policy-insights` scrapes the Play Store; `testing-setup` installs JaCoCo and screenshot-test tooling by default, which clashes with the testing rule (the user's CLAUDE.md outranks it and `android-testing` restates the rule). Our leaves copy nothing from it; they route to it as `android-skills:<name>`.
+- **`kotlin-lsp@claude-plugins-official`** (LSP only; `kotlin-lsp --stdio` for `.kt` and `.kts`; entry reviewed at `a7ba5b93`, 2026-10-30). The server is Alpha, partly closed-source, has experimental AGP support and no KMP support. `kotlin-lsp@claude-code-lsps` runs the same binary but adds a `brew install` SessionStart hook, so it is rejected and `recommend-plugins` flags it as a duplicate. **Admission thresholds** (all must hold on a Kotlin JVM Gradle project and on an AGP 9 app with one library module): import finishes inside the 120 s `startupTimeout` on a warm cache; a type error reaches the session within 30 s of an edit; resident memory stays under 3 GB; a missing binary gives one clear error, not a restart loop. Staged fallback (user, 2026-11-01): if only the JVM project passes it moves to `kotlin-meta`; if neither passes it becomes a documented direct install.
+- **Leaf versus upstream.** Where a leaf and an upstream skill overlap, the leaf owns everyday authoring and the upstream skill owns audits and migrations:
+
+| Task | Owner |
+| --- | --- |
+| Idiomatic Kotlin, coroutines and Flow, Java-to-Kotlin | `kotlin` |
+| JVM-local Kotlin tests | `kotlin-testing` |
+| App architecture, ViewModel, Hilt, Room, WorkManager | `android` |
+| Everyday Compose authoring | `jetpack-compose` |
+| Compose performance audits, XML-to-Compose migration, Navigation 3, adaptive layouts, edge-to-edge | `android-skills` |
+| `android {}` DSL, variants, signing, keep rules, AGP, Gradle and JDK versions | `android-build` |
+| AGP 8 to 9 migration, R8 analysis | `android-skills:agp-9-upgrade`, `android-skills:r8-analyzer` |
+| Robolectric, instrumented, Compose UI and Espresso tests | `android-testing` |
+| adb, logcat, crash triage | `android-device` |
+| Profilers and ANR audits | `android-skills:android-profiler`, `android-skills:anr-audit-and-fix` |
+| Macrobenchmark and Baseline Profiles | `android-performance` |
+| Play releases and listings | `play-publishing` |
+
+- **Rejected marketplaces** (GitHub and skills.sh, 2026-11-01):
+
+| Repo (marketplace) | License | Decision |
+| --- | --- | --- |
+| Kotlin/kotlin-agent-skills (`Kotlin`) | Apache-2.0 | Don't depend: mostly KMP and Amper migrations. Port `java-to-kotlin` and the JPA traps; `recommend-plugins` mentions it for KMP repos. |
+| chrisbanes/skills (`chrisbanes-skills`) | Apache-2.0 | Don't depend: mega-plugin with workflow skills that collide with `planning` and `implement-plan`. Primary port source for `kotlin` and `jetpack-compose`. |
+| boostvolt/claude-code-lsps (`kotlin-lsp`) | MIT | Don't: brew-install SessionStart hook. Flag as a duplicate. |
+| rcosteira79/android-skills | MIT | Don't: mega-plugin of 21 skills. Idea source. |
+| hamen/material-3-skill | MIT | Don't: one skill. Idea source for the Material 3 reference. |
+| minimax-ai/skills | MIT | Skip: multi-domain mega-plugin. |
+| maxrave-dev/kotlin-footguns | GPL-3.0 | Skip: copyleft; copy nothing. |
+| thebushidocollective/han | no assertion | Skip: no clear license. |
+| hamen/compose_skill, meet-miyani/compose-skill, hyperb1iss/hyperdroid-skill | MIT | Skip: low installs, overlap. |
+
+  Repos with no marketplace (new-silvermoon, skydoves, dpconde, drjacky, vitorpamplona/amethyst, JetBrains/skills) are idea sources only, and the emulator-cloud vendors are skipped. `claude-plugins-official` has no Android or Compose plugin.
+
 ## Adoption list
 
 Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disable-model-invocation`, so the skill costs nothing in the listing.
@@ -260,6 +303,13 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | `gradle` | S | original text | java-meta | Slimmed; audits and wrapper upgrades route to `gradle-skills`. |
 | `scala` | S + LSP | original text; sanssushi scala3-syntax parts; Metals `.lsp.json` written fresh | scala-meta | The `MULTI_COMPONENT` exception (decision 12). |
 | `sbt` | S | sanssushi sbt2-cli (MIT) | scala-meta | sbt 1.x and 2.x. |
+| `kotlin` | S | chrisbanes kotlin-* skills (Apache-2.0); ECC kotlin-patterns and kotlin-coroutines-flows (MIT); Kotlin/kotlin-agent-skills java-to-kotlin and JPA mapping (Apache-2.0) | kotlin-core | Decision 13. |
+| `kotlin-testing` | S | ECC kotlin-testing (MIT, structure only); chrisbanes flow-state-events (Apache-2.0) | kotlin-core | Examples rewritten against the kotlinx-coroutines-test docs. Decision 13. |
+| `android` | S | ECC android-clean-architecture (MIT); original text | android-meta | App code outside the UI toolkit. Decision 13. |
+| `jetpack-compose` | S | chrisbanes compose-* skills (Apache-2.0); material-3 ideas only | android-meta | Everyday authoring; audits route to `android-skills`. Decision 13. |
+| `android-build` | S | original text | android-meta | AGP day to day; the AGP 9 migration routes to `android-skills:agp-9-upgrade`. Decision 13. |
+| `android-testing` | S | chrisbanes compose-ui-testing-patterns (Apache-2.0); original text | android-meta | Decision 13. |
+| `android-device` | S | original text | android-meta | adb and logcat, with device-targeting and destructive-action rules. Decision 13. |
 
 ### GitHub and web
 
@@ -293,6 +343,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | MCP authoring | `mcp-server` (+ design), `mcp-server-review` |
 | Go and Python extras | `golang-cli`, `golang-performance`, `fastapi` |
 | JVM frameworks | `play-framework`, `spring-boot`, `spring-boot-testing` (decision 12) |
+| Android extras | `android-performance` (Macrobenchmark, Baseline Profiles, app size), `play-publishing` (Gradle Play Publisher, fastlane `supply`, Play Console releases); both original text (decision 13) |
 | Auth | `app-auth`, `better-auth` (confirm it was rewritten from docs; upstream has no license) |
 | Review and critique | `poka-yoke`, `review-loop`, `second-opinion` + `consult` (M), `the-fool` (new), `doubt-review` (new) |
 | Design and docs | `codebase-design` (new, mattpocock + improve-codebase-architecture), `domain-modeling`, `adr-writing`, `docs-audit`, `agent-instructions`, `deprecation-migration` (new) |
@@ -317,7 +368,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | Upstream ponytail plugin | Ruleset merged into `coding`; its 5 extra skills, per-prompt node hook and band mod cost too much. |
 | Language and framework "pro" skills from claude-skills, ECC and wshobson | Generic, often stale, and weaker than the archived versions. |
 | All wshobson and ECC persona agents and commands | Auto-delegating "Use PROACTIVELY" personas with mis-graded severities; overlap built-ins. |
-| Vendor-specific sets (Azure, Power Platform, SEO; Unity, Unreal and web game engines) | Off-stack. Install claude-seo or upstream game-engine bundles directly when needed. .NET and Godot are adopted (decision 11); Java, Scala, Play and Spring are adopted (decision 12). |
+| Vendor-specific sets (Azure, Power Platform, SEO; Unity, Unreal and web game engines) | Off-stack. Install claude-seo or upstream game-engine bundles directly when needed. .NET and Godot are adopted (decision 11); Java, Scala, Play and Spring are adopted (decision 12). Kotlin and Android are adopted (decision 13). |
 | Offensive and SOC content in the cybersecurity set | Unsafe to ship by default, or enterprise tooling. |
 
 ## Phases
