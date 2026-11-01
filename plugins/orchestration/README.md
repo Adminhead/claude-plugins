@@ -8,7 +8,7 @@ The main-session orchestrator agent. It plans work, routes it to the installed a
 /plugin install orchestration --marketplace Adminhead/claude-plugins
 ```
 
-`orchestration-meta` installs it together with `agent-router`, the general agents and `readonly-agent-gate`.
+`orchestration-meta` installs it together with `agent-router` and the general agents. `readonly-agent-gate` is not part of it; install it separately if you want read-only agents enforced.
 
 ## Start a session
 

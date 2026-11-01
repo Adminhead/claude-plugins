@@ -142,7 +142,7 @@
       "name": "orchestration-meta",
       "source": "./plugins/orchestration-meta",
       "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "category": "meta"
     },
     {
@@ -169,8 +169,8 @@
     {
       "name": "architect",
       "source": "./plugins/architect",
-      "description": "A read-only planning subagent that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under docs/plans.",
-      "version": "0.2.1",
+      "description": "A planning subagent, read-only by instruction (enforced only when readonly-agent-gate is installed), that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under docs/plans.",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -520,7 +520,7 @@
       "name": "recommend-plugins",
       "source": "./plugins/recommend-plugins",
       "description": "Inspects the current project, proposes the adminhead meta plugins, bundles and focused plugins that fit it from the live catalog, and installs the ones you confirm at local or project scope. Manual command.",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "category": "development"
     },
     {

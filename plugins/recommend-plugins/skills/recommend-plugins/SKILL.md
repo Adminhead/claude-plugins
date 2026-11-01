@@ -88,6 +88,7 @@ Some stacks have named rules. Propose a named plugin only if it is in the catalo
 | AWS SDK dependencies: `boto3`, `@aws-sdk/*`, `github.com/aws/aws-sdk-go*`, or `software.amazon.awssdk` in a build file | `aws-meta` |
 | `hashicorp/aws` in `required_providers` of `*.tf` files, where AWS is the main provider | `aws-meta` |
 | `iac-meta` or `aws-meta` proposed, or `*.tf`, Terragrunt, Pulumi, Helm charts or kube contexts in evidence | also `cloud-ops-guard`, as its own confirm option (opt-in, in neither meta); the reason cites the evidence path and says it needs `bun` |
+| `orchestration-meta` proposed | also `readonly-agent-gate`, as its own confirm option (opt-in, in no meta); the reason says it limits the read-only agents to read-only Bash and to writes in scratch and plan paths, and that it needs `bun` |
 | `pom.xml`, `mvnw`, `build.gradle(.kts)`, `settings.gradle(.kts)` or `gradlew` with `*.java` sources | `java-meta` |
 | `build.sbt` or `project/build.properties` | `scala-meta` |
 | `conf/routes`, or the `org.playframework` or `com.typesafe.play` `sbt-plugin` | also `play-framework` |
@@ -98,7 +99,7 @@ A Gradle-only repo with Kotlin or Android sources and no `*.java` files gets no 
 
 Package names come from `<PackageReference Include=...>` in csproj files and `<PackageVersion Include=...>` in `Directory.Packages.props`; the SDK from the `<Project Sdk=...>` attribute. A `.csproj` that only sits beside `project.godot` is the Godot game itself: it means `godot-csharp`, not `dotnet-meta`, unless the repo also has other .NET projects.
 
-Prefer a meta over its members: when a meta matches, propose the meta and list only focused plugins it doesn't already cover. `cloud-ops-guard` is not a member of any meta; the table above offers it separately. Propose `orchestration-meta` only when the user asks for orchestrated or multi-agent sessions.
+Prefer a meta over its members: when a meta matches, propose the meta and list only focused plugins it doesn't already cover. `cloud-ops-guard` and `readonly-agent-gate` are not members of any meta; the table above offers each separately. Propose `orchestration-meta` only when the user asks for orchestrated or multi-agent sessions.
 
 ### Upstream plugins
 

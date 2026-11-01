@@ -1014,7 +1014,7 @@ def catalog_section(root, entries, manifests):
         lines += ["", "### Agents", "",
                   "Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and effort are defaults; "
                   "a caller can pass another model per call. An agent without Edit/Write tools can still change state "
-                  "through Bash; `readonly-agent-gate` limits `architect`, `reviewer` and `debugger` to read-only Bash and "
+                  "through Bash; if you install the optional `readonly-agent-gate`, it limits `architect`, `reviewer` and `debugger` to read-only Bash and "
                   "limits their file-writing tools to scratch paths. `architect` can also save its plan as a Markdown "
                   "file under the project's plan directory (`docs/plans/` by default, gate option `plan_dirs`) with "
                   "Write or Edit.", "",
