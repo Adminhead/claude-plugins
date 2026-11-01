@@ -29,7 +29,7 @@ Not for: auditing the app against Play policy or finding undeclared data collect
 1. Build with `./gradlew :app:bundleRelease`. The AAB is the upload artifact; use `bundletool build-apks` only for local APK sets and device tests.
 2. R8 mapping and native debug symbols travel inside the AAB when configured; see [references/signing.md](references/signing.md) for `debugSymbolLevel` and manual upload.
 3. Pick the tool already in the repo: [references/gradle-play-publisher.md](references/gradle-play-publisher.md) or [references/fastlane.md](references/fastlane.md). For a new setup with no preference, use Gradle Play Publisher.
-4. Done when a validate-only or draft run succeeds without publishing, or the user has the exact commands to run.
+4. Done when a validate-only run (GPP `commit.set(false)`, fastlane `validate_only: true`) succeeds, or the user has the exact commands to run. A draft upload still sends the bundle to Play, so it needs the user's yes like any other upload.
 
 ## Actions confirm first
 

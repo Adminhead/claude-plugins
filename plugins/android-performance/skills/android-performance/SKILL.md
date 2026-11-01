@@ -13,7 +13,7 @@ Not for: Perfetto and system traces, heap and memory, startup trace analysis (`a
 
 1. Find the modules: an `com.android.test` module with `androidx.benchmark.macro` (Macrobenchmark), one applying `androidx.baselineprofile` (the profile producer), and the app module that consumes the profile. Read `gradle/libs.versions.toml` for the AndroidX Benchmark version; the baselineprofile plugin and `benchmark-macro-junit4` are released together.
 2. Find the build types. Timings need a non-debuggable, release-like type (usually `benchmark`, initialised from `release`, signed with the debug key), not `debug`.
-3. Check for a device. `adb devices` must list a physical device; an emulator gives numbers that say nothing about users. Without one, you can write the code and the Gradle wiring but cannot claim any timing.
+3. Check for a device. `adb devices` must list a physical device; an emulator gives numbers that say nothing about users. Without one, you can write the code and the Gradle wiring but cannot claim any timing. With several attached, pin one with `ANDROID_SERIAL=<serial>` for every Gradle and adb command, and name the device in the report.
 4. Check what already exists before adding: a `baseline-prof.txt` under `app/src/main/`, `generated/baselineProfiles/`, or `profileinstaller` in dependencies.
 5. Done when you can name the benchmark module, the build type under test, the device, and whether a profile is already shipped.
 

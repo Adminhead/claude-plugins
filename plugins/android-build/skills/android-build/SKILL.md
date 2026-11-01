@@ -7,7 +7,7 @@ description: 'Diagnoses and writes Android Gradle Plugin builds: the android {} 
 
 Fix the error the build reports in the module that reports it, and keep variant names, application IDs and artifacts unless the request changes them.
 
-Not for: AGP 8 to 9 migration (built-in Kotlin, new DSL, kapt move) (`android-skills:agp-9-upgrade`); keep-rule audits, broad or redundant rules and app size (`android-skills:r8-analyzer`); Gradle providers, task wiring, configuration cache and dependency resolution, even inside an Android convention plugin (`gradle`); audits and "check my build" (`gradle-skills:gradle-best-practices`); uploading to Play (`play-publishing`); app code (`android`).
+Not for: AGP 8 to 9 migration (built-in Kotlin, new DSL, kapt move) (`android-skills:agp-9-upgrade`); keep-rule audits, broad or redundant rules and code shrinking (`android-skills:r8-analyzer`); APK or AAB size beyond R8, such as resources, native libraries and ABI splits (`android-performance`); Gradle providers, task wiring, configuration cache and dependency resolution, even inside an Android convention plugin (`gradle`); audits and "check my build" (`gradle-skills:gradle-best-practices`); uploading to Play (`play-publishing`); app code (`android`).
 
 Generic Gradle practice (version catalog, Kotlin DSL, convention plugins, `./gradlew`) is in `gradle`; this skill adds only what AGP changes.
 
