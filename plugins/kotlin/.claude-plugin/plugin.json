@@ -1,7 +1,7 @@
 {
   "name": "kotlin",
   "version": "0.1.0",
-  "description": "Writes, reviews, debugs and converts idiomatic Kotlin (*.kt, *.kts) outside @Composable code: null safety, smart casts, sealed classes and exhaustive when, data and value classes, scope functions, extensions, coroutines and structured concurrency, cancellation, Flow, StateFlow, SharedFlow and Channel, Java interop, Java-to-Kotlin conversion and Kotlin JPA entities. Use for symptoms such as \"Smart cast to String is impossible, because name is a mutable property\", a !! that throws NullPointerException, a when that is not exhaustive after a new subtype, a coroutine or background loop that keeps running after its screen, request or sign-out is gone, GlobalScope or runBlocking in app code that freezes the calling thread, CancellationException swallowed by catch (e: Exception), click or navigation events lost from a MutableSharedFlow, stateIn that restarts or never emits, or a request to convert a Java class to Kotlin.",
+  "description": "Writes, reviews and fixes idiomatic Kotlin outside @Composable code. Use for \"Smart cast to String is impossible, because name is a mutable property\", a non-exhaustive when, !! NullPointerException, events lost from a MutableSharedFlow, stateIn that never emits, a coroutine that outlives its owner, GlobalScope or runBlocking freezing the caller, swallowed CancellationException, or a Java-to-Kotlin conversion. Covers null safety, sealed classes, scope functions, structured concurrency, Flow and Java interop.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

@@ -1,6 +1,6 @@
 ---
 name: android-device
-description: 'Triages Android crashes and manages device state with adb and logcat: an app that closes on launch, a Java "Caused by" chain or native tombstone, `adb logcat -b crash`, INSTALL_FAILED_UPDATE_INCOMPATIBLE, INSTALL_FAILED_INSUFFICIENT_STORAGE and INSTALL_FAILED_VERSION_DOWNGRADE, `pm grant` and `pm revoke`, deep links with `am start`, and choosing one device when several are attached. Use for symptoms such as "the app crashes when I open it, how do I see why", "error: more than one device/emulator", or "install fails on the phone". Pins one serial and asks before uninstall, `pm clear` or wiping data.'
+description: 'Triages Android crashes and manages devices with adb and logcat. Use for an app that closes on launch, a "Caused by" chain or native tombstone, INSTALL_FAILED_UPDATE_INCOMPATIBLE or other INSTALL_FAILED errors, "more than one device/emulator", pm grant and revoke, and deep links with am start. Pins one serial and asks before uninstall, pm clear or wiping data.'
 ---
 
 # Android device

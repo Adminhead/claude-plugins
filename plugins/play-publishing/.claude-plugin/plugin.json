@@ -1,7 +1,7 @@
 {
   "name": "play-publishing",
   "version": "0.1.0",
-  "description": "Sets up and runs the release path to Google Play: building the AAB, upload key versus Play App Signing key, Gradle Play Publisher (com.github.triplet.play) and fastlane supply configuration, internal, closed, open and production tracks, staged rollouts and halting, versionCode problems, mapping and native symbol upload, store listing metadata, data safety form drafts, and the target API deadline. Use for symptoms such as \"Version code 42 has already been used\", \"The Android App Bundle was signed with the wrong key\", a lost or leaked upload key, a request to ship the release bundle to the internal track from CI, or a question about when targetSdk must be raised for Play.",
+  "description": "Sets up and runs the release path to Google Play. Use for \"Version code 42 has already been used\", \"signed with the wrong key\", a lost upload key, shipping the AAB to the internal track from CI, staged rollouts, or the target API deadline. Covers upload key versus Play App Signing, Gradle Play Publisher, fastlane supply, tracks, mapping upload, store listing and data safety drafts. Never publishes without an explicit yes.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

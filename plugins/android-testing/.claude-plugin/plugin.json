@@ -1,7 +1,7 @@
 {
   "name": "android-testing",
   "version": "0.1.0",
-  "description": "Writes and fixes Android tests in a project whose test setup already exists: Compose UI tests with createComposeRule, \"No compose hierarchies found\", waitUntil and idling instead of sleeps, useUnmergedTree, \"Method d in android.util.Log not mocked\", Robolectric versus instrumented tests, Espresso, Hilt test rules and a custom runner, running one test with connectedDebugAndroidTest, Gradle Managed Devices, Orchestrator, and flaky instrumented tests. Use whenever editing or debugging code under src/test or src/androidTest that needs Android.",
+  "description": "Writes and fixes Android tests where the test setup already exists. Use for \"No compose hierarchies found\", \"Method d in android.util.Log not mocked\", a Compose UI test that sleeps or flakes, onNodeWithText not finding a node, Hilt test rules, Robolectric versus instrumented tests, and connectedDebugAndroidTest failures. Covers createComposeRule, waitUntil, idling, useUnmergedTree, Gradle Managed Devices and Orchestrator.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

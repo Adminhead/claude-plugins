@@ -1,6 +1,6 @@
 ---
 name: android-build
-description: 'Diagnoses and writes Android Gradle Plugin builds: the android {} block, namespace, compileSdk and minSdk, build types, product flavors and dimensions, the androidComponents variant API, BuildConfig and resValues, signing configs, core library desugaring, packaging excludes, KSP and kapt, lint baselines, and AGP, Gradle and JDK version choices within a major. Use for symptoms such as "Manifest merger failed", "Duplicate class found in modules", "Namespace not specified", "uses-sdk:minSdkVersion cannot be smaller than version declared in library", "Android resource linking failed", 16 KB page size alignment warnings, or an app that crashes with ClassNotFoundException or NoSuchMethodError only in the release build.'
+description: 'Diagnoses and writes Android Gradle Plugin builds. Use for "Manifest merger failed", "Duplicate class found in modules", "Namespace not specified", minSdk conflicts with a library, resource linking failures, 16 KB page size warnings, or ClassNotFoundException or NoSuchMethodError only in the release build (keep rules). Covers the android {} block, build types, flavors, androidComponents, signing, desugaring, KSP and kapt, lint baselines and AGP, Gradle and JDK versions within a major.'
 ---
 
 # Android build

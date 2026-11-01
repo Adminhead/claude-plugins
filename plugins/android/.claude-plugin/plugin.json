@@ -1,7 +1,7 @@
 {
   "name": "android",
   "version": "0.1.0",
-  "description": "Writes and debugs Android app code outside the UI toolkit: ViewModel and UI state, StateFlow collection with repeatOnLifecycle, SavedStateHandle and process death, repository and data-source layering, Hilt wiring, Room entities, DAOs and migrations, DataStore, WorkManager, notifications and targetSdk behavior changes. Use for symptoms such as \"A migration from 3 to 4 was required but not found\", form input lost after the process is killed, a StateFlow that reloads on every rotation, \"cannot be provided without an @Inject constructor\", or a request to add a repository, ViewModel, DAO or worker.",
+  "description": "Writes and debugs Android app code outside the UI toolkit. Use for \"A migration from 3 to 4 was required but not found\", form input lost after the process is killed, a StateFlow that reloads on every rotation, \"cannot be provided without an @Inject constructor\", or adding a repository, ViewModel, DAO or worker. Covers ViewModel state, SavedStateHandle, repeatOnLifecycle, Hilt, Room migrations, DataStore, WorkManager and targetSdk behavior changes.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

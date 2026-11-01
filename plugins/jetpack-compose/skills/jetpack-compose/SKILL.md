@@ -1,6 +1,6 @@
 ---
 name: jetpack-compose
-description: 'Writes everyday Jetpack Compose UI: where state lives and which effect runs which work, reusable component APIs with modifier and slot parameters, LazyColumn keys, avoiding unstable parameters and deferring state reads, Material 3 theming with dynamic color, animation APIs, focus and D-pad handling, semantics and previews. Use for @Composable code, symptoms such as "LaunchedEffect restarts on every keystroke", "state resets on recomposition", a card or button component with many boolean flags, a modifier that gets ignored, or a request to add a screen, theme or animation in Kotlin with Compose.'
+description: 'Writes everyday Jetpack Compose UI. Use for "LaunchedEffect restarts on every keystroke", state that resets on recomposition, a card or button component with many boolean flags, an ignored modifier, or adding a screen, theme or animation. Covers where state lives and which effect runs which work, component APIs with modifier and slot parameters, LazyColumn keys, unstable parameters, Material 3 theming, animation, focus and previews.'
 ---
 
 # Jetpack Compose
