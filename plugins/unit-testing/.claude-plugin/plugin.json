@@ -1,6 +1,6 @@
 {
   "name": "unit-testing",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Focused unit and regression tests and test-strategy guidance for changed behavior or a confirmed bug, in any language: smallest proving test, test-first slices, seams and boundary-only mocks, plus pytest and Vitest/Jest references. No coverage quotas.",
   "author": {
     "name": "AdminHead",

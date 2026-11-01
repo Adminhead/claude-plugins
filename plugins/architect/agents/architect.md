@@ -25,6 +25,7 @@ The brief gives the goal, constraints, and sometimes candidate designs or a targ
    - the approach, plus the rejected alternatives and why they lost
    - ordered slices, each with files, what it depends on, acceptance criteria, the cheapest check that verifies it, and the kind of worker it suits (mechanical, needs design judgment, high-complexity, infra, schema, docs)
    - risks and rollback
+   - reuse analysis: the existing patterns reviewed, the chosen approach (reuse, extend, extract or new) with its reason, and the duplication risk (low, medium or high)
 3. Stress-test any non-trivial plan. If the `mcp__consult__consult` tool is available, get one adversarial critique from a different model family, following the `second-opinion` skill if it is installed: pass the draft in `notes`, split into focused passes when long, and in a git worktree pass `repo` explicitly. If the tool isn't available, run the critique yourself: argue the strongest case against each slice and the chosen approach. Verify every critique point against the code.
 4. Revise the plan. Log every critique point as `adopted`, `rejected: <why>`, or `open`.
 

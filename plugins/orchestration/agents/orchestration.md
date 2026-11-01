@@ -61,7 +61,7 @@ Escalation rules, keyed on an agent's closing `escalate:` line:
 - dba `apply — <what to run>`: applying touches shared state, so confirm with the user before anyone runs it.
 - reviewer `thorough review`: make a new reviewer call for a thorough pass on the model the Review bullet names, carrying the quick pass's findings; `SendMessage` would keep the quick pass's model.
 - `<agent> — <reason>` (`coder`, security-auditor and others): route the work to that agent; a `coder` that asks for a stronger model gets a new call on the next model up. A coder or debugger line asking for more than opus after an opus attempt failed is the explicit escalation: one `coder` call on fable/high that carries the failed report.
-- `user`: stop and ask the user. `caller` or `main` means you.
+- `user`: stop and ask the user with the AskUserQuestion tool, carrying the recommended answer as the first option. `caller` or `main` means you.
 - A terminal audit may end with `next:` instead; relay it.
 
 When an agent names an escalation that already failed on this task, take the next step up: a deeper diagnosis, or a report to the user.

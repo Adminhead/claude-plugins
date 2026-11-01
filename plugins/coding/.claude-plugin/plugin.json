@@ -1,6 +1,6 @@
 {
   "name": "coding",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Makes the smallest complete, maintainable code change for a bounded feature, fix, integration, or behavior-preserving refactor. Use when implementing or modifying code whose approach is already clear (\"add X to Y\", \"fix this function\", \"refactor this without changing behavior\", \"simplest solution\", \"this is over-engineered\").",
   "author": {
     "name": "AdminHead",

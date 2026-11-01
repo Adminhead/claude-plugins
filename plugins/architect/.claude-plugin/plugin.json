@@ -1,6 +1,6 @@
 {
   "name": "architect",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A planning subagent, read-only by instruction (enforced only when readonly-agent-gate is installed), that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under docs/plans.",
   "author": {
     "name": "AdminHead",
