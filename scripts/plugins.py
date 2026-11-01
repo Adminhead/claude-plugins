@@ -460,6 +460,10 @@ ROOT_SUITES = {
     "jvm": {"metas": ("java-meta", "scala-meta"),
             "extra": ("play-framework", "spring-boot", "spring-boot-testing", "3rd-party/gradle-skills"),
             "exclude": ("grep-app", "context7")},
+    "android": {"metas": ("android-meta", "kotlin-meta"),
+                "extra": ("android-performance", "play-publishing", "java", "spring-boot-testing",
+                          "3rd-party/gradle-skills", "3rd-party/android-skills"),
+                "exclude": ("grep-app", "context7")},
 }
 
 PROMPT_KEYS = {"schema_version", "name", "description", "tags", "plugins", "runs", "expected_outcome", "model",
