@@ -81,6 +81,9 @@
     },
     "gradle-skills": {
       "source": { "source": "github", "repo": "gradle/gradle-skills" }
+    },
+    "android-skills": {
+      "source": { "source": "github", "repo": "android/skills" }
     }
   },
   "enabledPlugins": {

@@ -1,0 +1,20 @@
+{
+  "name": "kotlin-core",
+  "version": "0.1.0",
+  "description": "Core bundle of Kotlin language plugins that the Kotlin and Android metas install. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "gradle",
+    {
+      "name": "gradle-skills",
+      "marketplace": "gradle-skills"
+    },
+    {
+      "name": "kotlin-lsp",
+      "marketplace": "claude-plugins-official"
+    }
+  ]
+}

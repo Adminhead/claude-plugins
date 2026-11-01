@@ -449,7 +449,7 @@ def category_errors(entries):
 
 # Skills that live outside this marketplace. An entry ending in `:*` is a plugin whose skill names are not listed here;
 # a regex naming that plugin counts as aimed at it.
-EXTERNAL_SKILLS = ("gradle-skills:*", "create-skill", "skill-creator")
+EXTERNAL_SKILLS = ("gradle-skills:*", "android-skills:*", "create-skill", "skill-creator")
 
 # Root suites that load the plugins of whole metas: expected plugins = closure of the metas, minus meta and bundle
 # plugins, minus `exclude`, plus `extra`. `3rd-party/<dir>` names an external checkout.

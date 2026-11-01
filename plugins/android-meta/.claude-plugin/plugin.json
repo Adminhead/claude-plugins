@@ -1,0 +1,17 @@
+{
+  "name": "android-meta",
+  "version": "0.1.0",
+  "description": "Plugin set for native Android projects, installed at project scope. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "programming-core",
+    "kotlin-core",
+    {
+      "name": "android-skills",
+      "marketplace": "android-skills"
+    }
+  ]
+}

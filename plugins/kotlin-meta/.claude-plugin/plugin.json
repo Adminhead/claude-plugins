@@ -1,0 +1,13 @@
+{
+  "name": "kotlin-meta",
+  "version": "0.1.0",
+  "description": "Plugin set for Kotlin projects without Android, installed at project scope. Ships no components of its own.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  },
+  "dependencies": [
+    "programming-core",
+    "kotlin-core"
+  ]
+}
