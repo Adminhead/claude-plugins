@@ -16,7 +16,7 @@ Not for E2E or browser suites (`e2e-testing`), auditing a codebase's or diff's t
 2. **Decide whether to add a test.**
    - New or changed behavior: start with one happy-path test for that behavior, and stop there unless a case below applies.
    - Pure refactor: run the relevant existing tests. Update a test only when a change to the supported public interface breaks it.
-   - Don't test framework or library behavior. Test only non-trivial branching, business rules and error-prone edge cases.
+   - Don't write tests that only exercise framework or library behavior or trivial glue.
    - Add one edge or failure case only when an explicit requirement, production contract, or surfaced defect calls for it. Skip speculative inputs and permutations.
    - Confirmed defect: add the smallest test that discriminates the reported behavior. When practical, show it failing before the fix and passing after. If a pre-fix run is impossible, say why instead of claiming it failed. Name the test after the failure it prevents, and put it where similar bugs have clustered.
    - Test-first work (the user asks for TDD or red-green-refactor, or the fix is easiest to drive from a failing test): read `references/tdd.md` before the first test. It also covers seams, mocking, and the anti-patterns below in depth.
