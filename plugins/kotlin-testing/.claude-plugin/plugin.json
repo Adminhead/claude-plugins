@@ -1,0 +1,9 @@
+{
+  "name": "kotlin-testing",
+  "version": "0.1.0",
+  "description": "Writes, runs, debugs and fixes JVM-local Kotlin tests with kotlin.test, JUnit, Kotest, MockK, kotlinx-coroutines-test and Turbine. Use whenever editing or debugging Kotlin test code (*Test.kt, src/test/kotlin): UncompletedCoroutinesError or a runTest that hangs for 1m, tests slowed by delay, Dispatchers.setMain and a MainDispatcherRule, \"Module with the Main dispatcher is missing\", testing a ViewModel, StateFlow, SharedFlow or Channel events with Turbine, MockK \"no answer found for\", coEvery versus every, relaxed mocks, confirmVerified, Kotest spec styles, and running one test with ./gradlew :module:test --tests.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

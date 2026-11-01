@@ -1,0 +1,15 @@
+Copyright AdminHead
+
+This plugin contains material adapted from chrisbanes/skills, Copyright Chris
+Banes, licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/chrisbanes/skills @ d059de16
+Paths: skills/compose-ui-testing-patterns/SKILL.md, skills/compose-ui-testing-patterns/references/interaction-state.md
+
+Modifications: the files were modified. references/compose-ui.md condenses the
+upstream test-target table, plain-UI-test, semantics-first, callback,
+determinism and interaction-state material, and adds waitUntil, idling,
+useUnmergedTree and "No compose hierarchies found" diagnosis. The upstream
+screenshot section and its baseline-recording procedure were dropped: this
+plugin treats screenshot tests as opt-in. The router skill and cross-skill
+links were removed. SKILL.md and the other references are original text.

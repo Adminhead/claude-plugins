@@ -1,0 +1,19 @@
+Copyright AdminHead
+
+This plugin contains material adapted from one source.
+
+Everything Claude Code (ECC), Copyright (c) 2026 Affaan Mustafa, licensed under
+the MIT License (see LICENSE).
+
+Upstream: https://github.com/affaan-m/ECC @ b38be6a7f6350964d59328b52f0624e1d1d552d1
+Paths: skills/android-clean-architecture/SKILL.md
+
+Modifications: the layer and module rules, the dependency direction, the
+mapper and Result patterns and the anti-pattern list in
+skills/android/references/architecture.md come from the upstream skill. The
+Kotlin Multiplatform, SQLDelight, Ktor and KMP convention-plugin sections were
+dropped. "Put business logic in UseCases" became "add a domain layer only when
+logic is shared or complex", and the Room DAO example was rewritten to use
+suspend and Flow DAOs without extra dispatcher wrapping. The remaining
+references and SKILL.md are original text checked against developer.android.com
+on 2026-11-01.

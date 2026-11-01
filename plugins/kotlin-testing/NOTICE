@@ -1,0 +1,26 @@
+Copyright AdminHead
+
+This plugin contains material adapted from two sources.
+
+Everything Claude Code (ECC), Copyright (c) 2026 Affaan Mustafa, licensed under
+the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/affaan-m/ECC @ b38be6a7
+Paths: skills/kotlin-testing/SKILL.md, skills/kotlin-coroutines-flows/SKILL.md
+
+chrisbanes/skills, licensed under the Apache License, Version 2.0 (see
+LICENSE).
+
+Upstream: https://github.com/chrisbanes/skills @ d059de16
+Paths: skills/kotlin-concurrency-and-flow/references/flow-state-events.md
+
+Modifications: SKILL.md and the references were written fresh in the house
+style, using the structure of the ECC kotlin-testing skill and the primitive
+contract table of flow-state-events.md. The ECC examples were rewritten
+against the kotlinx-coroutines-test and Turbine documentation: the SharedFlow
+debounce example that emitted into a replay-0 flow before the collector
+started, and the dispatcher example that expected work due at the advanced time
+to have run without runCurrent. The TDD preamble, Kover coverage targets and
+Ktor testApplication material were dropped. Versions were checked on Maven
+Central on 2026-11-01. The examples were not compiled or run (no Kotlin
+toolchain in the authoring environment).

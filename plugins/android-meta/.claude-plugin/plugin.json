@@ -12,6 +12,11 @@
     {
       "name": "android-skills",
       "marketplace": "android-skills"
-    }
+    },
+    "android",
+    "jetpack-compose",
+    "android-build",
+    "android-testing",
+    "android-device"
   ]
 }

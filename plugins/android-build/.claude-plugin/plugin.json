@@ -1,0 +1,9 @@
+{
+  "name": "android-build",
+  "version": "0.1.0",
+  "description": "Diagnoses and writes Android Gradle Plugin builds: the android {} block, namespace, compileSdk and minSdk, build types, product flavors and dimensions, the androidComponents variant API, BuildConfig and resValues, signing configs, core library desugaring, packaging excludes, KSP and kapt, lint baselines, and AGP, Gradle and JDK version choices within a major. Use for symptoms such as \"Manifest merger failed\", \"Duplicate class found in modules\", \"Namespace not specified\", \"uses-sdk:minSdkVersion cannot be smaller than version declared in library\", \"Android resource linking failed\", 16 KB page size alignment warnings, or an app that crashes with ClassNotFoundException or NoSuchMethodError only in the release build.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

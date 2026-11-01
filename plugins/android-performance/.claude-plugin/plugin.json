@@ -1,0 +1,9 @@
+{
+  "name": "android-performance",
+  "version": "0.1.0",
+  "description": "Sets up and reads Android Macrobenchmark and Baseline Profile work and app size reduction, including the benchmark module, StartupTimingMetric and FrameTimingMetric, CompilationMode, the androidx.baselineprofile plugin and BaselineProfileRule, reportFullyDrawn for time to full display, comparing two benchmark runs, and APK or AAB size with APK Analyzer. Use for requests such as \"add a baseline profile for startup\", \"cold start regressed between two CI runs\", \"write a startup benchmark\", \"is the profile actually installed\", or \"why is the release APK so big\" in a Gradle Android project.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

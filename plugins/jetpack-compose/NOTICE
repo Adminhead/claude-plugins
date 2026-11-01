@@ -1,0 +1,16 @@
+Copyright AdminHead
+
+This plugin contains material adapted from one source.
+
+chrisbanes/skills, and contributors, licensed under the Apache
+License, Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/chrisbanes/skills @ d059de16
+Paths: skills/compose-state-and-effects/SKILL.md, skills/compose-state-and-effects/references/local-state.md, skills/compose-state-and-effects/references/side-effects.md, skills/compose-state-and-effects/references/state-hoisting.md, skills/compose-component-design/SKILL.md, skills/compose-component-design/references/modifier-layout.md, skills/compose-component-design/references/slot-apis.md, skills/compose-animations/SKILL.md, skills/compose-animations/references/animated-content.md, skills/compose-focus-navigation/SKILL.md, skills/compose-performance/references/stability.md, skills/compose-performance/references/deferred-reads.md
+
+Modifications: the files were modified. Four skills were merged into one entry
+point, SKILL.md, with references (state-and-effects.md, components.md,
+stability.md, animation.md, focus.md). Cross-skill links, review-mode
+instructions and the testing and diagnosis routing were removed or replaced
+with routing to other plugins; only the authoring rules of the performance
+skill were kept. material3.md and the Lists section are new.

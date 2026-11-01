@@ -1,0 +1,31 @@
+Copyright AdminHead
+
+This plugin contains material condensed and rewritten from the sources below.
+Code samples were rewritten and tightened, prose was reorganized, and
+Codex agent metadata, workflow cross-links, the Gradle DSL section of
+kotlin-patterns, and Android-only material were dropped. The files were
+modified.
+
+chrisbanes/skills, licensed under the Apache License, Version 2.0 (see
+LICENSE).
+
+Upstream: https://github.com/chrisbanes/skills @ d059de165cfba3aee36d5e7bd901a75d41a3dfd7
+Paths: skills/kotlin-control-flow/SKILL.md, skills/kotlin-api-design/SKILL.md, skills/kotlin-api-design/references/functions.md, skills/kotlin-api-design/references/value-classes.md, skills/kotlin-concurrency-and-flow/SKILL.md, skills/kotlin-concurrency-and-flow/references/structured-concurrency.md, skills/kotlin-concurrency-and-flow/references/flow-state-events.md
+
+Kotlin/kotlin-agent-skills (JetBrains), licensed under the Apache License,
+Version 2.0 (see LICENSE).
+
+Upstream: https://github.com/Kotlin/kotlin-agent-skills @ 087f5689c1934135ed58718cdf524525e452b7e9
+Paths: skills/kotlin-tooling-java-to-kotlin/SKILL.md, skills/kotlin-tooling-java-to-kotlin/references/CONVERSION-METHODOLOGY.md, skills/kotlin-tooling-java-to-kotlin/references/KNOWN-ISSUES.md, skills/kotlin-backend-jpa-entity-mapping/SKILL.md
+
+ECC (everything-claude-code), Copyright (c) 2026 Affaan Mustafa, licensed
+under the MIT License (see LICENSE-MIT).
+
+Upstream: https://github.com/affaan-m/ECC @ b38be6a7f6350964d59328b52f0624e1d1d552d1
+Paths: skills/kotlin-patterns/SKILL.md, skills/kotlin-coroutines-flows/SKILL.md
+
+awesome-copilot, Copyright GitHub, Inc., licensed under the MIT License
+(see LICENSE-MIT).
+
+Upstream: https://github.com/github/awesome-copilot @ 5269f7ea2d6c3a9bfda5ed878b6726cf509121fd
+Paths: skills/kotlin-springboot/SKILL.md
