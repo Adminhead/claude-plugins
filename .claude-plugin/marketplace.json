@@ -23,7 +23,7 @@
       "name": "programming-core",
       "source": "./plugins/programming-core",
       "description": "Core bundle of general programming plugins that the language and web metas install. Ships no components of its own.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "category": "bundle"
     },
     {
