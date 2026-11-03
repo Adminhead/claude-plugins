@@ -18,7 +18,7 @@ Adapted in part from awesome-copilot's `rebase-current-branch` (MIT, Copyright G
 - Never push as part of a history operation. When the user separately asks to push rewritten commits, use `git push --force-with-lease=<branch>:<expected-sha>` with the sha you last saw on the remote, never bare `--force`. The lease fails if the remote moved, which is the point.
 - These need explicit approval, asked with AskUserQuestion showing the exact command and what would be lost: `git clean`, `git checkout -- <path>` or `git restore` over changes, `git branch -D`, any force push, `git reflog expire`, `git gc --prune`, and a rebase that rewrites already-pushed commits.
 - Never open an editor; an interactive command that waits for one hangs the session. Every section below gives an editor-free form.
-- Don't skip hooks or change Git config to make an operation pass.
+- Don't skip hooks or change Git config to make an operation pass. The one exception is the `rerere`/`zdiff3` offer below, once the user approves it.
 
 ## Before a rewrite
 
@@ -31,10 +31,13 @@ Adapted in part from awesome-copilot's `rebase-current-branch` (MIT, Copyright G
 
 1. Confirm the current branch (`git branch --show-current`) is not the default branch. Never rebase the default branch itself.
 2. Fetch only that remote and branch: `git fetch <remote> <default>`, and confirm `<remote>/<default>` exists. Never rebase onto a local `main` that may be stale.
-3. Say which branch is being rebased onto which ref, then `git rebase <remote>/<default>`.
-4. After it succeeds, offer to run the repo's documented checks (pre-commit, lint, tests) and report results. Don't push.
+3. If the branch has fixup commits, fold them first (see Fixup and autosquash), so each conflict is resolved once rather than once per commit.
+4. Say which branch is being rebased onto which ref, then `git rebase <remote>/<default>`. Sync often during long work, not only at the end. For a lockfile conflict, take either side and regenerate it with the package manager rather than editing markers.
+5. After it succeeds, offer to run the repo's documented checks (pre-commit, lint, tests) and report results. Don't push.
 
 If the branch is shared or the user prefers merges, `git merge <remote>/<default>` integrates without rewriting.
+
+When the user rebases repeatedly or hits the same conflict again, offer `git config rerere.enabled true` and `git config merge.conflictStyle zdiff3`. Ask with AskUserQuestion first; never set them silently.
 
 ## Fixup and autosquash
 
@@ -70,7 +73,7 @@ Confirm the tree is clean before `--continue`; anything left unstaged is carried
 git rebase --onto <new-base> <old-base> <branch>
 ```
 
-`<old-base>` is the commit your branch currently forks from. Use this to move a branch off a merged parent or lift a sub-branch out of a stack. Add `--update-refs` when branches stacked on this one should move with it. Check with `git log --oneline <new-base>..<branch>` and `git range-diff <old-tip>...<branch>`.
+`<old-base>` is the commit your branch currently forks from. Use this to move a branch off a merged parent or lift a sub-branch out of a stack. When the parent branch was squash-merged, `git rebase --onto <default> <old-parent-tip> <branch>` drops the parent's already-landed commits, which would otherwise show as false conflicts. Add `--update-refs` when branches stacked on this one should move with it. Check with `git log --oneline <new-base>..<branch>` and `git range-diff <old-tip>...<branch>`.
 
 ## Cherry-pick and backports
 

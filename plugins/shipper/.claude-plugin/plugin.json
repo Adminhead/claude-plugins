@@ -1,6 +1,6 @@
 {
   "name": "shipper",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Agent that commits finished work, pushes it, and optionally opens a GitHub PR, watches checks and merges, on a cheap model. Used by the ship skill.",
   "author": {
     "name": "AdminHead",

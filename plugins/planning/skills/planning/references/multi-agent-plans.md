@@ -24,7 +24,11 @@ Parallelize only lanes whose write surfaces don't collide.
 | --- | --- | --- | --- | --- |
 | | | | | |
 
-- Two lanes that edit the same file, table, or service run in sequence, or in separate worktrees with a named merge step.
+- Two lanes that edit the same file, table, or service run in sequence, or in separate worktrees with a named merge step. Hot shared files (next bullet) are the exception: one lane owns them.
+- One lane owns each hot shared file kind: dependency and lockfile changes, migrations, route, registry, barrel or index files, generated output, and shared changelogs or checklists. Other lanes that need such a change ask for it rather than making it.
+- Give each lane its own progress or status file instead of one shared checklist.
+- Dependent lanes run as a sequence, or stack on the earlier lane's branch, not in parallel followed by a reconcile.
+- Keep each lane to about one session of work.
 - Gate destructive commands, migrations, and live deploys behind an explicit step instead of running them in a parallel lane.
 - Shared contracts, types, and schemas land before the lanes that use them.
 

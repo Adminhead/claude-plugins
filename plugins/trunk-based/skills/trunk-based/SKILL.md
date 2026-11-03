@@ -79,4 +79,5 @@ Pick from the repo's practice; see [references/release.md](references/release.md
 
 - Anti-patterns to refuse or flag: merging trunk into a release branch, merging between release branches, one release branch across several major releases, code freezes, fixing on the release branch then merging down.
 - Large changes do not justify a long-lived branch; use a flag or branch by abstraction.
+- With several agents writing at once, give each writer its own worktree and short-lived branch, sync with trunk at every checkpoint, and land branches one at a time.
 - At very high commit rates on plain Git, pushes race; a merge queue or verify-before-land setup helps. Do not invent one; use what the repo has.

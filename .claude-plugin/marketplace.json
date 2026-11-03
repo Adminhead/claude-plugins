@@ -213,7 +213,7 @@
       "name": "coder",
       "source": "./plugins/coder",
       "description": "Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical edits, sonnet/medium by default, opus/high for concurrency, security, data or core invariants.",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "category": "development"
     },
     {
@@ -353,7 +353,7 @@
       "name": "git-history",
       "source": "./plugins/git-history",
       "description": "Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -409,7 +409,7 @@
       "name": "implement-plan",
       "source": "./plugins/implement-plan",
       "description": "Executes an approved multi-slice implementation plan file end to end, running independent slices in parallel worktrees and checking, reviewing, committing, and updating a Status block after each slice without asking. Use when the user says \"implement this plan\", \"continue implementing\", or points at a plan file to carry out.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -444,14 +444,14 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "category": "development"
     },
     {
       "name": "planning",
       "source": "./plugins/planning",
       "description": "Writes, reviews, or revises implementation plans whose scope, verification, and reruns are proportionate to risk. Use for \"plan this\", \"review this plan\", \"cheapest way to verify\", work spanning several slices or risky boundaries, acceptance criteria for an ambiguous change, multi-agent or multi-session plans, and \"grill me\" stress-tests.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -563,14 +563,14 @@
       "name": "ship",
       "source": "./plugins/ship",
       "description": "Ship finished work on a GitHub repo in one run: commit, push, and optionally open a PR, watch checks and merge, delegated to the shipper agent.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development"
     },
     {
       "name": "shipper",
       "source": "./plugins/shipper",
       "description": "Agent that commits finished work, pushes it, and optionally opens a GitHub PR, watches checks and merges, on a cheap model. Used by the ship skill.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -1543,7 +1543,7 @@
       "name": "trunk-based",
       "source": "./plugins/trunk-based",
       "description": "Teaches Claude trunk-based development: short-lived branches, feature flags, branch by abstraction, release from trunk or late-cut release branches with cherry-picks.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {

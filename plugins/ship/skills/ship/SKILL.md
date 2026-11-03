@@ -30,7 +30,7 @@ Use the level argument if given. Otherwise infer it from the context and take th
 
 ## Never
 
-- Force-push, rebase, amend, reset, or stash.
+- Force-push, or rewrite local history by rebasing, amending, resetting, or stashing. The server-side `gh pr merge --rebase` method in step 5 is allowed.
 - Pass `--no-verify`, `--admin`, or any flag that skips hooks or branch protection.
 - Open a PR from the default branch. At `pr` or `merge` level, branch off first (step 1).
 
@@ -42,7 +42,7 @@ Use the level argument if given. Otherwise infer it from the context and take th
 3. **Push.** Run `git push`, or `git push -u origin <branch>` when no upstream exists. On a non-fast-forward rejection, stop and report. Don't rebase to make it fit. If branch protection rejects a push to the default branch, stop and offer the `pr` level.
 4. **Open the PR** (`pr`, `merge`). If the branch already has one (`gh pr list --head <branch>`), reuse it. Otherwise run `gh pr create --base <default> --title ... --body-file ...` as a ready PR. Title in the repo's convention. Body is a short summary from the context and any test evidence it names. Then run `gh pr checks --watch`.
 5. **Merge** (`merge`), only when every check passed. No checks configured counts as passing.
-   - Pick the method from `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`, preferring squash.
+   - Pick the method from `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`, preferring rebase, then squash, then merge commit. Squash leaves branches built on this one with false conflicts.
    - Run `gh pr merge --<method> --delete-branch`. A branch-protection refusal is a stop, not a reason to retry with flags.
    - Switch to the default branch and fast-forward it (`git switch <default>`, `git pull --ff-only`). In a linked worktree where the default branch is checked out elsewhere, skip the switch and report it. Don't remove the worktree.
 6. **On failed checks,** stop shipping. Summarize `gh run view <id> --log-failed` in the report. The invoking session fixes it, with the failed-run procedure in `gh-actions` if installed, and runs ship again.

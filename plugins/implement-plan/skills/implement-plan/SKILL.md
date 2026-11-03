@@ -15,7 +15,7 @@ Contract: "Once the user approves a multi-slice plan that includes per-slice com
 
 1. **Read the plan.** Extract the slices, their write surfaces, dependencies, acceptance checks, and whether it approves per-slice commits. If the plan is missing slices or checks, or contradicts itself, ask the user (AskUserQuestion) before starting.
 2. **Mirror the slices.** Create one task per slice with TaskCreate, ordered by dependency, and mark each in progress and completed as you go. Add a `## Status` block to the plan if it has none: slices done, in progress, and what's left.
-3. **Run slices.** Run slices with disjoint write surfaces in parallel, each in its own worktree (Agent with `isolation: "worktree"`), then merge their results in plan order. A worktree subagent sees only committed files, so quote the slice in its brief when the plan file is uncommitted or ignored. Run dependent slices in sequence. Brief each implementer with the slice text, its write boundary, acceptance checks, and a stop rule, and have it follow `coding` (if installed) for the work itself. If the user has opted into a Workflow for this plan, a Workflow script can fan out the parallel slices instead; don't start one on your own.
+3. **Run slices.** Run slices with disjoint write surfaces in parallel, each in its own worktree (Agent with `isolation: "worktree"`), then merge their results one at a time in plan order: land one, run its checks, rebase the remaining finished slice branches onto the updated branch (never one whose implementer is still running), and continue. Regenerate lockfiles and generated files instead of hand-merging them. A worktree subagent sees only committed files, so when per-slice commits are approved, commit the plan file and anything the slices depend on before spawning. Otherwise quote the slice text in each brief and tell the user that worktrees won't see uncommitted dependencies. Run dependent slices in sequence. Brief each implementer with the slice text, its write boundary, acceptance checks, and a stop rule, and have it follow `coding` (if installed) for the work itself. If the user has opted into a Workflow for this plan, a Workflow script can fan out the parallel slices instead; don't start one on your own.
 4. **Close each slice.**
    - Run the slice's checks, and read the output instead of trusting the agent's claim.
    - Review the diff against the slice's acceptance criteria. Use `review-loop` (if installed) for anything non-trivial, or a single reviewer subagent for a small diff.
@@ -27,7 +27,8 @@ Contract: "Once the user approves a multi-slice plan that includes per-slice com
 
 - A check still fails after three materially different attempts. Report what was tried, the evidence, and the blocker.
 - A decision the user owns: scope change, a design fork the plan doesn't settle, or spending money.
-- Before a destructive step: data deletion, history rewrites, force-pushes, dropping resources.
+- A structural merge conflict (modify/delete, add/add), or a conflict between two slices' design choices.
+- Before a destructive step: data deletion, history rewrites of pushed or shared branches, force-pushes, dropping resources.
 
 Pushing is out of scope unless the user asks. When stopped, record the reason in the Status block so a later session can resume from the file.
 
