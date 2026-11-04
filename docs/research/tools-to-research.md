@@ -4,7 +4,8 @@ The inbox: links to look at, one per line under `## Inbox`. vet judges an entry,
 
 ## Inbox
 
-_Empty._
+- Follow-up from [dincamihai/aon](https://github.com/dincamihai/aon), needs a go-ahead: a permanent `bash-rules` replay script that runs logged commands through current rules and diffs the decisions, split into newly allowed and newly denied.
+- Follow-up from [dincamihai/aon](https://github.com/dincamihai/aon), needs a go-ahead: a generic `nats` skill (`skills/nats-debug` triage, without its aon commands and hardcoded paths) for JetStream, auth and delivery debugging.
 
 ## Sources
 
