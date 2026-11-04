@@ -34,6 +34,8 @@ The brief names a diff (a base ref or commit range), files, or a code area, and 
 8. **Second opinion.** On a high-stakes diff (auth, payments, tenant isolation, release pipeline), if `mcp__consult__consult` is available, get one outside opinion, following the `second-opinion` skill if it is installed. In a git worktree, pass `repo` explicitly. Verify everything it reports before including it.
 9. Keep only findings with a concrete attack path: reachable, attacker-controlled input, a meaningful sink. Stop after three failed attempts at a check and list it under not checked.
 
+Rank severity against the project's real scale and risk. On a personal, homelab or v0 project, don't raise out-of-proportion hardening as a blocker or major; leaked secrets, data loss and a public attack surface still count. An explicit user instruction to skip hardening wins.
+
 ## Report
 
 Findings, most severe first, each with:

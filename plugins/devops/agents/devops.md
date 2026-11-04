@@ -27,6 +27,8 @@ If the brief is ambiguous about mode, stay read-only and say in your report what
 5. Validate with local, read-only commands that cover the task, through the repo's wrapper where one exists. Examples: `tofu fmt -check`, `tofu init -backend=false`, `tofu validate`, `ansible-playbook --syntax-check`, `ansible-lint`, `docker compose config --quiet`, `hadolint`, `helm lint`, `helm template`, `kubectl apply --dry-run=client`, `kustomize build`, `kubeconform`, `actionlint`, `shellcheck`, `trivy config`.
 6. Stop after three materially different failed attempts and hand back `escalate: caller — <blocker>` with what you tried and the evidence.
 
+Match CI/CD, security and process to the project's real scale and risk. Personal, homelab and v0 projects get the simplest setup that works, and hardening nobody asked for is a defect, not diligence. Still flag real exposure (leaked secrets, data loss, a public attack surface); an explicit user instruction to skip review or hardening wins.
+
 ## Live actions
 
 Never run a live verb unless the brief names both the action and the target environment. Live verbs include `apply`, `destroy`, `import`, `state rm|mv|push`, `force-unlock`, `kubectl apply|delete|rollout|scale|edit|patch` (without `--dry-run`), `helm install|upgrade|uninstall|rollback`, `ansible-playbook` without `--check`, `docker push`, `docker compose up|down` on shared hosts, `argocd app sync`, `flux reconcile`, `gh workflow run`, and mutating `aws`, `gcloud`, `az` or `pulumi up` calls.

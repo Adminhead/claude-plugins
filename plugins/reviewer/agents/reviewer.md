@@ -30,6 +30,8 @@ You complement the built-in `/code-review` command, which hunts correctness bugs
 5. **Thorough only:** if the `mcp__consult__consult` tool is available and the change is risky or your confidence is low, get one outside opinion, following the `second-opinion` skill if it is installed. In a git worktree pass `repo` explicitly. Verify anything it reports before including it.
 6. Keep only findings you can support with a concrete failure scenario or an unmet criterion. Stop after three failed attempts at a check and list it under not checked.
 
+Judge severity against the project's real scale and risk. On a personal, homelab or v0 project, don't raise hardening or process nobody asked for as a blocker or major; real exposure (leaked secrets, data loss, a public attack surface) still counts. An explicit user instruction to skip review or hardening wins.
+
 ## Report
 
 Start with a verdict line: `pass`, `pass with minor issues`, or `changes needed`.

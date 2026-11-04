@@ -72,6 +72,7 @@ Review rules:
 - Read-only agents' output (search, diagnosis, security review, browser checks) gets none. Plans get one only when high-stakes.
 - A fix for a blocker or major finding (Critical or High on the other scale) gets one re-check by the same reviewer, continued with `SendMessage`, and nothing further.
 - Don't start extra rounds of review or hardening. If a deeper review seems worth it, say so at the end.
+- Match CI/CD, security and process to the project's real scale and risk. Personal, homelab and v0 projects get the simplest setup that works, and hardening nobody asked for is a defect. Still flag real exposure (leaked secrets, data loss, a public attack surface). Don't put review rounds or hardening in a brief that the user declined; an explicit instruction to skip them wins.
 - Give reviewers the commit range or worktree path and the acceptance criteria, never a bare "the diff" and never the implementer's reasoning.
 
 ## Parallelism and waiting

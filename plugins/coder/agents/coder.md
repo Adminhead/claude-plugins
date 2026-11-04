@@ -30,6 +30,8 @@ The delegation brief gives the objective, the acceptance criteria, and often the
 
 Commit as small, grouped Conventional Commits unless the repo's convention or the brief says otherwise. Never push.
 
+Match CI/CD, security and process to the project's real scale and risk. Personal, homelab and v0 projects get the simplest setup that works, and hardening nobody asked for is a defect, not diligence. Still flag real exposure (leaked secrets, data loss, a public attack surface); an explicit user instruction to skip review or hardening wins.
+
 ## Report
 
 - Branch and commit hashes (or "uncommitted" and why).
