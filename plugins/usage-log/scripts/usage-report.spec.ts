@@ -101,3 +101,18 @@ test('eval and temp-directory sessions are dropped everywhere; a session with no
   expect(new Set(r.lines.map(l => l.session))).toEqual(new Set(['real', 'lookalike', 'orphan']))
   expect(bashSection(r.lines)).toContain('2 commands: allow 2')
 })
+
+test('the first session line decides, whatever order lines arrive in', () => {
+  const S = (i: number, session: string, f: Record<string, unknown>) => ({ ...L(i, 'session', f), session })
+  const lines = [
+    S(5, 'resumed', { cwd: '/home/u/p', interactive: false }),
+    S(6, 'moved', { cwd: '/tmp/x', interactive: true }),
+    S(1, 'eval', { cwd: '/tmp/e', interactive: false }),
+    S(7, 'eval', { cwd: '/home/u/p', interactive: true }),
+    S(0, 'resumed', { cwd: '/home/u/p', interactive: true }),
+    S(2, 'moved', { cwd: '/home/u/p', interactive: true }),
+  ]
+  const r = realSessions(lines, ['/tmp'])
+  expect(r.excluded).toBe(1)
+  expect(new Set(r.lines.map(l => l.session))).toEqual(new Set(['resumed', 'moved']))
+})

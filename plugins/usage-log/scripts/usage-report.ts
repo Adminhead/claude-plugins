@@ -8,7 +8,7 @@
 // loop. Bash: decisions by stage, rule and category, the model stages' sources, confidence and time, and what the
 // next Bash call in the same loop was after a deny.
 // By default only real sessions count: eval runs (`claude plugin eval`) and other non-interactive sessions in a temp
-// directory would drown them. A session is excluded when its `session` line shows `interactive: false` or a cwd under
+// directory would drown them. A session is excluded when its first `session` line shows `interactive: false` or a cwd under
 // the temp directory; --include-non-interactive counts everything. Every line of a session (a subagent's, the Bash
 // guard's) follows its session. A session with no `session` line in the window can't be shown to be an eval and stays.
 // --judge asks a model (claude -p, haiku by default) which listed skills each logged prompt should have loaded, and
@@ -52,10 +52,14 @@ const underTemp = (cwd: unknown, temps: string[]) =>
 export function realSessions(lines: Line[], temps: string[] = [...new Set([tmpdir(), '/tmp'])]): { lines: Line[]; excluded: number; total: number } {
   const evals = new Set<string>()
   const all = new Set<string>()
-  for (const l of lines) {
+  const seen = new Set<string>()
+  // Resume and compact log another `session` line with the then-current cwd, so the first one by time decides.
+  for (const l of [...lines].sort((a, b) => a.ts.localeCompare(b.ts))) {
     if (!l.session) continue
     all.add(l.session)
-    if (l.kind === 'session' && (l.interactive === false || underTemp(l.cwd, temps))) evals.add(l.session)
+    if (l.kind !== 'session' || seen.has(l.session)) continue
+    seen.add(l.session)
+    if (l.interactive === false || underTemp(l.cwd, temps)) evals.add(l.session)
   }
   return { lines: lines.filter(l => !l.session || !evals.has(l.session)), excluded: evals.size, total: all.size }
 }
