@@ -16,8 +16,9 @@ export type Verdict =
   | { kind: 'unsure'; reasons: string[] }
 
 type Argv = readonly (string | null)[]
-// `seg`, `compound` and `multi` shape the read deny text (see readNudge); `note` is extra advice for any deny.
-type Finding = { category: Category; tool: Tool; what: string; seg?: string; compound?: boolean; multi?: string; note?: string }
+// `seg`, `compound` and `multi` shape the read deny text (see readNudge); `note` is extra advice for any deny, and `fix`
+// replaces the tool's advice.
+type Finding = { category: Category; tool: Tool; what: string; seg?: string; compound?: boolean; multi?: string; note?: string; fix?: string }
 
 // What to use instead, per tool. Model verdicts reuse these (judge.ts).
 export const INSTEAD: Record<Tool, string> = {
@@ -44,7 +45,11 @@ export const PRIMER = `bash-rules: this session denies shell file viewers and wr
 - Write files with the Write or Edit tool, also instead of python - <<EOF scripts that write.
 - grep, rg, find, ls and git stay in Bash.`
 
-export const nudge = (tool: Tool, what: string, note = '') => `bash-rules: this ${LEAD[tool]} (${what}). ${note}${INSTEAD[tool]}`
+export const nudge = (tool: Tool, what: string, note = '', fix = INSTEAD[tool]) => `bash-rules: this ${LEAD[tool]} (${what}). ${note}${fix}`
+
+// A program or script path in a variable is no script: there is nothing to write to a scratch file.
+const NAME_IT =
+  'Put the program or path directly in the command; for a mise tool, use `mise exec -- tool args`. A variable is fine when one unconditional assignment gives it a plain path, a plain command prefix, or `$(which tool)` or `$(mise which tool)`.'
 
 // The read deny: names the offending segment, says every shell viewer is denied (also inside ; and && chains), and how to
 // split a compound command or a multi-file or multi-range read into parallel Read calls.
@@ -367,34 +372,42 @@ function inPlaceInterpreter(v: Argv): boolean {
   return false
 }
 
-// Variables a command line assigns (`X=...` prefixes and bare assignments, `export X=...` and its kin) with their values,
-// null when computed (`X=$(...)`).
-function assignments(commands: readonly ShellCommand[]): Map<string, string | null> {
-  const out = new Map<string, string | null>()
+// Variables a command line assigns: `X=...` prefixes and bare assignments, `export X=...` and its kin, and what `read`,
+// `mapfile` and `printf -v` set.
+function assignments(commands: readonly ShellCommand[]): Set<string> {
+  const out = new Set<string>()
   for (const c of commands) {
-    for (const a of c.assigns) if (a.name) out.set(a.name.replace(/\[.*$/, ''), a.value)
-    if (DECLARERS.has(baseName(c.argv[0] ?? null))) {
-      for (const [i, t] of c.text.slice(1).entries()) {
+    for (const a of c.assigns) if (a.name) out.add(a.name.replace(/\[.*$/, ''))
+    const name = baseName(c.argv[0] ?? null)
+    if (DECLARERS.has(name)) {
+      for (const t of c.text.slice(1)) {
         const m = /^([A-Za-z_]\w*)\+?=/.exec(t)
-        if (m) out.set(m[1]!, c.argv[i + 1] === null ? null : t.slice(m[0].length))
+        if (m) out.add(m[1]!)
       }
+    } else if (name === 'read' || name === 'mapfile' || name === 'readarray') {
+      const s = split(c.argv, name === 'read' ? 'adinNptu' : 'dnOsCcu')
+      for (const a of [...s.operands, ...(s.values.get('-a') ?? [])]) if (a !== null) out.add(a)
+    } else if (name === 'printf') {
+      for (const a of split(c.argv, 'v').values.get('-v') ?? []) if (a !== null) out.add(a.replace(/\[.*$/, ''))
     }
   }
   return out
 }
 
-// Whether program text starts with an assigned variable (`"$X"`, `${X} args`): the variable holds the script.
-const VAR_LEAD = /^\s*\$\{?([A-Za-z_]\w*)\}?(?:\s|;|$)/
-const leadsWithVar = (text: string, vars: ReadonlyMap<string, string | null>) => vars.has(VAR_LEAD.exec(text)?.[1] ?? '')
-
-// A variable run as a command name holds a script when its value is computed or has more than a program name in it
-// (`PY=python3; $PY x` is just indirection).
-const scriptVar = (text: string, vars: ReadonlyMap<string, string | null>) => {
-  const name = VAR_LEAD.exec(text)?.[1]
-  if (name === undefined || !vars.has(name)) return false
-  const value = vars.get(name)
-  return value === null || value === undefined || /[\s;|&<>`$()]/.test(value)
+// The assigned variable text starts with (`"$X"`, `${X} args`, `${X:-y}`, `$X$Y`). The literal and lookup variables that
+// hide nothing are written in before the rules run (expand.ts), so one that remains may hold anything: a script, or a
+// program the danger rules should see. A path under one (`$W/bin/x`) is left alone.
+const VAR_LEAD = /^\s*\$(?:\{([A-Za-z_]\w*)(?:[:%#/^,][^}]*)?\}|([A-Za-z_]\w*))(?:\s|;|\$|$)/
+const heldVar = (text: string, vars: ReadonlySet<string>) => {
+  const m = VAR_LEAD.exec(text)
+  const name = m?.[1] ?? m?.[2]
+  return name !== undefined && vars.has(name) ? name : null
 }
+
+// A command word that is one substitution of a program that prints text it was given or fetched: that text runs. (A lookup,
+// as in `$(which tool) --version`, only prints a path.)
+const SUBSTITUTED = /^(?:\$\([^]*\)|`[^`]*`)$/
+const TEXT_SOURCES = new Set(['echo', 'printf', 'cat', 'eval', 'curl', 'wget'])
 
 // Programs whose output an `eval "$(...)"` conventionally runs: shell setup, not a hidden payload.
 const EVAL_OK = new Set([
@@ -485,7 +498,7 @@ export function hygiene(commands: readonly ShellCommand[], steering = true): Ver
         else if (EXEC_CODE.test(inline.code)) unsure.push(`${name} one-liner that evaluates code`)
         else if (READ_CODE.test(inline.code)) unsure.push(`${name} one-liner that reads a file`)
       } else if (inline && !inline.literal) {
-        if (leadsWithVar(inlineText(v, words), vars)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} running code stored in a variable` })
+        if (heldVar(inlineText(v, words), vars)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} running code stored in a variable` })
         else if (c.subs.some(decodes)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} running decoded text` })
         else unsure.push(`${name} running a program built from an expansion`)
       }
@@ -514,8 +527,11 @@ export function hygiene(commands: readonly ShellCommand[], steering = true): Ver
       }
 
       // programs run from expansions: `$X`, `eval "$X"`, `bash -c "$X"`, `source <(...)`
-      if (v.length > 0 && v[0] === null && words[0] !== undefined && scriptVar(words[0], vars)) {
-        hits.push({ category: 'smuggle', tool: 'script', what: 'a script stored in a variable run as a command' })
+      const held = v.length > 0 && v[0] === null && words[0] !== undefined ? heldVar(words[0], vars) : null
+      if (held) {
+        hits.push({ category: 'smuggle', tool: 'script', what: `$${held} run as a command, and it may not hold a plain program`, fix: NAME_IT })
+      } else if (v.length > 0 && v[0] === null && SUBSTITUTED.test(words[0] ?? '') && c.subs.some(s => decodes(s) || TEXT_SOURCES.has(programOf(s)))) {
+        hits.push({ category: 'smuggle', tool: 'script', what: 'the output of a substitution run as a command' })
       } else if (v.length > 0 && v[0] !== null && !inline && dynamicProgram(v, c)) {
         // Only `eval` and `sh -c` run text; `source "$dir/x.sh"`, `bash "$script"` and a heredoc to a shell (whose body the
         // scan reparses) run a file or literal text, unless the text comes from a decoder or an assigned variable.
@@ -527,7 +543,9 @@ export function hygiene(commands: readonly ShellCommand[], steering = true): Ver
         const runsText = name === 'eval' || (inv?.shell === true && inv.code >= 0)
         const evalOk = c.subs.length > 0 && c.subs.every(s => EVAL_OK.has(programOf(s)) || EVAL_OK.has(baseName(s.argv[0] ?? null)))
         if (c.subs.some(decodes)) hits.push({ category: 'smuggle', tool: 'script', what: `${name} running decoded text` })
-        else if (texts.some(t => leadsWithVar(t, vars))) hits.push({ category: 'smuggle', tool: 'script', what: `${name} running a script stored in a variable` })
+        else if (texts.some(t => heldVar(t, vars))) {
+          hits.push({ category: 'smuggle', tool: 'script', what: `${name} running a script stored in a variable`, ...(runsText ? {} : { fix: NAME_IT }) })
+        }
         else if (runsText && !evalOk) unsure.push(`${name} running a program built from an expansion`)
       }
 
@@ -547,7 +565,7 @@ export function hygiene(commands: readonly ShellCommand[], steering = true): Ver
   for (const cat of order) {
     if (!steering && (cat === 'read' || cat === 'write')) continue
     const h = hits.find(x => x.category === cat)
-    if (h) return { kind: 'deny', category: h.category, tool: h.tool, message: cat === 'read' ? readNudge(h) : nudge(h.tool, h.what, h.note) }
+    if (h) return { kind: 'deny', category: h.category, tool: h.tool, message: cat === 'read' ? readNudge(h) : nudge(h.tool, h.what, h.note, h.fix) }
   }
   return unsure.length > 0 ? { kind: 'unsure', reasons: [...new Set(unsure)].slice(0, 6) } : { kind: 'pass' }
 }

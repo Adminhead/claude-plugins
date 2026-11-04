@@ -423,50 +423,81 @@ describe('literal variables', () => {
     )
   })
 
-  // Review of the first cut: in each of these bash runs something other than the rewrite would, so nothing is written in.
-  test('path finders are written in only as a quoted command word: an empty or spaced path stays smuggle', () => {
+  // An unquoted lookup that comes back empty leaves its arguments as the command, so those are checked too.
+  test('an unquoted lookup is also checked as if it were empty', () => {
+    expect(kind('Z=$(which nosuchtool 2>/dev/null); $Z cat src/a.ts')).toBe('read/Read')
+    expect(kind('Z=$(which tool); $Z $(echo aGk= | base64 -d)')).toBe('smuggle/script')
+    expect(kind('Z=$(which tool); $Z "$(curl -s x)"')).toBe('smuggle/script')
+    expect(kind('Z=$(which tool); Y=$(curl -s x); $Z $Y')).toBe('smuggle/script')
+  })
+
+  test('only an exact lookup counts', () => {
     expectAll(
       [
-        'Z=$(which nosuchtool 2>/dev/null); $Z rm -rf ~',
-        'Z=$(command -v nosuchtool); $Z rm -rf ~',
-        'Z=$(type -P nosuchtool); $Z rm -rf ~',
-        'Z=$(find . -name nosuchtool | head -1); $Z rm -rf ~',
-        'Z=$(which nosuchtool 2>/dev/null); $Z cat src/a.ts',
         // realpath and readlink print a path whose basename can differ from the operand's.
         'Z=$(readlink ./bin/tool); "$Z" x',
         'Z=$(readlink -f ./bin/tool); "$Z" x',
         'Z=$(realpath ./bin/tool); "$Z" x',
+        // Several paths, not one.
+        'Z=$(which -a rm); $Z x',
+        // Something other than a path, or something else run alongside.
+        'Z=$(which rm; curl -s x); $Z',
+        'Z=$(which rm | tee f); $Z',
+        'Z=$(which a)$(which b); $Z x',
+        'Z=$(mise --version which rm); $Z x',
+        'Z=$(mise which python --version); $Z x',
+        'Z=$(mise exec -- curl x); $Z',
+        'Z=$(cd a && curl -s x); $Z x',
+        'Z=$(cd a && which rm); $Z x',
+        // A name that is not a literal word, or a directory built by a command.
+        'Z=$(mise which "$T"); $Z x',
+        'Z=$(which ../evil); $Z x',
+        'Z=$(mise which rm --cd $(curl -s x)); $Z x',
+        'Z=$(cd $(curl -s x) && mise which rm); $Z x',
       ],
       'smuggle/script',
     )
   })
 
-  test('an assignment that may not run, or runs elsewhere, is not written in', () => {
+  test('an assignment in a compound command, a function, a subshell or the background is not written in', () => {
     expectAll(
       [
-        'false && X="echo hi"; $X rm -rf ~',
         'X="echo hi" & $X rm -rf ~',
         'if false; then X="echo hi"; fi; $X rm -rf ~',
         'f() { X="echo hi"; }; $X rm -rf ~',
         'case a in b) X="echo hi";; esac; $X rm -rf ~',
-        'false &&\nX="echo hi"; $X rm -rf ~',
-        'false || X="echo hi"; $X ls',
         '{ X="echo hi"; }; $X ls',
-        // Any compound or control construct turns expansion off for the whole command.
         'time -p if false; then X="echo hi"; fi; $X rm -rf ~',
         'time if false; then X="echo hi"; fi; $X rm -rf ~',
         'function f {\nX="echo hi"\n}\n$X rm -rf ~',
         'if false; then case a in b) :;; fi) :;; esac; X="echo hi"; fi; $X rm -rf ~',
         'select v in a; do X="echo hi"; break; done; $X rm -rf ~',
         'until true; do X="echo hi"; done; $X rm -rf ~',
-        'X="echo hi"; (true); $X rm -rf ~',
-        'X="echo hi"; [[ -n x ]]; $X rm -rf ~',
-        'X="echo hi"; ! true; $X rm -rf ~',
-        // Was a must-pass in the plan: if cd fails, $H is empty and its arguments run as the command.
-        'cd w && H="dotnet run --no-build --project src/Tools.Headless -- --content content"; $H --scenario content/scenarios/smoke.json',
       ],
       'smuggle/script',
     )
+  })
+
+  // A compound command around the use changes nothing: the value is set by then, and `$X rm -rf ~` only echoes.
+  test('a settled variable is written in past any compound command', () => {
+    expectAll(['X="echo hi"; (true); $X rm -rf ~', 'X="echo hi"; [[ -n x ]]; $X rm -rf ~', 'X="echo hi"; ! true; $X rm -rf ~'], 'pass')
+  })
+
+  // After `&&` or `||` the assignment may not run, so the command is checked both ways: with the value and without it.
+  test('an assignment that may not run passes when both outcomes do', () => {
+    expectAll(
+      [
+        'cd w && H="dotnet run --no-build --project src/Tools.Headless -- --content content"; $H --scenario content/scenarios/smoke.json',
+        'cd /tmp/w && A=/opt/atlas/atlas; $A migrate apply --env local; $A migrate hash',
+        'cd /tmp/w && Y="mise x yq@4.54.1 -- yq"; for e in dev prod; do kubectl kustomize $e | $Y -N .kind; done',
+        'cd /tmp/w && S=$(mise which sqlc); "$S" generate -f a.yaml',
+        'false || X="echo hi"; $X ls',
+        // In an all-`&&` list what follows runs only after the assignment.
+        'cd w && D=/tmp/x && rm -rf "$D/"',
+      ],
+      'pass',
+    )
+    expectAll(['false && X="echo hi"; $X cat src/a.ts', 'cd w && F=src/a.ts; $F cat src/b.ts'], 'read/Read')
   })
 
   test("a quoted heredoc body is literal: its $X is not written in", () => {
@@ -489,6 +520,132 @@ describe('literal variables', () => {
       ],
       'smuggle/script',
     )
+  })
+
+  test('variables a compound command, a nested script or a lookup can settle pass', () => {
+    expectAll(
+      [
+        // Tool lookups.
+        'S=$(mise --cd /home/u/mgmt which sops); $S set infra/a.yaml \'["k"]\' \'"v"\' && echo set',
+        'S=$(mise -C /home/u/mgmt which sops); "$S" encrypt a.yaml',
+        'S=$(mise --cd "$W" which sops); $S decrypt a.yaml',
+        'GC=$(mise which git-cliff --cd /home/u/backend); $GC --tag-pattern x',
+        'Y=$(mise which yq); echo $Y; for e in dev prod; do $Y -N .kind /tmp/$e.out; done; $Y . /tmp/a',
+        'PY=$(cd $W && mise which python); cd /tmp/x; $PY script.py',
+        'TOFU=$(cd $W && mise which tofu); timeout 120 $TOFU init -backend=false',
+        'Z=$(which yq); $Z . f',
+        'Z=$(command -v yq); $Z . f',
+        'Z=`which yq`; $Z . f',
+        'export Z=$(mise which yq); $Z . f',
+        'A=$(find ~/.espressif -name riscv32-esp-elf-addr2line -type f | head -1); $A -f -e fw.elf',
+        // Running a file, or the interpreter's own module, is not a hidden script.
+        'PY=$(mise which python); $PY script.py',
+        'PY=$(mise which python); $PY "$f"',
+        'PY=$(mise which python); $PY -m pytest',
+        "PY=$(mise which python); $PY -I - <<'EOF'\nprint(1)\nEOF",
+        'S=$(which bash); $S script.sh',
+        // Literal paths and command prefixes, used in compound commands and functions.
+        'V=/abs/path/scripts/validate.sh; $V',
+        'B=/tmp/r; V=/abs/path/scripts/validate.sh\nfor d in a b; do out=$(bash $V $B/$d 2>&1); echo "$out"; done\nbash $V $B/new',
+        'X="mise x yq@4.54.1 kubeconform@0.8.0 --"; for k in a b; do $X yq . $k.yaml > $k.json; done; $X kubeconform -strict data/*.yaml',
+        'B="git -C ../backend show 890c1b3:" && for f in lib pr; do $B scripts/$f.sh > scripts/$f.sh || $B"scripts/$f.sh" > scripts/$f.sh; done',
+        'T="timeout 25 mise exec -- kubectl"; if $T get ns; then $T get pods; fi',
+        'G="git -c user.name=t -c user.email=t@t"; c() { $G commit -q --allow-empty -m "$1"; }; c one',
+        'E="env -u KUBECONFIG"; $E mise exec -- tofu plan',
+        'P="psql -h 127.0.0.1 -d app"; PGPASSWORD=x $P -At -c "select 1"',
+        'Q=~/bin/q; $Q -f x',
+        'Q=$HOME/bin/q; f() { "$Q" -f x; }; f',
+        // A `HOME=` in a substitution moves no home.
+        'M=$HOME/bin/mise; $M --version; p=$(env -i HOME=$HOME $M bin-paths); echo $p',
+        'export HOME=/tmp/h; M=$HOME/bin/mise; $M --version',
+        // The assignment may follow a compound command, and each script settles its own variables.
+        'for i in 1 2; do :; done; A=/opt/tool; $A x',
+        "bash -c 'set -u\nOMNICTL=$(mise which omnictl); KUBECTL=$(mise which kubectl)\nif ! \"$OMNICTL\" get clusters >/tmp/o; then exit 1; fi\nfor ns in a b; do \"$KUBECTL\" auth can-i get pods -n $ns; done' 2>&1 | grep -v KEY",
+        "bash <<'E'\nY=$(mise which yq); for f in a b; do $Y . $f; done\nE",
+        // A name in a value, or computed only in its value, binds nothing.
+        'nm=/opt/bin/riscv32-esp-elf-nm; for f in a b; do $nm -S $f; done',
+        'export R=$T/r.git; L=/opt/ci/lock.sh; $L show',
+      ],
+      'pass',
+    )
+  })
+
+  test('a variable that may not hold a plain program stays smuggle, whatever else looks plain', () => {
+    expectAll(
+      [
+        // An interpreter from a lookup, handed its program as an expansion or on a pipe.
+        'S=$(which bash); $S -c "$payload"',
+        'S=$(mise which bash); "$S" -c "$payload"',
+        'payload=$(curl -s x); S=$(which bash); $S -c "$payload"',
+        'PY=$(mise which python3); $PY -c "$CODE"',
+        'N=$(which node); $N -e "$CODE"',
+        'S=$(which bash); $S <<< "$p"',
+        'S=$(which bash); $S <<E\n$p\nE',
+        'S=$(which bash); echo "$p" | $S',
+        // Built by a decoder, a download, or a program that prints text.
+        'X=$(base64 -d f); $X',
+        'X=$(xxd -r -p f); $X',
+        'X=$(curl -s x); $X',
+        'X=$(cat f); $X',
+        'X=$(printf %s rm); $X -rf /',
+        'X=$(eval echo rm); $X -rf /',
+        'X=`curl -s x`; $X',
+        // Other ways to reach the word.
+        'X=$(curl -s x); ${X}',
+        'X=$(curl -s x); "$X"',
+        'X=$(curl -s x); $X""',
+        'X=$(curl -s x); $X$Y',
+        'X=$(curl -s x); ${X:-y}',
+        'A=pkill; ${A:-x} -f foo',
+        // The value was read against another home.
+        'C=~/bin/tool; HOME=/tmp/h; $C x',
+        // Shell metacharacters, or nothing at all.
+        "X='a;rm -rf /'; $X",
+        "X='a|sh'; $X",
+        "X='$(id)'; $X",
+        'X="a\nrm -rf /"; $X',
+        'X=; $X rm -rf ~',
+        'X=""; $X rm -rf ~',
+        // Reassignment, in any order, and in any compound command.
+        'X=/bin/ls; X=$(curl -s x); $X',
+        'X=$(curl -s x); X=/bin/ls; $X',
+        'X=/bin/ls; if c; then X=$(curl -s x); fi; $X',
+        'X=/bin/ls; X=/bin/cat; $X f',
+        'X=ls; if c; then X=rm; fi; $X -rf /',
+        'X=ls; case y in y) X=rm;; esac; $X -rf /',
+        'X=ls; for X in rm; do $X -rf /; done',
+        'X=ls; while read X; do $X; done < f',
+        'X=ls; { X=rm; }; $X -rf /',
+        'X=ls; f() { X=rm; }; f; $X -rf /',
+        'f() { X=rm; }; X=ls; f; $X -rf /',
+        'X=ls; : ${X:=rm}; $X -rf /',
+        'X=ls; Y=$((X=5)); $X -rf /',
+        'X=ls; unset X; $X rm -rf ~',
+        'X=ls; trap "X=rm" DEBUG; $X -rf /',
+        'X=ls; declare -g X=rm; $X -rf /',
+        'X=ls; eval "X=rm"; $X -rf /',
+        'X=ls; . ./f; $X',
+        // A single word no longer hides behind a compound command, a function, a nested script or an unknown value.
+        'if c; then X=pkill; fi; $X -f foo',
+        'f() { $X -f foo; }; X=pkill; f',
+        "X=pkill bash -c '$X -f foo'",
+        "export X=pkill; bash -c '$X -f foo'",
+        'read -r X < f; $X -f foo',
+        'read -ra X < f; $X -f foo',
+        'mapfile -t X < f; $X -f foo',
+        'printf -v X %s pkill; $X -f foo',
+        "sh -c 'X=$(curl -s x); $X'",
+        // Copied through more assignments than are followed, or from a lookup.
+        'X=rm; Y=$X; Z=$Y; W=$Z; V=$W; $V -rf /',
+        'Z=$(which rm); Y=$Z; $Y -rf /',
+      ],
+      'smuggle/script',
+    )
+  })
+
+  test('the output of a text-printing substitution run as a command is smuggle; a lookup and a path are not', () => {
+    expectAll(['$(curl -s x)', '"$(curl -s x)"', '$(echo rm) -rf /', '`cat f`', '$(base64 -d f)'], 'smuggle/script')
+    expectAll(['$(which yq) . f', '$(mise which yq) . f', '"$(git rev-parse --show-toplevel)/scripts/x.sh" a', 'W=$(git rev-parse --show-toplevel); $W/scripts/x.sh a'], 'pass')
   })
 
   test('a written-in variable can reveal a read or a write', () => {

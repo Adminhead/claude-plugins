@@ -1,16 +1,19 @@
 // Literal variable expansion for bash-rules. Nothing here touches `$`.
 // `H="dotnet run --project x"; $H --ticks 5` hides nothing: the value is plain words. expandLiteralVars writes such values
 // into the command text so the danger and hygiene rules check what really runs (`P="psql -c"; $P "DROP TABLE x"` is a
-// db-drop). The walker has no source offsets, so a small lexer finds the `$NAME` and `${NAME}` sites; each site is first
-// replaced by a marker word, and the rewrite counts only when it parses into the same shape as the marked text. Anything
-// unclear leaves the command as written, so its old verdict stands: the rewrite must be what bash runs, never a guess.
+// db-drop). A tool lookup (`S=$(mise which sops)`) is written in as the tool's name. The walker has no source offsets, so a
+// small lexer finds the `$NAME` and `${NAME}` sites; each site is first replaced by a marker word, and the rewrite counts
+// only when it parses into the same shape as the marked text. Anything unclear leaves the variable as written, and an
+// assigned variable left in a command word is denied (hygiene.ts): the rewrite must be what bash runs, never a guess.
 
-import { baseName, viewsOf } from './danger'
+import { baseName, dynamicProgram, invocation, stdinReader, viewsOf } from './danger'
 import { parse } from '../shell/walk'
 import type { ShellCommand, ShellParse } from '../shell/walk'
+import { parse as unbash } from '../vendor/unbash.js'
 
-// A value made of plain words: no quotes, expansions, globs, braces, `~` or shell metacharacters.
-export const LITERAL_VALUE = /^[\w./=:@,+%-]+(?: [\w./=:@,+%-]+)*$/
+// A value made of plain words: no quotes, expansions, globs, braces or shell metacharacters. A leading `~` (or `$HOME`,
+// which the walker reads as `~`) is the home directory, as bash resolves it in an assignment.
+const LITERAL_VALUE = /^(?:~(?:\/[\w./=:@,+%-]*)?|[\w./=:@,+%-]+)(?: [\w./=:@,+%-]+)*$/
 
 // Variables the shell sets or reads itself, whose value a plain assignment does not pin down.
 const SPECIAL = new Set([
@@ -22,24 +25,17 @@ const SPECIAL = new Set([
 const DECLARERS = new Set(['export', 'declare', 'typeset', 'local', 'readonly'])
 // Builtins that set a variable named in their words (`read X`, `printf -vX`, `getopts o X`, `unset X`).
 const BINDERS = new Set(['read', 'mapfile', 'readarray', 'printf', 'getopts', 'wait', 'let', 'unset'])
-// Words that make a compound or control construct. An assignment inside one may not run, and keywords are too easy to
-// misread (`time -p if`, a `fi)` case pattern), so any of them as a word of unquoted command text turns expansion off for
-// the whole command, as do `{ }` groups, `!`, `[[`, subshells, `((` and function definitions.
-const CONTROL = new Set(['if', 'then', 'elif', 'else', 'fi', 'case', 'esac', 'for', 'select', 'while', 'until', 'do', 'done', 'function', 'coproc', 'time'])
 
 // ---------------------------------------------------------------------------------------------------------------
 // Lexer
 
-// `quoted` when the site is a whole double-quoted word part (`"$Z"`).
-type Site = { start: number; end: number; name: string; quoted: boolean }
-// An assignment word (`NAME=`, `NAME[i]=`, `NAME+=`) at a command start, or among a declaration's words. `own` when it is
-// a command of its own in the flat top-level list: in no substitution or backtick, and not after `&&` or `||` (nor, see
-// expandable, before `&` or `|`). `end` is where the word stops.
-type AssignWord = { name: string; start: number; valueStart: number; end: number; own: boolean; plain: boolean }
-type Sep = { pos: number; op: string }
-// `tokens` holds every other identifier the text names (`read X`, `${X:-y}`, `'$X'`): such a name is left alone. `control`
-// when the command has a compound or control construct (see CONTROL).
-type Lexed = { sites: Site[]; assigns: AssignWord[]; tokens: Set<string>; seps: Sep[]; control: boolean }
+type Site = { start: number; end: number; name: string }
+// An assignment word (`NAME=`, `NAME[i]=`, `NAME+=`) at a command start, or among a declaration's words. `end` is where the
+// word stops, and `outer` says it is in no substitution or subshell, so it can bind in the script's own shell.
+type AssignWord = { name: string; start: number; valueStart: number; end: number; plain: boolean; outer: boolean }
+// `tokens` holds every other identifier the text names (`read X`, `${X:-y}`, `'$X'`): such a name is left alone. `seps` holds
+// where each top-level command ends.
+type Lexed = { sites: Site[]; assigns: AssignWord[]; tokens: Set<string>; seps: number[] }
 
 type Kind = 'top' | 'paren' | 'subst' | 'bt' | 'dq' | 'brace' | 'arith'
 type Frame = { kind: Kind; depth: number }
@@ -58,7 +54,7 @@ const runAt = (re: RegExp, s: string, i: number) => {
 // Finds the expansion sites, assignment words, other identifiers and top-level command separators of a command. Null when
 // the quoting does not balance, so the lexer lost track.
 function lex(s: string): Lexed | null {
-  const out: Lexed = { sites: [], assigns: [], tokens: new Set(), seps: [], control: false }
+  const out: Lexed = { sites: [], assigns: [], tokens: new Set(), seps: [] }
   const frames: Frame[] = [{ kind: 'top', depth: 0 }]
   const heredocs: { delim: string; strip: boolean; quoted: boolean }[] = []
   const top = () => frames[frames.length - 1]!
@@ -68,10 +64,9 @@ function lex(s: string): Lexed | null {
   }
   let word: AssignWord | null = null
   let wordStart = true
-  // Top level only: at a command start, inside a declaration's words, and the list operator before the current command.
+  // Top level only: at a command start, and inside a declaration's words.
   let cmdStart = true
   let declaring = false
-  let lastOp = ''
   let i = 0
   const endWord = () => {
     if (word && frames.length === 1) {
@@ -79,15 +74,13 @@ function lex(s: string): Lexed | null {
       word = null
     }
   }
-  const site = (start: number, end: number, name: string, inDq: boolean) =>
-    out.sites.push({ start, end, name, quoted: inDq && s[start - 1] === '"' && s[start - 2] !== '\\' && s[end] === '"' })
   // `$NAME` and `${NAME}` are sites; other expansions open a frame (or, in a heredoc body, are read as text).
   const dollar = (ctx: 'cmd' | 'dq' | 'body') => {
     const n = s[i + 1]
     if (n === '{') {
       const m = runAt(NAME, s, i + 2)
       if (m && s[i + 2 + m[0].length] === '}') {
-        site(i, i + 3 + m[0].length, m[0], ctx === 'dq')
+        out.sites.push({ start: i, end: i + 3 + m[0].length, name: m[0] })
         i += 3 + m[0].length
       } else if (ctx === 'body') i += 2
       else {
@@ -98,7 +91,7 @@ function lex(s: string): Lexed | null {
     }
     if (n !== undefined && /[A-Za-z_]/.test(n)) {
       const m = runAt(NAME, s, i + 1)!
-      site(i, i + 1 + m[0].length, m[0], ctx === 'dq')
+      out.sites.push({ start: i, end: i + 1 + m[0].length, name: m[0] })
       i += 1 + m[0].length
       return
     }
@@ -122,7 +115,8 @@ function lex(s: string): Lexed | null {
   }
   const ident = () => {
     const m = runAt(WORD, s, i)![0]
-    if (/^[A-Za-z_]/.test(m)) out.tokens.add(m)
+    // The plain text of a top-level assignment's value binds nothing (`nm=/opt/bin/elf-nm`); a frame in it (`$((X=1))`) can.
+    if (/^[A-Za-z_]/.test(m) && (word === null || frames.length > 1)) out.tokens.add(m)
     i += m.length
     return m
   }
@@ -198,9 +192,7 @@ function lex(s: string): Lexed | null {
   // A top-level separator: list operators end the command and start the next.
   const separator = (op: string) => {
     if (frames.length === 1) {
-      out.seps.push({ pos: i, op })
-      // A newline right after `&&`, `||` or `|` continues that list.
-      if (!(op === '\n' && cmdStart && ['&&', '||', '|', '|&'].includes(lastOp))) lastOp = op
+      out.seps.push(i)
       cmdStart = true
       declaring = false
     }
@@ -313,8 +305,6 @@ function lex(s: string): Lexed | null {
       endWord()
       separator(LIST_OPS.find(op => s.startsWith(op, i))!)
     } else if (ch === '(') {
-      // A subshell, `((`, `f()` or an array: not a flat list.
-      out.control = true
       endWord()
       push('paren')
       i++
@@ -343,23 +333,19 @@ function lex(s: string): Lexed | null {
       }
       wordStart = false
     } else if (wordStart && ((ch === '{' || ch === '}' || ch === '!') && whole(1) || (ch === '[' && s[i + 1] === '[' && whole(2)))) {
-      // A `{ }` group, `!` negation or `[[ ]]` test.
-      out.control = true
+      // A `{ }` group, `!` negation or `[[ ]]` test: the next word still starts a command.
       i++
       wordStart = false
     } else if (/\w/.test(ch)) {
       const m = wordStart && (cmdStart || declaring) ? runAt(ASSIGN, s, i) : null
       if (m) {
-        const own = frames.length === 1 && (lastOp === '' || lastOp === ';' || lastOp === '\n')
-        const a: AssignWord = { name: m[1]!, start: i, valueStart: i + m[0].length, end: s.length, own, plain: !m[2] && !m[3] }
+        const a: AssignWord = { name: m[1]!, start: i, valueStart: i + m[0].length, end: s.length, plain: !m[2] && !m[3], outer: frames.length === 1 }
         out.assigns.push(a)
         if (frames.length === 1) word = a
         i += m[0].length
       } else {
         const at = wordStart
         const w = ident()
-        // Keywords count wherever they stand as a whole word: unsure is blocked.
-        if (at && CONTROL.has(w) && /^$|[\s;&|()<>]/.test(s[i] ?? '')) out.control = true
         if (at) topWord(w)
       }
       wordStart = false
@@ -381,21 +367,32 @@ const FILTERS = new Set(['head', 'tail', 'sort'])
 const programName = (n: string | undefined) => (n !== undefined && /^[\w.+-]+$/.test(n) && !/^[-+]/.test(n) ? n : null)
 const quietRedirects = (c: ShellCommand) => c.heredocs.length === 0 && c.redirects.every(r => r.target === '/dev/null' || (r.op === '>&' && /^[12]$/.test(r.target ?? '')))
 
+// `mise which X`, with `--cd DIR` or `-C DIR` on either side of it. Only DIR may be an expansion: it picks the tool version,
+// not the tool's name. Any other option (`--version`) prints something other than a path.
+function miseTool(a: readonly (string | null)[]): string | null {
+  const rest: (string | null)[] = []
+  for (let i = 1; i < a.length; i++) {
+    if (a[i] === '--cd' || a[i] === '-C') i++
+    else if (!a[i]?.startsWith('--cd=')) rest.push(a[i]!)
+  }
+  return rest.length === 2 && rest[0] === 'which' ? programName(rest[1] ?? undefined) : null
+}
+
 // The program a lookup prints the path of: `which X`, `command -v X`, `type -P X`, `mise which X`, `find ... -name X`.
-// Null for anything else. (realpath and readlink print a path whose basename can differ from the operand's.)
+// Null for anything else. (realpath and readlink print a path whose basename can differ from the operand's, and `which -a`
+// prints several paths.)
 function foundProgram(c: ShellCommand): string | null {
-  if (c.argv.some(a => a === null) || c.assigns.length > 0 || !quietRedirects(c)) return null
+  if (c.assigns.length > 0 || !quietRedirects(c)) return null
+  if (baseName(c.argv[0] ?? null) === 'mise') return miseTool(c.argv)
+  if (c.argv.some(a => a === null)) return null
   const a = c.argv as string[]
-  const ops = a.slice(1).filter(w => w[0] !== '-')
   switch (baseName(a[0] ?? null)) {
     case 'which':
-      return ops.length === 1 ? programName(ops[0]) : null
+      return a.length === 2 ? programName(a[1]) : null
     case 'command':
       return a.length === 3 && a[1] === '-v' ? programName(a[2]) : null
     case 'type':
       return a.length === 3 && (a[1] === '-P' || a[1] === '-p') ? programName(a[2]) : null
-    case 'mise':
-      return a.length === 3 && a[1] === 'which' ? programName(a[2]) : null
     case 'find': {
       if (a.some(w => NO_FIND.has(w))) return null
       const at = a.indexOf('-name')
@@ -410,11 +407,15 @@ function foundProgram(c: ShellCommand): string | null {
 const lineFilter = (c: ShellCommand) =>
   FILTERS.has(baseName(c.argv[0] ?? null)) && c.argv.slice(1).every(w => w !== null && /^(?:-[\w-]*|\d+)$/.test(w)) && c.assigns.length === 0 && quietRedirects(c)
 
+// `cd DIR` before a `mise which`, whose answer depends on the directory.
+const cdFirst = (c: ShellCommand) => c.argv[0] === 'cd' && c.argv.length === 2 && c.pipeline === null && c.assigns.length === 0 && quietRedirects(c)
+
 // For an assignment command whose value is one substitution, the program that substitution looks up: a path finder,
-// optionally piped through head, tail or sort, with nothing nested in it. Null otherwise.
+// optionally piped through head, tail or sort, or `cd DIR && mise which X`, with nothing nested in it. Null otherwise.
 function finderProgram(c: ShellCommand): string | null {
   if (c.subs.length === 0 || c.subs.some(s => s.nesting !== c.nesting + 1)) return null
-  const subs = c.subs
+  const entered = c.subs.length === 2 && cdFirst(c.subs[0]!) && baseName(c.subs[1]!.argv[0] ?? null) === 'mise'
+  const subs = entered ? c.subs.slice(1) : c.subs
   if (subs.length === 1 ? subs[0]!.pipeline !== null : !subs.every((s, i) => s.pipeline?.stage === i)) return null
   if (!subs.slice(1).every(lineFilter)) return null
   return foundProgram(subs[0]!)
@@ -423,17 +424,59 @@ function finderProgram(c: ShellCommand): string | null {
 // ---------------------------------------------------------------------------------------------------------------
 // Which variables expand
 
-type Value = { text: string; finder: boolean }
+// `unset` is where the variable may start to hold nothing: anywhere for a lookup, which may come back empty, and past its
+// list for an assignment after `&&` or `||`, which may not run. Infinity when the value always holds.
+type Value = { text: string; finder: boolean; unset: number }
 type Bind = { value: string | null; c: ShellCommand }
 
+type Top = { from: number; to: number; until: number }
+
+// The simple commands at a script's top level, in order, each in the script's own shell, with `until`, where what they
+// assign stops being certain. A statement, or the first of a `&&` or `||` list, runs whenever the script gets that far, so
+// never. The rest of a list may not run: the end of an all-`&&` list, since what follows in it runs only after them, else
+// their own end. Whatever sits in a compound or a function, in a pipeline or in the background is left out, and so is every
+// assignment in it.
+function topLevel(script: string): Top[] {
+  const out: Top[] = []
+  for (const st of unbash(script).commands) {
+    if (st.background) continue
+    const cmd = st.command
+    const list = cmd.type === 'AndOr' ? cmd.commands : [cmd]
+    const chained = cmd.type === 'AndOr' && cmd.operators.every(op => op === '&&')
+    for (const [k, c] of list.entries()) {
+      if (c.type === 'Command') out.push({ from: c.pos, to: c.end, until: k === 0 ? Infinity : chained ? cmd.end : c.end })
+    }
+  }
+  return out
+}
+
+// The top-level command at a position, by binary search.
+function topAt(top: readonly Top[], at: number): Top | null {
+  let lo = 0
+  let hi = top.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    const t = top[mid]!
+    if (at < t.from) hi = mid - 1
+    else if (at >= t.to) lo = mid + 1
+    else return t
+  }
+  return null
+}
+
 // The value each variable can be written in as, or none. A variable qualifies when every assignment of it is a plain
-// `NAME=value` (or `export NAME=value` and its kin, without options) that is a command of its own in the top-level list
-// (see AssignWord), they all give the same literal value or the same path finder, and nothing else in the text names it.
+// `NAME=value` (or `export NAME=value` and its kin, without options) in a top-level command (see topLevel), they all give
+// the same literal value or the same path finder, and nothing else in the text names it. A compound command around a use
+// changes nothing: the value is set by then, and any other binding of the name disqualifies it.
 function expandable(command: string, commands: readonly ShellCommand[], lx: Lexed): Map<string, Value> {
   const out = new Map<string, Value>()
   const binds = new Map<string, Bind[]>()
   const tainted = new Set<string>(lx.tokens)
-  const bind = (name: string, value: string | null, c: ShellCommand) => binds.set(name, [...(binds.get(name) ?? []), { value, c }])
+  const bind = (name: string, value: string | null, c: ShellCommand) => {
+    const list = binds.get(name)
+    if (list) list.push({ value, c })
+    else binds.set(name, [{ value, c }])
+  }
   for (const c of commands) {
     // `builtin read X`, `command . f`: the names a command runs through its wrappers.
     const names = viewsOf(c.argv).map(v => baseName(v[0] ?? null))
@@ -444,7 +487,9 @@ function expandable(command: string, commands: readonly ShellCommand[], lx: Lexe
     if (binder !== undefined) {
       const opts = c.text.slice(1).filter(t => /^-/.test(t))
       const namesByOption = binder === 'printf' || binder === 'wait' ? opts.some(t => /^-[A-Za-z]*[vp]/.test(t)) : true
-      if (namesByOption && c.argv.includes(null) && !(DECLARERS.has(binder) && finderDeclaration(c))) return out
+      // `export A=$B` names A; only the value is computed.
+      const named = (k: number) => DECLARERS.has(binder) && /^[A-Za-z_]\w*\+?=/.test(c.text[k] ?? '')
+      if (namesByOption && c.argv.some((a, k) => a === null && !named(k))) return out
       if (DECLARERS.has(binder) && opts.some(t => /^-[A-Za-z]*n/.test(t))) return out
     }
     const nested = c.depth > 0 || c.nesting > 0 || c.pipeline !== null
@@ -472,17 +517,30 @@ function expandable(command: string, commands: readonly ShellCommand[], lx: Lexe
     }
   }
   if (tainted.has('IFS') || lx.assigns.some(a => a.name === 'IFS') || binds.has('IFS')) return out
+  const top = topLevel(command)
+  const assigned = new Map<string, AssignWord[]>()
+  for (const a of lx.assigns) {
+    const list = assigned.get(a.name)
+    if (list) list.push(a)
+    else assigned.set(a.name, [a])
+  }
   for (const [name, list] of binds) {
     if (tainted.has(name) || SPECIAL.has(name)) continue
-    const words = lx.assigns.filter(a => a.name === name)
-    if (words.length !== list.length || words.some(w => !w.own || !w.plain || backgrounded(lx, w))) continue
+    const words = assigned.get(name) ?? []
+    const tops = words.map(w => topAt(top, w.start))
+    if (words.length !== list.length || words.some(w => !w.plain) || tops.includes(null)) continue
+    const unset = Math.min(...tops.map(t => t!.until))
     const values = list.map((b, k): Value | null => {
-      if (b.value !== null) return LITERAL_VALUE.test(b.value) && !/^[-+]/.test(b.value) ? { text: b.value, finder: false } : null
+      if (b.value !== null) {
+        const homeMoves = b.value[0] === '~' && (assigned.get('HOME') ?? []).some(a => a.outer && a.start > words[k]!.start)
+        if (!LITERAL_VALUE.test(b.value) || /^[-+]/.test(b.value) || homeMoves) return null
+        return { text: b.value.replace(/^~/, '$HOME'), finder: false, unset }
+      }
       // A computed value counts only when it is exactly one substitution.
       const raw = command.slice(words[k]!.valueStart, words[k]!.end)
       if (!/^(?:"\$\([^]*\)"|\$\([^]*\)|"`[^`]*`"|`[^`]*`)$/.test(raw)) return null
       const program = b.c.argv.length === 0 || finderDeclaration(b.c) ? finderProgram(b.c) : null
-      return program === null ? null : { text: program, finder: true }
+      return program === null ? null : { text: program, finder: true, unset: 0 }
     })
     const first = values[0]
     if (first && values.every(v => v !== null && v.text === first.text && v.finder === first.finder)) out.set(name, first)
@@ -494,18 +552,13 @@ function expandable(command: string, commands: readonly ShellCommand[], lx: Lexe
 const finderDeclaration = (c: ShellCommand) =>
   DECLARERS.has(baseName(c.argv[0] ?? null)) && c.argv.length === 2 && c.argv[1] === null && /^[A-Za-z_]\w*=/.test(c.text[1] ?? '')
 
-// The assignment's command ends at `&` (run in the background) or `|` (a pipeline stage): the shell keeps no value.
-function backgrounded(lx: Lexed, w: AssignWord): boolean {
-  const next = lx.seps.find(p => p.pos > w.start)
-  return next !== undefined && (next.op === '&' || next.op === '|' || next.op === '|&')
-}
-
 // ---------------------------------------------------------------------------------------------------------------
 // The rewrite and its check
 
 const MARK = 'bRxV'
 const marker = (k: number) => `${MARK}${k}Q`
 const MARKER = /bRxV(\d+)Q/g
+const MARKER_WORD = /^bRxV(\d+)Q$/
 const ASSIGN_WORD = /^[A-Za-z_]\w*(?:\[[^\]]*\])?\+?=/
 
 const splice = (s: string, sites: readonly Site[], put: (k: number) => string) => {
@@ -539,13 +592,15 @@ function spells(words: readonly string[], j: number, want: string): number {
 function sameShape(marked: ShellParse, rewritten: ShellParse, fill: (t: string) => string): boolean {
   if (rewritten.errors.length > 0 || marked.commands.length !== rewritten.commands.length) return false
   const has = (t: string) => t.includes(MARK)
+  // The walker reads a leading `$HOME` in an assignment value as `~`.
+  const home = (t: string) => t.replace(/^\$HOME(?=\/|$)/, '~')
   return marked.commands.every((x, n) => {
     const y = rewritten.commands[n]!
     if (x.nesting !== y.nesting || (x.pipeline?.stage ?? -1) !== (y.pipeline?.stage ?? -1) || x.heredocs.length !== y.heredocs.length) return false
     if (x.assigns.length !== y.assigns.length || x.redirects.length !== y.redirects.length) return false
     const sameAssigns = x.assigns.every((a, k) => {
       const b = y.assigns[k]!
-      return (a.name === null ? b.name === null : fill(a.name) === b.name) && a.append === b.append && (a.value === null || fill(a.value) === b.value)
+      return (a.name === null ? b.name === null : fill(a.name) === b.name) && a.append === b.append && (a.value === null || home(fill(a.value)) === b.value)
     })
     if (!sameAssigns || !x.redirects.every((r, k) => r.op === y.redirects[k]!.op && fill(r.text) === y.redirects[k]!.text)) return false
     const declares = DECLARERS.has(baseName(x.argv[0] ?? null))
@@ -561,35 +616,55 @@ function sameShape(marked: ShellParse, rewritten: ShellParse, fill: (t: string) 
   })
 }
 
+// What a rewrite leaves: `text` has each value written in, and `empty`, when a variable may hold nothing, has it vanish
+// instead. Either can be what bash runs, so the caller checks both.
+export type Written = { text: string; empty: string | null }
+
+// Whether a lookup run as `v[0]` is a shell or interpreter handed its program as an expansion or on a pipe
+// (`$S -c "$payload"`, `echo "$p" | $S`), which is a hidden script whoever found the interpreter. A script file
+// (`$PY script.py`, `$PY "$f"`) and a quoted heredoc are not.
+const runsExpansion = (tool: string, v: readonly (string | null)[], c: ShellCommand) => {
+  const w = [tool, ...v.slice(1)]
+  const reads = stdinReader(w) !== null
+  return (reads && (c.pipeline?.stage ?? 0) > 0) || (dynamicProgram(w, c) && ((invocation(w)?.code ?? -1) >= 0 || reads))
+}
+
 // The command with its literal variables written in, or null when there are none to write, the rewrite would be longer
-// than `max`, or it does not keep the command's shape. `commands` is the command's scan; `rescan` scans a text the same
-// way (nested scripts included), or returns null when it cannot. A literal variable is written in at every use after the
-// command that assigns it. A path finder is written in only as `"$Z"` where it is the program a top-level command runs
-// (`Z=$(which zizmor); "$Z" .` reads `"zizmor" .`): its value is a path that may be empty or hold spaces, and quoted
-// there it can only fail to run.
-export function expandLiteralVars(
-  command: string,
-  commands: readonly ShellCommand[],
-  rescan: (text: string) => readonly ShellCommand[] | null,
-  max: number,
-): string | null {
+// than `max`, or it does not keep the command's shape. `rescan` scans a text as the caller does (nested scripts included),
+// or returns null when it cannot. A literal variable is written in at every use after the command that assigns it. A path
+// finder is written in only where it is the program a command runs: `Z=$(which zizmor); "$Z" .` reads `"zizmor" .`. A
+// variable that may be unset (see Value) is written in too, and `empty` shows what runs without it: a quoted lookup can
+// only fail, but unquoted (`$Z rm -rf ~`) the word vanishes and its arguments run. A found path with spaces in it would
+// split; lookups land in a PATH directory or under mise, so that is left out of reach of a model's habits, as elsewhere.
+export function expandLiteralVars(command: string, rescan: (text: string) => readonly ShellCommand[] | null, max: number): Written | null {
   if (command.includes(MARK)) return null
   const lx = lex(command)
-  if (!lx || lx.control) return null
+  if (!lx || lx.assigns.length === 0) return null
+  const commands = rescan(command)
+  if (!commands) return null
   const vars = expandable(command, commands, lx)
   if (vars.size === 0) return null
   // Uses count once the assigning command is over: after the first top-level separator past its first assignment.
   const from = new Map<string, number>()
-  for (const name of vars.keys()) {
-    const at = lx.assigns.find(a => a.name === name)!.start
-    const sep = lx.seps.find(p => p.pos > at)
-    if (sep !== undefined) from.set(name, sep.pos)
+  const firstAt = new Map<string, number>()
+  for (const a of lx.assigns) if (!firstAt.has(a.name)) firstAt.set(a.name, a.start)
+  let next = 0
+  for (const [name, at] of [...firstAt].filter(([n]) => vars.has(n)).sort((a, b) => a[1] - b[1])) {
+    while (next < lx.seps.length && lx.seps[next]! <= at) next++
+    if (next < lx.seps.length) from.set(name, lx.seps[next]!)
   }
-  let sites = lx.sites.filter(s => from.has(s.name) && s.start > from.get(s.name)! && (!vars.get(s.name)!.finder || s.quoted))
+  let sites = lx.sites.filter(s => from.has(s.name) && s.start > from.get(s.name)!)
   if (sites.some(s => vars.get(s.name)!.finder)) {
+    const all = sites
     const runs = new Set<string>()
-    for (const c of parse(splice(command, sites, marker)).commands) for (const v of viewsOf(c.argv)) if (v[0] !== null && v[0] !== undefined) runs.add(v[0])
-    sites = sites.filter((s, k) => !vars.get(s.name)!.finder || runs.has(marker(k)))
+    for (const c of parse(splice(command, all, marker)).commands) {
+      for (const v of viewsOf(c.argv)) {
+        const k = MARKER_WORD.exec(v[0] ?? '')
+        const site = k ? all[Number(k[1])] : undefined
+        if (site && !runsExpansion(vars.get(site.name)!.text, v, c)) runs.add(v[0]!)
+      }
+    }
+    sites = all.filter((s, k) => !vars.get(s.name)!.finder || runs.has(marker(k)))
   }
   if (sites.length === 0) return null
   const values = sites.map(s => vars.get(s.name)!.text)
@@ -598,9 +673,10 @@ export function expandLiteralVars(
   for (const [k, s] of sites.entries()) length += values[k]!.length - (s.end - s.start)
   if (length > max) return null
   const marked = splice(command, sites, marker)
+  const parsed = parse(marked)
   const rewritten = splice(command, sites, k => values[k]!)
   const fill = (t: string) => t.replace(MARKER, (_, k: string) => values[Number(k)] ?? '')
-  if (!sameShape(parse(marked), parse(rewritten), fill)) return null
+  if (!sameShape(parsed, parse(rewritten), fill)) return null
   // The rewrite may turn `eval "$X"` into a literal script; that script, and every other one, must not assign a written-in
   // variable again, and no `source`, `.` or `eval` of an expansion may remain to do so unseen.
   const after = rescan(rewritten)
@@ -617,5 +693,9 @@ export function expandLiteralVars(
     ]
     if (assigned.some(n => n !== undefined && names.has(n)) && (c.depth > 0 || c.nesting > 0)) return null
   }
-  return rewritten
+  const vanishes = sites.map(s => s.start >= vars.get(s.name)!.unset)
+  if (!vanishes.includes(true)) return { text: rewritten, empty: null }
+  // A site that is a whole command leaves `:`, so the text still parses.
+  const alone = new Set(parsed.commands.filter(c => c.argv.length === 1).map(c => c.argv[0]))
+  return { text: rewritten, empty: splice(command, sites, k => (!vanishes[k] ? values[k]! : alone.has(marker(k)) ? ':' : '')) }
 }

@@ -39,14 +39,16 @@ export type Scan = { commands: ShellCommand[]; errors: ShellParse['errors']; too
 // Parses a command and every script it hands to a shell: `sh -c STR`, `eval` and `env -S` bodies, command-string
 // wrappers (`flock -c`, `npx -c`, `watch`, a parallel template), also behind other wrappers, and heredoc bodies a shell
 // reads all join `commands`. A handed script that does not parse is a parse error. A heredoc body is reparsed once however many commands share it,
-// and the reparsed text is capped (`tooComplex`).
-export function scan(command: string): Scan {
+// and the reparsed text is capped (`tooComplex`). `write` rewrites each script before it is parsed.
+export function scan(command: string, write: (text: string) => string = t => t): Scan {
   const out: Scan = { commands: [], errors: [], tooComplex: false }
   let reparsed = 0
   const nested = (text: string, depth: number) => {
-    reparsed += text.length
+    // The cap counts what is parsed: a rewrite can make a short script much longer.
+    const written = reparsed + text.length > MAX_REPARSE ? text : write(text)
+    reparsed += written.length
     if (reparsed > MAX_REPARSE) out.tooComplex = true
-    else add(reparse(text, depth))
+    else add(reparse(written, depth))
   }
   const add = (r: ShellParse) => {
     out.errors.push(...r.errors)
@@ -62,7 +64,7 @@ export function scan(command: string): Scan {
       }
     }
   }
-  add(parse(command))
+  add(parse(write(command)))
   // The command list is a worklist: a shell heredoc inside a reparsed body is read too.
   const bodies = new Set<string>()
   for (let i = 0; i < out.commands.length && !out.tooComplex; i++) {
@@ -77,17 +79,37 @@ export function scan(command: string): Scan {
   return out
 }
 
-// The scan of a command with its literal variables written in (expand.ts), or null when none were, or the rewrite is too
-// long or complex to check.
-function expanded(command: string, s: Scan): Scan | null {
+// A variable copied from another (`Y=$X`) is written in on a later pass.
+const MAX_PASSES = 3
+
+// The scan of a command with its literal variables written in (expand.ts), in the command and in each script it hands to a
+// shell, each script on its own, or null when none were, or the rewrite is too long or complex to check. When a variable
+// may hold nothing, what runs without it joins the scan, so every check sees both.
+function expanded(command: string): Scan | null {
   const rescan = (text: string) => {
     const r = scan(text)
     return r.tooComplex || r.errors.length > 0 ? null : r.commands
   }
-  const text = expandLiteralVars(command, s.commands, rescan, MAX_PARSE)
-  if (text === null) return null
-  const x = scan(text)
-  return x.tooComplex || x.errors.length > 0 ? null : x
+  let wrote = false
+  let vanishes = false
+  const writer = (pick: 'text' | 'empty') => (script: string) => {
+    let text = script
+    for (let pass = 0; pass < MAX_PASSES; pass++) {
+      const w = expandLiteralVars(text, rescan, MAX_PARSE)
+      if (w === null) break
+      wrote = true
+      vanishes ||= w.empty !== null
+      // Only the first pass drops anything: a lookup that moves up to the command word when the one before it vanishes
+      // (`$Z $Y -rf /`) must be written in, not dropped too.
+      text = pick === 'empty' && pass === 0 ? (w.empty ?? w.text) : w.text
+    }
+    return text
+  }
+  const x = scan(command, writer('text'))
+  if (!wrote || x.tooComplex || x.errors.length > 0) return null
+  if (!vanishes) return x
+  const e = scan(command, writer('empty'))
+  return e.tooComplex || e.errors.length > 0 ? null : { ...x, commands: [...x.commands, ...e.commands] }
 }
 
 // The deny verdict for a Bash command: too long, unparseable, or a danger rule, with the scan it came from (null when the
@@ -108,7 +130,7 @@ export function analyze(command: string): { hit: Hit | null; scan: Scan | null }
       scan: s,
     }
   }
-  const x = expanded(command, s)
+  const x = expanded(command)
   return { hit: (x && dangerHit(x.commands)) ?? dangerHit(s.commands), scan: x ?? s }
 }
 
@@ -120,7 +142,7 @@ export function askRule(command: string): AskHit | null {
   if (command.length > MAX_PARSE) return null
   const s = scan(command)
   if (s.errors.length > 0 || s.tooComplex) return null
-  const x = expanded(command, s)
+  const x = expanded(command)
   return (x && askHit(x.commands)) ?? askHit(s.commands)
 }
 

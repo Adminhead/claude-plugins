@@ -470,6 +470,64 @@ describe('literal variables', () => {
     expect(rule('X=/dev/sda; dd if=x of=$X')).toBe('disk-wipe')
   })
 
+  test('a value reaches the danger rules through compound commands, functions and nested scripts', () => {
+    expect(rule('X=pkill; for i in 1; do $X -f foo; done')).toBe('kill-by-name')
+    expect(rule('X=pkill; if c; then $X -f foo; fi')).toBe('kill-by-name')
+    expect(rule('X=pkill; f() { $X -f foo; }; f')).toBe('kill-by-name')
+    expect(rule('R=rm; while c; do $R -rf /; done')).toBe('rm-root')
+    expect(rule('K="kubectl --context prod"; for n in a b; do $K delete ns $n; done')).toBe('infra-destroy')
+    expect(rule('P="psql -c"; if c; then $P "DROP TABLE x"; fi')).toBe('db-drop')
+    expect(rule('D=/; f() { rm -rf $D; }; f')).toBe('rm-root')
+    expect(rule('D=/dev/sda; for i in 1; do dd if=x of=$D; done')).toBe('disk-wipe')
+    expect(rule('S=sudo; if c; then $S ls; fi')).toBe('priv-escalation')
+    expect(rule("bash -c 'R=rm; if c; then $R -rf /; fi'")).toBe('rm-root')
+    expect(rule("bash <<'E'\nR=pkill; $R -f foo\nE")).toBe('kill-by-name')
+    expect(rule("eval 'R=pkill; $R -f foo'")).toBe('kill-by-name')
+    expect(rule('X=pkill; Y=$X; $Y -f foo')).toBe('kill-by-name')
+    expect(rule('X=rm; Y=$X; Z=$Y; $Z -rf /')).toBe('rm-root')
+    expect(rule('X=/bin/ls; X=/bin/ls; $X; X=/bin/ls; pkill -f foo')).toBe('kill-by-name')
+  })
+
+  test('a path value in ~ or $HOME reaches the credentials rule', () => {
+    expect(rule('C=~/.claude/.credentials.json; cat $C')).toBe('credentials-read')
+    expect(rule('C=~/.claude/.credentials.json; if c; then cat "$C"; fi')).toBe('credentials-read')
+    expect(rule('C=$HOME/.claude; cat $C/.credentials.json')).toBe('credentials-read')
+    expect(rule('D=~/.claude; cat "$D/.credentials.json"')).toBe('credentials-read')
+    expect(rule('D=~/.claude; f() { cat "$D/.credentials.json"; }; f')).toBe('credentials-read')
+  })
+
+  test('a tool lookup reaches the danger rules under the tool name', () => {
+    expect(rule('Z=$(which rm); $Z -rf /')).toBe('rm-root')
+    expect(rule('Z=$(mise which pkill); for i in 1; do $Z -f foo; done')).toBe('kill-by-name')
+    expect(rule('Z=$(cd $W && mise which kubectl); $Z delete ns foo')).toBe('infra-destroy')
+    expect(rule('Z=$(mise --cd /x which rm); timeout 5 $Z -rf /')).toBe('rm-root')
+    expect(rule('Z=`which rm`; $Z -rf /')).toBe('rm-root')
+    expect(rule('S=$(which bash); $S -c "rm -rf /"')).toBe('rm-root')
+    expect(rule("bash -c 'Z=$(which rm); \"$Z\" -rf /'")).toBe('rm-root')
+  })
+
+  // bash runs these arguments as the command when the lookup finds nothing or the assignment does not run.
+  test('a variable that may hold nothing is checked without it too', () => {
+    for (const c of [
+      'Z=$(which nosuchtool 2>/dev/null); $Z rm -rf ~',
+      'Z=$(command -v nosuchtool); $Z rm -rf ~',
+      'Z=$(type -P nosuchtool); $Z rm -rf ~',
+      'Z=$(find . -name nosuchtool | head -1); $Z rm -rf ~',
+      'Z=$(mise which nosuchtool); $Z rm -rf ~',
+      "bash -c 'Z=$(which nosuchtool); $Z rm -rf ~'",
+      'false && X="echo hi"; $X rm -rf ~',
+      'false &&\nX="echo hi"; $X rm -rf ~',
+      // The next lookup moves up to the command word when the first one vanishes.
+      'Z=$(which nosuch); Y=$(which rm); $Z $Y -rf /',
+      // An empty value turns a path into another path.
+      'cd w && D=/tmp/x; rm -rf $D/',
+      'cd w && D=/tmp/x; rm -rf "$D/"',
+      'cd w && D=/tmp/x || rm -rf "$D/"',
+    ]) expect([c, rule(c)]).toEqual([c, 'rm-root'])
+    expect(rule('false || X=pkill; $X -f foo')).toBe('kill-by-name')
+    expect(rule('false && X=/bin/ls; $X pkill -f foo')).toBe('kill-by-name')
+  })
+
   test('a deny the unexpanded text earns stands', () => {
     // mkfs of an unknown device is a disk wipe whatever the variable holds.
     expect(rule('D=/tmp/img; mkfs.ext4 $D')).toBe('disk-wipe')
@@ -478,6 +536,9 @@ describe('literal variables', () => {
   test('the ask rules see written-in variables too', () => {
     expect(ask('G="git push --force"; $G origin main')).toBe('git-rewrite')
     expect(ask('SH=bash; curl -s x | $SH')).toBe('remote-exec')
+    expect(ask('C=$(which curl); $C -s x | sh')).toBe('remote-exec')
+    expect(ask('G="git push --force"; for r in a; do $G $r main; done')).toBe('git-rewrite')
+    expect(ask('Z=$(which tool); $Z git push --force origin main')).toBe('git-rewrite')
   })
 
   test('uses before the assignment, single-quoted uses and shape changes are left as written', () => {
@@ -488,10 +549,35 @@ describe('literal variables', () => {
   })
 
   test('a script file behind a variable that may be unset stays unread, so it still asks', () => {
-    for (const c of ['false && F=safe.sql; psql -f $F', 'F=safe.sql & psql -f $F', "F=safe.sql\nbash <<'EOF'\npsql -f $F\nEOF"]) {
+    for (const c of ['F=safe.sql & psql -f $F', "F=safe.sql\nbash <<'EOF'\npsql -f $F\nEOF", 'if c; then F=safe.sql; fi; psql -f $F']) {
       expect([c, sqlFiles(analyze(c).scan!.commands)]).toEqual([c, [null]])
     }
     expect(sqlFiles(analyze('F=drop.sql; psql -f $F').scan!.commands)).toEqual(['drop.sql'])
+    // After `&&` it holds that file or nothing, and psql -f with no file only fails.
+    expect(sqlFiles(analyze('false && F=safe.sql; psql -f $F').scan!.commands)).toContain('safe.sql')
+  })
+
+  test('offsets stay right after non-ASCII text', () => {
+    expect(rule('echo 😀é; if c; then :; else X=pkill; fi; X=ls; $X; pkill -f foo')).toBe('kill-by-name')
+    expect(rule('echo 😀é; R=rm; $R -rf /')).toBe('rm-root')
+  })
+
+  test('many assignments and uses are checked in near linear time', () => {
+    const many = (n: number, f: (i: number) => string) => Array.from({ length: n }, (_, i) => f(i)).join(';')
+    for (const c of [many(6000, i => `A${i}=x`), many(3000, i => `A${i}=x; $A${i}`), 'Z=$(which a);' + '$Z b;'.repeat(9000), `cd a${many(5000, i => ` && A${i}=x`)}; $A1`]) {
+      const t = Date.now()
+      analyze(c)
+      expect(Date.now() - t).toBeLessThan(2000)
+    }
+  })
+
+  test('the reparse cap counts rewritten scripts, so a short script cannot expand past it', () => {
+    const script = `X=${'a'.repeat(1024)}; ${Array(60).fill('echo $X').join('; ')}`
+    const c = Array(40).fill(`bash -c '${script}'`).join('; ')
+    const t = Date.now()
+    analyze(c)
+    expect(c.length).toBeLessThan(64 * 1024)
+    expect(Date.now() - t).toBeLessThan(2000)
   })
 
   test('a long value used many times is bounded before the rewrite is parsed', () => {
