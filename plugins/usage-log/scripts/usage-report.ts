@@ -1,19 +1,23 @@
 #!/usr/bin/env -S bun --no-env-file --config=/dev/null
 // usage-report: summarizes the usage log that usage-log and bash-rules write, as Markdown.
 //
-//   usage-report.ts [--days N] [--dir PATH] [--judge [--limit N] [--model M]]
+//   usage-report.ts [--days N] [--dir PATH] [--include-non-interactive] [--judge [--limit N] [--model M]]
 //
 // Skills: uses per skill, by the Skill tool or otherwise, main loop or subagent; listed skills never used; listing cuts.
 // Agents: Agent tool calls per type, with the model and effort each requested, and the resolved model and effort per
 // loop. Bash: decisions by stage, rule and category, the model stages' sources, confidence and time, and what the
 // next Bash call in the same loop was after a deny.
+// By default only real sessions count: eval runs (`claude plugin eval`) and other non-interactive sessions in a temp
+// directory would drown them. A session is excluded when its `session` line shows `interactive: false` or a cwd under
+// the temp directory; --include-non-interactive counts everything. Every line of a session (a subagent's, the Bash
+// guard's) follows its session. A session with no `session` line in the window can't be shown to be an eval and stays.
 // --judge asks a model (claude -p, haiku by default) which listed skills each logged prompt should have loaded, and
 // compares that with what loaded: missed and unneeded skills. It sends the prompts and skill descriptions to the model
 // and costs tokens, so it is opt-in and capped by --limit.
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 
 export type Line = { v: number; ts: string; kind: string; session?: string; [k: string]: any }
 
@@ -39,6 +43,21 @@ export function readLog(dir: string, days: number, now = Date.now()): Line[] {
     }
   }
   return out.sort((a, b) => a.ts.localeCompare(b.ts))
+}
+
+const underTemp = (cwd: unknown, temps: string[]) =>
+  typeof cwd === 'string' && temps.some(t => cwd === t || cwd.startsWith(t.endsWith(sep) ? t : t + sep))
+
+// Drops the lines of eval and other non-interactive sessions; `excluded` counts those sessions.
+export function realSessions(lines: Line[], temps: string[] = [...new Set([tmpdir(), '/tmp'])]): { lines: Line[]; excluded: number; total: number } {
+  const evals = new Set<string>()
+  const all = new Set<string>()
+  for (const l of lines) {
+    if (!l.session) continue
+    all.add(l.session)
+    if (l.kind === 'session' && (l.interactive === false || underTemp(l.cwd, temps))) evals.add(l.session)
+  }
+  return { lines: lines.filter(l => !l.session || !evals.has(l.session)), excluded: evals.size, total: all.size }
 }
 
 const count = <T>(xs: T[], key: (x: T) => string | undefined) => {
@@ -243,13 +262,16 @@ function main(argv: string[]) {
     return i >= 0 ? argv[i + 1] : undefined
   }
   if (argv.includes('-h') || argv.includes('--help')) {
-    console.log('Usage: usage-report.ts [--days N] [--dir PATH] [--judge [--limit N] [--model M]]')
+    console.log('Usage: usage-report.ts [--days N] [--dir PATH] [--include-non-interactive] [--judge [--limit N] [--model M]]')
     return
   }
   const days = Number(arg('--days') ?? 7)
   const dir = arg('--dir') ?? logDir()
-  const lines = readLog(dir, Number.isFinite(days) && days > 0 ? days : 7)
-  console.log(`# Usage report\n\n${lines.length} log lines from the last ${days} days in \`${dir}\`.\n`)
+  const all = readLog(dir, Number.isFinite(days) && days > 0 ? days : 7)
+  const everything = argv.includes('--include-non-interactive')
+  const { lines, excluded, total } = everything ? { lines: all, excluded: 0, total: new Set(all.map(l => l.session).filter(Boolean)).size } : realSessions(all)
+  const note = everything ? 'Non-interactive and temp-directory sessions are included.' : `Excluded ${excluded} non-interactive or temp-directory sessions (eval runs); pass --include-non-interactive to count them.`
+  console.log(`# Usage report\n\n${lines.length} log lines from ${total - excluded} sessions in the last ${days} days in \`${dir}\`. ${note}\n`)
   console.log(skillSection(lines))
   console.log(agentSection(lines))
   console.log(bashSection(lines))

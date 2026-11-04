@@ -32,9 +32,11 @@ Claude Code reports a skill when it loads, not when Claude reads its description
 ## Report
 
 ```
-bun <plugin root>/scripts/usage-report.ts [--days 7] [--dir PATH]
+bun <plugin root>/scripts/usage-report.ts [--days 7] [--dir PATH] [--include-non-interactive]
 bun <plugin root>/scripts/usage-report.ts --judge [--limit 20] [--model haiku]
 ```
+
+By default the report counts only real sessions. A session whose `session` line shows `interactive: false`, or a working directory under the temp directory, is dropped from every section, `--judge` included. These are mostly `claude plugin eval` runs, which otherwise swamp the counts. Lines from subagents and the Bash guard log share their session's ID and follow it. A session with no `session` line in the window (it began before it, or in a pruned file) stays, since it can't be shown to be an eval. The header says how many sessions were excluded; `--include-non-interactive` counts them all.
 
 It prints Markdown with these sections:
 

@@ -3,7 +3,7 @@ import { expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterDeny, agentSection, bashSection, candidates, describe, judgePrompt, logDir, parseJudge, readLog, skillDescriptions, skillSection } from './usage-report'
+import { afterDeny, agentSection, bashSection, candidates, describe, judgePrompt, logDir, parseJudge, readLog, realSessions, skillDescriptions, skillSection } from './usage-report'
 
 const at = (i: number) => new Date(Date.UTC(2026, 9, 18, 12, 0, i)).toISOString()
 const L = (i: number, kind: string, f: Record<string, unknown> = {}) => ({ v: 1, ts: at(i), kind, session: 's1', ...f })
@@ -80,4 +80,24 @@ test('judge: descriptions from SKILL.md, the prompt and the reply', () => {
   expect(p.match(/<\/prompt>/g)).toHaveLength(1)
   expect(parseJudge('```json\n{"skills": ["git-commit:git-commit"], "reason": "x"}\n```')).toEqual(['git-commit:git-commit'])
   expect(parseJudge('nope')).toBeNull()
+})
+
+test('eval and temp-directory sessions are dropped everywhere; a session with no session line stays', () => {
+  const S = (i: number, session: string, f: Record<string, unknown>) => ({ ...L(i, 'session', f), session })
+  const lines = [
+    S(0, 'real', { cwd: '/home/u/proj', interactive: true }),
+    S(1, 'eval', { cwd: '/tmp/eval-1', interactive: false }),
+    S(2, 'tmpint', { cwd: '/tmp/x', interactive: true }),
+    S(3, 'headless', { cwd: '/home/u/proj', interactive: false }),
+    S(4, 'lookalike', { cwd: '/tmpfoo/x', interactive: true }),
+    { ...L(5, 'bash', { decision: 'deny' }), session: 'eval' },
+    { ...L(6, 'agent-call', { type: 't', agentId: 'a' }), session: 'eval' },
+    { ...L(7, 'bash', { decision: 'allow' }), session: 'real' },
+    { ...L(8, 'bash', { decision: 'allow' }), session: 'orphan' },
+  ]
+  const r = realSessions(lines, ['/tmp'])
+  expect(r.excluded).toBe(3)
+  expect(r.total).toBe(6)
+  expect(new Set(r.lines.map(l => l.session))).toEqual(new Set(['real', 'lookalike', 'orphan']))
+  expect(bashSection(r.lines)).toContain('2 commands: allow 2')
 })
