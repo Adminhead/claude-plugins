@@ -17,7 +17,7 @@
       "name": "baseline",
       "source": "./plugins/baseline",
       "description": "The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "category": "meta"
     },
     {
@@ -170,8 +170,8 @@
     {
       "name": "architect",
       "source": "./plugins/architect",
-      "description": "A planning subagent, read-only by instruction (enforced only when readonly-agent-gate is installed), that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under docs/plans.",
-      "version": "0.2.3",
+      "description": "A planning subagent, read-only by instruction (enforced only when readonly-agent-gate is installed), that grounds an implementation plan in the code and returns ordered, verifiable slices with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under .claude/plans.",
+      "version": "0.2.4",
       "category": "development"
     },
     {
@@ -213,7 +213,7 @@
       "name": "coder",
       "source": "./plugins/coder",
       "description": "Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical edits, sonnet/medium by default, opus/high for concurrency, security, data or core invariants.",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "category": "development"
     },
     {
@@ -269,7 +269,7 @@
       "name": "devops",
       "source": "./plugins/devops",
       "description": "Read-only-by-default infrastructure agent that reviews, validates and plans Terraform, Ansible, Docker, Kubernetes, Helm and GitOps changes using the matching skills.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -444,14 +444,14 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
-      "version": "0.3.6",
+      "version": "0.3.7",
       "category": "development"
     },
     {
       "name": "planning",
       "source": "./plugins/planning",
       "description": "Writes, reviews, or revises implementation plans whose scope, verification, and reruns are proportionate to risk. Use for \"plan this\", \"review this plan\", \"cheapest way to verify\", work spanning several slices or risky boundaries, acceptance criteria for an ambiguous change, multi-agent or multi-session plans, and \"grill me\" stress-tests.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -513,8 +513,8 @@
     {
       "name": "readonly-agent-gate",
       "source": "./plugins/readonly-agent-gate",
-      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans with Write/Edit under docs/plans in the project (CLAUDE_PROJECT_DIR) or in a git worktree of it that holds the agent's cwd. Needs bun.",
-      "version": "0.3.0",
+      "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans with Write/Edit under .claude/plans or docs/plans in the project (CLAUDE_PROJECT_DIR) or in a git worktree of it that holds the agent's cwd. Needs bun.",
+      "version": "0.3.1",
       "category": "development"
     },
     {
@@ -528,7 +528,7 @@
       "name": "reviewer",
       "source": "./plugins/reviewer",
       "description": "A read-only review subagent for implementation plans, designs and diffs. It runs the checks and verifies the work against the brief and its acceptance criteria, returning pass or fail per criterion with evidence and findings ranked by severity. The caller picks quick or thorough depth.",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "category": "development"
     },
     {
@@ -556,7 +556,7 @@
       "name": "scribe",
       "source": "./plugins/scribe",
       "description": "A documentation subagent that writes and updates standalone docs (READMEs, guides, changelogs and Outline wiki documents), checking every claim against the code and marking anything it could not verify. Docs that a code change makes stale stay with the coder making the change.",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "category": "development"
     },
     {
@@ -1081,7 +1081,7 @@
       "name": "security-auditor",
       "source": "./plugins/security-auditor",
       "description": "A read-only security review subagent for diffs and code areas: taint tracing, auth, injection, secrets, supply chain, CI and IaC trust, returning severity-ranked findings with attack paths.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1108,8 +1108,8 @@
     {
       "name": "session-retro",
       "source": "./plugins/session-retro",
-      "description": "Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, or why a session went badly.",
-      "version": "0.2.0",
+      "description": "Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, a review of recent or past sessions, or why a session went badly.",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -1151,7 +1151,7 @@
       "name": "docs-sync",
       "source": "./plugins/docs-sync",
       "description": "Hook that, once per change set at Stop, nudges Claude with docs that mention a file this session edited or a name its edits removed. Skips plans, research, ADRs and changelogs; fails open. Needs git and bun.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1459,7 +1459,7 @@
       "name": "outline-docs",
       "source": "./plugins/outline-docs",
       "description": "SessionStart hook that tells Claude to record decisions, runbooks and other knowledge worth keeping in Outline as well as the repo. Installs outline-mcp.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1480,7 +1480,7 @@
       "name": "usage-log",
       "source": "./plugins/usage-log",
       "description": "Mod that logs skill use and the skill listing per prompt to local JSONL, for finding skills that should have fired and didn't. Ships usage-report, which summarizes this log and the bash-rules log.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
@@ -1774,7 +1774,7 @@
       "name": "v0-restart",
       "source": "./plugins/v0-restart",
       "description": "Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failing cases the previous attempt proved, and dropping its accidental architecture.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
