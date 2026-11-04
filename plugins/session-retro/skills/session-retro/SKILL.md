@@ -1,8 +1,8 @@
 ---
 name: session-retro
-description: Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, or why a session went badly.
+description: Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, a review of recent or past sessions, or why a session went badly.
 disable-model-invocation: true
-argument-hint: "[session id, transcript path, or blank for this session]"
+argument-hint: "[session id, transcript path, 'recent' or a day window, or blank for this session]"
 ---
 
 # Session retro
@@ -15,7 +15,7 @@ The clustering rule under step 4 is adapted from the `re0-memo` skill in LilMGen
 
 ## Steps
 
-1. **Find the transcript.** With no argument, review this session (`${CLAUDE_SESSION_ID}`). Otherwise take the session id or path from `$ARGUMENTS`, or search recent transcripts by topic. Read `references/transcripts.md` for where transcripts live and the `jq` recipes to pull tool calls, errors, user corrections and token usage without loading a whole transcript into context. Done when you have the transcript path and a list of the session's tool calls, failures and corrections.
+1. **Find the transcript.** If `$ARGUMENTS` asks for recent, all or past sessions, or gives a window (for example "last 14 days"), follow `references/multi-session.md` first: it starts from the usage log and ends with the few sessions worth a transcript read. Otherwise, with no argument, review this session (`${CLAUDE_SESSION_ID}`). Otherwise take the session id or path from `$ARGUMENTS`, or search recent transcripts by topic. Read `references/transcripts.md` for where transcripts live and the `jq` recipes to pull tool calls, errors, user corrections and token usage without loading a whole transcript into context. Done when you have the transcript path and a list of the session's tool calls, failures and corrections.
 
 2. **Read the environment it ran in.** The repo's `CLAUDE.md` and `AGENTS.md` (and `~/.claude/CLAUDE.md`), `.claude/settings.json` hooks and permissions, installed skills and agents, the repo's own check commands (`package.json` or build-tool `lint`/`check`/`test` scripts, pre-commit config, CI workflows). Done when you know which guardrails exist and which are wired.
 
