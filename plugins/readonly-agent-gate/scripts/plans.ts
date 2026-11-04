@@ -1,7 +1,7 @@
 // Plan-directory rules for the plan-writing agents (DEFAULT_PLAN_WRITERS in agents.ts plus the
 // `plan_writers` option). Besides scratch, their Write, Edit and MultiEdit calls may land on a
 // Markdown file under a plan directory: the `plan_dirs` option, relative to the project root,
-// default docs/plans. NotebookEdit and Bash get nothing extra.
+// default .claude/plans and docs/plans. NotebookEdit and Bash get nothing extra.
 //
 // The project root is CLAUDE_PROJECT_DIR, which Claude Code sets for every command hook. Without
 // it there is no plan allowance. The payload cwd adds a second root only when it sits in a git
@@ -23,7 +23,7 @@
 import { lstatSync, readFileSync, statSync } from 'node:fs'
 import { hardLinkCheck, joinPath, normpath, resolve, SCRATCH_MSG, targetPath } from './scratch.ts'
 
-export const DEFAULT_PLAN_DIRS: readonly string[] = ['docs/plans']
+export const DEFAULT_PLAN_DIRS: readonly string[] = ['.claude/plans', 'docs/plans']
 
 const MAX_OPTION = 4096
 const MAX_DIRS = 16
@@ -39,12 +39,17 @@ const INSTRUCTION_FILES = new Set(['claude.md', 'claude.local.md', 'agents.md'])
 
 // One `plan_dirs` entry, normalized, or null when it is empty, absolute, starts with ~, has a
 // `..` part or a control character, names the project root itself, or enters .git or .claude.
+// The one exception is `.claude/plans` and its subdirectories (Claude Code's own plansDirectory).
 function planDir(raw: string): string | null {
   const s = raw.trim()
   if (s === '' || s.length > MAX_DIR || /[\0-\x1f\x7f]/.test(s) || s.startsWith('/') || s.startsWith('~')) return null
   if (s.split('/').includes('..')) return null
   const norm = normpath(s)
-  if (norm === '.' || norm.split('/').some(c => CONFIG_PARTS.has(c.toLowerCase()))) return null
+  if (norm === '.') return null
+  const parts = norm.split('/')
+  // Skip a leading .claude/plans, then refuse any config part left.
+  const tail = parts[0] === '.claude' && parts[1] === 'plans' ? parts.slice(2) : parts
+  if (tail.some(c => CONFIG_PARTS.has(c.toLowerCase()))) return null
   return norm
 }
 

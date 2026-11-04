@@ -17,7 +17,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 const DOC_EXTS = [".md", ".mdx", ".rst", ".adoc", ".txt"];
 const DOC_GLOBS = ["*.md", "*.mdx", "*.rst", "*.adoc"];
 // Records of a moment, not claims about current code.
-const SKIP_DOCS = [":(exclude)docs/plans", ":(exclude)docs/research", ":(exclude)docs/adr", ":(exclude).agents", ":(exclude,glob)**/CHANGELOG*"];
+const SKIP_DOCS = [":(exclude)docs/plans", ":(exclude)docs/research", ":(exclude)docs/adr", ":(exclude).agents", ":(exclude).claude/plans", ":(exclude,glob)**/CHANGELOG*"];
 const NON_DOC = DOC_EXTS.map((e) => `:(exclude,glob)**/*${e}`);
 const MAX_DOCS = 10;
 const MAX_IDENTS = 100;

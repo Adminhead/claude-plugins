@@ -103,12 +103,12 @@ check "edit outside the repo is silent" "$(st empty)"
 
 # Mentions only in historical docs.
 r=$root/historic; mkrepo "$r"
-git -C "$r" rm -q docs/guide.md; mkdir -p "$r/docs/research" "$r/docs/adr" "$r/.agents"
-for f in docs/plans/p.md docs/research/n.md docs/adr/0001.md .agents/a.md CHANGELOG.md; do echo 'widget.py' >"$r/$f"; done
+git -C "$r" rm -q docs/guide.md; mkdir -p "$r/docs/research" "$r/docs/adr" "$r/.agents" "$r/.claude/plans"
+for f in docs/plans/p.md docs/research/n.md docs/adr/0001.md .agents/a.md .claude/plans/a.md CHANGELOG.md; do echo 'widget.py' >"$r/$f"; done
 git -C "$r" add -A; git -C "$r" commit -qm hist; hook start "$r"
 echo 'print(2)' >"$r/widget.py"; edit "$r" "$r/widget.py"
 hook stop "$r"
-check "mentions only in plans, research, adr, .agents and CHANGELOG are silent" "$(st empty)"
+check "mentions only in plans, .claude/plans, research, adr, .agents and CHANGELOG are silent" "$(st empty)"
 
 # Doc-only change.
 r=$root/doconly; mkrepo "$r"; hook start "$r"

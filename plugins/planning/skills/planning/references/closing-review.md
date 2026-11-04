@@ -26,7 +26,7 @@ Fix the findings and review again. Stop after 3 rounds and report what is still 
 Write the final plan to the first location that applies.
 
 1. If the repo's `CLAUDE.md` or `AGENTS.md` names a plan location, use it.
-2. If the plan directs agent work (an implementation plan, slice plan, team contract file, or anything `implement-plan` will execute), save it to `.agents/plans/<slug>.md`.
+2. If the plan directs agent work (an implementation plan, slice plan, team contract file, or anything `implement-plan` will execute), save it to `.claude/plans/<slug>.md`.
 3. Otherwise (a spec, roadmap, requirements, or project plan for people to read), save it to `docs/plans/<slug>.md`.
 
 Skip this only if the user said not to. Report the path.

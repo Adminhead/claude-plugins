@@ -58,10 +58,10 @@ describe('agents', () => {
 })
 
 describe('plan options', () => {
-  test('plan_dirs defaults to docs/plans when unset or blank', () => {
-    expect(parsePlanDirs(undefined)).toEqual(['docs/plans'])
-    expect(parsePlanDirs('')).toEqual(['docs/plans'])
-    expect(parsePlanDirs('  \n')).toEqual(['docs/plans'])
+  test('plan_dirs defaults to .claude/plans and docs/plans when unset or blank', () => {
+    expect(parsePlanDirs(undefined)).toEqual(['.claude/plans', 'docs/plans'])
+    expect(parsePlanDirs('')).toEqual(['.claude/plans', 'docs/plans'])
+    expect(parsePlanDirs('  \n')).toEqual(['.claude/plans', 'docs/plans'])
   })
 
   test('plan_dirs entries are normalized and bad ones ignored', () => {
@@ -209,7 +209,7 @@ describe('plan files', () => {
     for (const command of ['echo x > docs/plans/a.md', 'tee docs/plans/a.md < /tmp/x', 'cp /tmp/a.md docs/plans/a.md', 'mkdir -p docs/plans/x']) {
       const r = ro('Bash', { command })
       expect(r.code).toBe(2)
-      expect(r.err).toContain(`To save a plan, use Write or Edit on a .md file under ${R}/docs/plans/;`)
+      expect(r.err).toContain(`To save a plan, use Write or Edit on a .md file under ${R}/.claude/plans/, ${R}/docs/plans/;`)
     }
   })
 
@@ -262,6 +262,25 @@ describe('plan files', () => {
     const env = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '.agents/plans' }
     expect(as('architect', 'Write', { file_path: `${R}/.agents/plans/a.md` }, env).code).toBe(0)
     expect(as('architect', 'Write', { file_path: `${R}/.agents/plans/.claude/a.md` }, env).code).toBe(2)
+  })
+
+  test('.claude/plans is a plan directory, the rest of .claude is not', () => {
+    // Default dirs: .claude/plans works, including subdirectories; other .claude paths do not.
+    expect(as('architect', 'Write', { file_path: `${R}/.claude/plans/a.md` }).code).toBe(0)
+    expect(as('architect', 'Write', { file_path: `${R}/.claude/plans/sub/a.md` }).code).toBe(0)
+    expect(as('architect', 'Edit', { file_path: '.claude/plans/a.md' }).code).toBe(0)
+    for (const file_path of [`${R}/.claude/agents/a.md`, `${R}/.claude/skills/x/SKILL.md`, `${R}/.claude/rules/a.md`,
+      `${R}/.claude/settings.md`, `${R}/.claude/plansx/a.md`, `${R}/.claude/plans/../agents/a.md`, `${R}/.claude/plans/.claude/a.md`,
+      `${R}/.claude/plans/.hidden.md`, `${R}/.claude/plans/CLAUDE.md`, `${R}/.claude/plans/sub/AGENTS.md`,
+      `${R}/.claude/plans/a.txt`, `${R}/.claude/plans/../../etc/a.md`, `${R}/.claude/plans`]) {
+      expect(as('architect', 'Write', { file_path }).code).toBe(2)
+    }
+    // A configured entry may name .claude/plans or below it, but no other .claude directory.
+    const env = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '.claude/plans/agent, .claude/agents, .claude/plans/.git/x, .claude' }
+    expect(as('architect', 'Write', { file_path: `${R}/.claude/plans/agent/a.md` }, env).code).toBe(0)
+    for (const file_path of [`${R}/.claude/agents/a.md`, `${R}/.claude/plans/a.md`, `${R}/.claude/plans/.git/x/a.md`, `${R}/.claude/a.md`]) {
+      expect(as('architect', 'Write', { file_path }, env).code).toBe(2)
+    }
   })
 
   test('over-long options are refused whole', () => {
@@ -420,7 +439,7 @@ describe('plan files on the filesystem', () => {
     expect(at(`${p}/.claude/worktrees/rel/docs/plans/a.md`, `${p}/.claude/worktrees/rel`).code).toBe(0)   // relative pointers
     const r = at(`${wt}/README.md`, wt)
     expect(r.code).toBe(2)
-    expect(r.err).toContain(`under ${p}/docs/plans/, ${wt}/docs/plans/ (`)
+    expect(r.err).toContain(`under ${p}/.claude/plans/, ${p}/docs/plans/, ${wt}/.claude/plans/, ${wt}/docs/plans/ (`)
     expect(at(`${wt}/docs/plans/.claude/x.md`, wt).code).toBe(2)
     // Without the cwd in it, or without the env root, the worktree is not a root.
     expect(at(`${wt}/docs/plans/a.md`, p).code).toBe(2)
@@ -433,7 +452,7 @@ describe('plan files on the filesystem', () => {
     for (const dir of [`${p}/.claude/worktrees/fake`, `${p}/.claude/worktrees/foreign`, `${p}/.claude/worktrees/nogit`, `${p}/.claude/worktrees/linked`]) {
       const r = as('architect:architect', 'Write', { file_path: `${dir}/docs/plans/a.md` }, env, { cwd: dir })
       expect(r.code).toBe(2)
-      expect(r.err).toContain(`under ${p}/docs/plans/ (`)   // the env root's plan directory only
+      expect(r.err).toContain(`under ${p}/.claude/plans/, ${p}/docs/plans/ (`)   // the env root's plan directory only
     }
   })
 
@@ -460,9 +479,11 @@ describe('plan files on the filesystem', () => {
   })
 
   test('a symlinked plan directory is not used', () => {
-    const r = w(pOut, `${pOut}/docs/plans/a.md`)
-    expect(r.code).toBe(2)
-    expect(r.err).toContain('symlink')
+    expect(w(pOut, `${pOut}/docs/plans/a.md`).code).toBe(2)
+    const only = as('architect:architect', 'Write', { file_path: `${pOut}/docs/plans/a.md` },
+      { CLAUDE_PROJECT_DIR: pOut, CLAUDE_PLUGIN_OPTION_PLAN_DIRS: 'docs/plans' }, { cwd: pOut })
+    expect(only.code).toBe(2)
+    expect(only.err).toContain('symlink')
     expect(w(pOut, `${out}/a.md`).code).toBe(2)
     expect(w(pIn, `${pIn}/docs/plans/a.md`).code).toBe(2)
     expect(w(pIn, `${pIn}/notes/a.md`).code).toBe(2)

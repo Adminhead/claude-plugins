@@ -1,7 +1,7 @@
 {
   "name": "readonly-agent-gate",
-  "version": "0.3.0",
-  "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans with Write/Edit under docs/plans in the project (CLAUDE_PROJECT_DIR) or in a git worktree of it that holds the agent's cwd. Needs bun.",
+  "version": "0.3.1",
+  "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans with Write/Edit under .claude/plans or docs/plans in the project (CLAUDE_PROJECT_DIR) or in a git worktree of it that holds the agent's cwd. Needs bun.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
@@ -22,8 +22,8 @@
     "plan_dirs": {
       "type": "string",
       "title": "Plan directories",
-      "description": "Where plan-writing agents may save .md files, separated by commas, relative to the project root (CLAUDE_PROJECT_DIR) and to a git worktree of it that holds the agent's cwd. Subdirectories count; dot-directories, dotfiles, CLAUDE.md and AGENTS.md below a plan directory do not. Absolute paths, '..', and paths into .git or .claude are ignored. Blank means docs/plans; a value over 4096 characters allows none.",
-      "default": "docs/plans"
+      "description": "Where plan-writing agents may save .md files, separated by commas, relative to the project root (CLAUDE_PROJECT_DIR) and to a git worktree of it that holds the agent's cwd. Subdirectories count; dot-directories, dotfiles, CLAUDE.md and AGENTS.md below a plan directory do not. Absolute paths, '..', and paths into .git or .claude (other than .claude/plans) are ignored. Blank means .claude/plans and docs/plans; a value over 4096 characters allows none.",
+      "default": ".claude/plans,docs/plans"
     }
   }
 }

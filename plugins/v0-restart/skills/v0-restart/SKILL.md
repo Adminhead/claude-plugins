@@ -21,7 +21,7 @@ Adapted from the `re0-work` skill in LilMGenius/paperthin (MIT).
 2. Decide what to keep: contracts, schemas that survived QA, quality gates, vocabulary, reusable services, real-surface tests and the negative corpus. Give evidence for each item.
 3. Decide what to drop: explanatory UI, debug panels, scaffold, shallow generated content, accidental abstractions and code that only taught what not to do. Give the reason for each.
 4. Name the first quality gate before planning any code.
-5. Write a v0 plan with one complete vertical loop. For multi-slice work, put the plan in `docs/plans/` through the `planning` skill.
+5. Write a v0 plan with one complete vertical loop. For multi-slice work, put the plan in `.claude/plans/` through the `planning` skill.
 6. Build only that loop until it clears the gate.
 
 ## Rules
