@@ -6,6 +6,7 @@ What goes where:
 
 - The repo keeps what belongs next to the code: README, code comments, CLAUDE.md, and ADRs or docs the project already keeps in the repo.
 - Outline gets what people outside the code need, or what should outlive this session: architecture overviews, decisions and why they were made, runbooks and operational procedures, environment and infrastructure details, setup and onboarding steps, integration contracts, and findings from debugging or incidents that someone will need again.
+- Agent plans (the files under `.claude/plans` or `.agents/plans`) stay in the repo and are not synced to Outline. Project docs, decisions and ADRs are, and they live in both places.
 
 When something of that kind happens in this session (a design decision, a non-obvious root cause, a new service, a changed deploy or setup step), record it in Outline as well as in the repo:
 

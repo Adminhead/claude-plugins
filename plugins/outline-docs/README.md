@@ -25,7 +25,7 @@ Without it, Claude searches Outline for a matching collection and asks you when 
 
 ## What Claude is told
 
-- The repo keeps what belongs next to the code. Outline gets architecture, decisions and their reasons, runbooks, environment details, onboarding, integration contracts and debugging or incident findings.
+- The repo keeps what belongs next to the code. Outline gets architecture, decisions and their reasons, runbooks, environment details, onboarding, integration contracts and debugging or incident findings. Agent plans are not synced to Outline.
 - Search Outline first and update an existing document rather than write a duplicate.
 - Confirm before creating a document or rewriting most of one. Small corrections go straight in.
 - Never write secrets or personal data.
