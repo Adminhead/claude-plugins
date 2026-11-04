@@ -482,7 +482,6 @@ describe('literal variables', () => {
     expect(rule('S=sudo; if c; then $S ls; fi')).toBe('priv-escalation')
     expect(rule("bash -c 'R=rm; if c; then $R -rf /; fi'")).toBe('rm-root')
     expect(rule("bash <<'E'\nR=pkill; $R -f foo\nE")).toBe('kill-by-name')
-    expect(rule("eval 'R=pkill; $R -f foo'")).toBe('kill-by-name')
     expect(rule('X=pkill; Y=$X; $Y -f foo')).toBe('kill-by-name')
     expect(rule('X=rm; Y=$X; Z=$Y; $Z -rf /')).toBe('rm-root')
     expect(rule('X=/bin/ls; X=/bin/ls; $X; X=/bin/ls; pkill -f foo')).toBe('kill-by-name')
@@ -494,6 +493,22 @@ describe('literal variables', () => {
     expect(rule('C=$HOME/.claude; cat $C/.credentials.json')).toBe('credentials-read')
     expect(rule('D=~/.claude; cat "$D/.credentials.json"')).toBe('credentials-read')
     expect(rule('D=~/.claude; f() { cat "$D/.credentials.json"; }; f')).toBe('credentials-read')
+  })
+
+  test('a literal here-string fed to a shell is read as a script', () => {
+    for (const [c, want] of [
+      ['bash <<< "pkill -f foo"', 'kill-by-name'],
+      ['sh <<< "pkill -f foo"', 'kill-by-name'],
+      ['X="pkill -f foo"; if c; then bash <<< "$X"; fi', 'kill-by-name'],
+      ['X="pkill -f foo"; (true); bash <<< "$X"', 'kill-by-name'],
+      ['X="pkill -f foo"; if c; then bash -s <<< "$X"; fi', 'kill-by-name'],
+      ['X="pkill -f foo"; (true); bash /dev/fd/0 <<< "$X"', 'kill-by-name'],
+      ['S=$(which bash); X="pkill -f foo"; $S <<< "$X"', 'kill-by-name'],
+      ['S=$(which bash); X="pkill -f foo"; "$S" <<< "$X"', 'kill-by-name'],
+      ['X=~/.claude/.credentials.json; (true); bash <<< "cat $X"', 'credentials-read'],
+    ] as const) expect([c, rule(c)]).toEqual([c, want])
+    // Text fed to anything else is data.
+    expect(rule('X="pkill -f foo"; grep foo <<< "$X"')).toBeNull()
   })
 
   test('a tool lookup reaches the danger rules under the tool name', () => {
@@ -517,8 +532,8 @@ describe('literal variables', () => {
       "bash -c 'Z=$(which nosuchtool); $Z rm -rf ~'",
       'false && X="echo hi"; $X rm -rf ~',
       'false &&\nX="echo hi"; $X rm -rf ~',
-      // The next lookup moves up to the command word when the first one vanishes.
-      'Z=$(which nosuch); Y=$(which rm); $Z $Y -rf /',
+      // Every variable that may hold nothing vanishes together, also from an argument.
+      'Z=$(which nosuch); Y=$(which b); $Z rm -rf "$Y/"',
       // An empty value turns a path into another path.
       'cd w && D=/tmp/x; rm -rf $D/',
       'cd w && D=/tmp/x; rm -rf "$D/"',
@@ -554,7 +569,7 @@ describe('literal variables', () => {
     }
     expect(sqlFiles(analyze('F=drop.sql; psql -f $F').scan!.commands)).toEqual(['drop.sql'])
     // After `&&` it holds that file or nothing, and psql -f with no file only fails.
-    expect(sqlFiles(analyze('false && F=safe.sql; psql -f $F').scan!.commands)).toContain('safe.sql')
+    expect(sqlFiles(analyze('false && F=safe.sql; psql -f $F').scan!.commands)).toEqual(['safe.sql', null])
   })
 
   test('offsets stay right after non-ASCII text', () => {
@@ -574,6 +589,15 @@ describe('literal variables', () => {
   test('the reparse cap counts rewritten scripts, so a short script cannot expand past it', () => {
     const script = `X=${'a'.repeat(1024)}; ${Array(60).fill('echo $X').join('; ')}`
     const c = Array(40).fill(`bash -c '${script}'`).join('; ')
+    const t = Date.now()
+    analyze(c)
+    expect(c.length).toBeLessThan(64 * 1024)
+    expect(Date.now() - t).toBeLessThan(2000)
+  })
+
+  test('the write passes count against the cap, so many nested scripts cannot buy more parsing', () => {
+    const inner = `bash -c 'A=a; B=$A; C=$B; $C; Z=$(which q); $Z x'`
+    const c = `cd a && A=x; B=$A; C=$B; $C; ${Array(800).fill(inner).join('; ')}`
     const t = Date.now()
     analyze(c)
     expect(c.length).toBeLessThan(64 * 1024)

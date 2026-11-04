@@ -110,6 +110,8 @@ function pastSub(argv: Argv, w: Wrapper): number | null {
   return w.sub!.includes(argv[i] ?? '') ? i + 1 : null
 }
 
+export const isWrapper = (name: string) => Object.hasOwn(WRAPPERS, name)
+
 // The command a wrapper runs, or null when it runs none, is only a lookup (`command -v`), or its words are unknown.
 function unwrap(argv: Argv): Argv | null {
   const w = WRAPPERS[baseName(argv[0])]
@@ -1142,7 +1144,7 @@ export function invocation(v: Argv): Invocation | null {
   return { shell: spec.shell, code, ops: i, sFlag }
 }
 
-const STDIN_WORDS = new Set(['-', '/dev/stdin', 'run'])
+const STDIN_WORDS = new Set(['-', '/dev/stdin', '/dev/fd/0', 'run'])
 
 // The kind of program a command reads from stdin, if it does: a shell (no `-c` script and no program file, or `-s`, or
 // `-`), an interpreter with no inline code and no script file, or `source`/`.` of `/dev/stdin`. This is the one place that
@@ -1153,7 +1155,7 @@ export function stdinReader(v: Argv): 'shell' | 'script' | null {
   const inv = invocation(v)
   if (!inv || inv.code >= 0) return null
   const rest = v.slice(inv.ops)
-  if (inv.shell) return inv.sFlag || rest.length === 0 || rest[0] === '-' || rest[0] === '/dev/stdin' ? 'shell' : null
+  if (inv.shell) return inv.sFlag || rest.length === 0 || rest[0] === '-' || rest[0] === '/dev/stdin' || rest[0] === '/dev/fd/0' ? 'shell' : null
   return rest.every(a => a !== null && STDIN_WORDS.has(a)) ? 'script' : null
 }
 

@@ -5,7 +5,7 @@
 // to a model). Like the danger rules these target model habits, not a determined adversary. Nothing here touches `$`.
 
 import { baseName, dynamicProgram, invocation, stdinReader, viewsOf } from '../danger/danger'
-import { fedBodies, prevStage } from '../danger/rules'
+import { MAX_COMMANDS, fedBodies, prevStage, withoutVariable } from '../danger/rules'
 import type { ShellCommand } from '../shell/walk'
 
 export type Category = 'read' | 'write' | 'smuggle' | 'flag'
@@ -68,9 +68,6 @@ function readNudge(h: Finding): string {
   for (let max = 70; out.length >= MAX_READ_NUDGE && max >= 20; max -= 10) out = build(max)
   return out
 }
-
-// More commands than this (after nested scripts) are left to the model rather than walked pairwise.
-const MAX_COMMANDS = 400
 
 // ---------------------------------------------------------------------------------------------------------------
 // Words and redirects
@@ -372,23 +369,30 @@ function inPlaceInterpreter(v: Argv): boolean {
   return false
 }
 
-// Variables a command line assigns: `X=...` prefixes and bare assignments, `export X=...` and its kin, and what `read`,
-// `mapfile` and `printf -v` set.
-function assignments(commands: readonly ShellCommand[]): Set<string> {
-  const out = new Set<string>()
+// A value that is itself shell code, or a substitution that prints text it was given or fetched, holds a script.
+const CODE_VALUE = /[;|&<>`$()\n]/
+const TEXT_SOURCES = new Set(['echo', 'printf', 'cat', 'eval', 'curl', 'wget'])
+const printsText = (c: ShellCommand) => viewsOf(c.argv).some(decoder) || TEXT_SOURCES.has(programOf(c))
+
+// Variables a command line assigns (`X=...` prefixes and bare assignments, `export X=...` and its kin, and what `read`,
+// `mapfile` and `printf -v` set), each true when one of its values looks like a script rather than a program.
+function assignments(commands: readonly ShellCommand[]): Map<string, boolean> {
+  const out = new Map<string, boolean>()
+  const add = (name: string, script: boolean) => out.set(name, script || out.get(name) === true)
   for (const c of commands) {
-    for (const a of c.assigns) if (a.name) out.add(a.name.replace(/\[.*$/, ''))
+    const script = (value: string | null) => (value === null ? c.subs.some(printsText) : CODE_VALUE.test(value))
+    for (const a of c.assigns) if (a.name) add(a.name.replace(/\[.*$/, ''), script(a.value))
     const name = baseName(c.argv[0] ?? null)
     if (DECLARERS.has(name)) {
-      for (const t of c.text.slice(1)) {
+      for (const [i, t] of c.text.slice(1).entries()) {
         const m = /^([A-Za-z_]\w*)\+?=/.exec(t)
-        if (m) out.add(m[1]!)
+        if (m) add(m[1]!, script(c.argv[i + 1] === null ? null : t.slice(m[0].length)))
       }
     } else if (name === 'read' || name === 'mapfile' || name === 'readarray') {
       const s = split(c.argv, name === 'read' ? 'adinNptu' : 'dnOsCcu')
-      for (const a of [...s.operands, ...(s.values.get('-a') ?? [])]) if (a !== null) out.add(a)
+      for (const a of [...s.operands, ...(s.values.get('-a') ?? [])]) if (a !== null) add(a, false)
     } else if (name === 'printf') {
-      for (const a of split(c.argv, 'v').values.get('-v') ?? []) if (a !== null) out.add(a.replace(/\[.*$/, ''))
+      for (const a of split(c.argv, 'v').values.get('-v') ?? []) if (a !== null) add(a.replace(/\[.*$/, ''), false)
     }
   }
   return out
@@ -398,16 +402,27 @@ function assignments(commands: readonly ShellCommand[]): Set<string> {
 // hide nothing are written in before the rules run (expand.ts), so one that remains may hold anything: a script, or a
 // program the danger rules should see. A path under one (`$W/bin/x`) is left alone.
 const VAR_LEAD = /^\s*\$(?:\{([A-Za-z_]\w*)(?:[:%#/^,][^}]*)?\}|([A-Za-z_]\w*))(?:\s|;|\$|$)/
-const heldVar = (text: string, vars: ReadonlySet<string>) => {
+const heldVar = (text: string, vars: ReadonlyMap<string, boolean>) => {
   const m = VAR_LEAD.exec(text)
   const name = m?.[1] ?? m?.[2]
   return name !== undefined && vars.has(name) ? name : null
 }
 
-// A command word that is one substitution of a program that prints text it was given or fetched: that text runs. (A lookup,
-// as in `$(which tool) --version`, only prints a path.)
+// The assigned variable a command runs, also behind a wrapper: a wrapper's view stops at a word it cannot read, so each such
+// word is read as a name here.
+const HELD = '\u0001'
+function heldCommand(c: ShellCommand, argv: Argv, vars: ReadonlyMap<string, boolean>): string | null {
+  if (vars.size === 0 || !argv.includes(null)) return null
+  const named = argv.map((a, i) => {
+    const name = a === null ? heldVar(c.text[i] ?? '', vars) : null
+    return name === null ? a : `${HELD}${name}`
+  })
+  return viewsOf(named).find(v => v[0]?.startsWith(HELD))?.[0]?.slice(1) ?? null
+}
+
+// A command word that is one substitution of a program that prints text: that text runs. (A lookup, as in
+// `$(which tool) --version`, only prints a path.)
 const SUBSTITUTED = /^(?:\$\([^]*\)|`[^`]*`)$/
-const TEXT_SOURCES = new Set(['echo', 'printf', 'cat', 'eval', 'curl', 'wget'])
 
 // Programs whose output an `eval "$(...)"` conventionally runs: shell setup, not a hidden payload.
 const EVAL_OK = new Set([
@@ -438,6 +453,15 @@ export function hygiene(commands: readonly ShellCommand[], steering = true): Ver
     const argv = argvOf(c)
     const vs = viewsOf(argv)
     let viaXargs = false
+
+    const held = withoutVariable.has(c) ? null : heldCommand(c, argv, vars)
+    if (held !== null) {
+      hits.push(
+        vars.get(held)
+          ? { category: 'smuggle', tool: 'script', what: 'a script stored in a variable run as a command' }
+          : { category: 'smuggle', tool: 'script', what: `$${held} run as a command, and it may not hold a plain program`, fix: NAME_IT },
+      )
+    }
 
     // flag: Claude Code's `grep` is a shell function running ugrep, which rejects ripgrep's --no-ignore (exit 2, empty
     // stdout). Only the literal `grep` word at the top level reaches that function.
@@ -527,10 +551,7 @@ export function hygiene(commands: readonly ShellCommand[], steering = true): Ver
       }
 
       // programs run from expansions: `$X`, `eval "$X"`, `bash -c "$X"`, `source <(...)`
-      const held = v.length > 0 && v[0] === null && words[0] !== undefined ? heldVar(words[0], vars) : null
-      if (held) {
-        hits.push({ category: 'smuggle', tool: 'script', what: `$${held} run as a command, and it may not hold a plain program`, fix: NAME_IT })
-      } else if (v.length > 0 && v[0] === null && SUBSTITUTED.test(words[0] ?? '') && c.subs.some(s => decodes(s) || TEXT_SOURCES.has(programOf(s)))) {
+      if (v.length > 0 && v[0] === null && SUBSTITUTED.test(words[0] ?? '') && c.subs.some(printsText)) {
         hits.push({ category: 'smuggle', tool: 'script', what: 'the output of a substitution run as a command' })
       } else if (v.length > 0 && v[0] !== null && !inline && dynamicProgram(v, c)) {
         // Only `eval` and `sh -c` run text; `source "$dir/x.sh"`, `bash "$script"` and a heredoc to a shell (whose body the
