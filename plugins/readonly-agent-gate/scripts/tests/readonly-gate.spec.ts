@@ -272,9 +272,12 @@ describe('plan files', () => {
     for (const file_path of [`${R}/.claude/agents/a.md`, `${R}/.claude/skills/x/SKILL.md`, `${R}/.claude/rules/a.md`,
       `${R}/.claude/settings.md`, `${R}/.claude/plansx/a.md`, `${R}/.claude/plans/../agents/a.md`, `${R}/.claude/plans/.claude/a.md`,
       `${R}/.claude/plans/.hidden.md`, `${R}/.claude/plans/CLAUDE.md`, `${R}/.claude/plans/sub/AGENTS.md`,
-      `${R}/.claude/plans/a.txt`, `${R}/.claude/plans/../../etc/a.md`, `${R}/.claude/plans`]) {
+      `${R}/.claude/plans/a.txt`, `${R}/.claude/plans/../../etc/a.md`, `${R}/.claude/plans`,
+      `${R}/.CLAUDE/plans/x.md`, `${R}/.claude/settings.json`, `${R}/.claude/plans/x.sh`]) {
       expect(as('architect', 'Write', { file_path }).code).toBe(2)
     }
+    // An upper-case .CLAUDE entry is not the exempt .claude/plans.
+    expect(as('architect', 'Write', { file_path: `${R}/.CLAUDE/plans/x.md` }, { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '.CLAUDE/plans' }).code).toBe(2)
     // A configured entry may name .claude/plans or below it, but no other .claude directory.
     const env = { CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '.claude/plans/agent, .claude/agents, .claude/plans/.git/x, .claude' }
     expect(as('architect', 'Write', { file_path: `${R}/.claude/plans/agent/a.md` }, env).code).toBe(0)
