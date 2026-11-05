@@ -615,6 +615,13 @@ describe('literal variables', () => {
         'X=$(curl -s x); $X""',
         'X=$(curl -s x); $X$Y',
         'X=$(curl -s x); ${X:-y}',
+        'X=$(curl -s x); $X}',
+        'X=$(curl -s x); "$X"}',
+        'X=$(curl -s x); ${X}}',
+        'X=$(curl -s x); bash -c "$X}"',
+        'X=$(curl -s x); eval "$X}"',
+        'X=$(curl -s x); python3 -c "$X}"',
+        'Y=$(which bash); $Y} x',
         'A=pkill; ${A:-x} -f foo',
         // The value was read against another home.
         'C=~/bin/tool; HOME=/tmp/h; $C x',
@@ -781,6 +788,12 @@ describe('literal variables', () => {
         'PATH=/tmp/e; Z=$(command -v yq); $Z -f foo',
         'CDPATH=/tmp; Z=$(cd e && mise which yq); $Z x',
         'export CDPATH=/tmp; Z=$(cd e && mise which yq); $Z x',
+        // A loop, a default or a descriptor sets PATH as well as an assignment does.
+        'for PATH in /tmp/e:/usr/bin; do :; done; Z=$(which yq); $Z',
+        'for PATH in /tmp/e; do :; done; Z=$(which yq); $Z -f foo',
+        'select PATH in /tmp/e; do break; done; Z=$(which yq); $Z',
+        ': ${PATH:=/tmp/e}; Z=$(which yq); $Z',
+        'for CDPATH in /tmp; do :; done; Z=$(cd e && mise which yq); $Z',
         // Any other command named by an expansion refuses a lookup.
         '$E x; Z=$(which yq); $Z -f foo',
         '"$@"; Z=$(which yq); $Z -f foo',
@@ -825,6 +838,74 @@ describe('literal variables', () => {
       ],
       'smuggle/script',
     )
+  })
+
+  // Any builtin could be behind the name, so nothing can be said about what it binds.
+  test('a command named by an expansion turns write-in off', () => {
+    const declare = `"$(printf '\\130=pkill -f foo')"`
+    expectAll(
+      [
+        `set -- declare ${declare}; X="ls -l"; (true); "$@"; $X`,
+        `f() { "$@"; }; X="ls -l"; f declare -g ${declare}; $X`,
+        `set -- declare "$(printf 'I\\106S=,')"; X="pkill,-f,foo,a b"; (true); "$@"; $X`,
+        `set -- declare "$(printf 'HOM\\105=pkill -f foo ')"; X=~/"a b"; (true); "$@"; $X`,
+        `set -- declare "$(printf 'HOM\\105=pkill -f foo ')"; "$@"; X=~/"a b"; (true); $X`,
+        `set -- eval ${declare}; X="ls -l"; (true); "$@"; $X`,
+        `set -- eval "$(printf 'I\\106S=,')"; X="pkill,-f,foo,a b"; (true); "$@"; $X`,
+        `set -- eval "$(printf 'HOM\\105=pkill -f foo ')"; X=~/"a b"; (true); "$@"; $X`,
+        `set -- eval "$(printf '\\130=pkill')"; X="ls -l"; (true); "$@"; $X -f foo`,
+        `X="ls -l"; (true); "$@"; $X`,
+        `X="ls -l"; (true); $CMD; $X`,
+        `X="ls -l"; (true); $1; $X`,
+        `X="ls -l"; (true); $(command -v declare) ${declare}; $X`,
+        // A wrapper's view stops at the word, and `command` and `builtin` run in this shell.
+        `set -- declare ${declare}; X="ls -l"; (true); command "$@"; $X`,
+        `set -- declare ${declare}; X="ls -l"; (true); builtin "$@"; $X`,
+        // A callback runs in this shell.
+        `X="ls -l"; (true); mapfile -C "$p" -c 1 A < f; $X`,
+        `X="ls -l"; (true); mapfile -C 'eval "$p"' -c 1 A < f; $X`,
+        `X="ls -l"; (true); readarray -C "$p" -c 1 A < f; $X`,
+        `X="ls -l"; (true); compgen -F "$p" a; $X`,
+        `X="ls -l"; (true); bind -x "$p"; $X`,
+        `X="ls -l"; (true); complete -C "$p" a; $X`,
+        // PS4 runs at each traced command, in this shell.
+        `X="pkill1-f1foo a b"; PS4='$((IFS=1))'; (true); set -x; $X`,
+        `X="ls -l"; PS4='$(echo hi)'; (true); set -x; $X`,
+      ],
+      'smuggle/script',
+    )
+  })
+
+  test('a name the shell sets itself, or an appended one, does not settle', () => {
+    expectAll(
+      [
+        "MAPFILE='echo safe'; mapfile -t <<< 'pkill -f foo'; if true; then $MAPFILE; fi",
+        "MAPFILE='echo safe'; readarray -t <<< 'pkill -f foo'; (true); $MAPFILE",
+        "BASH_REMATCH='echo safe'; [[ 'pkill -f foo' =~ .* ]]; if true; then $BASH_REMATCH; fi",
+        "COPROC='echo safe'; coproc cat </dev/null; if true; then $COPROC; fi",
+        "DIRSTACK='echo safe'; pushd /tmp; if true; then $DIRSTACK; fi",
+        "PIPESTATUS='echo safe'; true; if true; then $PIPESTATUS; fi",
+        'X="ls -l"; X+="ls -l"; (true); $X',
+        'X=$(command -v echo); X+=$(command -v echo); (true); "$X"',
+      ],
+      'smuggle/script',
+    )
+  })
+
+  test('a lookup must be its command\'s only assignment, and print nothing but the path', () => {
+    expectAll(
+      [
+        'Z=$(which yq) X=1; (true); $Z .a f',
+        'Z=$(which yq) X=$Z; (true); $X .a f',
+        'A=$(cd /x) Z=$(mise which yq); $A .a f',
+        'A=$(cd -) Z=$(mise which yq); $A .a f',
+        'Z=$(cd - && mise which yq); $Z .a f',
+        'Z=$(which yq 2>&1); $Z .a f',
+        'Z=$(mise which yq 2>&1); $Z .a f',
+      ],
+      'smuggle/script',
+    )
+    expectAll(['Z=$(which yq 2>/dev/null); $Z .a f', 'Z=$(cd /x && mise which yq); $Z .a f', 'Z=$(cd /x; mise which yq); "$Z" .a f'], 'pass')
   })
 
   test('a home value is not written in when a binding sets HOME, however it is spelled', () => {

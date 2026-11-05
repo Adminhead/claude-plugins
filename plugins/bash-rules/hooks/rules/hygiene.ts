@@ -398,10 +398,10 @@ function assignments(commands: readonly ShellCommand[]): Map<string, boolean> {
   return out
 }
 
-// The assigned variable text starts with (`"$X"`, `${X} args`, `${X:-y}`, `$X$Y`). The literal and lookup variables that
+// The assigned variable text starts with (`"$X"`, `${X} args`, `${X:-y}`, `$X$Y`, `$X}`). The literal and lookup variables that
 // hide nothing are written in before the rules run (expand.ts, settle.ts), so one that remains may hold anything: a script, or a
 // program the danger rules should see. A path under one (`$W/bin/x`) is left alone.
-const VAR_LEAD = /^\s*\$(?:\{([A-Za-z_]\w*)(?:[:%#/^,][^}]*)?\}|([A-Za-z_]\w*))(?:\s|;|\$|$)/
+const VAR_LEAD = /^\s*\$(?:\{([A-Za-z_]\w*)(?:[:%#/^,][^}]*)?\}|([A-Za-z_]\w*))(?:\s|;|\$|\}|$)/
 const heldVar = (text: string, vars: ReadonlyMap<string, boolean>) => {
   const m = VAR_LEAD.exec(text)
   const name = m?.[1] ?? m?.[2]

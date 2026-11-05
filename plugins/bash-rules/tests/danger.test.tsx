@@ -591,8 +591,10 @@ describe('literal variables', () => {
       expect([c, sqlFiles(analyze(c).scan!.commands)]).toEqual([c, [null]])
     }
     expect(sqlFiles(analyze('F=drop.sql; psql -f $F').scan!.commands)).toEqual(['drop.sql'])
-    // After `&&` it holds that file or nothing, and psql -f with no file only fails.
-    expect(sqlFiles(analyze('false && F=safe.sql; psql -f $F').scan!.commands)).toEqual(['safe.sql', null])
+    // Unread stays unread: a `cd` can put the file elsewhere, and the view with the value written in does not know that.
+    for (const c of ['F=safe.sql; (cd db; psql -f $F)', 'F=safe.sql; if c; then cd db; fi; psql -f $F', 'F=safe.sql; (true); psql -f $F', 'false && F=safe.sql; psql -f $F']) {
+      expect([c, sqlFiles(analyze(c).scan!.commands)]).toEqual([c, [null]])
+    }
   })
 
   test('offsets stay right after non-ASCII text', () => {

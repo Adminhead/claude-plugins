@@ -10,6 +10,7 @@
 import { baseName, invocation, isWrapper, stdinReader, viewsOf } from './danger'
 import { BINDERS, DECLARERS, MARK, MARKER, MARKER_WORD, SPECIAL, lex, marker, quietRedirects, sameShape, splice } from './expand'
 import type { Site } from './expand'
+import { sqlFiles } from './sqlfile'
 import { parse } from '../shell/walk'
 import type { ShellCommand } from '../shell/walk'
 import { parse as unbash } from '../vendor/unbash.js'
@@ -40,43 +41,50 @@ function visit(v: unknown, f: (n: Node) => void): void {
 const IDENT = /[A-Za-z_]\w*/g
 const wordValue = (w: unknown) => (isNode(w) && typeof w.value === 'string' ? w.value : '')
 
-// The parser's view of one script: where each name is assigned, every other name it can bind, the names a bare assignment
-// sets for what follows (`NAME=x cmd` sets NAME only for cmd), the functions it defines, and whether it reads a variable
-// named by another (`${!N:=x}`).
-type Facts = { assigns: Map<string, number[]>; bound: Set<string>; sets: Set<string>; functions: Set<string>; indirect: boolean }
+// The parser's view of one script: where each name is assigned, every other name it can bind, the names that stay set for
+// what follows (`NAME=x cmd` sets NAME only for cmd), the names `+=` appends to, the functions it defines, and whether it
+// reads a variable named by another (`${!N:=x}`).
+type Facts = { assigns: Map<string, number[]>; bound: Set<string>; sets: Set<string>; appended: Set<string>; functions: Set<string>; indirect: boolean }
 
 function factsOf(script: string): Facts {
-  const out: Facts = { assigns: new Map(), bound: new Set(), sets: new Set(), functions: new Set(), indirect: false }
+  const out: Facts = { assigns: new Map(), bound: new Set(), sets: new Set(), appended: new Set(), functions: new Set(), indirect: false }
+  const sets = (name: string) => {
+    out.bound.add(name)
+    out.sets.add(name)
+  }
   visit(unbash(script), n => {
     if (n.type === 'Assignment') {
       const name = n.name as string
+      if (n.append) out.appended.add(name)
       const at = out.assigns.get(name)
       if (at) at.push(n.pos as number)
       else out.assigns.set(name, [n.pos as number])
       out.bound.add(name)
     } else if (n.type === 'Command' && n.name === undefined) {
       for (const a of n.prefix as Node[]) if (a.type === 'Assignment') out.sets.add(a.name as string)
-    } else if (n.type === 'For' || n.type === 'Select' || n.type === 'Coproc') out.bound.add(wordValue(n.name))
+    } else if (n.type === 'For' || n.type === 'Select' || n.type === 'Coproc') sets(wordValue(n.name))
     else if (n.type === 'Function') out.functions.add(wordValue(n.name))
-    else if (n.type === 'FileDescriptorVariable') out.bound.add(n.name as string)
+    else if (n.type === 'FileDescriptorVariable') sets(n.name as string)
     else if (n.type === 'ParameterExpansion') {
       if (n.prefix === '!') out.indirect = true
       const op = (n.operation as { operator?: string } | undefined)?.operator
-      if (op === '=' || op === ':=') out.bound.add(n.parameter as string)
+      if (op === '=' || op === ':=') sets(n.parameter as string)
     } else if (n.type.startsWith('Arithmetic') && typeof n.text === 'string') {
-      for (const m of n.text.matchAll(IDENT)) out.bound.add(m[0])
+      for (const m of n.text.matchAll(IDENT)) sets(m[0])
     }
   })
   return out
 }
 
 // Programs that can change what a later word means in ways no parse shows. Any of these seals the command.
-const SEALS = new Set(['source', '.', 'trap', 'alias', 'unalias', 'hash', 'enable', 'shopt'])
+const SEALS = new Set(['source', '.', 'trap', 'alias', 'unalias', 'hash', 'enable', 'shopt', 'bind', 'complete', 'compgen'])
 const LOOKUP_TOOLS = ['which', 'command', 'mise', 'cd']
+// IFS changes how a value splits; PS4 is evaluated at each traced command, so it can bind what no parse of it shows.
+const unsettling = (r: Reach) => r.sealed || r.bound.has('IFS') || r.bound.has('PS4')
 
 // `sealed`: nothing may be written in. `bound`: names the shell can set, from the AST and from binder commands' words.
 // `nested`: those set in a handed script. `sets`: those that stay set for later commands. `functions`: functions defined.
-// `blind`: a command runs whose name is an expansion.
+// `blind`: a command runs whose name is an expansion, also behind a wrapper, and it could be any builtin (`"$@"`).
 type Reach = { sealed: boolean; bound: Set<string>; nested: Set<string>; sets: Set<string>; functions: Set<string>; blind: boolean }
 
 // Whether a lookup's own program, or what it prints, can change: a function of its name, another PATH finding a local
@@ -102,10 +110,16 @@ function reachOf(read: NonNullable<ReturnType<Read>>): Reach {
   }
   for (const n of out.nested) out.bound.add(n)
   for (const c of read.commands) {
-    for (const v of viewsOf(c.argv)) {
+    const views = viewsOf(c.argv)
+    // A wrapper's views stop at a word it cannot read, so the last is what it runs.
+    const last = views[views.length - 1]
+    if (last && isWrapper(baseName(last[0] ?? null)) && last.includes(null)) out.blind = true
+    for (const v of views) {
       const name = baseName(v[0] ?? null)
       if (v[0] === null) out.blind = true
       if (SEALS.has(name) || (name === 'eval' && v.includes(null))) out.sealed = true
+      // A callback runs in this shell for each line read.
+      if ((name === 'mapfile' || name === 'readarray') && c.text.some(t => /^-[A-Za-z]*C/.test(t))) out.sealed = true
       if (name === 'env') for (const t of c.text) namesIn(t, out.bound)
       if (!DECLARERS.has(name) && !BINDERS.has(name)) continue
       const opts = c.text.slice(1).filter(t => /^-/.test(t))
@@ -134,6 +148,9 @@ const TOOL_NAME = /^[A-Za-z0-9_][\w.+-]*$/
 // `unset` is where the variable may start to hold nothing: anywhere for a lookup, which may come back empty, and past its
 // list for an assignment after `&&` or `||`, which may not run. Infinity when the value always holds.
 type Value = { text: string; finder: boolean; home: boolean; unset: number; from: number }
+
+// What the shell sets by itself, past main's SPECIAL names (`mapfile` with no name sets MAPFILE).
+const IMPLICIT = /^(?:MAPFILE|COPROC|DIRSTACK|PIPESTATUS|BASH_\w*|COMP_\w*|READLINE_\w*)$/
 
 type Top = { from: number; to: number; until: number }
 
@@ -180,7 +197,8 @@ const topAt = (tops: readonly Top[], at: number) => {
 
 // The tool `which X`, `command -v X` or `mise which X` (with `--cd DIR` or `-C DIR`) prints the path of, by bare name.
 function toolOf(c: ShellCommand): string | null {
-  if (c.assigns.length > 0 || c.pipeline !== null || !quietRedirects(c)) return null
+  // `2>&1` would put an error message in the value.
+  if (c.assigns.length > 0 || c.pipeline !== null || c.heredocs.length > 0 || c.redirects.some(r => r.target !== '/dev/null')) return null
   const a = c.argv
   const name = (w: string | null | undefined) => (typeof w === 'string' && TOOL_NAME.test(w) ? w : null)
   if (a[0] === 'which') return a.length === 2 ? name(a[1]) : null
@@ -194,12 +212,14 @@ function toolOf(c: ShellCommand): string | null {
   return rest.length === 2 && rest[0] === 'which' ? name(rest[1]) : null
 }
 
-// The tool an assignment's one substitution looks up, also as `cd DIR && mise which X`. Nothing may be nested in it.
+// The tool an assignment's one substitution looks up, also as `cd DIR && mise which X`. It must be the command's only
+// assignment, since a command's substitutions are not told apart by assignment, and nothing may be nested in it. `cd -`
+// prints the directory.
 function lookedUp(c: ShellCommand): string | null {
-  if (c.subs.some(s => s.nesting !== c.nesting + 1)) return null
+  if (c.assigns.length !== 1 || c.subs.some(s => s.nesting !== c.nesting + 1)) return null
   if (c.subs.length === 1) return toolOf(c.subs[0]!)
   const [cd, mise] = c.subs
-  if (c.subs.length !== 2 || cd!.argv[0] !== 'cd' || cd!.argv.length !== 2 || cd!.pipeline !== null || cd!.assigns.length > 0 || !quietRedirects(cd!)) return null
+  if (c.subs.length !== 2 || cd!.argv[0] !== 'cd' || cd!.argv.length !== 2 || cd!.argv[1] === '-' || cd!.pipeline !== null || cd!.assigns.length > 0 || !quietRedirects(cd!)) return null
   return mise!.argv[0] === 'mise' ? toolOf(mise!) : null
 }
 
@@ -216,14 +236,14 @@ function settledVars(script: string, commands: readonly ShellCommand[], lx: NonN
     }
   }
   const { tops, sole } = topLevel(script)
-  const { assigns } = factsOf(script)
+  const { assigns, appended } = factsOf(script)
   // The lexer reads an assignment in `((X=1))` too, which the AST holds as arithmetic.
   const lexed = new Map<string, number>()
   for (const a of lx.assigns) lexed.set(a.name, (lexed.get(a.name) ?? 0) + 1)
   const lookups = !lookupsMove(r)
   const home = !r.bound.has('HOME')
   for (const [name, list] of binds) {
-    if (lx.named.has(name) || SPECIAL.has(name) || r.nested.has(name)) continue
+    if (lx.named.has(name) || SPECIAL.has(name) || IMPLICIT.test(name) || appended.has(name) || r.nested.has(name)) continue
     const at = assigns.get(name) ?? []
     const where = at.map(p => topAt(tops, p))
     if (at.length !== list.length || lexed.get(name) !== list.length || where.includes(null)) continue
@@ -283,7 +303,7 @@ export function settle(text: string, read: Read, max: number): Written | null {
   const before = read(text)
   if (!before) return null
   const r = reachOf(before)
-  if (r.sealed || r.bound.has('IFS')) return null
+  if (unsettling(r)) return null
   const lx = lex(text)
   if (!lx || lx.assigns.length === 0) return null
   const vars = settledVars(text, before.commands, lx, r)
@@ -338,8 +358,8 @@ export function settle(text: string, read: Read, max: number): Written | null {
     const got = read(view)
     if (!got) return true
     const a = reachOf(got)
-    if (a.sealed || a.bound.has('IFS') || [...names].some(n => a.nested.has(n))) return true
-    if (sites.some(s => value(s).finder) && (a.blind || lookupsMove(a))) return true
+    if (unsettling(a) || a.blind || [...names].some(n => a.nested.has(n))) return true
+    if (sites.some(s => value(s).finder) && lookupsMove(a)) return true
     if (sites.some(s => value(s).home) && a.bound.has('HOME')) return true
     // A binder that names a written variable shows up only once it is a command.
     return got.commands.some(c =>
@@ -353,6 +373,9 @@ export function settle(text: string, read: Read, max: number): Written | null {
     )
   }
   if (refused(rewritten)) return null
+  // A script file that was unread stays so: a `cd` can put it elsewhere, and the ask on it is main's to keep.
+  const unread = (commands: readonly ShellCommand[]) => sqlFiles(commands).filter(f => f === null).length
+  if (unread(read(rewritten)?.commands ?? []) < unread(before.commands)) return null
 
   if (!all.some(s => !stuck.has(s.name) && mayVanish(s))) return { text: rewritten, empty: null }
   // A site that is a whole command leaves `:`, so the text still parses.
