@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: Read-only root-cause diagnosis for failing or flaky tests, regressions and unexplained errors, before anyone edits code. Not for fixes with a known cause (coder). For high-stakes failures (concurrency, data loss, security, production) the caller passes a stronger model. Returns root cause, repro, hypotheses and a fix.
+description: Read-only root-cause diagnosis for failing or flaky tests, regressions and unexplained errors, before anyone edits code. Not for fixes with a known cause (coder). For data loss or production failures the caller passes a stronger model. Returns root cause, repro, hypotheses and a fix.
 model: sonnet
 effort: high
 tools: Read, Glob, Grep, LSP, Bash, WebFetch, WebSearch, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
@@ -37,8 +37,8 @@ The brief describes the symptom, and may include an error, a failing command, a 
 
    Status is `confirmed`, `suspected`, `disproven`, or `untested`.
 4. **Target** `path:line` where the fix belongs.
-5. **Fix recommendation** and the model that should implement it: `haiku` (mechanical), `sonnet` (needs design judgment), `opus` (concurrency, security, data or core invariants).
-6. One closing line: `escalate: fix — <haiku, sonnet or opus, and reason>` when the cause is confirmed, `escalate: deeper diagnosis — <reason>` when it is still suspected after three rounds or the failure involves concurrency, data loss or corruption, security, or a production incident, or `escalate: user — <artifact or decision needed>` when only the user can unblock it.
+5. **Fix recommendation** and the model that should implement it: `haiku` (mechanical), `sonnet` (needs design judgment, including concurrency, data or core invariants), `opus` (only after a sonnet fix failed, or work that cannot be split further).
+6. One closing line: `escalate: fix — <haiku, sonnet or opus, and reason>` when the cause is confirmed, `escalate: deeper diagnosis — <reason>` when it is still suspected after three rounds or the failure involves concurrency, data loss or corruption, or a production incident, or `escalate: user — <artifact or decision needed>` when only the user can unblock it.
 
 ## Ground rules
 

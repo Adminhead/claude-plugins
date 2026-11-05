@@ -118,7 +118,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`check-bypass-guard`](plugins/check-bypass-guard) | hook | Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides or git config changes, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files, git hooks and .git/config, and Bash writes to those configs. Needs bun. | `baseline` |
 | [`click-path-audit`](plugins/click-path-audit) | skill | Audits UI event handlers for behavior bugs. It maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths and effects that reset what a click just set. Use when a button does nothing or leaves the wrong state though each function works alone, or after a shared-state refactor. | - |
 | [`cloud-ops-guard`](plugins/cloud-ops-guard/README.md) | hook | PreToolUse guard (needs bun) that denies unsafe tofu, terraform and terragrunt applies, destroys, imports and state surgery, gates subagent plan, init, state, output and aws calls, asks before destructive aws, pulumi and helmfile operations, and guards kubectl, helm, talosctl and omnictl changes on production clusters, through common aliases and wrappers. By default it no longer auto-approves plan, init or other read-only forms (option autoAllowReadOnly). | - |
-| [`coder`](plugins/coder) | agent | Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical edits, sonnet/medium by default, opus/high for concurrency, security, data or core invariants. | `orchestration-meta` |
+| [`coder`](plugins/coder) | agent | Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical or fully specified edits, sonnet/medium by default, sonnet/high for concurrency, data or core invariants, opus/high only after a sonnet attempt failed or for work that cannot be split further. | `orchestration-meta` |
 | [`coding`](plugins/coding) | skill | Makes the smallest complete, maintainable code change for a bounded feature, fix, integration, or behavior-preserving refactor. Use when implementing or modifying code whose approach is already clear ("add X to Y", "fix this function", "refactor this without changing behavior", "simplest solution", "this is over-engineered"). | `programming-core` |
 | [`debugger`](plugins/debugger) | agent | A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation. | `orchestration-meta` |
 | [`dependabot`](plugins/dependabot) | skill | Configure and troubleshoot GitHub Dependabot (dependabot.yml ecosystems, groups, cooldown, ignore rules, private registries) and sweep open Dependabot PRs, merging only green ones. | `github-meta` |
@@ -359,10 +359,10 @@ Each agent ships in its own plugin and is invoked as `plugin:agent`. Model and e
 
 | Agent | Plugin | Model | Effort | Edit/Write tools | In |
 | --- | --- | --- | --- | --- | --- |
-| `architect:architect` | [`architect`](plugins/architect) | opus | high | yes | `orchestration-meta` |
+| `architect:architect` | [`architect`](plugins/architect) | sonnet | high | yes | `orchestration-meta` |
 | `browser-tester:browser-tester` | [`browser-tester`](plugins/browser-tester) | sonnet | medium | no | `web-meta` |
 | `coder:coder` | [`coder`](plugins/coder) | sonnet | medium | yes | `orchestration-meta` |
-| `dba:dba` | [`dba`](plugins/dba) | opus | medium | yes | - |
+| `dba:dba` | [`dba`](plugins/dba) | sonnet | high | yes | - |
 | `debugger:debugger` | [`debugger`](plugins/debugger) | sonnet | high | no | `orchestration-meta` |
 | `devops:devops` | [`devops`](plugins/devops) | sonnet | medium | yes | `iac-meta` |
 | `forgejo-shipper:forgejo-shipper` | [`forgejo-shipper`](plugins/forgejo-shipper) | haiku | medium | no | `forgejo-meta` |

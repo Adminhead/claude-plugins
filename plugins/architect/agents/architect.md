@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Read-only planner that returns a sliced plan with risks, rejected alternatives and open questions. Use before multi-slice, cross-cutting, risky or unclear-approach work, or when choosing between designs. Not for bounded changes with an obvious approach (coder) or failures with an unknown cause (debugger).
-model: opus
+model: sonnet
 effort: high
 tools: Read, Glob, Grep, LSP, Bash, Write, Edit, WebFetch, WebSearch, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__consult__consult
 skills:
@@ -25,7 +25,7 @@ The brief gives the goal, constraints, and sometimes candidate designs or a targ
 2. Draft the plan:
    - goal and definition of done
    - the approach, plus the rejected alternatives and why they lost
-   - ordered slices, each with files, what it depends on, acceptance criteria, the cheapest check that verifies it, and the kind of worker it suits (mechanical, needs design judgment, high-complexity, infra, schema, docs)
+   - ordered slices, each with files, what it depends on, acceptance criteria, the cheapest check that verifies it, and the kind of worker it suits (mechanical, needs design judgment, infra, schema, docs; split a slice further rather than call it high-complexity, because that means opus)
    - risks and rollback
    - reuse analysis: the existing patterns reviewed, the chosen approach (reuse, extend, extract or new) with its reason, and the duplication risk (low, medium or high)
 3. Stress-test any non-trivial plan. If the `mcp__consult__consult` tool is available, get one adversarial critique from a different model family, following the `second-opinion` skill if it is installed: pass the draft in `notes`, split into focused passes when long, and in a git worktree pass `repo` explicitly. If the tool isn't available, run the critique yourself: argue the strongest case against each slice and the chosen approach. Verify every critique point against the code.
