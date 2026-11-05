@@ -1,0 +1,1 @@
+Make password-reset tokens expire after 30 minutes. That means app/tokens.py (store an issue time), app/reset.py (reject expired ones), app/api.py (return a distinct error) and a test in app/test_api.py.
