@@ -5,7 +5,7 @@
 // to a model). Like the danger rules these target model habits, not a determined adversary. Nothing here touches `$`.
 
 import { baseName, dynamicProgram, invocation, stdinReader, viewsOf } from '../danger/danger'
-import { MAX_COMMANDS, fedBodies, prevStage, withoutVariable } from '../danger/rules'
+import { MAX_COMMANDS, fedBodies, prevStage } from '../danger/rules'
 import type { ShellCommand } from '../shell/walk'
 
 export type Category = 'read' | 'write' | 'smuggle' | 'flag'
@@ -49,7 +49,7 @@ export const nudge = (tool: Tool, what: string, note = '', fix = INSTEAD[tool]) 
 
 // A program or script path in a variable is no script: there is nothing to write to a scratch file.
 const NAME_IT =
-  'Put the program or path directly in the command; for a mise tool, use `mise exec -- tool args`. A variable is fine when one unconditional assignment gives it a plain path, a plain command prefix, or `$(which tool)` or `$(mise which tool)`.'
+  'Put the program or path directly in the command; for a mise tool, use `mise exec -- tool args`. A variable is fine when one top-level assignment gives it a plain path, a plain command prefix, or `$(which tool)` or `$(mise which tool)`, and you quote it: `"$X"`.'
 
 // The read deny: names the offending segment, says every shell viewer is denied (also inside ; and && chains), and how to
 // split a compound command or a multi-file or multi-range read into parallel Read calls.
@@ -399,7 +399,7 @@ function assignments(commands: readonly ShellCommand[]): Map<string, boolean> {
 }
 
 // The assigned variable text starts with (`"$X"`, `${X} args`, `${X:-y}`, `$X$Y`). The literal and lookup variables that
-// hide nothing are written in before the rules run (expand.ts), so one that remains may hold anything: a script, or a
+// hide nothing are written in before the rules run (expand.ts, settle.ts), so one that remains may hold anything: a script, or a
 // program the danger rules should see. A path under one (`$W/bin/x`) is left alone.
 const VAR_LEAD = /^\s*\$(?:\{([A-Za-z_]\w*)(?:[:%#/^,][^}]*)?\}|([A-Za-z_]\w*))(?:\s|;|\$|$)/
 const heldVar = (text: string, vars: ReadonlyMap<string, boolean>) => {
@@ -454,7 +454,7 @@ export function hygiene(commands: readonly ShellCommand[], steering = true): Ver
     const vs = viewsOf(argv)
     let viaXargs = false
 
-    const held = withoutVariable.has(c) ? null : heldCommand(c, argv, vars)
+    const held = heldCommand(c, argv, vars)
     if (held !== null) {
       hits.push(
         vars.get(held)

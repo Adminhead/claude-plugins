@@ -2,9 +2,10 @@
 // Ported from the archived coremods tool-mgr rules, keeping only the danger and ask rules and the
 // parse-error and too-long guards.
 
-import { askHit, baseName, dangerHit, handedScript, stdinReader, viewsOf } from './danger'
+import { askHit, dangerHit, handedScript, stdinReader, viewsOf } from './danger'
 import type { AskRule, DangerRule } from './danger'
-import { expandLiteralVars, reachOf } from './expand'
+import { expandLiteralVars } from './expand'
+import { settle } from './settle'
 import { parse, reparse } from '../shell/walk'
 import type { ShellCommand, ShellParse } from '../shell/walk'
 
@@ -43,23 +44,18 @@ const readsShellStdin = (c: ShellCommand) => viewsOf(c.argv).some(v => stdinRead
 // `scripts` holds the text of the command and of each script it hands over.
 export type Scan = { commands: ShellCommand[]; scripts: string[]; errors: ShellParse['errors']; tooComplex: boolean }
 
-// How a script runs: the command itself, in a shell of its own, or in the shell that holds the text (`eval`).
-export type ScriptKind = 'top' | 'nested' | 'shared'
-
 // Parses a command and every script it hands to a shell: `sh -c STR`, `eval` and `env -S` bodies, command-string
 // wrappers (`flock -c`, `npx -c`, `watch`, a parallel template), also behind other wrappers, and heredoc bodies and literal
 // here-strings a shell reads all join `commands`. A handed script that does not parse is a parse error. A body is reparsed once however many commands share it,
-// and the reparsed text is capped (`tooComplex`). `write` rewrites each script before it is parsed.
-export function scan(command: string, write: (text: string, kind: ScriptKind) => string = t => t): Scan {
+// and the reparsed text is capped (`tooComplex`).
+export function scan(command: string): Scan {
   const out: Scan = { commands: [], scripts: [command], errors: [], tooComplex: false }
   let reparsed = 0
-  const nested = (text: string, depth: number, kind: ScriptKind) => {
+  const nested = (text: string, depth: number) => {
+    reparsed += text.length
     out.scripts.push(text)
-    // The cap counts what is parsed: a rewrite can make a short script much longer.
-    const written = reparsed + text.length > MAX_REPARSE ? text : write(text, kind)
-    reparsed += written.length
     if (reparsed > MAX_REPARSE) out.tooComplex = true
-    else add(reparse(written, depth))
+    else add(reparse(text, depth))
   }
   const add = (r: ShellParse) => {
     out.errors.push(...r.errors)
@@ -71,11 +67,11 @@ export function scan(command: string, write: (text: string, kind: ScriptKind) =>
         const script = handedScript(v)
         if (script === null || seen.has(script) || out.tooComplex) continue
         seen.add(script)
-        nested(script, c.depth + 1, baseName(v[0] ?? null) === 'eval' ? 'shared' : 'nested')
+        nested(script, c.depth + 1)
       }
     }
   }
-  add(parse(write(command, 'top')))
+  add(parse(command))
   // The command list is a worklist: a shell heredoc inside a reparsed body is read too.
   const bodies = new Set<string>()
   for (let i = 0; i < out.commands.length && !out.tooComplex; i++) {
@@ -84,65 +80,39 @@ export function scan(command: string, write: (text: string, kind: ScriptKind) =>
     for (const body of [...fedBodies(c), ...hereStrings(c)]) {
       if (bodies.has(body)) continue
       bodies.add(body)
-      nested(body, c.depth + 1, 'nested')
+      nested(body, c.depth + 1)
     }
   }
   return out
 }
 
-// A variable copied from another (`Y=$X`) is written in on a later pass.
-const MAX_PASSES = 3
+// What the checks read. `flat` has what expandLiteralVars settles in a flat script written in; `settled` adds what settle
+// (settle.ts) can show, with both outcomes of any variable that may hold nothing. `complex` when one of them could not fit
+// what the checks read.
+type Views = { flat: Scan | null; settled: Scan | null; complex: boolean }
 
-// Commands that exist only in the view without a variable. A wrapper reads its options wrongly once its program is gone, so
-// what it seems to run there says nothing (expand.ts has already refused a wrapper with an expansion in that view).
-export const withoutVariable = new WeakSet<ShellCommand>()
+const readable = (text: string) => {
+  const r = scan(text)
+  return r.tooComplex || r.errors.length > 0 ? null : r
+}
 
-// The scan of a command with its literal variables written in (expand.ts), in the command and in each script it hands to a
-// shell, each script on its own, or null when none were, or the rewrite is too long or complex to check. An `eval` body
-// shares a shell with the text around it, so it is left alone, and so is any nested script when a function it could call
-// exists. When a variable may hold nothing, what runs without it joins the scan, so every check sees both.
-function expanded(command: string, s: Scan): Scan | null {
-  const reach = reachOf(s.scripts, s.commands)
-  if (reach.ifs) return null
-  const rescan = (text: string) => {
-    const r = scan(text)
-    return r.tooComplex || r.errors.length > 0 ? null : r.commands
-  }
-  let wrote = false
-  let vanishes = false
-  let spent = 0
-  const writer = (pick: 'text' | 'empty') => (script: string, kind: ScriptKind) => {
-    if (kind === 'shared' || (kind === 'nested' && reach.functions)) return script
-    const options = { nested: kind !== 'top', lookups: reach.lookups, home: reach.home, stuck: new Set<string>() }
-    let text = script
-    // Each pass parses a script several times, so the cap on what is reparsed covers it too. Past that nothing is written
-    // in, and an assigned variable in a command word is denied.
-    for (let pass = 0; pass < MAX_PASSES && spent <= MAX_REPARSE; pass++) {
-      spent += text.length
-      const w = expandLiteralVars(text, rescan, MAX_PARSE, options)
-      if (w === null) break
-      wrote = true
-      vanishes ||= w.empty !== null
-      // Only the first pass drops anything; it drops every such variable at once.
-      text = pick === 'empty' && pass === 0 ? (w.empty ?? w.text) : w.text
-    }
-    return text
-  }
-  const x = scan(command, writer('text'))
-  if (!wrote || spent > MAX_REPARSE || x.tooComplex || x.errors.length > 0) return null
-  if (!vanishes) return x
-  const e = scan(command, writer('empty'))
-  if (spent > MAX_REPARSE || e.tooComplex || e.errors.length > 0) return null
-  // Both views must fit what hygiene walks, or it would hand a deny to the model.
-  if (x.commands.length + e.commands.length > MAX_COMMANDS) return null
-  for (const c of e.commands) withoutVariable.add(c)
-  return { ...x, commands: [...x.commands, ...e.commands] }
+function views(command: string, s: Scan): Views {
+  const text = expandLiteralVars(command, s.commands, t => readable(t)?.commands ?? null, MAX_PARSE)
+  const flat = text === null ? null : readable(text)
+  const written = settle(flat ? text! : command, readable, MAX_PARSE)
+  if (!written) return { flat, settled: null, complex: text !== null && !flat }
+  const x = readable(written.text)
+  const e = written.empty === null ? null : readable(written.empty)
+  if (!x || (written.empty !== null && !e)) return { flat, settled: null, complex: true }
+  const commands = [...x.commands, ...(e?.commands ?? [])]
+  if (commands.length > MAX_COMMANDS) return { flat, settled: null, complex: true }
+  return { flat, settled: { ...x, commands }, complex: text !== null && !flat }
 }
 
 // The deny verdict for a Bash command: too long, unparseable, or a danger rule, with the scan it came from (null when the
-// command was not parsed or was too complex) so later stages reuse it. A null hit lets it through. The scan is of the
-// command with its literal variables written in, when it has any; the danger rules check both texts, so writing a
-// variable in never drops a deny.
+// command was not parsed or was too complex) so later stages reuse it. A null hit lets it through. The danger rules read the
+// command as written and every view of it, and any hit stands, so nothing the settled view does or declines can lose one.
+// Later stages get the most written view: a variable no view could prove stays in a command word there, and is denied.
 export function analyze(command: string): { hit: Hit | null; scan: Scan | null } {
   if (command.length > MAX_PARSE) return { hit: { rule: 'too-long', message: TOO_LONG }, scan: null }
   const s = scan(command)
@@ -157,20 +127,23 @@ export function analyze(command: string): { hit: Hit | null; scan: Scan | null }
       scan: s,
     }
   }
-  const x = expanded(command, s)
-  return { hit: (x && dangerHit(x.commands)) ?? dangerHit(s.commands), scan: x ?? s }
+  const { flat, settled, complex } = views(command, s)
+  const hit = (settled && dangerHit(settled.commands)) ?? (flat && dangerHit(flat.commands)) ?? dangerHit(s.commands)
+  if (hit) return { hit, scan: settled ?? flat ?? s }
+  if (complex) return { hit: { rule: 'too-long', message: TOO_COMPLEX }, scan: null }
+  return { hit: null, scan: settled ?? flat ?? s }
 }
 
 export const classify = (command: string): Hit | null => analyze(command).hit
 
-// The ask-tier rules (remote-exec, git-rewrite, git-clean), over both the command and its literal-variable rewrite. A
-// command classify() denies never reaches them, so a parse error has no ask.
+// The ask-tier rules (remote-exec, git-rewrite, git-clean), over the command and each view of it. A command classify()
+// denies never reaches them, so a parse error has no ask.
 export function askRule(command: string): AskHit | null {
   if (command.length > MAX_PARSE) return null
   const s = scan(command)
   if (s.errors.length > 0 || s.tooComplex) return null
-  const x = expanded(command, s)
-  return (x && askHit(x.commands)) ?? askHit(s.commands)
+  const { flat, settled } = views(command, s)
+  return (settled && askHit(settled.commands)) ?? (flat && askHit(flat.commands)) ?? askHit(s.commands)
 }
 
 export type Verdict = { allow?: true; ask?: string; deny?: string; [key: string]: unknown }
