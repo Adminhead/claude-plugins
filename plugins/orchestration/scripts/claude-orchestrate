@@ -31,6 +31,9 @@ HERDR_SESSION=NAME picks a named herdr session.
   -n, --dry-run       print the commands instead of running them
   -h, --help          show this help
 
+The main session runs on sonnet ($CLAUDE_ORCHESTRATE_MODEL changes that; empty uses Claude
+Code's setting). An explicit --model wins, and -a keeps the agent's own model.
+
 Arguments after DIR, or starting with "-" after the options above, go to claude:
   claude-orchestrate ~/code/api --resume
   claude-orchestrate -H ~/code/api -- --model opus
@@ -93,6 +96,13 @@ fi
 claude_args=()
 [[ -z $agent ]] || claude_args+=(--agent "$agent")
 [[ -z $prompt ]] || claude_args+=(--append-system-prompt-file "$prompt")
+# The orchestrator runs on sonnet unless the caller picks a model. An empty
+# CLAUDE_ORCHESTRATE_MODEL leaves the choice to Claude Code's settings.
+model=${CLAUDE_ORCHESTRATE_MODEL-sonnet}
+for arg in "$@"; do
+  [[ $arg != --model && $arg != --model=* ]] || model=
+done
+[[ -n $agent || -z $model ]] || claude_args+=(--model "$model")
 claude_args+=("$@")
 
 # CLAUDE_CODE_SHELL points the Bash tool at bash, so the user's zsh or fish config never runs;
