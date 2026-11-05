@@ -1,0 +1,2 @@
+def charge(u):
+    pass
