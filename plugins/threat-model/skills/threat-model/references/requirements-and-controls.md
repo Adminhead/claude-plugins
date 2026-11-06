@@ -1,6 +1,6 @@
 # Requirements and control mapping
 
-Read when writing the requirements and control mapping in step 6, or when the user asks to turn an existing threat list into security requirements, user stories, or a control plan. Adapted from the `security-requirement-extraction` and `threat-mitigation-mapping` skills in wshobson/agents (MIT License, see the plugin's LICENSE), condensed and rewritten.
+Read when writing the requirements and control mapping in step 6, or when the user asks to turn an existing threat list into security requirements, user stories, or a control plan.
 
 ## Contents
 

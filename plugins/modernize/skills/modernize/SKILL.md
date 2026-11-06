@@ -7,8 +7,6 @@ description: Plans the modernization of a legacy system (runtime, framework or d
 
 Produce a phased plan to upgrade, migrate, or rewrite a legacy system. This skill plans and does not execute. Legacy systems are often hard to run at all (end-of-life runtimes, native modules that no longer compile, retired package mirrors), so the plan can't assume the old stack is alive. It measures how alive the system is first, then picks a strategy and a level of regression safety to match.
 
-Adapted in part from awesome-copilot `doc-and-modernize` (MIT, Copyright GitHub, Inc.); see LICENSE.
-
 Not for general implementation plans (`planning`), executing the migration (`coding`), or recording a single decision (`adr-writing`). Use each one if installed. For a guided, agent-driven modernization with assessments, business-rule mining and a dashboard, Anthropic's `code-modernization` plugin (claude-plugins-official) is a heavier alternative installed directly; don't run both on the same request.
 
 ## Workflow

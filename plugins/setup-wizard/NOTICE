@@ -1,0 +1,9 @@
+setup-wizard
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Source: https://github.com/mattpocock/skills (`engineering/wizard`), Copyright (c) 2026 Matt Pocock.
+Derived: SKILL.md.
+
+Modifications: the template was audited and hardened.

@@ -7,8 +7,6 @@ description: 'Plans deprecations and migrations: whether to sunset or keep a sys
 
 Code is a liability: every line carries tests, patches, dependency updates and onboarding cost. Deprecation removes code that no longer earns its keep; migration moves its consumers to the replacement without breaking them.
 
-Adapted from the `deprecation-and-migration` skill in [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT License; see the plugin's `LICENSE`).
-
 Related, if installed: `db-schema-design` for designing the schema and its migration files (this skill covers the rollout sequence), `postgres` or `mysql` for engine-specific locking, `api-rest-design` for API versioning and deprecation headers, `rollout-plan` for staged rollout and rollback of the deploys themselves.
 
 ## Principles

@@ -1,0 +1,9 @@
+threat-model
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Source: https://github.com/wshobson/agents, Copyright (c) 2024 Seth Hobson.
+Derived: references/attack-trees.md (`attack-tree-construction`), references/requirements-and-controls.md (`security-requirement-extraction`, `threat-mitigation-mapping`), and the recurring-threats and boundary-ranking sections of references/stride-elements.md (`stride-analysis-patterns`).
+
+Modifications: condensed and rewritten.

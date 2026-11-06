@@ -73,5 +73,3 @@ Escalate rather than guess when:
 - the correction risks data integrity, security, compatibility, or unacceptable performance.
 
 Report the desired and actual behavior, the signal and its result, the minimized conditions, rejected and remaining hypotheses, the root-cause evidence (or why it isn't established), and the smallest next decision or artifact needed. Never label a workaround, a correlation, or an unrelated passing test as the root cause.
-
-Adapted in part from Matt Pocock's `diagnosing-bugs` skill (github.com/mattpocock/skills, MIT); see `LICENSE`.

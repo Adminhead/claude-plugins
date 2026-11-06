@@ -7,8 +7,6 @@ description: Answers an external, decision-relevant question with sourced, cited
 
 Run bounded external research that supports a decision or answer with sources. This skill doesn't run experiments, change code, or produce research campaigns with many artifacts.
 
-Adapted in part from awesome-copilot `doublecheck` (MIT, Copyright GitHub, Inc.), ECC `search-first` (MIT, Copyright (c) 2026 Affaan Mustafa) and cc-skills `deep-research` (MIT, Samuel Berthe); see LICENSE.
-
 Not for:
 
 - A long narrative report synthesized from many sources: Anthropic's `deep-research` skill, if available, coordinates that at scale.

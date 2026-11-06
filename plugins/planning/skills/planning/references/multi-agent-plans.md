@@ -41,5 +41,3 @@ Prefer a wide, shallow graph. Name the critical path, because it sets the minimu
 When a lane finds a blocker that changes the plan, pause the dependent lanes, update the matrix, and record the change (what changed, why, and which lanes it affects). Split, insert, skip, or reorder steps through that record rather than silently. A short change log keeps every agent working from the same plan.
 
 ---
-
-The cold-start brief fields, per-step rollback, invariants, and model-tier guidance are adapted from the blueprint skill in ECC (Affaan Mustafa), MIT. See `LICENSE` in this plugin.

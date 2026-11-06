@@ -1,0 +1,12 @@
+planning
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Sources:
+- https://github.com/mattpocock/skills, Copyright (c) 2026 Matt Pocock (grilling skill): references/stress-test.md.
+- https://github.com/addyosmani/agent-skills, Copyright (c) 2025 Addy Osmani (interview-me skill): references/stress-test.md.
+- https://github.com/affaan-m/ECC, Copyright (c) 2026 Affaan Mustafa (blueprint skill): references/multi-agent-plans.md (cold-start brief fields, per-step rollback, invariants, model-tier guidance).
+- https://github.com/Jeffallan/claude-skills (feature-forge `ears-syntax.md`; copyright line kept as upstream states it, see LICENSE): references/acceptance-criteria.md (EARS patterns).
+
+Modifications: condensed and rewritten. The "unwanted behavior" EARS pattern is standard EARS (Mavin et al.) and was added here.

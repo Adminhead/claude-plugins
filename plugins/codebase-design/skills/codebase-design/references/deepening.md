@@ -1,7 +1,5 @@
 # Deepening
 
-Adapted from `codebase-design/DEEPENING.md` in github.com/mattpocock/skills (MIT License).
-
 How to deepen a cluster of shallow modules safely, given its dependencies. Assumes the vocabulary in the `codebase-design` SKILL.md: **module**, **interface**, **seam**, **adapter**.
 
 ## Dependency categories

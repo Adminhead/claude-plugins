@@ -7,8 +7,6 @@ description: Shared vocabulary and method for designing deep modules. Use when d
 
 Design **deep modules**: a lot of behaviour behind a small interface, placed at a clean seam, testable through that interface. Use this language and these principles wherever code is being designed or restructured. The aim is leverage for callers, locality for maintainers, and testability for everyone.
 
-Adapted from Matt Pocock's `codebase-design` and `improve-codebase-architecture` skills (github.com/mattpocock/skills), with two points from Addy Osmani's `api-and-interface-design` (github.com/addyosmani/agent-skills), both MIT License; see `LICENSE`.
-
 Not for project vocabulary (`domain-modeling`, if installed), recording a decision (`adr-writing`), or HTTP API conventions (`api-rest-design`).
 
 ## Glossary

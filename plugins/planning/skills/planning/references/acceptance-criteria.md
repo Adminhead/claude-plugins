@@ -73,4 +73,4 @@ A criterion passes when a reader who doesn't know the domain can run one check a
 
 ---
 
-The EARS patterns are adapted from the feature-forge skill's `ears-syntax.md` in Jeffallan/claude-skills, MIT. The "unwanted behavior" pattern is standard EARS (Mavin et al.) and was added here. See `LICENSE` in this plugin.
+The "unwanted behavior" pattern is standard EARS (Mavin et al.).

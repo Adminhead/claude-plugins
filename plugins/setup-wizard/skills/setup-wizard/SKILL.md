@@ -11,7 +11,7 @@ A wizard is a bash script that walks a human, stage by stage, through a manual p
 
 Use it only for steps the agent can't do itself. Request: $ARGUMENTS
 
-Adapted from mattpocock/skills `engineering/wizard` (MIT, Copyright (c) 2026 Matt Pocock; see `LICENSE`). The template was audited and hardened; see "What the library guarantees".
+The template was audited and hardened; see "What the library guarantees".
 
 [template.sh](template.sh) already solves the UX and the secret handling. Your job is to scope the procedure and author its stages. The library above the `STAGES` marker is the same in every wizard; never hand-edit it.
 

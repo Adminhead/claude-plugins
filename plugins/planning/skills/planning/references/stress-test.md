@@ -28,5 +28,3 @@ Recommended: <answer and one-line reason>
 If the plan leans on overloaded or fuzzy domain terms, `domain-modeling` (if installed) can record the settled terms in a glossary as they firm up.
 
 ---
-
-Adapted from the grilling skill in mattpocock/skills (Matt Pocock) and the interview-me skill in addyosmani/agent-skills (Addy Osmani), both MIT. See `LICENSE` in this plugin.

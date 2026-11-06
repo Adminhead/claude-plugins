@@ -9,8 +9,6 @@ Change the project's model deliberately, and write each result down the moment i
 
 Not for recording an architecture decision (`adr-writing`, if installed) or for module structure and seams (`codebase-design`, if installed).
 
-Adapted from Matt Pocock's `domain-modeling` skill (github.com/mattpocock/skills, MIT License; see `LICENSE`).
-
 ## Where the files live
 
 - Infer which applies: a `GLOSSARY-MAP.md` means several contexts; a root `GLOSSARY.md` alone means one; neither means create a root `GLOSSARY.md` lazily.

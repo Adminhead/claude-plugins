@@ -10,8 +10,6 @@ Record consequential, long-lived technical decisions. The default format is Mich
 
 Not for task plans, implementation notes or temporary experiments, and not for project vocabulary (`domain-modeling`, if installed).
 
-The three tests in step 2 are adapted from Matt Pocock's skills (github.com/mattpocock/skills) and the convention-matching rule from Addy Osmani's agent-skills (github.com/addyosmani/agent-skills), both MIT License; see `LICENSE`.
-
 ## One home for decisions
 
 The repo's ADR directory (`docs/adr/` by default) is the only canonical home for decisions: it is versioned, reviewed and shared with everyone who clones the repo. The codebase-memory MCP server's `manage_adr` tool is something else. It keeps one architecture document per indexed project, stored with that project's index in the server's local cache (`~/.cache/codebase-memory-mcp/`), not as a file in the repo, so it is per machine and unversioned, edited whole (`update`) or by heading (`set_sections`). Never record a decision only through `manage_adr`. If the project also uses `manage_adr`, treat its document as a digest: after an ADR is accepted or superseded, update a section there with a one-line summary that names the ADR file (`set_sections` touches only that heading). When that document mentions a decision with no ADR, treat it as a lead: confirm it with the decision owner and write it up here.

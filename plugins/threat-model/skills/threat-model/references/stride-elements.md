@@ -34,7 +34,7 @@ A store that holds logs matters for repudiation. Spoofing and elevation for a st
 
 ## Common threats by category
 
-A checklist of threats that recur across web and service architectures, adapted from the `stride-analysis-patterns` skill in wshobson/agents (MIT License, see the plugin's LICENSE). Use it to make sure a category was not skipped, then confirm each candidate against the code before it becomes a finding.
+A checklist of threats that recur across web and service architectures. Use it to make sure a category was not skipped, then confirm each candidate against the code before it becomes a finding.
 
 | Category | Recurring threats |
 | --- | --- |

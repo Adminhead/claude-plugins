@@ -96,5 +96,3 @@ Your final message is all the caller sees.
 ```
 
 Recommend a specific fix or removal for every finding. A clean report still lists what you checked, so a reader can trust the absence of findings. Make independent tool calls in parallel.
-
-Adapted from awesome-copilot `trojan-skill-hunter.agent.md` (MIT, Copyright GitHub, Inc.); see the plugin's `LICENSE`.

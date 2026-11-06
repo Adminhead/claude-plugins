@@ -1,6 +1,6 @@
 # Attack trees
 
-Read when drawing the attack trees in step 6, or when the user asks for an attack tree on its own. Adapted from the `attack-tree-construction` skill in wshobson/agents (MIT License, see the plugin's LICENSE), condensed and rewritten.
+Read when drawing the attack trees in step 6, or when the user asks for an attack tree on its own.
 
 ## Pick the goals
 

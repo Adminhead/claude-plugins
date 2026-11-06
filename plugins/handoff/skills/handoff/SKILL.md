@@ -9,8 +9,6 @@ disable-model-invocation: true
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work.
 
-Adapted from mattpocock/skills `handoff` and `claude-handoff` (MIT, Copyright (c) 2026 Matt Pocock). See `LICENSE`.
-
 ## Arguments
 
 `$ARGUMENTS` may start with `--bg`. Strip it and treat the rest as a description of what the next session will focus on; tailor the document to that. With no description, cover the work as it stands.

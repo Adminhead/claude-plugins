@@ -1,0 +1,11 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the MIT-licensed sources below (see LICENSE).
+
+mattpocock/skills (https://github.com/mattpocock/skills), Copyright (c) 2026 Matt Pocock.
+Derived: the three tests in step 2 of skills/adr-writing/SKILL.md.
+
+addyosmani/agent-skills (https://github.com/addyosmani/agent-skills), Copyright (c) 2025 Addy Osmani.
+Derived: the convention-matching rule in skills/adr-writing/SKILL.md.
+
+Modifications: rewritten and edited for this marketplace.

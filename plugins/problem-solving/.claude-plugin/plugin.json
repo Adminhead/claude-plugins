@@ -1,6 +1,6 @@
 {
   "name": "problem-solving",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Root-cause diagnosis for failures, flaky tests and performance regressions: a red-capable feedback loop, competing falsifiable hypotheses, one-variable probes and evidence-backed fixes. Also algorithm choice under unclear constraints.",
   "author": {
     "name": "AdminHead",

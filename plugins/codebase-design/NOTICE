@@ -1,0 +1,11 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the MIT-licensed sources below (see LICENSE).
+
+mattpocock/skills (https://github.com/mattpocock/skills), Copyright (c) 2026 Matt Pocock.
+Derived: `codebase-design` (DEEPENING.md, DESIGN-IT-TWICE.md) and `improve-codebase-architecture` (HTML-REPORT.md); skills/codebase-design/SKILL.md and references/deepening.md, design-it-twice.md, html-report.md, architecture-review.md.
+
+addyosmani/agent-skills (https://github.com/addyosmani/agent-skills), Copyright (c) 2025 Addy Osmani.
+Derived: `api-and-interface-design`; two points in skills/codebase-design/SKILL.md.
+
+Modifications: rewritten and edited for this marketplace.

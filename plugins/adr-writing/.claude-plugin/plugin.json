@@ -1,6 +1,6 @@
 {
   "name": "adr-writing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ADR skill: create, review, supersede and index Markdown Architecture Decision Records in docs/adr/ (Nygard or MADR) with a numbering helper that avoids cross-branch collisions.",
   "author": {
     "name": "AdminHead",

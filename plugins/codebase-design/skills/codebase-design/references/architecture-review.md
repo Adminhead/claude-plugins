@@ -1,7 +1,5 @@
 # Architecture review
 
-Adapted from `improve-codebase-architecture` in github.com/mattpocock/skills (MIT License).
-
 Run this only when the user asks for an architecture review or for refactor candidates. It surfaces architectural friction and proposes **deepening opportunities**: refactors that turn shallow modules into deep ones, for testability and AI-navigability.
 
 Use the vocabulary in the `codebase-design` SKILL.md exactly (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) and its principles (the deletion test, the interface is the test surface, one adapter is a hypothetical seam). Don't drift into "component", "service", "API" or "boundary". The project's `GLOSSARY.md` names the domain concepts that make good seams, and its ADRs record decisions this review should not re-litigate.
