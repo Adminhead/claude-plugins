@@ -12,7 +12,7 @@ Step back from the session's chosen path and ask several fresh reads what the cu
 
 - Cross-model review of a diff or plan: use `second-opinion`.
 - Attacking a plan in one chosen mode: use `devils-advocate`.
-- Splitting an artifact across different failure-mode lenses: use `prism`.
+- Splitting an artifact across different failure-mode lenses: use `lens-review`.
 
 ## Workflow
 

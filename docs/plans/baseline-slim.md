@@ -11,7 +11,7 @@
 | Plugin | New home |
 | --- | --- |
 | `cold-read`, `v0-rewrite`, `ssot-consolidate`, `reorder` | `docs-meta` (project scope) |
-| `session-recover`, `catchup`, `macrothink`, `prism`, `fact-check`, `v0-restart` | `session-meta` (project scope) |
+| `session-recover`, `catchup`, `macrothink`, `lens-review`, `fact-check`, `v0-restart` | `session-meta` (project scope) |
 
 The plugins themselves are unchanged.
 

@@ -1,10 +1,10 @@
 ---
-name: prism
+name: lens-review
 description: Manual command that splits one artifact (a claim, plan or file) across 2 to 5 lenses, one per distinct failure mode, and returns where they agree, where they disagree and the one question that resolves the disagreement.
 disable-model-invocation: true
 ---
 
-# Prism
+# Lens review
 
 Split one artifact across independent lenses and return where they converge and where they do not. The result is a picture of agreement, disagreement and the smallest question that would resolve it. It is not a checklist and never an average.
 
@@ -36,4 +36,4 @@ Run the lenses inline by default. Use subagents only when the user asks for isol
 ## Before finishing
 
 1. The result reads as a picture: which lenses agreed, which disagreed, and the one question that matters.
-2. A reader can act on it without re-running the prism.
+2. A reader can act on it without re-running the lenses.

@@ -1764,10 +1764,10 @@
       "category": "development"
     },
     {
-      "name": "prism",
-      "source": "./plugins/prism",
+      "name": "lens-review",
+      "source": "./plugins/lens-review",
       "description": "Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {

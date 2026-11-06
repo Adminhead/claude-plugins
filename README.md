@@ -96,7 +96,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`android-meta`](plugins/android-meta) | project | `programming-core`, `kotlin-core`, `android-skills@android-skills`, `android`, `jetpack-compose`, `android-build`, `android-testing`, `android-device` | Plugin set for native Android projects, installed at project scope. Ships no components of its own. |
 | [`kotlin-meta`](plugins/kotlin-meta) | project | `programming-core`, `kotlin-core` | Plugin set for Kotlin projects without Android, installed at project scope. Ships no components of its own. |
 | [`docs-meta`](plugins/docs-meta) | project | `cold-read`, `v0-rewrite`, `ssot-consolidate`, `reorder` | Plugin set for documentation-heavy projects, installed at project scope. Ships no components of its own. |
-| [`session-meta`](plugins/session-meta) | project | `session-recover`, `catchup`, `macrothink`, `prism`, `fact-check`, `v0-restart` | Plugin set for long-running, multi-session projects, installed at project scope. Ships no components of its own. |
+| [`session-meta`](plugins/session-meta) | project | `session-recover`, `catchup`, `macrothink`, `lens-review`, `fact-check`, `v0-restart` | Plugin set for long-running, multi-session projects, installed at project scope. Ships no components of its own. |
 
 ### Core bundles
 
@@ -341,7 +341,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`debloat`](plugins/debloat) | skill | Manual command that compresses correct but accreted prose to its load-bearing density, cutting words and never rules. | `baseline` |
 | [`reorder`](plugins/reorder) | skill | Manual command that realigns an arbitrarily ordered list, table or section set under one stated principle, moving items only. | `docs-meta` |
 | [`macrothink`](plugins/macrothink) | skill | Manual command that strips the session's framing and fans out fresh reads to check whether the current direction is tunnel-visioned. | `session-meta` |
-| [`prism`](plugins/prism) | skill | Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement. | `session-meta` |
+| [`lens-review`](plugins/lens-review) | skill | Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement. | `session-meta` |
 | [`v0-restart`](plugins/v0-restart) | skill | Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failing cases the previous attempt proved, and dropping its accidental architecture. | `session-meta` |
 | [`catchup`](plugins/catchup) | skill | Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and a single next move when asked what to do. | `session-meta` |
 | [`leakage-audit`](plugins/leakage-audit) | skill | Audits an eval, metric, experiment or benchmark for leakage and reports which independence checks fail, each with a fix. | `programming-core` |

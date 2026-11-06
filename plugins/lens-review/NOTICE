@@ -1,11 +1,11 @@
-prism
+lens-review
 Copyright AdminHead
 
 This plugin contains material adapted from LilMGenius/paperthin, licensed
 under the MIT License (see LICENSE).
 
 Upstream: https://github.com/LilMGenius/paperthin @ 7d5dc62
-Paths: skills/mesh/prism/SKILL.md (ported as prism)
+Paths: skills/mesh/prism/SKILL.md (ported as lens-review)
 
 Modifications: rewritten rather than copied, with our section order, no
 em-dashes and no references to unported sibling skills. Kept rules: lenses, not
