@@ -7,13 +7,11 @@ disable-model-invocation: true
 
 # Prove
 
-Check the claims in a passage against sources, and give each one a verdict. Adapted from dtiger1889-ops/claude-harness-toolbox `prove` (MIT, Copyright (c) 2026 Daniel Mack). See `LICENSE`.
+Check the claims in a passage against sources, and give each one a verdict.
 
 Not for reconsidering a decision or plan (that is `doubt-review`) or for researching a new question (that is `research`).
 
 The trigger is a feeling, not a request: when you are about to assert a checkable fact from a feeling ("this is plausible", "that can't happen"), check it before writing it.
-
-The both-directions rule is adapted from the `factchk` skill in LilMGenius/paperthin (MIT).
 
 ## Procedure
 

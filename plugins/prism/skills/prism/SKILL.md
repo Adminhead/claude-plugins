@@ -8,8 +8,6 @@ disable-model-invocation: true
 
 Split one artifact across independent lenses and return where they converge and where they do not. The result is a picture of agreement, disagreement and the smallest question that would resolve it. It is not a checklist and never an average.
 
-Adapted from the `prism` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Pressure-testing a plan in one chosen mode: use `the-fool`.

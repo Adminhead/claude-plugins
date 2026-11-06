@@ -1,6 +1,6 @@
 {
   "name": "debloat",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Manual command that compresses correct but accreted prose to its load-bearing density, cutting words and never rules.",
   "author": {
     "name": "AdminHead",

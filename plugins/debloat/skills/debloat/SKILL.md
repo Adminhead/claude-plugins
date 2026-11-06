@@ -8,8 +8,6 @@ disable-model-invocation: true
 
 Cut a bloated artifact to its load-bearing minimum: same meaning, fewer words. Prose can be correct and current and still rot by accretion. Each edit bolts a qualifier onto the nearest sentence, a rule gets restated wherever it might apply, and an enumeration grows into a wall.
 
-Adapted from the `debloat` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Rewriting a drifted doc: use `v0-rewrite`.

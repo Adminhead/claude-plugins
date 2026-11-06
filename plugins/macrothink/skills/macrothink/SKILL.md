@@ -8,8 +8,6 @@ disable-model-invocation: true
 
 Step back from the session's chosen path and ask several fresh reads what the current direction might be missing. This checks the live decision in hand, not an artifact that describes it. A session can inherit its framing from examples, wording, earlier turns or a first plausible answer.
 
-Adapted from the `macrothink` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Cross-model review of a diff or plan: use `second-opinion`.

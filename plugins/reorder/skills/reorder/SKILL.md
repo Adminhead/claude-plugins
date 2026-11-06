@@ -8,8 +8,6 @@ disable-model-invocation: true
 
 Put a listing back into an order that carries meaning, moving items only. Order is information: kin sit together and the sequence follows one axis a reader can feel. It drifts when items are appended where they were written instead of where they belong.
 
-Adapted from the `reorder` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Rewording, adding, removing, splitting or merging items.
