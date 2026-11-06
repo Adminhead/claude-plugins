@@ -2,7 +2,7 @@
 
 Read this when a repo already tests modules with Terratest (Go `_test.go` files importing `github.com/gruntwork-io/terratest/modules/terraform` or `.../modules/terraform/v2`), or when the user asks for Go-based module tests. For new tests in a repo without Go, prefer native `terraform test` (see SKILL.md, "Testing and scanning"): it needs no extra toolchain.
 
-Adapted from the "Terratest Module Testing" agent in github/awesome-copilot (MIT, Copyright GitHub, Inc.). API names checked against the Terratest source at `modules/core/v2.0.0` (2026-09), 2026-10.
+API names checked against the Terratest source at `modules/core/v2.0.0` (2026-09), 2026-10.
 
 ## Versions
 

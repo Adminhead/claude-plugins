@@ -101,5 +101,3 @@ A pinned SHA must be the verified release commit, never `main` HEAD, and carries
 ## Boundary
 
 This skill covers workflow and action files. Dispatching workflows, cutting releases, deploying, and changing credentials, secrets, or repo and org Actions settings each need explicit authorization. Ask with AskUserQuestion first.
-
-Hardening material adapted from [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills) `securing-github-actions-workflows` (Apache-2.0); see the plugin's `LICENSE` and `NOTICE`.

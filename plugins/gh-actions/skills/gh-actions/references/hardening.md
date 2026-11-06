@@ -2,7 +2,7 @@
 
 Read when asked to harden a repo's workflows, or when an [audit](audit.md) finding needs a concrete fix. [security](security.md) holds the trust rules; this file holds the repo-wide controls that back them up. Propose each control with its cost, apply only what the user picks, and keep the repo's version convention from SKILL.md unless pinning is the chosen control.
 
-Adapted from Anthropic-Cybersecurity-Skills `securing-github-actions-workflows` (Apache-2.0, copyright 2026 mukul975), modified. Tool facts checked 2026-10-17 against the zizmor docs, the harden-runner README, and the GitHub changelog for the SHA-pinning policy.
+Tool facts checked 2026-10-17 against the zizmor docs, the harden-runner README, and the GitHub changelog for the SHA-pinning policy.
 
 ## 1. Pin actions to full SHAs, and let Dependabot move them
 

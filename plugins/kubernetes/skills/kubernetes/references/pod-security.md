@@ -1,6 +1,6 @@
 # Pod Security Standards and Pod Security Admission
 
-Adapted from mukul975/Anthropic-Cybersecurity-Skills `implementing-kubernetes-pod-security-standards` (Apache-2.0; modified, see `NOTICE` in the plugin root). Control lists checked against the Kubernetes v1.37 Pod Security Standards and Pod Security Admission pages in October 2026. Recheck them for the cluster's version before declaring a manifest compliant.
+Control lists checked against the Kubernetes v1.37 Pod Security Standards and Pod Security Admission pages in October 2026. Recheck them for the cluster's version before declaring a manifest compliant.
 
 Contents: levels and modes, choosing a level, namespace labels, rolling out on an existing namespace, the control tables, a compliant pod spec, cluster defaults and exemptions, diagnosing a rejection, migrating from PodSecurityPolicy.
 

@@ -7,8 +7,6 @@ description: 'Works out which AWS account, region and identity is in use when th
 
 General AWS habits: know which account and region you are in, get signed in without touching credential files, write IAM that fails closed, and query costs without arithmetic mistakes. Detail that does not fit here is in `references/`.
 
-Adapted from the AWS agent-toolkit skills `aws-iam`, `signing-in-to-aws` and `aws-billing-and-cost-management` and the Hugging Face skill `hf-cloud-aws-context-discovery` (Apache-2.0). See `NOTICE`.
-
 ## Context first
 
 When the account, region or identity is unknown, unclear or looks wrong, settle these before acting and keep them for the session. If the user already named them and calls work, skip this.

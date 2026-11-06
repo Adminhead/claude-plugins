@@ -2,7 +2,7 @@
 
 Read this when asked to harden or audit a Docker host: `/etc/docker/daemon.json`, the daemon socket, remote API access, rootless mode, or CIS Docker Benchmark section 2. Per-image and per-container settings (`USER`, `cap_drop`, `read_only`) are in SKILL.md.
 
-Adapted from "Hardening Docker Daemon Configuration" in mukul975/Anthropic-Cybersecurity-Skills (Apache-2.0; see the plugin's `LICENSE` and `NOTICE`). Modified: trimmed, gotchas added, Content Trust replaced (retired), SSH preferred over a TCP socket, rootless setup changed to the packaged tool. Checked against docs.docker.com (dockerd reference, userns-remap, live-restore, retired features), 2026-10.
+Checked against docs.docker.com (dockerd reference, userns-remap, live-restore, retired features), 2026-10.
 
 ## Safety contract
 

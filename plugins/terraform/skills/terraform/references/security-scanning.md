@@ -2,7 +2,7 @@
 
 Read this when asked to audit Terraform for misconfigurations, add a scanner or policy gate to CI, write OPA/Rego policies for plans, or triage scanner findings.
 
-Adapted from "Auditing Terraform Infrastructure for Security" in mukul975/Anthropic-Cybersecurity-Skills (Apache-2.0; see the plugin's `LICENSE` and `NOTICE`). Modified: tfsec replaced with `trivy config` (tfsec is deprecated and its checks moved into Trivy), Terrascan dropped, Rego rewritten to v1 syntax against plan JSON, CI pinned by SHA. Checked against trivy.dev and conftest.dev docs, 2026-10.
+Checked against trivy.dev and conftest.dev docs, 2026-10.
 
 ## Contents
 
