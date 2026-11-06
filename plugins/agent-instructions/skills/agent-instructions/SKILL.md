@@ -54,5 +54,3 @@ Read `references/loading.md` before deciding placement or AGENTS.md handling. In
 ## Review mode
 
 When asked to review instructions or a harness change rather than write one, stay read-only, take the opposing view, and use the review list in `references/enforcement-and-failure-memory.md`. Report findings first, most severe first, with `path:line`.
-
-Harness and failure-memory guidance adapted from awesome-copilot `harness-engineering` (MIT, Copyright GitHub, Inc.); see `LICENSE`.

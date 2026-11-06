@@ -5,8 +5,6 @@ description: Audits UI event handlers for behavior bugs. It maps each state acti
 
 # Click-path audit
 
-Adapted from the ECC (everything-claude-code) `click-path-audit` skill (MIT, Copyright (c) 2026 Affaan Mustafa).
-
 Each function in a handler can be correct while the handler is not. A later call resets what an earlier call set, two async results land in the wrong order, or an effect clears the flag the click just raised. Static reading and per-function tests miss these, because the bug lives in the sequence. This skill traces the sequence.
 
 Not for building or fixing components (`react`), API or data-shape bugs (`problem-solving`), styling, or performance profiling.

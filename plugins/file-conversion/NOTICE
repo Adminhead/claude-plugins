@@ -1,0 +1,8 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the MIT-licensed sources below (see LICENSE).
+
+wshobson/agents (https://github.com/wshobson/agents), Copyright (c) 2024 Seth Hobson.
+Derived: the `file-conversion` skill; skills/file-conversion/SKILL.md and references/routes.md.
+
+Modifications: rewritten and edited for this marketplace.

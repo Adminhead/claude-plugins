@@ -2,8 +2,6 @@
 
 Read this when the user asks for test-driven development or red-green-refactor, when a fix is easiest to drive from a failing test, or when a test needs a mock. Test-first is a technique to offer when it fits, not a rule for every change. It does not require a coverage target, a checkpoint commit per step, or a saved evidence file.
 
-Adapted in part from Matt Pocock's `tdd` skill and its `tests.md` and `mocking.md` (github.com/mattpocock/skills, MIT).
-
 ## Contents
 
 - A valid red

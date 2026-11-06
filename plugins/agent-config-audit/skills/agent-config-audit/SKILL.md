@@ -95,5 +95,3 @@ Report the abuse path for each finding. A pattern with no path to attacker-contr
 ## Sources
 
 Claude Code docs: settings (`code.claude.com/docs/en/settings`), permissions (`/docs/en/permissions`), hooks (`/docs/en/hooks`), MCP (`/docs/en/mcp`), subagents (`/docs/en/sub-agents`). Re-check a key name there before telling the person to add it.
-
-The MCP selector rules are adapted from ECC `mcp-dependency-review` (MIT, Copyright (c) 2026 Affaan Mustafa) and awesome-copilot `mcp-security-audit` (MIT, Copyright GitHub, Inc.); see `LICENSE`.

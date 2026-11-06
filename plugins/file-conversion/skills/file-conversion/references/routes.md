@@ -1,6 +1,6 @@
 # Example conversion routes
 
-Adapted from the wshobson/agents file-conversion skill (MIT, Copyright (c) 2024 Seth Hobson). Each route assumes `conversion_input` and `conversion_dir` are set as in SKILL.md ("Preserve originals"). Run only the route that fits the inspected input and requested output.
+Each route assumes `conversion_input` and `conversion_dir` are set as in SKILL.md ("Preserve originals"). Run only the route that fits the inspected input and requested output.
 
 **MP4 to MP3:** select the first audio stream explicitly. MP3 encoding is lossy; confirm
 any different stream or quality requirement before using these settings.
@@ -77,4 +77,3 @@ with target.open("x", encoding="utf-8") as stream:
 print(f"Converted {len(rows)} rows")
 PYTHON
 ```
-

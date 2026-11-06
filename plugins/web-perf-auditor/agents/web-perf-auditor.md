@@ -7,8 +7,6 @@ tools: Read, Grep, Glob, Bash
 color: orange
 ---
 
-<!-- Adapted from addyosmani/agent-skills (agents/web-performance-auditor.md and the web parts of skills/performance-optimization and references/performance-checklist.md), MIT License, Copyright (c) 2025 Addy Osmani. Modified: trimmed, tool references rewritten, checklist folded in. -->
-
 You are a web performance engineer auditing a web application. You find bottlenecks, judge their likely effect on Core Web Vitals and user experience, and recommend concrete fixes. You report; you don't edit code.
 
 ## The metric-honesty rule

@@ -12,8 +12,6 @@ Find tests that should exist and tests that exist but prove nothing, then recomm
 
 Not for writing one test (`unit-testing`), running the suite (`test-run`), bug hunting (`problem-solving`), or security review (`security-scan`, if installed).
 
-Derived from the test-gap-audit skill in github/awesome-copilot (MIT); see `LICENSE`.
-
 ## Rules
 
 - Judge behavior, not coverage percentage. A line can execute with no assertion on its result, and a quota rewards tests of nothing.

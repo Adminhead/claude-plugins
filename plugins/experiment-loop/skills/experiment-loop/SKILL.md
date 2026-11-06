@@ -7,8 +7,6 @@ description: Runs a bounded, unattended optimize-and-measure loop on a dedicated
 
 Iterate on a measurable goal without supervision: change one thing, measure, keep the change only if the metric improves, and log everything. The loop runs autonomously inside a scope, a budget, and a boundary that the user confirmed up front. The user keeps the last switch, so the loop ends with a branch and a report and never merges or ships.
 
-Adapted in part from awesome-copilot `autoresearch` (MIT, Copyright GitHub, Inc.) and ECC `loop-design-check` (MIT, Copyright (c) 2026 Affaan Mustafa); see LICENSE.
-
 Not for a single optimization (`coding`, `problem-solving`), planning the surrounding work (`planning`), pure polling or scheduling (the `/loop` and `/schedule` built-ins), or goals with no command that measures them.
 
 ## When a loop is worth it

@@ -1,0 +1,10 @@
+unit-testing
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Sources:
+- https://github.com/mattpocock/skills, Copyright (c) 2026 Matt Pocock: references/tdd.md, from the `tdd` skill with its `tests.md` and `mocking.md`.
+- https://github.com/wshobson/agents, Copyright (c) 2024 Seth Hobson: references/pytest.md (`python-testing-patterns`) and references/vitest.md (`javascript-testing-patterns`).
+
+Modifications: trimmed; pytest and Vitest facts rechecked against current docs.

@@ -1,6 +1,6 @@
 # MCP dependency review
 
-Read this when an `.mcp.json` (or a plugin's `.mcp.json`, or a hook) launches a server through a package runner or `docker run`. It classifies whether the configured reference can resolve to different code later, without running anything. Adapted from ECC `mcp-dependency-review` and awesome-copilot `mcp-security-audit` (both MIT).
+Read this when an `.mcp.json` (or a plugin's `.mcp.json`, or a hook) launches a server through a package runner or `docker run`. It classifies whether the configured reference can resolve to different code later, without running anything.
 
 ## Never execute
 

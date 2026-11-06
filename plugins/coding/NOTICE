@@ -1,0 +1,11 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the MIT-licensed sources below (see LICENSE).
+
+ponytail (https://github.com/DietrichGebert/ponytail), Copyright (c) 2026 DietrichGebert.
+Derived: skills/coding/SKILL.md, in part.
+
+ECC (everything-claude-code) (https://github.com/affaan-m/ECC), Copyright (c) 2026 Affaan Mustafa.
+Derived: the search-first, error-handling and inherit-legacy-style skills; skills/coding/SKILL.md, in part.
+
+Modifications: rewritten and edited for this marketplace.

@@ -2,7 +2,7 @@
 
 Read this when writing or changing a Python test with pytest. It covers how to express a test, not which command runs it (`framework-runners.md`). Use only plugins and helpers the project already depends on; check its lockfile or `pyproject.toml` before reaching for `pytest-asyncio`, `freezegun`, `pytest-mock` or `hypothesis`.
 
-Trimmed and adapted from wshobson's `python-testing-patterns` skill (github.com/wshobson/agents, MIT). Config and plugin facts checked against the pytest 9 docs and the pytest-asyncio docs via Context7.
+Config and plugin facts checked against the pytest 9 docs and the pytest-asyncio docs via Context7.
 
 ## Contents
 

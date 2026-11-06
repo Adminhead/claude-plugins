@@ -1,7 +1,6 @@
 # Tells — the dated registry
 
-Adapted from taste-skill v2 `references/tells.md` (https://github.com/Leonxlnx/taste-skill, MIT,
-Copyright (c) 2026 Leonxlnx). Modified: statuses map to the ui-critic inspector, and the owner-taste
+Statuses map to the ui-critic inspector, and the owner-taste
 group is warned, not banned.
 
 A tell is a device that makes a page read as generated. Tells are not bad design in themselves; most

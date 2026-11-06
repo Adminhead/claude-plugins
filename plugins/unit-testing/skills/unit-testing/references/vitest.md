@@ -2,7 +2,7 @@
 
 Read this when writing or changing a JavaScript or TypeScript unit test. Vitest first; Jest differs mainly in the `jest` object and configuration, noted where it matters. It covers how to express a test, not which command runs it (`framework-runners.md`). Use the runner, environment (`node`, `jsdom`, `happy-dom`) and helpers the project already has.
 
-Trimmed and adapted from wshobson's `javascript-testing-patterns` skill (github.com/wshobson/agents, MIT). Vitest facts checked against the Vitest docs via Context7 (`/vitest-dev/vitest`, v4).
+Vitest facts checked against the Vitest docs via Context7 (`/vitest-dev/vitest`, v4).
 
 ## Contents
 

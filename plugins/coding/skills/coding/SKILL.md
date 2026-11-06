@@ -57,5 +57,3 @@ Validation at trust boundaries, authorization, error handling that prevents data
 8. **Finish.** Report the acceptance conditions met, the changed files and why, and the commands run. List useful extras you didn't do (tests, docs, refactors, skipped options) instead of doing them. End with one or two lines: what you skipped or did not check, and any risk the user must know. Stop when every in-scope condition has direct evidence.
 
 ---
-
-Adapted in part from ponytail by DietrichGebert (https://github.com/DietrichGebert/ponytail) and from the search-first, error-handling, and inherit-legacy-style skills in ECC by Affaan Mustafa (https://github.com/affaan-m/ECC), both MIT. See `LICENSE` in this plugin.

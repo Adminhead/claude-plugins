@@ -7,8 +7,6 @@ description: Puts a non-trivial in-flight decision through a fresh-context adver
 
 A confident answer is not a correct one. Long sessions turn assumptions into "facts" without anyone noticing. Before a non-trivial decision stands, hand it to a reviewer with fresh context whose job is to **disprove** it, then fold the findings back in.
 
-Adapted from the `doubt-driven-development` skill in [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT License; see the plugin's `LICENSE`).
-
 ## Boundaries
 
 - The built-in `/code-review` command reviews a finished diff for bugs. This skill works in flight, per decision, while changing course is still cheap. Use both.
