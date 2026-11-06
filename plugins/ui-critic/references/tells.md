@@ -1,7 +1,7 @@
 # Tells — the dated registry
 
-Statuses map to the ui-critic inspector, and the owner-taste
-group is warned, not banned.
+Read each status against the ui-critic inspector, and treat the owner-taste
+group as warned, not banned.
 
 A tell is a device that makes a page read as generated. Tells are not bad design in themselves; most
 began as good ideas on good sites. They became tells by being produced by default, everywhere, without

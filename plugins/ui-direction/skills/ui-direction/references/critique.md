@@ -1,7 +1,7 @@
 # Critique — judging the render
 
 Owner-taste caps (monospace, index numbers, hairlines) and the
-picture and motion quotas apply only when the brief does not call for them; an existing-system mode.
+picture and motion quotas apply only when the brief does not call for them; also covers an existing-system mode.
 
 `inspect.mjs` passing means nothing banned or broken was measured. It says nothing about whether the
 page is good. This file is how you find out. Use it on the screenshots, never on the code: code shows
