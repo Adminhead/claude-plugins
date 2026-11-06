@@ -1,0 +1,12 @@
+observability-instrumentation
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Source: https://github.com/addyosmani/agent-skills, Copyright (c) 2025 Addy Osmani.
+Derived: SKILL.md (step 1, on-call questions first, and the entry-point field), from `observability-and-instrumentation`.
+
+Source: https://github.com/wshobson/agents, Copyright (c) 2024 Seth Hobson.
+Derived: references/logging.md (structlog contextvars pattern), from `python-observability`.
+
+Modifications: condensed and rewritten for this skill.

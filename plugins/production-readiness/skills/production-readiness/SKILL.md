@@ -72,5 +72,3 @@ Open with one sentence: the band and the one or two risks that decide it.
 Keep strengths to a line. The reader asked what remains.
 
 When the user picks fixes, make them, then recheck the affected lens.
-
-Adapted from ECC `production-audit` (MIT, Copyright (c) 2026 Affaan Mustafa). See `LICENSE` in the plugin root.

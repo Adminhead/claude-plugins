@@ -1,6 +1,6 @@
 {
   "name": "production-readiness",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Evidence-based ship-or-block review (Blocked, Risky or Caveats) of an application before launch, built from local repo evidence.",
   "author": {
     "name": "AdminHead",

@@ -63,5 +63,3 @@ Watch metrics, not only logs. A log that stays quiet can mean the service stoppe
 - Handle SIGTERM and set a grace period longer than the longest request, or in-flight requests drop on every deploy. On Kubernetes, see `references/rollback-and-readiness.md`.
 - Avoid starting a high-risk rollout when nobody can respond afterwards, such as late on a Friday, unless the change is an emergency fix.
 - Run every verification step you wrote and record the result, because a rollout that was never checked cannot be called healthy.
-
-Adapted from awesome-copilot `devops-rollout-plan` and `gem-devops-guidelines` (MIT, Copyright GitHub, Inc.), ECC `deployment-patterns` and `canary-watch` (MIT, Copyright (c) 2026 Affaan Mustafa), and wshobson/agents `deployment-pipeline-design` (MIT, Copyright (c) 2024 Seth Hobson). See `LICENSE` in the plugin root.

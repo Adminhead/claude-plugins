@@ -9,8 +9,6 @@ Work from a symptom to a supported cause using alarm history, metrics, logs, and
 
 Not for application error tracking in Sentry (`sentry-sdk`, if installed), the written incident postmortem (`postmortem`, if installed), listing resources without a symptom (`aws-resource-query`, if installed), or architecture and cost review (`aws-well-architected`, if installed).
 
-Adapted from awesome-copilot `aws-cloudwatch-investigation` and `aws-resource-health-diagnose` (MIT, Copyright GitHub, Inc.). See `LICENSE` in the plugin root.
-
 ## Ground rules
 
 - Use the user's existing profile or SSO session. Pass `--profile <profile> --region <region>` on every command, and confirm identity first with `aws sts get-caller-identity --profile <profile> --query '{Account:Account,Arn:Arn}' --output table`. If the session expired, ask the user to run `aws sso login --profile <profile>` (profile, SSO and IAM questions go to `aws`; CLI mechanics go to `aws-cli`). Never read `~/.aws/credentials`, `~/.aws/sso/cache/`, or `~/.aws/cli/cache/`, never run `aws configure list` or `aws configure export-credentials`, and never print key material.

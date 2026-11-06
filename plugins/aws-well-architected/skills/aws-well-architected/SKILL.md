@@ -9,8 +9,6 @@ Assess a workload's design against the Well-Architected Framework (operational e
 
 Not for general release readiness (`production-readiness`, if installed), listing resources (`aws-resource-query`, if installed), or incident investigation (`aws-cloudwatch`, if installed). Profile, IAM and sign-in questions go to `aws`.
 
-Adapted from awesome-copilot `aws-well-architected-review` and `aws-cost-optimize` (MIT, Copyright GitHub, Inc.). See `LICENSE` in the plugin root.
-
 This skill reads and reports. It changes infrastructure only when the user asks for the change: state the account, region and resources, show the exact command and wait for approval, use `--dry-run` where supported, confirm destructive or IAM or public-exposure steps explicitly, and verify with a read afterwards. It never creates issues unless the user asks.
 
 ## Procedure

@@ -9,8 +9,6 @@ Translate a question about an AWS account into AWS CLI commands, run them, and r
 
 Not for incident triage from logs and metrics (`aws-cloudwatch`, if installed), Well-Architected or cost review (`aws-well-architected`, if installed), or writing infrastructure as code (`terraform`, if installed). For credentials, IAM policy or sign-in, use `aws`; for CLI mechanics and write commands, use `aws-cli`.
 
-Adapted from awesome-copilot `aws-resource-query` (MIT, Copyright GitHub, Inc.). See `LICENSE` in the plugin root.
-
 ## Before the first command
 
 1. **Pick the profile.** Use the profile the user names, else `AWS_PROFILE` if set. Otherwise run `aws configure list-profiles` and ask which one. Pass `--profile <profile> --region <region>` on every command rather than exporting variables, so one query can't leak into the next.

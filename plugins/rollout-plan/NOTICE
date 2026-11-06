@@ -1,0 +1,9 @@
+rollout-plan
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Sources (all in SKILL.md):
+- github/awesome-copilot `devops-rollout-plan` and `gem-devops-guidelines`, Copyright GitHub, Inc.
+- ECC `deployment-patterns` and `canary-watch`, Copyright (c) 2026 Affaan Mustafa.
+- wshobson/agents `deployment-pipeline-design`, Copyright (c) 2024 Seth Hobson.

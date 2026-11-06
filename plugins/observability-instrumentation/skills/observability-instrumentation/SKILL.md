@@ -61,5 +61,3 @@ Pick the cheapest signal that answers the question. Metrics detect, traces local
 - `references/profiling.md`. Read when enabling pprof or continuous profiling.
 
 For Sentry error tracking setup, use the `sentry-sdk` skill if it is installed. This skill covers the OpenTelemetry and Prometheus path.
-
-Step 1 (on-call questions first) and the entry-point field are adapted from addyosmani/agent-skills `observability-and-instrumentation` (MIT, Copyright (c) 2025 Addy Osmani). The structlog contextvars pattern in `references/logging.md` is adapted from wshobson/agents `python-observability` (MIT, Copyright (c) 2024 Seth Hobson). See `LICENSE` in the plugin root.
