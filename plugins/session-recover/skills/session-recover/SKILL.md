@@ -1,13 +1,13 @@
 ---
 name: session-recover
-description: 'Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them against the repo and writes a handoff-shaped brief for a fresh session. Use for /session-recover, "recover the dead session", "resurrect that session" or a crash before a handoff was written. Not for a live session (handoff), or for restoring the old conversation whole (claude --resume).'
+description: 'Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them against the repo and writes a handoff-shaped brief for a fresh session. Use for /session-recover, "recover the dead session", "resurrect that session" or a crash before a handoff was written. Also known as necromancy. Not for a live session (handoff), or for restoring the old conversation whole (claude --resume).'
 argument-hint: "[session id or prefix, or topic]"
 disable-model-invocation: true
 allowed-tools:
   - Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/session_recover.py *)
 ---
 
-# Necromancy
+# Session recover
 
 Rebuild the state of a session that ended without a handoff, so a fresh session can continue the work. `handoff` is prevention (the live session writes the brief); this is recovery after the fact. If the user only wants the old conversation back, `claude --resume <id>` restores it whole; use this when a fresh, small context is the point.
 

@@ -440,7 +440,7 @@ def digest_text(s):
     section("Final assistant text", [f"- {clip_tail(t, 800)}" for t in s.finals])
 
     def render():
-        out = ["# Necromancy digest\n"]
+        out = ["# Session-recover digest\n"]
         for name, lines in secs:
             out += [f"## {name}", *(lines or ["(none)"]), ""]
         return "\n".join(out)
