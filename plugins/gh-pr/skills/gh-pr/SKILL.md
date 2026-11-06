@@ -7,8 +7,6 @@ description: Prepares and opens a GitHub pull request with gh, with convention-f
 
 Produce a PR a reviewer can judge in minutes. Not for acting on review feedback (`pr-comments`) or a one-shot commit, push, open and merge flow (`ship`).
 
-Adapted from Matt Pocock's `pr` skill ([mattpocock/skills](https://github.com/mattpocock/skills), MIT, see `LICENSE`). Credit for the body structure goes to Dex Horthy's `show-me` skill (Humanlayer), which that skill reproduces.
-
 Pushing a branch, opening or editing a PR, and merging are shared-state writes. Draft everything locally, show it, and run each write only after the user approves it. A request to "open a PR" is not approval of the command. Before running, show the title, the body, the `git push` remote and branch, and the full `gh pr create` command line, and run them after the user confirms.
 
 ## Workflow

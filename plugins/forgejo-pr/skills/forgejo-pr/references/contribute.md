@@ -1,6 +1,6 @@
 # Contributing to another repository
 
-Read when the PR targets a repo the user does not own or cannot push to. You are a guest, so the project's rules beat the defaults in `forgejo-pr`. Adapted from `gh-pr`'s contribute guide.
+Read when the PR targets a repo the user does not own or cannot push to. You are a guest, so the project's rules beat the defaults in `forgejo-pr`.
 
 ## 1. Read the rules first
 

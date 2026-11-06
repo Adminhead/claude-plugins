@@ -7,8 +7,6 @@ description: 'Edits and repairs Git history safely without opening an editor: fi
 
 Rewriting history replaces commits with new ones. That is safe on a private branch and harmful on a shared one, so decide which case you are in before running anything. Creating commits and naming branches belong to `git-commit`.
 
-Adapted in part from awesome-copilot's `rebase-current-branch` (MIT, Copyright GitHub, Inc.) and wshobson/agents `git-advanced-workflows` (MIT, Copyright (c) 2024 Seth Hobson). See `LICENSE`.
-
 ## Safety rules
 
 - Rewrite only commits that exist solely on the user's local or personal branch. Check with `git branch --remotes --contains <oldest-commit>` and `git rev-list --count @{u}..HEAD`. Never rewrite the default branch, a release branch, or anything others may have pulled. Use `git revert` there.

@@ -9,8 +9,6 @@ Produce a numbered breakdown, get it approved, dry-run the publish, then publish
 
 Not for filing or editing one issue (`gh-issues`), triaging issues that already exist (`gh-triage`), or planning the work without publishing it (`planning`).
 
-Adapted from Matt Pocock's `to-tickets` and `to-spec` skills ([mattpocock/skills](https://github.com/mattpocock/skills), MIT, see `LICENSE`).
-
 ## 1. Gather the source
 
 Read the spec, plan, or issue the user points to, including its comments (`gh issue view N --comments`). When the source is the conversation, work from it without interviewing the user. Ask only for facts that change the cut.

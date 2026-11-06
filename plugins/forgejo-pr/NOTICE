@@ -1,0 +1,10 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the MIT-licensed source below (see LICENSE).
+
+mattpocock/skills (https://github.com/mattpocock/skills), Copyright (c) 2026 Matt Pocock.
+Derived: the `pr` skill; skills/forgejo-pr/SKILL.md, by way of this marketplace's gh-pr plugin.
+
+The PR body structure credits Dex Horthy's `show-me` skill (Humanlayer), which the `pr` skill reproduces.
+
+Modifications: rewritten and edited for this marketplace.

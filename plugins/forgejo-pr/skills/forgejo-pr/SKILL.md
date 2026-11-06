@@ -7,8 +7,6 @@ description: "Prepares and opens a Forgejo or Codeberg pull request with fj, wit
 
 Produce a PR a reviewer can judge in minutes. Not for acting on review feedback (`/forgejo-pr-comments`) or a one-shot commit, push, open and merge flow (`forgejo-ship`).
 
-Adapted from Matt Pocock's `pr` skill ([mattpocock/skills](https://github.com/mattpocock/skills), MIT, see `LICENSE`), by way of this marketplace's `gh-pr`. Credit for the body structure goes to Dex Horthy's `show-me` skill (Humanlayer), which that skill reproduces.
-
 Pushing a branch, opening or editing a PR, and merging are shared-state writes. Draft everything locally, show it, and run each write only after the user approves it. A request to "open a PR" is not approval of the command. Before running, show the title, the body, the `git push` remote and branch, and the full `fj pr create` command line, and run them after the user confirms. Codeberg's terms restrict projects made mostly of generative-AI code, so never post unattended and leave the decision to the user.
 
 ## Workflow
