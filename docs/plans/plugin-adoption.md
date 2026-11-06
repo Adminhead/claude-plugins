@@ -345,7 +345,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | JVM frameworks | `play-framework`, `spring-boot`, `spring-boot-testing` (decision 12) |
 | Android extras | `android-performance` (Macrobenchmark, Baseline Profiles, app size), `play-publishing` (Gradle Play Publisher, fastlane `supply`, Play Console releases); both original text (decision 13) |
 | Auth | `app-auth`, `better-auth` (confirm it was rewritten from docs; upstream has no license) |
-| Review and critique | `poka-yoke`, `review-loop`, `second-opinion` + `consult` (M), `devils-advocate` (new), `doubt-review` (new) |
+| Review and critique | `mistake-proof`, `review-loop`, `second-opinion` + `consult` (M), `devils-advocate` (new), `doubt-review` (new) |
 | Design and docs | `codebase-design` (new, mattpocock + improve-codebase-architecture), `domain-modeling`, `adr-writing`, `docs-audit`, `agent-instructions`, `deprecation-migration` (new) |
 | Repo and config | `pre-commit` (+ hook-repair), `agent-config-audit` (+ mcp-dependency-review), `config-audit`, `devcontainer` (new), `plugin-vetter` (new A, alongside agent-config-audit) |
 | Workflow | `implement-plan`, `research`, `prototype`, `experiment-loop`, `modernize`, `session-retro` (new), `setup-wizard` (new), `test-gap-audit`, `git-history` (+ rebase safety rules) |

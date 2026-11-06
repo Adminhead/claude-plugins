@@ -1,9 +1,9 @@
 ---
-name: poka-yoke
-description: Designs or audits code so a mistake cannot be expressed instead of documenting it, ranking each hazard on a control, warning, detection or docs-only ladder. Use when designing an interface, schema or state machine to be hard to misuse, auditing for footguns, or closing a recurring bug class after an incident.
+name: mistake-proof
+description: Designs or audits code so a mistake cannot be expressed instead of documenting it, ranking each hazard on a control, warning, detection or docs-only ladder. Use when designing an interface, schema or state machine to be hard to misuse, auditing for footguns, or closing a recurring bug class after an incident. Also known as poka-yoke.
 ---
 
-# Poka-yoke
+# Mistake-proof
 
 Not for finding bugs already on the page (`second-opinion` or `/code-review`), language idiom (`typescript`, `python`, if installed), or schema constraints alone (`db-schema-design`, if installed).
 
