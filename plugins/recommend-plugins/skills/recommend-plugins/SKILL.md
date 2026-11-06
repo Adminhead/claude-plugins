@@ -101,8 +101,8 @@ Workflow rules, not stack-detected. `baseline` doesn't install these plugins; ea
 
 | Evidence | Propose |
 | --- | --- |
-| A substantial `docs/` tree, many Markdown files, a plugin or docs repo, or ADRs | `docs-meta` |
-| Existing handoff files, plans (`docs/plans/`), or heavy session history: a long-running or multi-session project | `session-meta` |
+| A substantial `docs/` tree, many Markdown files, a plugin or docs repo, or ADRs | `docs-meta` (unless the minority exception below applies) |
+| Existing handoff files, plans (`docs/plans/`), or heavy session history: a long-running or multi-session project | `session-meta` (unless the minority exception below applies) |
 
 **Classify each Gradle or Maven module first,** and use the same classification for every rule and exclusion here:
 - A module is Android when its build script applies a `com.android.*` plugin. That counts directly, through a `libs.plugins.*` alias resolved in `gradle/libs.versions.toml`, or through a `build-logic/` convention plugin that applies one. A catalog alias that no module applies is not evidence.
@@ -126,7 +126,7 @@ Kotlin and Android rules, in precedence order (the first row that matches decide
 
 Package names come from `<PackageReference Include=...>` in csproj files and `<PackageVersion Include=...>` in `Directory.Packages.props`; the SDK from the `<Project Sdk=...>` attribute. A `.csproj` that only sits beside `project.godot` is the Godot game itself: it means `godot-csharp`, not `dotnet-meta`, unless the repo also has other .NET projects.
 
-Prefer a meta over its members: when a meta matches, propose the meta and list only focused plugins it doesn't already cover. Exception: when the project would use only a minority of a meta's plugins (common for `docs-meta` and `session-meta`), propose the individual focused plugins that fit instead of the whole meta. `cloud-ops-guard` and `readonly-agent-gate` are not members of any meta; the table above offers each separately. Propose `orchestration-meta` only when the user asks for orchestrated or multi-agent sessions.
+Prefer a meta over its members: when a meta matches, propose the meta and list only focused plugins it doesn't already cover. Exception: when the project would use only a minority of a meta's plugins (fewer than half fit; common for `docs-meta` and `session-meta`), propose the individual focused plugins that fit instead of the whole meta. `cloud-ops-guard` and `readonly-agent-gate` are not members of any meta; the table above offers each separately. Propose `orchestration-meta` only when the user asks for orchestrated or multi-agent sessions.
 
 ### Upstream plugins
 

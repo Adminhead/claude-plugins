@@ -722,3 +722,9 @@ def test_since_meta_dependency_change_needs_bump(repo):
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, *sys.argv[1:]]))
+
+
+def test_write_json_keeps_non_ascii(tmp_path):
+    path = tmp_path / "x.json"
+    plugins.write_json(path, {"d": "a → b"})
+    assert "→" in path.read_text()
