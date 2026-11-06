@@ -1,6 +1,6 @@
 {
   "name": "session-meta",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Plugin set for long-running, multi-session projects, installed at project scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",

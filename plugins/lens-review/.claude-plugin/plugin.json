@@ -1,6 +1,6 @@
 {
   "name": "lens-review",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement.",
   "author": {
     "name": "AdminHead",
