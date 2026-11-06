@@ -23,3 +23,5 @@ The plugins themselves are unchanged.
 - `session-meta`: existing handoff files, plans, or heavy session history.
 
 If the project would use only a minority of a meta's plugins, it proposes the individual focused plugins instead of the whole meta. This is a carve-out to "prefer a meta over its members".
+
+Users who installed `baseline` 0.4.0 keep the 10 moved plugins until they uninstall or prune them; this note does not claim any CLI behaviour on update.

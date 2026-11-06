@@ -3,7 +3,7 @@
 Claude Code plugin marketplace `adminhead`. It has three kinds of plugin:
 
 - `baseline`, a meta plugin you install once at user scope. It pulls in the plugins every session should have.
-- Project meta plugins (`python-meta`, `golang-meta`, `rust-meta`, `node-typescript-meta`, `dotnet-meta`, `web-meta`, `design-meta`, `godot-meta`, `iac-meta`, `kubernetes-meta`, `github-meta`, `forgejo-meta`) that you install at project scope. Each pulls in the plugins for one kind of project. `orchestration-meta` adds a main orchestration agent and a set of general-purpose agents. Its one `coder` agent runs on the model and effort the orchestrator picks per call.
+- Project meta plugins (`python-meta`, `golang-meta`, `rust-meta`, `node-typescript-meta`, `dotnet-meta`, `web-meta`, `design-meta`, `godot-meta`, `iac-meta`, `kubernetes-meta`, `github-meta`, `forgejo-meta`, `docs-meta`, `session-meta`) that you install at project scope. Each pulls in the plugins for one kind of project. `orchestration-meta` adds a main orchestration agent and a set of general-purpose agents. Its one `coder` agent runs on the model and effort the orchestrator picks per call.
 - Core bundles shared by several metas: `programming-core` (general programming, installed by the language, web and game metas), `design-core` (UI and UX design, installed by `web-meta` and `design-meta`) and `gamedev-core` (engine-agnostic game development, installed by `godot-meta`). A project with two such metas gets one copy.
 - Focused plugins. Each ships exactly one component: one skill, agent, hook config, or MCP server (exceptions: `MULTI_COMPONENT`). Install them through a meta plugin or on their own.
 
