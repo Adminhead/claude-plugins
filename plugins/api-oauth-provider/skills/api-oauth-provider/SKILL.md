@@ -86,5 +86,3 @@ State the profile you checked or designed against, which items you verified by t
 ## Sources checked
 
 rfc-editor.org (RFC 6749, 7009, 7591, 7636, 7662, 8414, 8628, 8707, 9126, 9207, 9449, 9700, 9728), datatracker.ietf.org/doc/draft-ietf-oauth-v2-1 (revision 16, rechecked October 2026), and modelcontextprotocol.io/specification/2026-07-28/basic/authorization (with its client-registration and security-considerations pages).
-
-Adapted in part from `oauth2-provider-design` in [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT; see LICENSE at the plugin root).

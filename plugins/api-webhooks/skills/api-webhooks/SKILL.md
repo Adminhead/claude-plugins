@@ -92,5 +92,3 @@ Grade the docs against five elements before launch: runnable signature-verificat
 - [references/delivery-and-lifecycle.md](references/delivery-and-lifecycle.md) - read when designing the retry schedule, SSRF protection, or the portal.
 
 Sources checked: Standard Webhooks specification 1.0.0 (github.com/standard-webhooks/standard-webhooks, spec/standard-webhooks.md, rechecked 2026-10-17), RFC 9110 for `Retry-After`, OWASP API Security Top 10 2023 API7 (SSRF).
-
-Adapted in part from [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT; see LICENSE at the plugin root).

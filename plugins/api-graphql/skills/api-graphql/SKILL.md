@@ -97,5 +97,3 @@ For a design, give one section per step above: the gate verdict and which trigge
 ## Sources checked
 
 spec.graphql.org (September 2025 edition lists the response format, `@deprecated`, introspection, and non-null propagation), relay.dev/graphql/connections.htm, graphql.org/learn (global object identification, pagination, response, security), and Apollo Federation's subgraph specification.
-
-Adapted in part from `public-graphql-api-design` and `api-versioning-policy` in [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT; see LICENSE at the plugin root).

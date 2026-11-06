@@ -61,5 +61,3 @@ Ship the reference from the spec so docs cannot drift from the contract. The gat
 - [references/reference-gates.md](references/reference-gates.md) - read when auditing API reference docs or CI gates for them.
 
 Sources checked: RFC 9457 (rfc-editor.org/rfc/rfc9457), RFC 9110 for method and status semantics, RFC 9745 and RFC 8594 for deprecation headers, the IETF RateLimit headers draft (datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/, revision 11 rechecked 2026-10-17).
-
-Adapted in part from [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT; see LICENSE at the plugin root).

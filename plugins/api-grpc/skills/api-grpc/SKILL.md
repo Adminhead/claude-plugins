@@ -94,5 +94,3 @@ State the verdict or design decisions, the buf commands you ran with their resul
 ## Sources checked
 
 Primary sources: buf.build/docs (breaking, lint rules), google.aip.dev (121, 127, 185, 191, 193, 194, 215), grpc.io guides (deadlines, retry), github.com/grpc/grpc `doc/http-grpc-status-mapping.md`, googleapis `google/rpc/status.proto`, and protobuf.dev (updating a message type, ProtoJSON). Buf defaults (STANDARD lint, FILE breaking, the UNARY_RPC category) rechecked at buf.build/docs in October 2026.
-
-Adapted in part from `public-grpc-api-design` in [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT) and `protobuf-grpc-api-review` in [github/awesome-copilot](https://github.com/github/awesome-copilot) (MIT); see LICENSE at the plugin root.

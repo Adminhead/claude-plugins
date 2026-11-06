@@ -110,5 +110,3 @@ Each item is a finding.
 - [references/backoff-jitter.md](references/backoff-jitter.md) - read when choosing backoff formulas, budgets, or deadline rules.
 
 Sources checked: IETF idempotency-key draft revision 07, expired (rechecked 2026-10-17) (datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/), RFC 9110 for method semantics, Marc Brooker, "Exponential Backoff and Jitter" (aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/), Brandur Leach, "Implementing Stripe-like Idempotency Keys in Postgres" (brandur.org/idempotency-keys).
-
-Adapted in part from [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT; see LICENSE at the plugin root).

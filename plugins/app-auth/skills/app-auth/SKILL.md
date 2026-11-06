@@ -91,4 +91,4 @@ Check responses and logs for leaked credentials or secrets.
 
 Stop when the affected boundary has direct evidence. Don't broaden into provider administration, a policy redesign, or generic hardening.
 
-The OAuth client rules in section 2 (PKCE S256 for every client, exact redirect matching, no tokens in query strings) follow RFC 9700 and were adapted in part from `oauth2-provider-design` in [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT; see LICENSE at the plugin root).
+The OAuth client rules in section 2 (PKCE S256 for every client, exact redirect matching, no tokens in query strings) follow RFC 9700.

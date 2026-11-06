@@ -72,5 +72,3 @@ Rotation works only when two keys are valid at once. Provide one roll operation 
 - A key with no owner, scope record, or expiry.
 - An old key deleted while traffic remained, or a new key with no scheduled end for the old one.
 - A production integration on a departed employee's key.
-
-Adapted in part from [samber/developer-platform-skills](https://github.com/samber/developer-platform-skills) (MIT; see LICENSE at the plugin root).
