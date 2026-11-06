@@ -1,7 +1,6 @@
 # Imagery
 
-Adapted from taste-skill v2 `references/imagery.md` (https://github.com/Leonxlnx/taste-skill, MIT, Copyright (c) 2026
-Leonxlnx). Modified for ui-direction: network search is optional and defaults to CC0, public domain and CC BY (share-alike with `--license sa`); the picture floor is advice; `<skill>` is the skill directory named in SKILL.md.
+Network search is optional and defaults to CC0, public domain and CC BY (share-alike with `--license sa`); the picture floor is advice; `<skill>` is the skill directory named in SKILL.md.
 
 Pictures are where generated pages most obviously give up: a grey box, an icon in a square, a fake
 dashboard, an abstract blob. This file is how to decide what the pictures are, where to find real ones,

@@ -1,7 +1,6 @@
 # Colour
 
-Adapted from taste-skill v2 `references/colour.md` (https://github.com/Leonxlnx/taste-skill, MIT, Copyright (c) 2026
-Leonxlnx). Modified for ui-direction: colour families are generated-page defaults the brief can override; checks run by the ui-critic agent.
+Colour families are generated-page defaults the brief can override; checks run by the ui-critic agent.
 
 The direction sheet deals a palette with named roles. This file is how to apply it so the page looks
 decided rather than tinted.

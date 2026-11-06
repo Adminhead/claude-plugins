@@ -1,7 +1,6 @@
 # Research digest
 
-Condensed from taste-skill v2 `references/research.md` (https://github.com/Leonxlnx/taste-skill, MIT,
-Copyright (c) 2026 Leonxlnx). Read it when you want to cite a number; do not round these up or invent
+Read it when you want to cite a number; do not round these up or invent
 others.
 
 ## What the study was

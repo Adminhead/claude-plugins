@@ -1,6 +1,6 @@
 # Quick Reference — Full Rule Set (all 10 categories)
 
-Load this file for a UI review or audit pass, or for the full checklist of one category. The rules come from `data/ux-guidelines.csv` and `data/app-interface.csv` (search them with `--domain ux` and `--domain app`); this file is a static index for scanning without a search round-trip. Adapted from ui-ux-pro-max v2.15.0 (MIT, Next Level Builder); see the plugin's NOTICE.
+Load this file for a UI review or audit pass, or for the full checklist of one category. The rules come from `data/ux-guidelines.csv` and `data/app-interface.csv` (search them with `--domain ux` and `--domain app`); this file is a static index for scanning without a search round-trip.
 
 ## Quick Reference
 

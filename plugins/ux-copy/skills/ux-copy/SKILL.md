@@ -10,8 +10,6 @@ Write or review the words inside a product interface.
 
 Request: $ARGUMENTS
 
-Adapted from Anthropic's design plugin (anthropics/knowledge-work-plugins, `design/skills/ux-copy`), Apache-2.0; see `NOTICE`.
-
 ## Scope
 
 - Owns interface microcopy: labels, CTAs, errors, empty states, confirmations, tooltips, loading, success and onboarding text, notifications.

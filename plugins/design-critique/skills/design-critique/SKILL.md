@@ -10,8 +10,6 @@ Give structured, actionable feedback on a design that exists as an image, export
 
 Design: $ARGUMENTS
 
-Adapted from Anthropic's design plugin (anthropics/knowledge-work-plugins, `design/skills/design-critique`), Apache-2.0; see `NOTICE`.
-
 ## Scope
 
 - Owns critique of static designs without running code: mockups, wireframes, exported frames, screenshots, sketches.

@@ -10,8 +10,6 @@ Audit a design or page for WCAG 2.2 Level AA conformance and report findings by 
 
 Target: $ARGUMENTS
 
-Adapted from Anthropic's design plugin (anthropics/knowledge-work-plugins, `design/skills/accessibility-review`), Apache-2.0. Updated from WCAG 2.1 to 2.2; see `NOTICE`.
-
 ## Scope
 
 - This is a design-level audit: what can be judged from mockups, screenshots, specs, markup or a page's source and rendered output.

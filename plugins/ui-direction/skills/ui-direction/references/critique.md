@@ -1,7 +1,6 @@
 # Critique — judging the render
 
-Adapted from taste-skill v2 `references/critique.md` (https://github.com/Leonxlnx/taste-skill, MIT,
-Copyright (c) 2026 Leonxlnx). Modified: owner-taste caps (monospace, index numbers, hairlines) and the
+Owner-taste caps (monospace, index numbers, hairlines) and the
 picture and motion quotas apply only when the brief does not call for them; an existing-system mode.
 
 `inspect.mjs` passing means nothing banned or broken was measured. It says nothing about whether the

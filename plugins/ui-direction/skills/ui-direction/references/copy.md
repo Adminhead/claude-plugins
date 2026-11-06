@@ -1,7 +1,6 @@
 # Words
 
-Adapted from taste-skill v2 `references/copy.md` (https://github.com/Leonxlnx/taste-skill, MIT, Copyright (c) 2026
-Leonxlnx). Modified for ui-direction: checks run by the ui-critic agent; the house rules are defaults the brief can override.
+Checks run by the ui-critic agent; the house rules are defaults the brief can override.
 
 Copy is the first design decision. A headline that needs four lines cannot be rescued by typography,
 and a page of slogans cannot be rescued by layout. Write the page as plain text before any markup.

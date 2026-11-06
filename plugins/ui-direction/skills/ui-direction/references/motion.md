@@ -1,7 +1,6 @@
 # Motion
 
-Adapted from taste-skill v2 `references/motion.md` (https://github.com/Leonxlnx/taste-skill, MIT, Copyright (c) 2026
-Leonxlnx). Modified for ui-direction: motion is restrained by default (frontend-design's "one orchestrated moment"); the original's eight-element quota is a warning, not a gate.
+Motion is restrained by default (frontend-design's "one orchestrated moment"); the eight-element quota is a warning, not a gate.
 
 Read this before adding any animation. The static page must already be finished and passing
 the critic's checks; motion is the last pass, never a way to rescue a weak layout.

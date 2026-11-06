@@ -1,7 +1,6 @@
 # Type
 
-Adapted from taste-skill v2 `references/type.md` (https://github.com/Leonxlnx/taste-skill, MIT, Copyright (c) 2026
-Leonxlnx). Modified for ui-direction: checks run by the ui-critic agent.
+Checks run by the ui-critic agent.
 
 Typography is most of what a visitor sees and most of what makes a page look designed or assembled.
 The direction sheet deals you a type system (faces, weights, settings). This file is how to use it.

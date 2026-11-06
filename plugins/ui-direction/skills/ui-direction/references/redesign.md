@@ -1,9 +1,7 @@
 # Redesign of an existing page
 
-The order of work for reshaping a page that already exists. Adapted from taste-skill's
-`redesign-skill` (https://github.com/Leonxlnx/taste-skill, MIT, Copyright (c) 2026 Leonxlnx): its
-scan, diagnose and fix order and its working rules only. Its style advice (specific fonts, glass,
-grain, tinted shadows, gradients) is not carried over; the direction comes from SKILL.md.
+The order of work for reshaping a page that already exists: scan, diagnose, then fix, with working rules only. Style advice (specific fonts, glass,
+grain, tinted shadows, gradients) is not given here; the direction comes from SKILL.md.
 
 If the product's visual system stays and only a part changes, this is not a redesign: follow the
 system (the `web-design` skill when installed). Use this file when the visual identity is being

@@ -10,8 +10,6 @@ Work on the design system itself: audit it for consistency, document a component
 
 Request: $ARGUMENTS
 
-Adapted from Anthropic's design plugin (anthropics/knowledge-work-plugins, `design/skills/design-system`), Apache-2.0; see `NOTICE`.
-
 ## Boundary with `web-design`
 
 The two skills split on *what is being changed*:

@@ -5,8 +5,6 @@ description: Art direction and build process for new UI or a visual reshape, suc
 
 # UI direction
 
-Adapted from Anthropic's frontend-design skill (Apache-2.0) and taste-skill v2 by Leonxlnx (MIT); see the plugin's `NOTICE`.
-
 Approach this as the design lead at a studio known for giving every client a distinct visual identity. This client has rejected proposals that felt cliché or templated and is paying for a point of view: make deliberate, opinionated choices about palette, typography and layout that are specific to this brief, and take aesthetic risk where it is justified. **The brief's own words always win**, including when it asks for a look this skill would otherwise avoid.
 
 Scope: new UI or a replaced visual identity. To extend a product's existing design system or DESIGN.md, use `web-design`; for charts use `dataviz`; for claude.ai artifacts use `artifact-design`; for product microcopy alone use `ux-copy`; for a throwaway prototype, skip the procedure and keep only the defaults table.

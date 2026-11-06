@@ -1,7 +1,6 @@
 # Layout
 
-Adapted from taste-skill v2 `references/layout.md` (https://github.com/Leonxlnx/taste-skill, MIT, Copyright (c) 2026
-Leonxlnx). Modified for ui-direction: drawn grids are a default to avoid rather than a ban; checks run by the ui-critic agent.
+Drawn grids are a default to avoid rather than a ban; checks run by the ui-critic agent.
 
 How the page is put together: margins, the grid, where text sits, how sections differ, navigation,
 endings and the phone. The direction sheet gives the specific compositions; this file gives the habits

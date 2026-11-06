@@ -10,8 +10,6 @@ Turn a finished design into a spec engineers can build from without guessing.
 
 Design: $ARGUMENTS
 
-Adapted from Anthropic's design plugin (anthropics/knowledge-work-plugins, `design/skills/design-handoff`), Apache-2.0; see `NOTICE`.
-
 ## Scope
 
 - Owns the design-to-engineering spec sheet for a screen, flow or component.

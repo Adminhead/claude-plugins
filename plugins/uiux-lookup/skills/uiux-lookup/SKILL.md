@@ -50,5 +50,3 @@ Stacks: `swiftui`, `jetpack-compose`, `flutter`, `react-native`, `wpf`, `winui`,
 - `references/quick-reference.md`: the full rule index by category (accessibility, touch, performance, layout, typography and colour, animation, forms, navigation, charts). Read it for a review pass instead of running many searches.
 - `references/pro-rules.md`: native app polish rules and the pre-delivery checklist. Read it before handing over mobile app UI.
 - `data/provenance.json`: sources and verification dates for the shipped data.
-
-Adapted from ui-ux-pro-max v2.15.0 by Next Level Builder (MIT). See the plugin's `LICENSE` and `NOTICE`.
