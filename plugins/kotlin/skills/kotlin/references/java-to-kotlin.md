@@ -1,6 +1,6 @@
 # Java to Kotlin conversion
 
-Read for any request to convert `.java` files. Condensed from JetBrains' java-to-kotlin methodology. For Java-only edits use `java`.
+Read for any request to convert `.java` files. For Java-only edits use `java`.
 
 ## Procedure
 

@@ -59,4 +59,4 @@ Boot 4 splits the large auto-configure jar into focused modules. Each technology
 
 Do not publish one artifact for both Boot 3 and 4; the package and module reorganization makes that unreliable. Publish one artifact per major.
 
-Sources: the Spring Boot 4.0 Migration Guide and 4.1 Release Notes on the spring-projects/spring-boot wiki (checked 2026-10-20), plus github/awesome-copilot's springboot-4-migration instructions (MIT).
+Sources: the Spring Boot 4.0 Migration Guide and 4.1 Release Notes on the spring-projects/spring-boot wiki (checked 2026-10-20).

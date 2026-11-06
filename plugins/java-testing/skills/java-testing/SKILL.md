@@ -72,5 +72,3 @@ Use JaCoCo to find untested branches in code you changed, not to hit a number. D
 - [references/mockito.md](references/mockito.md) when stubbing gets complicated, on a Mockito warning, or when mocking statics, constructors or finals.
 - [references/testcontainers.md](references/testcontainers.md) when a suite starts containers or is slow.
 - [references/coverage.md](references/coverage.md) when configuring JaCoCo or asked about coverage targets.
-
-Adapted in part from github/awesome-copilot `java-junit` and decebals/claude-code-java `test-quality` (both MIT; see LICENSE and NOTICE).

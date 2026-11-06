@@ -1,6 +1,6 @@
 {
   "name": "kotlin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Writes, reviews and fixes idiomatic Kotlin outside @Composable code. Use for \"Smart cast to String is impossible, because name is a mutable property\", a non-exhaustive when, !! NullPointerException, events lost from a MutableSharedFlow, stateIn that never emits, a coroutine that outlives its owner, GlobalScope or runBlocking freezing the caller, swallowed CancellationException, or a Java-to-Kotlin conversion. Covers null safety, sealed classes, scope functions, structured concurrency, Flow and Java interop.",
   "author": {
     "name": "AdminHead",

@@ -70,5 +70,3 @@ Verified on 2026-10-20 against spring.io and docs.spring.io: Boot 4.1 is the cur
 - [references/security.md](references/security.md) when working with Spring Security or secrets.
 - [references/observability.md](references/observability.md) when working with Actuator, metrics or logs.
 - [references/migration-3-to-4.md](references/migration-3-to-4.md) when upgrading 3.x to 4.x.
-
-Adapted in part from github/awesome-copilot (java-springboot, springboot-4-migration) and affaan-m/everything-claude-code (springboot-patterns, springboot-security), both MIT; see LICENSE and NOTICE at the plugin root.

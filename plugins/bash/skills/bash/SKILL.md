@@ -56,5 +56,3 @@ Keep the script's observable contract (arguments, exit codes, output, side effec
 - [ShellCheck](references/shellcheck.md). Read to configure it, interpret findings, or suppress one correctly.
 - [Bats](references/bats.md). Read to write or debug shell tests.
 - [POSIX sh](references/posix.md). Read when the script must run under `sh` rather than Bash.
-
-A few points (background jobs and `wait`, JUnit reports) were adapted from the shell-scripting skills in wshobson/agents (MIT, see the plugin LICENSE).
