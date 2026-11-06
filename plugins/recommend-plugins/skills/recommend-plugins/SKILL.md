@@ -26,7 +26,7 @@ Don't use `claude plugin list --json --available` for the catalog: its entries c
 
 Sort the catalog into four kinds:
 
-- **Meta plugins** (`baseline`, the `*-meta` plugins): deps-only sets. Their dependency lists say what they install.
+- **Meta plugins** (`baseline`, the `*-meta` plugins, including `docs-meta` and `session-meta`): deps-only sets. Their dependency lists say what they install.
 - **Core bundles** (`*-core`, described as a core bundle): deps-only sets that metas list. Propose a bundle on its own only when no meta that lists it fits.
 - **Focused plugins**: everything else; each ships one skill, agent, hook config, MCP server or LSP component. A few are listed in `MULTI_COMPONENT` in `scripts/plugins.py` and ship two (`scala` is a skill plus the Metals LSP, `orchestration` an agent plus a hook).
 - **Cross-marketplace dependencies**: entries with a `marketplace` other than `adminhead` (for example LSP plugins from `claude-code-lsps`). They install with the plugin that lists them; never propose them separately.
@@ -97,6 +97,13 @@ Some stacks have named rules. Propose a named plugin only if it is in the catalo
 | `build.sbt` with only `app/**/*.java` (no Scala sources) | `java-meta` + `sbt`, not `scala-meta` |
 | `spring-boot-starter-parent`, the `org.springframework.boot` plugin, or `spring-boot-starter-*` dependencies | also `spring-boot` + `spring-boot-testing` |
 
+Workflow rules, not stack-detected. `baseline` doesn't install these plugins; each meta is proposed only on evidence:
+
+| Evidence | Propose |
+| --- | --- |
+| A substantial `docs/` tree, many Markdown files, a plugin or docs repo, or ADRs | `docs-meta` |
+| Existing handoff files, plans (`docs/plans/`), or heavy session history: a long-running or multi-session project | `session-meta` |
+
 **Classify each Gradle or Maven module first,** and use the same classification for every rule and exclusion here:
 - A module is Android when its build script applies a `com.android.*` plugin. That counts directly, through a `libs.plugins.*` alias resolved in `gradle/libs.versions.toml`, or through a `build-logic/` convention plugin that applies one. A catalog alias that no module applies is not evidence.
 - A module is KMP when it applies `org.jetbrains.kotlin.multiplatform`.
@@ -119,7 +126,7 @@ Kotlin and Android rules, in precedence order (the first row that matches decide
 
 Package names come from `<PackageReference Include=...>` in csproj files and `<PackageVersion Include=...>` in `Directory.Packages.props`; the SDK from the `<Project Sdk=...>` attribute. A `.csproj` that only sits beside `project.godot` is the Godot game itself: it means `godot-csharp`, not `dotnet-meta`, unless the repo also has other .NET projects.
 
-Prefer a meta over its members: when a meta matches, propose the meta and list only focused plugins it doesn't already cover. `cloud-ops-guard` and `readonly-agent-gate` are not members of any meta; the table above offers each separately. Propose `orchestration-meta` only when the user asks for orchestrated or multi-agent sessions.
+Prefer a meta over its members: when a meta matches, propose the meta and list only focused plugins it doesn't already cover. Exception: when the project would use only a minority of a meta's plugins (common for `docs-meta` and `session-meta`), propose the individual focused plugins that fit instead of the whole meta. `cloud-ops-guard` and `readonly-agent-gate` are not members of any meta; the table above offers each separately. Propose `orchestration-meta` only when the user asks for orchestrated or multi-agent sessions.
 
 ### Upstream plugins
 
