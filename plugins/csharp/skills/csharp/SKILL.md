@@ -81,5 +81,3 @@ Not for: MSBuild and build failures (`msbuild`), package versions (`nuget`), tes
 - [references/cli-apps.md](references/cli-apps.md) when building or changing a System.CommandLine (v2) CLI.
 - [references/sdk-setup.md](references/sdk-setup.md) for installing an SDK into the repo without touching the system, and `global.json` pinning.
 - [references/net11-apis.md](references/net11-apis.md) when the project targets `net11.0`: new `Process` and `System.Text.Json` APIs (preview until .NET 11 GA).
-
-Adapted in part from [dotnet/skills](https://github.com/dotnet/skills) (MIT, .NET Foundation and Contributors) and [github/awesome-copilot](https://github.com/github/awesome-copilot) `CSharpExpert` and `system-commandline-cli` (MIT, GitHub, Inc.); see LICENSE and NOTICE at the plugin root.

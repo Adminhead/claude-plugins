@@ -1,7 +1,5 @@
 # Optimizing MSBuild Incremental Builds
 
-Adapted from the upstream `incremental-build` skill (dotnet/skills).
-
 ## How MSBuild Incremental Build Works
 
 MSBuild can skip targets whose outputs are up to date, reducing work on subsequent

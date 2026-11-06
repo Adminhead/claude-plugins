@@ -1,6 +1,6 @@
 # File-based C# apps
 
-Adapted from the upstream `csharp-scripts` skill (dotnet/skills); checked against the Microsoft Learn page "File-based apps".
+Checked against the Microsoft Learn page "File-based apps".
 
 Read this when the user wants to try C# code, an API or a language feature without a project, or a small one-file C# utility. Not for language-agnostic throwaway scripts (use the shell or Python) or for code that belongs in an existing solution.
 

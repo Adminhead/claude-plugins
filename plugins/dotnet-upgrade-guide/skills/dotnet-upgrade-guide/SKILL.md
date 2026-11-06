@@ -74,5 +74,3 @@ Area files per hop (each overview links the same ones with its load conditions):
 - `global.json` with `rollForward: disable` or an exact old version makes the new SDK invisible; update it in the TFM commit.
 - A package that the new shared framework now provides shows up as NU1510 on .NET 10+; remove the reference rather than suppressing the warning.
 - Test frameworks have TFM floors: MSTest v4 needs .NET 8+ or .NET Framework 4.6.2+, xunit.v3 needs .NET 8+ or .NET Framework 4.7.2+. Retarget test projects before moving their framework.
-
-Adapted from [dotnet/skills](https://github.com/dotnet/skills) (MIT, .NET Foundation and Contributors; see LICENSE and NOTICE at the plugin root).

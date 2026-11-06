@@ -1,7 +1,5 @@
 # Diagnosing MSBuild Build Performance
 
-Adapted from the upstream `build-perf-diagnostics` skill (dotnet/skills).
-
 ## Performance Analysis Methodology
 
 1. Establish the relevant cold, warm changed-input, or no-change

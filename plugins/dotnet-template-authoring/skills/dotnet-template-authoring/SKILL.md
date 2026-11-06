@@ -92,5 +92,3 @@ Then check every category in [references/validation-rules.md](references/validat
 - `args.files` on a restore action matches paths in the source template, before `sourceName` renames.
 - A parameter whose name is a prefix of another (`Auth`, `AuthMode`) makes expression parsing ambiguous; rename one.
 - Reinstalling from the same folder updates the template; after renaming `identity`, uninstall the old one or both appear.
-
-Adapted from dotnet/skills `template-authoring` and `template-validation` (MIT, .NET Foundation and Contributors).

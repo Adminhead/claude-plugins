@@ -1,6 +1,6 @@
 # CLIs with System.CommandLine v2
 
-Adapted from the awesome-copilot `system-commandline-cli` skill (MIT, GitHub, Inc.), with the API checked against the System.CommandLine 2.0 sources (Context7).
+API checked against the System.CommandLine 2.0 sources (Context7).
 
 Read this when adding or changing commands, options or arguments in a .NET CLI that uses System.CommandLine 2.x (the GA API: `SetAction`, `ParseResult`, `Required`, `Aliases`, `Recursive`, `Validators`). Pre-2.0 betas used `SetHandler`, `IsRequired`, `AddOption` and binders; if the repo pins a beta, match its API or upgrade it on purpose with `nuget`.
 

@@ -62,5 +62,3 @@ Don't install or switch SDKs, edit `global.json` roll-forward, clear the global 
 - After `dotnet add package` (or `dotnet package add`) in a CPM repo, check the diff: the `PackageVersion` belongs in `Directory.Packages.props`, not a `Version` on the reference.
 - A `Directory.Packages.props` in a subfolder replaces the parent one for projects under it; it does not merge unless it imports the parent.
 - Floating versions (`1.*`) make restores non-reproducible; with a lock file they need `--force-evaluate` to move.
-
-Adapted from [dotnet/skills](https://github.com/dotnet/skills) (`convert-to-cpm`, `nuget-trusted-publishing`), MIT, .NET Foundation and Contributors; see LICENSE and NOTICE at the plugin root.

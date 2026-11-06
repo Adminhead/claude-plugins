@@ -1,7 +1,5 @@
 # OutputPath and IntermediateOutputPath clashes
 
-Adapted from the upstream `check-bin-obj-clash` skill (dotnet/skills).
-
 Read this when a build fails with `Cannot create a file when that file already exists` (often during restore, where `project.assets.json` collides), `The process cannot access the file because it is being used by another process`, a `SourceLinkWriter` "file in use" error, intermittent failures that pass on retry, or outputs that go missing or get overwritten in multi-project or multi-targeting builds.
 
 A clash means two project instances (same or different project, different global properties) write the same `OutputPath` or `IntermediateOutputPath`. Ignore instances with `BuildProjectReferences=false`: they are P2P metadata queries (`GetTargetPath`) and write nothing. For `OutputPath`, also ignore restore evaluations (global property `MSBuildRestoreSessionId`).

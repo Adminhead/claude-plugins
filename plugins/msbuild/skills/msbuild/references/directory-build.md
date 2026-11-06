@@ -1,7 +1,5 @@
 # Directory.Build.* organization
 
-Adapted from the upstream `directory-build-organization` skill and its references (dotnet/skills).
-
 Read this when two or more projects repeat the same MSBuild policy or targets, or when an existing `Directory.Build.props`/`.targets`/`.rsp` hierarchy has an import, placement or layering defect (even if only one project is affected). Not for a single project with no Directory.Build files, legacy-to-SDK conversion, or package versions and CPM (the `nuget` skill).
 
 For "should we" or "how should we organize" questions, inspect the real project files and propose a layout; edit only when asked to apply it. Name the actual file that keeps each project-specific setting.

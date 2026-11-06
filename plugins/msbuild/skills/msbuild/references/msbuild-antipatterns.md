@@ -1,6 +1,6 @@
 # MSBuild anti-pattern catalog
 
-Adapted from the upstream `msbuild-antipatterns` skill (dotnet/skills). The numbered catalog retains its
+The numbered catalog retains its
 smell, impact, and correction structure. Use relevant entries for troubleshooting or an
 explicit authoring review, not as a mandate to rewrite every matching pattern.
 

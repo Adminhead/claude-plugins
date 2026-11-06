@@ -1,7 +1,5 @@
 # .NET 11 APIs: Process and System.Text.Json
 
-Adapted from the upstream `process-api-net11` and `system-text-json-net11` skills (dotnet/skills).
-
 .NET 11 is in preview until its GA (planned for November 2026); these API shapes can still change. Use them only when the project targets `net11.0` or later, and check the API docs for the installed SDK if a signature doesn't compile. For anything older, use the pre-.NET 11 patterns noted below.
 
 ## Process

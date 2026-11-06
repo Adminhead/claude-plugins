@@ -100,5 +100,3 @@ Declare `[DiagnosticAnalyzer(LanguageNames.CSharp, LanguageNames.VisualBasic)]` 
 - [references/testing.md](references/testing.md): test packages, verifier setup, markup syntax, the case checklist; read before writing or fixing analyzer or code-fix tests. Starter verifier: [assets/CSharpCodeFixVerifier.cs](assets/CSharpCodeFixVerifier.cs).
 - [references/source-generators.md](references/source-generators.md): incremental pipeline rules, a compact generator, and caching tests; read for any generator work.
 - [references/packaging-and-versioning.md](references/packaging-and-versioning.md): Roslyn baseline pinning, dependency-bot rules, unique assembly versions, diagnostic docs and NuGet layout; read when adding packages, bumping Roslyn, or packing.
-
-Adapted from github/awesome-copilot `skills/roslyn-analyzers` (MIT, GitHub, Inc.). See NOTICE.

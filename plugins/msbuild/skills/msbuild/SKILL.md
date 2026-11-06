@@ -75,5 +75,3 @@ Record the existing contract before editing. A pattern match is not proof of a d
 ## Finish
 
 Report the task, the cause, bottleneck or authoring decision, the evidence, and the minimal change made or proposed (or that none is needed). Give the exact verification commands and whether each passed, failed or was not run; performance claims need comparable measurements and their spread.
-
-Adapted from [dotnet/skills](https://github.com/dotnet/skills) (`plugins/dotnet/skills/msbuild` and `plugins/dotnet-msbuild`), MIT, .NET Foundation and Contributors; see LICENSE and NOTICE at the plugin root.

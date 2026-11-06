@@ -75,5 +75,3 @@ Read the one that matches the task:
 - [references/prerendering.md](references/prerendering.md): persisting state, disabling prerendering, `[ExcludeFromInteractiveRouting]`, `RendererInfo`.
 - [references/js-interop.md](references/js-interop.md): collocated modules, typed wrappers, `DotNetObjectReference`, disposal and circuit loss.
 - [references/server-to-webapp.md](references/server-to-webapp.md): converting a .NET 6/7 Blazor Server app (`_Host.cshtml`, `MapBlazorHub`) to a Blazor Web App.
-
-Adapted from dotnet/skills `plugins/dotnet-blazor` and `convert-blazor-server-to-webapp` (MIT, .NET Foundation and Contributors). See NOTICE.

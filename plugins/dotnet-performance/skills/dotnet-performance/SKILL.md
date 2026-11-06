@@ -81,5 +81,3 @@ Read [references/benchmarkdotnet.md](references/benchmarkdotnet.md) before writi
 - Debug builds and attached debuggers disable JIT optimizations; BenchmarkDotNet refuses to run non-optimized assemblies unless forced.
 - Tiered compilation and Dynamic PGO change code during warmup, so a hand-timed `Stopwatch` loop over a few iterations measures tier-0 code.
 - `DOTNET_` environment variables such as `DOTNET_TieredPGO=0` or `DOTNET_EnableAVX2=0` don't affect code precompiled with ReadyToRun or Native AOT.
-
-Adapted from [dotnet/skills](https://github.com/dotnet/skills) (MIT, .NET Foundation and Contributors; see LICENSE and NOTICE at the plugin root).

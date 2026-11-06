@@ -1,7 +1,5 @@
 # Diagnosing MSBuild Evaluation Performance
 
-Adapted from the upstream `eval-performance` skill (dotnet/skills).
-
 Evaluation is work MSBuild does before executing targets: reading project files,
 processing imports, expanding globs, and establishing definitions. Find and
 confirm the bottleneck first; recommend a change only when measurements justify it.

@@ -1,6 +1,6 @@
 # Packing and trusted publishing to nuget.org
 
-Adapted from the upstream `nuget-trusted-publishing` skill and its references (dotnet/skills); trusted-publishing details checked against the NuGet docs (Context7, `NuGet/docs.microsoft.com-nuget`), action versions against their GitHub releases.
+Trusted-publishing details checked against the NuGet docs (Context7, `NuGet/docs.microsoft.com-nuget`), action versions against their GitHub releases.
 
 Read this when preparing a package for `dotnet pack`, setting up a GitHub Actions publish job, or replacing a long-lived `NUGET_API_KEY` secret with OIDC. Trusted publishing is nuget.org only; private feeds and Azure Artifacts use their own auth. For hardening the rest of the workflow (SHA pinning, permissions, triggers), use `gh-actions`.
 

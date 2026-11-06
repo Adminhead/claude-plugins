@@ -79,5 +79,3 @@ Every answer, plan or code, covers the guardrails of its branch:
 - The ingestion package is `Microsoft.Extensions.DataIngestion`, not `Microsoft.Extensions.AI.DataIngestion`, and it is still preview.
 - `Microsoft.Extensions.AI.Ollama` is deprecated; use `OllamaSharp`, whose `OllamaApiClient` implements `IChatClient` and `IEmbeddingGenerator`.
 - Temperature 0 is not deterministic across calls or model versions. Don't assert exact LLM output in tests.
-
-Adapted from dotnet/skills `technology-selection` (MIT, .NET Foundation and Contributors).

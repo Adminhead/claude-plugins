@@ -1,7 +1,5 @@
 # Redundant restores in multi-step builds
 
-Adapted from the upstream `eliminate-redundant-restores` skill (dotnet/skills).
-
 Read this when a CI pipeline or build script runs several `dotnet`/`msbuild` steps that each restore, when someone asks where `--no-restore` is safe, or when `NETSDK1004` / `NETSDK1047` appeared after `--no-restore` was added. Not for a slow first restore (feed or cache latency), a single restore, or version, lock-file and audit errors (the `nuget` skill).
 
 A no-op restore still evaluates every project, so each extra one costs seconds to tens of seconds in a large repo. Adding `--no-restore` to a step no earlier restore covered turns a slow build into a failed one, so prove coverage step by step.

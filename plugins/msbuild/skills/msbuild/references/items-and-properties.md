@@ -1,6 +1,6 @@
 # Items and properties
 
-Adapted from the upstream `item-management` and `property-patterns` skills (dotnet/skills), which draw on `Microsoft.Common.CurrentVersion.targets`.
+Draws on `Microsoft.Common.CurrentVersion.targets`.
 
 Read this when writing or reviewing `Include`/`Remove`/`Update`, batching with `%(Metadata)`, transforms, property defaults, conditions, path functions or evaluation order. For files produced during the build, see [targets](targets.md).
 

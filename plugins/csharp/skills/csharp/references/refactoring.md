@@ -1,7 +1,5 @@
 # Behavior-preserving refactoring
 
-Adapted from the upstream `csharp-refactoring` skill and its operation catalog (dotnet/skills).
-
 A refactor changes structure, never observable behavior. Make the edit by bindings, then prove behavior held with a build and the relevant tests, scaled to the blast radius.
 
 ## Separate refactoring from behavior change

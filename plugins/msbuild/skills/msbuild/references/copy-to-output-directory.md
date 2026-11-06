@@ -1,7 +1,5 @@
 # Choosing a CopyToOutputDirectory Mode
 
-Adapted from the upstream `copy-to-output-directory` skill (dotnet/skills).
-
 ## Overview
 
 `CopyToOutputDirectory` metadata controls whether an item such as `Content`,

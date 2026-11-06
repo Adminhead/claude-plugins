@@ -1,6 +1,6 @@
 # Generate binary logs
 
-Adapted from the upstream `binlog-generation` skill (dotnet/skills), reduced to capture, verification, and retention.
+Covers capture, verification, and retention.
 Capture a log for the build being investigated, not as an unconditional rule for every .NET task.
 If a matching log already exists, use [MSBuild replay](binlog-failure-analysis.md#replay-a-binary-log)
 instead of rerunning the build.

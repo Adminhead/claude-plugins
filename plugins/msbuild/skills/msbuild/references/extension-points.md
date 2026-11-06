@@ -1,6 +1,6 @@
 # MSBuild extension points
 
-Adapted from the upstream `extension-points` skill (dotnet/skills): import hooks, wildcard extensions, control
+Covers import hooks, wildcard extensions, control
 properties, NuGet build assets, import guards, and Directory.Build discovery.
 Use it for a specific import/hook failure or requested authoring modernization.
 

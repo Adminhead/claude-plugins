@@ -1,7 +1,5 @@
 # Build Performance Baseline & Optimization
 
-Adapted from the upstream `build-perf-baseline` skill (dotnet/skills).
-
 ## Overview
 
 Before optimizing a build, you need a **baseline**. Without measurements,

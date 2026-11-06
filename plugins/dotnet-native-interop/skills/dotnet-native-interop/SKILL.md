@@ -103,5 +103,3 @@ For crashes, `DllNotFoundException`, `EntryPointNotFoundException` or silent cor
 - `Marshal.GetFunctionPointerForDelegate` does not root the delegate. A collected delegate crashes in native code later.
 - An `[UnmanagedCallersOnly]` method must be `static`, use blittable parameters, and never let an exception escape to native code.
 - C++ exports without `extern "C"` are name-mangled; check the export table before blaming the signature.
-
-Adapted from dotnet/skills `dotnet-pinvoke` (MIT, .NET Foundation and Contributors).

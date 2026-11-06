@@ -1,6 +1,6 @@
 # Analyzing MSBuild failures with binary logs
 
-Adapted from the upstream `binlog-failure-analysis` skill (dotnet/skills). Use MSBuild's built-in replay to diagnose
+Use MSBuild's built-in replay to diagnose
 an existing `.binlog`, including when the original checkout is unavailable.
 
 ## Before analysis

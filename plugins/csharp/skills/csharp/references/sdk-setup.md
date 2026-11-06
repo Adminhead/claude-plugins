@@ -1,7 +1,5 @@
 # Local SDK install and global.json
 
-Adapted from the upstream `setup-local-sdk` skill (dotnet/skills); the PowerShell forms and team-script templates were not ported.
-
 Read this when the SDK that `global.json` asks for isn't installed, when trying a preview SDK without touching the system install, or when pinning an SDK for a team or CI. Don't install anything system-wide; that's the user's decision.
 
 ## How SDK selection works

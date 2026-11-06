@@ -1,7 +1,5 @@
 # Nullable reference types
 
-Adapted from the upstream `migrate-nullable-references` skill and its references (dotnet/skills); the PowerShell readiness scanner was not ported.
-
 Read this when enabling `<Nullable>` in an existing project, working down a large set of CS86xx warnings, annotating a library's public API, or auditing `!` and `#nullable disable` suppressions.
 
 ## Contents

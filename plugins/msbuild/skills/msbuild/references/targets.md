@@ -1,7 +1,5 @@
 # Custom targets and generated files
 
-Adapted from the upstream `target-authoring` and `including-generated-files` skills (dotnet/skills).
-
 Read this when writing a custom target, hooking into the build pipeline, or when a file a target generates is missing from compilation, from the output folder, or from `dotnet clean`. Not for Roslyn source-generator internals.
 
 ## Hooking into the pipeline

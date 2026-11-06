@@ -84,5 +84,3 @@ Add a compute environment to the AppHost (`AddDockerComposeEnvironment`, `AddKub
 - Installing the CLI: prefer a package manager (`dotnet tool install -g Aspire.Cli`, `brew install --cask microsoft/aspire/aspire`, `winget install Microsoft.Aspire`, `npm install -g @microsoft/aspire-cli`). If using the install script, download it, read it, then run it rather than piping `curl` into `bash`.
 - `AddPythonApp` and some other hosting APIs are marked experimental (ASPIREHOSTINGPYTHON001-style diagnostics); suppress the diagnostic deliberately, not project-wide.
 - The `Projects.*` type for `AddProject<T>` is generated from `ProjectReference`s in the AppHost csproj; file-based AppHosts use `AddProject("name", "../Api/Api.csproj")` instead.
-
-Adapted from github/awesome-copilot `skills/aspire` (MIT, GitHub, Inc.), rewritten against aspire.dev. See NOTICE.

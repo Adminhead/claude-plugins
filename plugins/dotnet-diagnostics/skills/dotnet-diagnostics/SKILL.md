@@ -81,5 +81,3 @@ An Android tombstone or an Apple `.ips` crash log with frames in `libcoreclr`, `
 - A full or heap dump pages in the process's memory; in a container near its memory limit, raise the limit first or expect an OOM kill.
 - `DOTNET_DiagnosticPorts` suspends app startup until a tool connects, unless the value ends in `,nosuspend`.
 - Short-lived processes that fail at startup (assembly load errors) exit before you can attach; launch them under the tool instead: `dotnet-trace collect --clrevents assemblyloader -- ./myapp`.
-
-Adapted from [dotnet/skills](https://github.com/dotnet/skills) (MIT, .NET Foundation and Contributors; see LICENSE and NOTICE at the plugin root).

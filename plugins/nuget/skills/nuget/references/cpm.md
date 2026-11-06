@@ -1,7 +1,5 @@
 # Converting to Central Package Management
 
-Adapted from the upstream `convert-to-cpm` skill and its references (dotnet/skills).
-
 Use only when the user asked to adopt CPM. Goal: one `PackageVersion` per package in `Directory.Packages.props`, `PackageReference` items without versions, and before/after evidence that resolved packages did not change except by decision.
 
 ## Contents
