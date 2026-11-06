@@ -1,7 +1,5 @@
 # GitHub Codespaces efficiency
 
-Adapted from github/awesome-copilot `skills/github-codespaces-efficiency` (SKILL.md and its references, MIT, Copyright GitHub, Inc.; see the plugin `LICENSE`). Merged into one reference and edited.
-
 Read this when the user wants faster Codespaces startup, lower Codespaces spend, right-sized machines, idle-timeout tuning or prebuild scoping, or is creating a `.devcontainer/` for Codespaces from scratch. The thresholds below (2 GB image, 10 Features, 5 codespaces a week, 30-minute idle) are upstream's heuristics, not GitHub limits.
 
 ## 1. Measure first

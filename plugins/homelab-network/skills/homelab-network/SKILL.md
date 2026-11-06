@@ -107,5 +107,3 @@ When a symptom might be physical (loss, flaps, CRC errors, slow uplink), diagnos
 - Leaving an ISP router or old AP serving DHCP next to the real gateway.
 - Double NAT with no reason or documentation.
 - Putting the DNS resolver in the IoT VLAN, where trusted clients need extra rules to reach it.
-
-Adapted from ECC's `homelab-network-readiness`, `homelab-network-setup`, `homelab-pihole-dns`, `homelab-vlan-segmentation`, `homelab-wireguard-vpn` and `network-interface-health` skills (MIT, Copyright (c) 2026 Affaan Mustafa). See `LICENSE` in the plugin root.

@@ -81,5 +81,3 @@ Follow [triage](references/triage.md) to diagnose a failing workload. The usual 
 - [pod-security](references/pod-security.md): read when choosing a Pod Security level, labelling a namespace for admission, fixing a pod that admission rejected, or migrating off PodSecurityPolicy.
 - [jobs](references/jobs.md): read when writing a Job or CronJob.
 - [triage](references/triage.md): read when a pod is crashing, pending, or failing to pull an image.
-
-Adapted from ECC `kubernetes-patterns` (MIT, Copyright (c) 2026 Affaan Mustafa) and wshobson/agents `k8s-manifest-generator` and `k8s-security-policies` (MIT, Copyright (c) 2024 Seth Hobson). The Pod Security reference is adapted from Anthropic-Cybersecurity-Skills (Apache-2.0). See `LICENSE` and `NOTICE` in the plugin root.

@@ -67,5 +67,3 @@ Helm 4 uses server-side apply for new releases (`--server-side auto` follows the
 
 - [chart-authoring](references/chart-authoring.md): read when creating or restructuring a chart, designing values, or writing helpers and dependencies.
 - [release](references/release.md): read when upgrading or publishing a chart, installing helm-diff, or signing and verifying packages.
-
-Adapted from wshobson/agents `helm-chart-scaffolding` (MIT, Copyright (c) 2024 Seth Hobson). See `LICENSE` in the plugin root.

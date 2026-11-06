@@ -1,6 +1,6 @@
 # Dev container rules
 
-Adapted from github/awesome-copilot `instructions/devcontainers.instructions.md` (MIT, Copyright GitHub, Inc.; see the plugin `LICENSE`). Edited: frontmatter removed and the Claude Code section notes the exfiltration caveat. Spec facts spot-checked against containers.dev, docs.github.com and code.claude.com on 2026-10-17.
+Spec facts spot-checked against containers.dev, docs.github.com and code.claude.com on 2026-10-17.
 
 Twelve rules for reviewing and writing `devcontainer.json`, Dev Container Features, and the lifecycle configuration that GitHub Codespaces and the reference CLI act on. Each rule states the assertion, what to look for, and the concrete change, and links the source it comes from so the claim can be checked rather than trusted.
 

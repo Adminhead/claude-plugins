@@ -10,4 +10,10 @@ for this skill; control tables rechecked against the Kubernetes v1.37 Pod
 Security Standards documentation; the bundled scripts, CI workflow and
 compliance mappings were not ported. The upstream project ships no NOTICE file.
 
-The rest of the plugin is adapted from MIT-licensed sources listed in LICENSE.
+The rest of the plugin is adapted from MIT-licensed sources listed in LICENSE:
+
+ECC (everything-claude-code) (https://github.com/affaan-m/ECC), Copyright (c) 2026
+Affaan Mustafa. Derived: `kubernetes-patterns`; skills/kubernetes/SKILL.md and its references.
+
+wshobson/agents (https://github.com/wshobson/agents), Copyright (c) 2024 Seth Hobson.
+Derived: `k8s-manifest-generator` and `k8s-security-policies`; skills/kubernetes/SKILL.md and its references.

@@ -89,5 +89,3 @@ Canary and blue-green rollouts need a controller on top of GitOps, such as Argo 
 - [argocd](references/argocd.md): read when writing Applications, App of Apps, ApplicationSets, AppProjects, sync windows, or Argo CD health checks.
 - [flux](references/flux.md): read when bootstrapping Flux or writing GitRepository, Kustomization, or HelmRelease resources.
 - [secrets](references/secrets.md): read when a GitOps repo needs credentials, TLS keys, or any Secret value.
-
-Adapted from wshobson/agents `gitops-workflow` (MIT, Copyright (c) 2024 Seth Hobson). See `LICENSE` in the plugin root.

@@ -7,8 +7,6 @@ description: Reviews and writes devcontainer.json, Dev Container Features and Gi
 
 Not for plain Dockerfiles or Compose stacks outside a dev container (the `docker` skill, if installed), Kubernetes (`kubernetes`), or GitHub Actions workflows (`gh-actions`), except where a CI job builds a dev container.
 
-Adapted from github/awesome-copilot (`instructions/devcontainers.instructions.md` and `skills/github-codespaces-efficiency`), MIT; see `LICENSE`.
-
 ## Load what the task needs
 
 - `references/rules.md`: twelve rules, each quoting the Dev Container spec, the reference CLI source or vendor docs (eleven spec-backed, one Claude Code-specific). Read it for any review or authoring of `devcontainer.json`, `devcontainer-feature.json` or a Feature's `install.sh`.
