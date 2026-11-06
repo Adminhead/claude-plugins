@@ -93,4 +93,3 @@ Tell players about pity or guarantee rules where it matters for trust, and follo
 
 - Ernest Adams and Joris Dormans, *Game Mechanics: Advanced Game Design*, New Riders, 2012 (internal economy, sources, drains, converters, traders, Machinations diagrams).
 - Ian Schreiber and Brenda Romero, *Game Balance*, CRC Press, 2021 (economies, probability, pseudorandomness).
-- Weighted-table, shuffle-bag, pity and tower-defence economy patterns adapted from awesome-gamedev-agent-skills `disciplines/procedural-gen`, `genres/roguelike` and `genres/tower-defense` (Apache-2.0); see the plugin NOTICE.

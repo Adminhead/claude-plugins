@@ -126,4 +126,3 @@ Compare the printed percentiles against the target from step 1, adjust one const
 - Ian Schreiber, "Game Balance Concepts" online course, 2010 (gamebalanceconcepts.wordpress.com).
 - Ernest Adams and Joris Dormans, *Game Mechanics: Advanced Game Design*, New Riders, 2012 (feedback loops, dynamic balance).
 - Sid Meier, "Interesting Decisions", GDC 2012.
-- Stat, damage, leveling and tower-defence scaling patterns adapted from awesome-gamedev-agent-skills `genres/rpg` and `genres/tower-defense` (Apache-2.0); see the plugin NOTICE.

@@ -71,7 +71,7 @@ choose(c): apply(c.set); goto(c.to)        # state changes on the transition, so
 
 ## Godot notes
 
-Adapted from GodotPrompter `dialogue-system` (MIT). For a ready-made system, Dialogue Manager is covered in `godot-addons`; Dialogic lives at `dialogic-godot/dialogic`.
+For a ready-made system, Dialogue Manager is covered in `godot-addons`; Dialogic lives at `dialogic-godot/dialogic`.
 
 - **Typewriter:** set the `RichTextLabel` text once, then raise `visible_characters` from 0 on a `Timer` or `Tween` (it counts characters, so BBCode tags stay intact; slicing the string breaks them). `get_total_character_count()` is the end; `visible_characters = -1` shows everything.
 - **Advance:** in `_unhandled_input`, on `ui_accept`: if the reveal is still running, stop it and set `visible_characters = -1`; otherwise advance to the next line.

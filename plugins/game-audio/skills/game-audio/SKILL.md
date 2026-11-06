@@ -7,8 +7,6 @@ description: Plans and reviews game audio practice, covering bus and mixer layou
 
 Game audio is a mixing graph plus a music system. Route every sound through a few buses so groups can be balanced and processed, and make music react to play instead of looping one track. The engine skill owns the concrete nodes and API (for Godot, the `godot` skill's `audio.md` reference); middleware such as FMOD or Wwise implements most of this natively.
 
-Adapted from awesome-gamedev-agent-skills `disciplines/audio-design` (Apache-2.0); see LICENSE and NOTICE.
-
 Not for: asset import and compression settings (engine skill), composing or sound-design craft, or haptics and screen feedback (`game-feel`). Use each one if installed.
 
 ## Workflow

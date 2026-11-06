@@ -1,6 +1,6 @@
 {
   "name": "game-audio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Engine-neutral game audio practice: bus and mixer layout, gain in dB, ducking, adaptive music with layers and quantised transitions, SFX variation and voice limits, beat sync, and platform loudness targets.",
   "author": {
     "name": "AdminHead",

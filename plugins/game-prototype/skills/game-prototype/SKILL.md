@@ -7,8 +7,6 @@ description: "Timeboxed game prototyping: a greybox mechanic spike or vertical s
 
 A game prototype exists to produce a decision (keep, kill or retune), not a product. Two modes share one discipline: **spike** (no deadline beyond a timebox, answers "is this fun?") and **jam** (a fixed external deadline and a submission). Pick the mode first; if the user names a jam, a weekend or a submission, it is jam mode.
 
-Adapted from awesome-gamedev-agent-skills `prototype-fast` and `game-jam` (Apache-2.0, Copyright 2026 Abhishek Barali and contributors); see LICENSE and NOTICE.
-
 Not for web UI or state-model prototypes (`prototype`), the production build of a validated mechanic (the engine skill, such as `godot`), design documents and balancing (`game-design`), juice and camera feel (`game-feel`), structured playtest sessions (`game-playtest`), or uploading a build (`game-publish`). Use each one if installed.
 
 ## Spike mode

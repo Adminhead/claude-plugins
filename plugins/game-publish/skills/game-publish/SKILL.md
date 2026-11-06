@@ -7,8 +7,6 @@ description: "Ships a game build to a store and plans the release: itch.io uploa
 
 Get an exported build onto itch.io or Steam, keep it updated, and plan a Steam launch date backwards from Valve's fixed waits. The engine export itself (presets, templates, signing) comes first and is not covered here.
 
-Adapted from awesome-gamedev-agent-skills `itch-publish` and `steam-publish` (Apache-2.0, Copyright 2026 Abhishek Barali and contributors) and GodotPrompter `export-pipeline` references (MIT, Copyright (c) 2026 GodotPrompter Contributors); see LICENSE, LICENSE-MIT and NOTICE.
-
 Not for building the export (`godot-export` for Godot), jam scoping (`game-prototype`), CI pipeline design in general (`gh-actions`), or in-game Steamworks API work such as achievements and overlay (use the engine's Steamworks binding docs). Pricing, tax and legal questions go to Steamworks docs and the user's own advisers. Use each plugin if installed.
 
 ## Credentials: the rule that comes first

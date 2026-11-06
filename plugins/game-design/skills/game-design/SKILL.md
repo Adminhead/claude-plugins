@@ -54,4 +54,4 @@ Ask which one the user needs, then follow its section:
 
 ## Sources
 
-The procedures here are built on published design work, cited rather than copied; the full list is in each reference: Schell, *The Art of Game Design: A Book of Lenses*; Fullerton, *Game Design Workshop*; Hunicke, LeBlanc and Zubek, "MDA: A Formal Approach to Game Design and Game Research" (2004); Adams and Dormans, *Game Mechanics: Advanced Game Design* (2012); Schreiber and Romero, *Game Balance* (2021); Sid Meier, "Interesting Decisions" (GDC 2012). Loot-table and balancing patterns are adapted from awesome-gamedev-agent-skills (Apache-2.0); see LICENSE and NOTICE.
+The procedures here are built on published design work, cited rather than copied; the full list is in each reference: Schell, *The Art of Game Design: A Book of Lenses*; Fullerton, *Game Design Workshop*; Hunicke, LeBlanc and Zubek, "MDA: A Formal Approach to Game Design and Game Research" (2004); Adams and Dormans, *Game Mechanics: Advanced Game Design* (2012); Schreiber and Romero, *Game Balance* (2021); Sid Meier, "Interesting Decisions" (GDC 2012).

@@ -43,5 +43,3 @@ Common hybrids: roguelike deckbuilder (card-game + roguelike), action roguelite 
 - Build in the order the reference's "core systems" list gives; earlier systems are prerequisites for later ones.
 - Before calling a genre feature done, walk its pitfalls list and check each one against the code.
 - Engine code isn't in these references. In a Godot project, the engine side comes from `godot` (scenes, resources, UI, tilemaps, navigation, save files), `godot-physics` (character controllers, raycasts) and `godot-addons` (Dialogue Manager, beehave, LimboAI, Phantom Camera).
-
-Adapted from awesome-gamedev-agent-skills (genre skills and `dialogue-systems`, Apache-2.0) and GodotPrompter (`dialogue-system`, MIT); see NOTICE.

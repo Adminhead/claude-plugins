@@ -7,8 +7,6 @@ description: "Art direction and asset pipeline for game art, mainly 2D: a style 
 
 Turn a game's visual intent into a consistent, engine-ready asset set. Image generation, purchased packs and hand-drawn art are all inputs to one controlled pipeline; none of them proves an asset is shippable on its own.
 
-Adapted from awesome-gamedev-agent-skills `create-game-assets` (Apache-2.0, Copyright 2026 Abhishek Barali and contributors), without its Pillow scripts; see LICENSE and NOTICE.
-
 Not for web or app UI visuals (`ui-direction`, `web-design`), game UI layout and menus (`game-ui`), sound (`game-audio`), shaders and juice (`godot-shaders`, `game-feel`), or Steam capsule and screenshot sizes (`game-publish`). Use each one if installed.
 
 ## Workflow

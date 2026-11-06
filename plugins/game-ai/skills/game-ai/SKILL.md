@@ -122,5 +122,3 @@ Tune difficulty through what the AI perceives and how fast it acts, not by infla
 - `game-genres`: genre AI expectations (roguelike monsters, FPS enemy states, tower-defense lanes, card-game opponents).
 - `game-performance`: profiling when AI shows up in the frame budget.
 - `level-design`: the generated or authored spaces agents navigate.
-
-Adapted from awesome-gamedev-agent-skills (`game-ai`, `ai-behavior-trees-utility-ai`), Apache-2.0; see NOTICE.
