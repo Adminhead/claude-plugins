@@ -1,10 +1,10 @@
 ---
-name: macrothink
+name: tunnel-check
 description: Manual command that checks whether the session's current direction is tunnel-visioned. It strips the session's framing, fans out 2 to 5 fresh same-model reads, and reports divergence first, never treating agreement as proof.
 disable-model-invocation: true
 ---
 
-# Macrothink
+# Tunnel check
 
 Step back from the session's chosen path and ask several fresh reads what the current direction might be missing. This checks the live decision in hand, not an artifact that describes it. A session can inherit its framing from examples, wording, earlier turns or a first plausible answer.
 

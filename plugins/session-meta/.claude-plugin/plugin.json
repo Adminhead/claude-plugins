@@ -9,7 +9,7 @@
   "dependencies": [
     "session-recover",
     "catchup",
-    "macrothink",
+    "tunnel-check",
     "lens-review",
     "fact-check",
     "v0-restart"

@@ -5,7 +5,7 @@ Status: draft, 2026-10-22. Not started; see `## Status` at the end.
 Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5dc62` (MIT, Copyright (c) 2026 LilMGenius), checked out under `3rd-party/paperthin`. It is 28 plain-Markdown skills in four folders (`depth/`, `breadth/`, `coil/`, `mesh/`), installed with `npx skills add`. There is no hooks code and no MCP server. All 28 SKILL.md files were read in full for this plan.
 
 ## Done when
-- Ten new plugins pass `claude plugin validate --strict`, the skill validator and `python3 scripts/plugins.py check`: `cold-read`, `ssot-consolidate`, `v0-rewrite`, `debloat`, `reorder`, `catchup`, `leakage-audit`, `macrothink`, `lens-review` and `v0-restart`.
+- Ten new plugins pass `claude plugin validate --strict`, the skill validator and `python3 scripts/plugins.py check`: `cold-read`, `ssot-consolidate`, `v0-rewrite`, `debloat`, `reorder`, `catchup`, `leakage-audit`, `tunnel-check`, `lens-review` and `v0-restart`.
 - `fact-check`, `devils-advocate` and `session-retro` carry the folded rules, each with a minor version bump and a NOTICE that credits paperthin.
 - The five model-invoked plugins have trigger evals with hard negatives against the plugin they overlap, and one eval run is recorded in `docs/research/`.
 - paperthin is in `docs/3rd-party/README.md` with an overview and a generated catalog, and in the research ledger in `docs/README.md`.
@@ -45,7 +45,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 | `catchup` | **Port** | `catchup` (model) | Human-facing re-entry brief from live state: needs-you, changed, new words. handoff and session-recover write briefs for an agent, not a person. |
 | `nba` | **Fold** | into `catchup` | The single next action becomes catchup's optional last line ("Next move"). The two ship as a pair upstream, and a separate skill would duplicate the state read. |
 | `mandela` | **Port** | `leakage-audit` (model) | 8-pattern eval-leakage taxonomy. Relevant to `skill-evals`, `experiment-loop` and any A/B work, and nothing covers it. |
-| `macrothink` | **Port** | `macrothink` (manual) | Strip the session's framing, fan out 2-5 fresh reads, report divergence first. second-opinion is cross-model review of a diff, not a reframing check. |
+| `macrothink` | **Port** | `tunnel-check` (manual) | Strip the session's framing, fan out 2-5 fresh reads, report divergence first. second-opinion is cross-model review of a diff, not a reframing check. |
 | `prism` | **Port** | `lens-review` (manual) | Split one artifact across 2-5 distinct lenses and return the question that resolves their disagreement. devils-advocate runs one mode at a time. |
 | `factchk` | **Fold** | into `fact-check` | Add "check both directions: could the absurd be real, the obvious false?" and "flag fiction as a declared choice, don't fix it". fact-check stays manual. |
 | `hate` | **Fold** | into `devils-advocate` red team | Add the `{root, first_nail}` output contract: one load-bearing objection plus the cheapest falsification. |
@@ -77,10 +77,10 @@ Result: 28 upstream skills split three ways:
 2. **Descriptive names for opaque coinages.** `shower` becomes `cold-read`, `re0` becomes `v0-rewrite`, `ssotize` becomes `ssot-consolidate` and `mandela` becomes `leakage-audit`. Plain words that a stranger can read stay: `debloat`, `reorder`, `catchup`. `macrothink` and `prism` stayed at first and were later renamed `tunnel-check` and `lens-review`. The NOTICE `Paths:` line maps each new name to its upstream path, and the SKILL.md credit line names the upstream skill.
 3. **Invocation follows upstream, with listing cost weighed.**
    - Model-invoked: cold-read, ssot-consolidate, v0-rewrite, catchup and leakage-audit. Each one fires usefully without the user naming it, so each gets trigger evals.
-   - Manual (`disable-model-invocation: true`): debloat, reorder, macrothink and lens-review, for upstream's reasons (an opinionated scope call, or an opt-in fan-out spend).
+   - Manual (`disable-model-invocation: true`): debloat, reorder, tunnel-check and lens-review, for upstream's reasons (an opinionated scope call, or an opt-in fan-out spend).
    - ssot-consolidate keeps upstream's approval gate between the read-only audit and any edit.
 4. **Meta placement.**
-   - baseline gets the general ones: cold-read, v0-rewrite, debloat, reorder, catchup, macrothink and lens-review.
+   - baseline gets the general ones: cold-read, v0-rewrite, debloat, reorder, catchup, tunnel-check and lens-review.
    - leakage-audit goes to programming-core, because it is about evals and experiments.
    - ssot-consolidate goes to baseline: scatter happens in any repo's docs, not only in code.
    - Three model-invoked descriptions land in every session's listing (cold-read, v0-rewrite, catchup), plus ssot-consolidate, so the descriptions stay at 60 words or fewer.
@@ -123,7 +123,7 @@ Each new skill keeps upstream's Goal/Workflow/Rules/Verification content in our 
 - **leakage-audit** (`mandela`). Name the components (model, scorer, designer, dataset) and ask whether outside ground truth enters independently. Walk the 8 patterns (recall-not-reason, wrong null, shared hallucination, tautology, verifier=designer, shared-pool bias, frame injection, demand characteristics) and report only the ones that fire, each with an independence fix. Read-only.
   - Keep: you can blind the value and still leak the recipe; an optional N=1 fresh-context auditor for high stakes; the self-check (am I the tautology?).
   - "Not for": skill-evals (writing and running evals) and devils-advocate evidence audit.
-- **macrothink** (manual). Name the current direction. Strip the bait (the session's examples, its suggested answer, its naming) down to goal, constraints and facts. Spawn 2-5 fresh subagents (default 3) in one message. Classify each read as divergent-incompatible, divergent-compatible or convergent, cluster shared roots, and report divergence first.
+- **tunnel-check** (manual). Name the current direction. Strip the bait (the session's examples, its suggested answer, its naming) down to goal, constraints and facts. Spawn 2-5 fresh subagents (default 3) in one message. Classify each read as divergent-incompatible, divergent-compatible or convergent, cluster shared roots, and report divergence first.
   - Keep: no majority vote or averaging; same-model convergence is reassurance, never proof; advisory only.
   - Cross-model reads go through second-opinion.
 - **lens-review** (manual). Read the artifact. Pick one lens per distinct failure mode (2-5, no default count). Each lens returns a pass/fail/unclear verdict with one load-bearing reason. Group the verdicts as agree, agree for different reasons, or disagree. The output is the one question that would resolve the disagreement.
@@ -181,7 +181,7 @@ Commits: one `feat(<p>): ...` per plugin.
   - Evals: positives "is this A/B design actually measuring anything?" and "our eval grader was written by the same model, is that a problem?"
   - Hard negatives: "write trigger evals for the vet plugin" (skill-evals) and "run a pre-mortem on the launch" (devils-advocate).
 
-### S4. macrothink and lens-review (coder)
+### S4. tunnel-check and lens-review (coder)
 Both use `--meta baseline` and are manual, with no evals. Smoke check: `claude --plugin-dir plugins/<p>` and the slash command appears.
 
 ### S4b. v0-restart (coder)

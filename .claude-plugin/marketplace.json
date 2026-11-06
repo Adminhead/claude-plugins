@@ -1757,10 +1757,10 @@
       "category": "development"
     },
     {
-      "name": "macrothink",
-      "source": "./plugins/macrothink",
+      "name": "tunnel-check",
+      "source": "./plugins/tunnel-check",
       "description": "Manual command that strips the session's framing and fans out fresh reads to check whether the current direction is tunnel-visioned.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
