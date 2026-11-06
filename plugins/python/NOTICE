@@ -1,0 +1,7 @@
+python
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Source: https://github.com/wshobson/agents, Copyright (c) 2024 Seth Hobson.
+Derived in part: SKILL.md review checklist, references/review-checklist.md (`python-anti-patterns` and related python-development skills), references/typing.md (`python-type-safety`), references/async.md (`async-python-patterns`), references/reliability.md (`python-resilience`, `python-background-jobs`).

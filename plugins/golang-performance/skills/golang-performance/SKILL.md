@@ -41,5 +41,3 @@ Measure first, change one thing, measure again with the same method. A speedup c
 ## CI regression checks
 
 Compare base and head in the same job on the same runner, with `-count` of 10 or more and `benchstat`, and set the threshold well above shared-runner noise. Read [references/ci-regression.md](references/ci-regression.md) when adding or tuning such a check. Follow the repo's action-pinning convention (the `gh-actions` skill, if installed) when you write the workflow.
-
-Adapted in part from [samber/cc-skills-golang](https://github.com/samber/cc-skills-golang) (MIT; see LICENSE at the plugin root).

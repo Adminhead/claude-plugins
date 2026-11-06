@@ -2,8 +2,6 @@
 
 Read this before writing concurrent fan-out, rate limiting, a producer/consumer queue, or a bridge between sync and async code. Use the project's async framework (asyncio, anyio, trio) and its conventions; the examples use asyncio.
 
-Partly adapted from wshobson/agents `async-python-patterns` (MIT License).
-
 ## Pitfalls
 
 | Pitfall | Symptom | Fix |

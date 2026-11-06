@@ -21,7 +21,7 @@ Read this when choosing Postgres types, keys, constraints, or partitioning for a
 | Intervals and periods | `tstzrange`/`daterange` with `[)` bounds, GiST-indexed | Two loose start/end columns when overlaps must be prevented |
 | IP addresses | `inet`, `cidr` | `text` |
 
-Types to avoid at a glance (adapted from wshobson/agents `postgresql-table-design`, MIT):
+Types to avoid at a glance:
 
 | Avoid | Use instead |
 | --- | --- |

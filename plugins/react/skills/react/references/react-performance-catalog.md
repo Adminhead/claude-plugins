@@ -2,8 +2,6 @@
 
 Read this after a profile or build report names the cost, and only for the category that matches. Without a measured symptom, none of these is a reason to change code. If the React Compiler is enabled, skip the memoization items. It handles them.
 
-Adapted from the Vercel Labs `react-best-practices` ruleset (MIT, Vercel Engineering; see the plugin's `LICENSE`). Source: <https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices>.
-
 ## Waterfalls (slow first load)
 
 - Check cheap synchronous conditions (props, flags) before awaiting remote data, and move an `await` into the branch that uses its result.

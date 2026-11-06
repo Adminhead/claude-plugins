@@ -88,5 +88,3 @@ Commands read `cmd.Context()` and stop when it is cancelled, which is how Ctrl-C
 | Global `viper` in code under test | State leaks between tests | Create `viper.New()` and pass it in |
 | Missing `SetEnvKeyReplacer` with nested keys | `database.host` looks for the env var `MYAPP_DATABASE.HOST` | Replace `.` and `-` with `_` |
 | Reusing one command tree across `Execute` calls | Flag values from the first run persist | Build a fresh tree per test |
-
-Adapted in part from [samber/cc-skills-golang](https://github.com/samber/cc-skills-golang) (MIT; see LICENSE at the plugin root).

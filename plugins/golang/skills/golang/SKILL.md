@@ -90,5 +90,3 @@ Use `golang-performance` for benchmarks, profiling and optimization. Optimize on
 - [references/modernize.md](references/modernize.md) when modernizing code, bumping the `go` directive, or fixing a deprecation warning.
 - [references/refactoring.md](references/refactoring.md) when renaming, moving, extracting or inlining across packages.
 - [references/lint.md](references/lint.md) when configuring golangci-lint or deciding whether to suppress a finding.
-
-Adapted in part from [samber/cc-skills-golang](https://github.com/samber/cc-skills-golang) and [wshobson/agents](https://github.com/wshobson/agents) go-concurrency-patterns (both MIT; see LICENSE at the plugin root).

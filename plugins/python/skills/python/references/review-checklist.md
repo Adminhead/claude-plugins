@@ -2,8 +2,6 @@
 
 Read this when reviewing Python code or before finalizing a non-trivial change. Walk each section that applies to the diff. A finding names the file and line, the failure it causes (lost error, leaked connection, stalled loop, duplicate side effect), and the fix. Skip items the repo's linters already enforce; check the ruff and type checker config first.
 
-Adapted from wshobson/agents `python-anti-patterns` and related python-development skills (MIT License).
-
 ## Errors
 
 - [ ] No `except Exception: pass`, and no broad catch that logs and continues or returns a sentinel such as `None`. Each handler catches the specific exceptions it can act on.

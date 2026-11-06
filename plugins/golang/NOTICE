@@ -1,0 +1,11 @@
+Copyright AdminHead
+
+This plugin contains material adapted from the MIT-licensed sources below (see LICENSE).
+
+samber/cc-skills-golang (https://github.com/samber/cc-skills-golang), Copyright (c) 2026 Samuel Berthe.
+Derived: skills/golang/SKILL.md, in part.
+
+wshobson/agents (https://github.com/wshobson/agents), Copyright (c) 2024 Seth Hobson.
+Derived: `go-concurrency-patterns`; skills/golang/SKILL.md, in part.
+
+Modifications: rewritten and edited for this marketplace.

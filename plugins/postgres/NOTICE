@@ -1,0 +1,9 @@
+postgres
+Copyright AdminHead
+
+This plugin contains material adapted from MIT-licensed sources (see LICENSE). The files were modified.
+
+Source: https://github.com/wshobson/agents, Copyright (c) 2024 Seth Hobson.
+Derived: references/schema-design.md (types-to-avoid table, from `postgresql-table-design`) and references/explain.md (from `sql-optimization-patterns`).
+
+Modifications: condensed; the stats-view queries in explain.md were corrected.

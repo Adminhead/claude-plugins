@@ -7,8 +7,6 @@ description: Prisma ORM 6 and 7 traps for TypeScript backends, such as updateMan
 
 Traps in Prisma ORM's `PrismaClient` API (versions 6 and 7) that compile cleanly and fail in production. For schema design in general use `db-schema-design`, and for PostgreSQL tuning `postgres`, if installed.
 
-Adapted from the ECC (everything-claude-code) `prisma-patterns` skill (MIT, Copyright (c) 2026 Affaan Mustafa), trimmed and corrected against the Prisma docs.
-
 ## Check the version first
 
 Run `npm ls prisma @prisma/client` (or the repo's package manager) before writing any Prisma code.

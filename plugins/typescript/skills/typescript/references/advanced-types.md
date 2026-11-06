@@ -1,7 +1,5 @@
 # Advanced types
 
-Adapted from wshobson/agents `typescript-advanced-types` (MIT, Copyright (c) 2024 Seth Hobson), trimmed and rewritten.
-
 Read this when a conditional, mapped, or template-literal type is needed and the simpler tools in `SKILL.md` (generics that relay a relationship, `Pick`/`Omit`, indexed access) can't express it. Examples compile under TypeScript 7.0 with `strict` (checked with `tsc` 7.0.2). Check the repo's installed version before using a newer feature.
 
 Write the type in the style the repo already uses. These examples use `type` aliases because mapped and conditional types require them.

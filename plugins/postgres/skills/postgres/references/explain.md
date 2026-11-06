@@ -2,8 +2,6 @@
 
 Read this when reading an `EXPLAIN` plan or ranking queries by cost. Column names below were checked against the Postgres 18 docs. The `pg_stat_statements` timing columns were renamed in Postgres 13 (`total_time` became `total_exec_time`, `mean_time` became `mean_exec_time`), so older snippets fail on current servers.
 
-Adapted in part from the `sql-optimization-patterns` skill in wshobson/agents (MIT, see LICENSE). Its stats-view queries were corrected.
-
 ## Running EXPLAIN safely
 
 ```sql

@@ -9,8 +9,6 @@ argument-hint: "[packages root, e.g. src/packages]"
 
 Make every package a deep module: a lot of behavior behind a small interface. A package's public surface is its root files (its entry points). Everything in its subfolders is private. This skill installs [dependency-cruiser](https://github.com/sverweij/dependency-cruiser), writes the rules, and proves they bite.
 
-Adapted from mattpocock/skills `setup-ts-deep-modules` (MIT, Copyright (c) 2026 Matt Pocock).
-
 ## The shape it enforces
 
 ```

@@ -2,8 +2,6 @@
 
 Read this before adding generics, protocols, callable types or type aliases, or before tightening mypy or pyright strictness. Match the syntax to `requires-python`: PEP 695 (`class Box[T]:`, `type Alias = ...`) needs 3.12, `X | Y` in runtime expressions needs 3.10, and `TypeIs` needs 3.13 (or `typing_extensions`).
 
-Adapted from wshobson/agents `python-type-safety` (MIT License).
-
 ## Narrowing
 
 The checker narrows on `is None`, `isinstance`, truthiness, `match`, and early `return`/`raise`. Narrow once at the top of a function and keep the rest typed:

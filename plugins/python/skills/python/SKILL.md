@@ -92,5 +92,3 @@ Before changing code for speed or memory, read [references/performance.md](refer
 | `RuntimeWarning: coroutine ... was never awaited` | The call site missing `await` or a task owner | Wrapping it in `asyncio.run` inside a running loop |
 | Async hang or lost cancellation | A minimized task graph; awaits, timeouts, shutdown | Retries or swallowing `CancelledError` |
 | Works in checkout, fails installed | The built artifact (see `python-packaging`) | Patching `sys.path` |
-
-Parts of the review checklist, typing, async and reliability references are adapted from wshobson/agents (python-development skills), MIT License; see `LICENSE`.

@@ -81,5 +81,3 @@ Celery settings, from the Celery configuration docs (check the installed version
 Per task, `autoretry_for=(...)` with `retry_backoff=True`, `retry_jitter=True`, `max_retries`, and `retry_backoff_max` gives bounded, jittered retries. List only transient exceptions, and use `dont_autoretry_for` to exclude subclasses. With the Redis or SQS transports, set `broker_transport_options = {"visibility_timeout": ...}` longer than the longest task, or the broker redelivers a task that is still running.
 
 Celery canvas (`chain`, `group`, `chord`) composes multi-step workflows. Lighter alternatives are RQ (Redis only), Dramatiq, arq (asyncio), or a cloud queue (SQS, Cloud Tasks). Keep whichever the repo already runs.
-
-Parts of this file are adapted from wshobson/agents `python-resilience` and `python-background-jobs` (MIT License).
