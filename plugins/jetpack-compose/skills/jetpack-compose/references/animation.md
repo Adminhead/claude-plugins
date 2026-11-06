@@ -1,6 +1,6 @@
 # Animation
 
-Read when adding motion. Adapted from chrisbanes/skills (Apache-2.0).
+Read when adding motion.
 
 Pick the smallest API that expresses the motion and its lifecycle.
 

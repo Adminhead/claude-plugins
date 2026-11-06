@@ -1,6 +1,6 @@
 # Testing Flow, StateFlow, SharedFlow and Channel events
 
-Adapted from ECC `kotlin-coroutines-flows` (testing section, MIT) and chrisbanes `flow-state-events.md` (Apache-2.0), rewritten against the kotlinx-coroutines-test and Turbine docs, 2026-11-01. Turbine 1.2.1.
+Written against the kotlinx-coroutines-test and Turbine docs, 2026-11-01. Turbine 1.2.1.
 
 ## What the primitive delivers decides the test
 

@@ -1,6 +1,6 @@
 {
   "name": "android",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Writes and debugs Android app code outside the UI toolkit. Use for \"A migration from 3 to 4 was required but not found\", form input lost after the process is killed, a StateFlow that reloads on every rotation, \"cannot be provided without an @Inject constructor\", or adding a repository, ViewModel, DAO or worker. Covers ViewModel state, SavedStateHandle, repeatOnLifecycle, Hilt, Room migrations, DataStore, WorkManager and targetSdk behavior changes.",
   "author": {
     "name": "AdminHead",

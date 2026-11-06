@@ -1,6 +1,6 @@
 # Dependency audit
 
-Read when asked to check dependencies, before a release, or after a security advisory. Adapted in part from decebals/claude-code-java `maven-dependency-audit` (MIT; see NOTICE).
+Read when asked to check dependencies, before a release, or after a security advisory.
 
 ## Workflow
 

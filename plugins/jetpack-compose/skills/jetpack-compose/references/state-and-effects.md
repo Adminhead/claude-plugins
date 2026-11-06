@@ -1,6 +1,6 @@
 # State and effects
 
-Read when deciding where state lives, which effect to use, or why an effect restarts. Adapted from chrisbanes/skills (Apache-2.0).
+Read when deciding where state lives, which effect to use, or why an effect restarts.
 
 ## Contents
 - Owners

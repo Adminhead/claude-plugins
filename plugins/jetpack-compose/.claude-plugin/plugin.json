@@ -1,6 +1,6 @@
 {
   "name": "jetpack-compose",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Writes everyday Jetpack Compose UI. Use for \"LaunchedEffect restarts on every keystroke\", state that resets on recomposition, a card or button component with many boolean flags, an ignored modifier, or adding a screen, theme or animation. Covers where state lives and which effect runs which work, component APIs with modifier and slot parameters, LazyColumn keys, unstable parameters, Material 3 theming, animation, focus and previews.",
   "author": {
     "name": "AdminHead",

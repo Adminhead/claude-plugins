@@ -1,6 +1,6 @@
 # Stability and deferred reads while authoring
 
-Read when writing models passed to composables or when a value changes every frame. Adapted from chrisbanes/skills (Apache-2.0). Verified 2026-11-01 against developer.android.com. Auditing existing code goes to `android-skills:jetpack-compose-performance`.
+Read when writing models passed to composables or when a value changes every frame. Verified 2026-11-01 against developer.android.com. Auditing existing code goes to `android-skills:jetpack-compose-performance`.
 
 ## Contents
 - Compiler mode

@@ -69,5 +69,3 @@ Read `references/cross-build.md` when a build targets more than one Scala versio
 - `references/dependencies.md`: coordinates, eviction, scheme declarations and resolution failures.
 - `references/cross-build.md`: `crossScalaVersions`, `++`, `+` and sbt 2 query.
 - `references/troubleshooting.md`: symptom-to-cause table and escalation rules.
-
-The sbt 2 command-line reference is adapted from sanssushi/skills (MIT; see LICENSE and NOTICE at the plugin root).

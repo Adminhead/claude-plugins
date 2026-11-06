@@ -1,6 +1,6 @@
 # Architecture
 
-Layer and module rules adapted from ECC `android-clean-architecture` (MIT, see NOTICE), trimmed to Android. Follow the project's existing shape first.
+Follow the project's existing shape first.
 
 ## Layers
 

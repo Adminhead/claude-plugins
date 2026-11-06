@@ -72,5 +72,3 @@ Against docs.spring.io (Boot and Framework testing reference, Framework 7.0.9) a
 - [references/context-caching.md](references/context-caching.md) when the suite is slow.
 - [references/security-testing.md](references/security-testing.md) when a test touches authentication, authorization, CSRF or WebFlux.
 - [references/sb4-migration.md](references/sb4-migration.md) when upgrading tests from Boot 3 to 4.
-
-Adapted from awesome-copilot `spring-boot-testing` (MIT) and spring-ai-community/spring-testing-skills (Apache-2.0); see NOTICE.

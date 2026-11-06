@@ -1,6 +1,6 @@
 # MockK
 
-Checked against the MockK documentation, 1.14.x, 2026-11-01. Adapted in part from ECC `kotlin-testing` (MIT).
+Checked against the MockK documentation, 1.14.x, 2026-11-01.
 
 ## Stubbing and verifying
 

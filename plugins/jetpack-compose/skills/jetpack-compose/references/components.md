@@ -1,6 +1,6 @@
 # Component APIs
 
-Read when designing a reusable composable or fixing a modifier or slot problem. Adapted from chrisbanes/skills (Apache-2.0).
+Read when designing a reusable composable or fixing a modifier or slot problem.
 
 ## Modifier
 

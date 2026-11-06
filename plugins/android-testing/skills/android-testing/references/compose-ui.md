@@ -1,6 +1,6 @@
 # Compose UI tests
 
-Adapted from chrisbanes/skills `compose-ui-testing-patterns` (Apache-2.0, see NOTICE). Test the smallest UI contract that proves the behavior.
+Test the smallest UI contract that proves the behavior.
 
 ## Dependencies and rules
 

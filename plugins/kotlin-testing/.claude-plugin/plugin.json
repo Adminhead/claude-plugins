@@ -1,6 +1,6 @@
 {
   "name": "kotlin-testing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Writes, runs and fixes JVM Kotlin tests (kotlin.test, JUnit, Kotest, MockK, coroutines-test, Turbine). Use for UncompletedCoroutinesError or a runTest that hangs, \"Module with the Main dispatcher\" errors and Dispatchers.setMain in ViewModel tests, MockK \"no answer found for\", coEvery versus every, Turbine flow assertions, tests slowed by delay, and running one test with ./gradlew :module:test --tests.",
   "author": {
     "name": "AdminHead",

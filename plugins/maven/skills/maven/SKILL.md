@@ -72,5 +72,3 @@ When asked to check dependencies, before a release, or after a security advisory
 - [references/plugins.md](references/plugins.md) when changing plugins, phases, profiles, annotation processors or the compiler release.
 - [references/errors.md](references/errors.md) when a `mvn` command fails.
 - [references/audit.md](references/audit.md) when checking for outdated or vulnerable dependencies.
-
-Adapted in part from [decebals/claude-code-java](https://github.com/decebals/claude-code-java) (`maven-dependency-audit`, MIT; see LICENSE and NOTICE at the plugin root).
