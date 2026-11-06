@@ -27,11 +27,11 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
   - `the-fool` has Socratic, dialectic, pre-mortem, red-team and evidence-audit modes.
   - `doubt-review` runs fresh-context adversarial review.
   - `prove` checks claims and is manual.
-  - `handoff` and `necromancy` write agent-facing briefs.
+  - `handoff` and `session-recover` write agent-facing briefs.
   - `docs-audit` compares docs against code, and `docs-sync` nudges at Stop.
   - The orchestration agent and agent-router already size coder tiers.
   - The system prompt already tells the model to read ambiguity like a careful colleague and to ask only when readings diverge materially, which is `readchk`'s whole workflow.
-- **Repo state:** local `main` equals `origin/main`. The working tree was clean at the start of this session, and this plan is the only new file. `the-fool` and `doubt-review` belong to no meta. baseline currently depends on `git-commit, recommend-plugins, handoff, check-bypass-guard, git-statusline, usage-band, mcp-health, bash-rules, prove, necromancy`.
+- **Repo state:** local `main` equals `origin/main`. The working tree was clean at the start of this session, and this plan is the only new file. `the-fool` and `doubt-review` belong to no meta. baseline currently depends on `git-commit, recommend-plugins, handoff, check-bypass-guard, git-statusline, usage-band, mcp-health, bash-rules, prove, session-recover`.
 
 ## Triage (all 28)
 
@@ -42,7 +42,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 | `re0` | **Port** | `v0-rewrite` (model) | Rewrite a drifted doc as a clean v0 ("what is true now", not "what changed"). Nothing here does this for prose. `simplify` is code-only. |
 | `debloat` | **Port** | `debloat` (manual) | Density pass that cuts words but never rules. It differs from avoid-ai-writing (AI tells) and from v0-rewrite (drift). |
 | `reorder` | **Port** | `reorder` (manual) | Move items only, under one named principle. Small and cheap as a manual command. |
-| `catchup` | **Port** | `catchup` (model) | Human-facing re-entry brief from live state: needs-you, changed, new words. handoff and necromancy write briefs for an agent, not a person. |
+| `catchup` | **Port** | `catchup` (model) | Human-facing re-entry brief from live state: needs-you, changed, new words. handoff and session-recover write briefs for an agent, not a person. |
 | `nba` | **Fold** | into `catchup` | The single next action becomes catchup's optional last line ("Next move"). The two ship as a pair upstream, and a separate skill would duplicate the state read. |
 | `mandela` | **Port** | `leakage-audit` (model) | 8-pattern eval-leakage taxonomy. Relevant to `skill-evals`, `experiment-loop` and any A/B work, and nothing covers it. |
 | `macrothink` | **Port** | `macrothink` (manual) | Strip the session's framing, fan out 2-5 fresh reads, report divergence first. second-opinion is cross-model review of a diff, not a reframing check. |
@@ -119,7 +119,7 @@ Each new skill keeps upstream's Goal/Workflow/Rules/Verification content in our 
 - **catchup** (`catchup` + `nba`). Read live state only: `git log` since the human's last touch, diffs, plan Status blocks, task lists and file mtimes. Never brief from conversation memory. Write in decision order: **Needs you**, **Changed while you were away** (outcomes, not process), **New words**. Gloss each coined term at first use, and fit it on one screen with drill-down offers.
   - Optional last line **Next move**: one action, why now, done when (from nba). It recommends and never executes, and it names a manual command for the user to run rather than invoking it.
   - Keep: every claim cites a file, commit or path; read-only; "done" means verified.
-  - "Not for": handoff (brief for a new agent session) and necromancy (dead-session recovery).
+  - "Not for": handoff (brief for a new agent session) and session-recover (dead-session recovery).
 - **leakage-audit** (`mandela`). Name the components (model, scorer, designer, dataset) and ask whether outside ground truth enters independently. Walk the 8 patterns (recall-not-reason, wrong null, shared hallucination, tautology, verifier=designer, shared-pool bias, frame injection, demand characteristics) and report only the ones that fire, each with an independence fix. Read-only.
   - Keep: you can blind the value and still leak the recipe; an optional N=1 fresh-context auditor for high stakes; the self-check (am I the tautology?).
   - "Not for": skill-evals (writing and running evals) and the-fool evidence audit.
@@ -176,7 +176,7 @@ Commits: one `feat(<p>): ...` per plugin.
 ### S3. catchup and leakage-audit (coder-high)
 - catchup: `--meta baseline`.
   - Evals: positives "I've been away two days, what happened here?" and "what does 'carve' mean in this plan?"
-  - Hard negatives: "write a handoff so a fresh session can continue" (handoff, manual) and "recover the session that crashed" (necromancy).
+  - Hard negatives: "write a handoff so a fresh session can continue" (handoff, manual) and "recover the session that crashed" (session-recover).
 - leakage-audit: `--meta programming-core`.
   - Evals: positives "is this A/B design actually measuring anything?" and "our eval grader was written by the same model, is that a problem?"
   - Hard negatives: "write trigger evals for the vet plugin" (skill-evals) and "run a pre-mortem on the launch" (the-fool).
@@ -213,7 +213,7 @@ Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin valid
 3. Add the root README Acknowledgements row.
 4. Commit `chore(release): bump baseline and programming-core for paperthin ports`.
 5. Run `claude plugin eval plugins/<p> --trust-plugin` for the five model-invoked plugins (user-approved 2026-10-23). Record the result in `docs/research/evals-2026-10-22.md` and list it in `docs/README.md`. Fix any description that misfires (at most one rewrite round per plugin), and re-run only that plugin.
-6. Run `ship-plugin` for each new plugin, the three folded plugins, baseline and programming-core. The marketplace installs from GitHub, so the first run asks to push (Open question 1). A baseline update doesn't install new dependencies, so install the ten new plugins at user scope by hand, as was done for prove and necromancy.
+6. Run `ship-plugin` for each new plugin, the three folded plugins, baseline and programming-core. The marketplace installs from GitHub, so the first run asks to push (Open question 1). A baseline update doesn't install new dependencies, so install the ten new plugins at user scope by hand, as was done for prove and session-recover.
 
 ## Rejected alternatives
 - **Install paperthin as-is** (`npx skills add` or the clone as a plugin): it brings 28 skills, 16 model-invoked, with upstream names and the `re0-upgrade` hook writer. That is listing cost and overlap we already pay for elsewhere.

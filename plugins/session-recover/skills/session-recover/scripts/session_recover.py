@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """List and digest Claude Code session transcripts so a dead session can be recovered.
 
-  necromancy.py list   [--project PATH] [--max 10] [--exclude ID]
-  necromancy.py digest --session ID|PREFIX|latest [--project PATH] [--exclude ID] [--out PATH]
+  session_recover.py list   [--project PATH] [--max 10] [--exclude ID]
+  session_recover.py digest --session ID|PREFIX|latest [--project PATH] [--exclude ID] [--out PATH]
 
 `list` prints one line per session, newest first. `digest` writes a masked Markdown digest (at most 32 KB) to a
 0600 file and prints only a receipt: the path, the size, the time span and a count per section. The transcript
@@ -468,14 +468,14 @@ def digest_text(s):
 def resolve(project, ref, exclude):
     files = [f for f in session_files(project) if not (exclude and f[1].startswith(exclude))]
     if not files:
-        sys.exit("necromancy: no sessions found for this project (check --project and CLAUDE_CONFIG_DIR)")
+        sys.exit("session-recover: no sessions found for this project (check --project and CLAUDE_CONFIG_DIR)")
     if ref == "latest":
         return files[0][2]
     hits = [f for f in files if f[1].startswith(ref)]
     if not hits:
-        sys.exit(f"necromancy: no session starts with {ref!r}; run `list` to see the ids")
+        sys.exit(f"session-recover: no session starts with {ref!r}; run `list` to see the ids")
     if len(hits) > 1:
-        print(f"necromancy: {ref!r} matches {len(hits)} sessions; use a longer prefix:", file=sys.stderr)
+        print(f"session-recover: {ref!r} matches {len(hits)} sessions; use a longer prefix:", file=sys.stderr)
         for m, sid, _ in hits:
             print(f"  {sid} {iso(m)}", file=sys.stderr)
         sys.exit(2)
@@ -493,7 +493,7 @@ def cmd_list(args):
         if shown >= args.max:
             break
     if not shown:
-        print("necromancy: no sessions found for this project (check --project and CLAUDE_CONFIG_DIR)", file=sys.stderr)
+        print("session-recover: no sessions found for this project (check --project and CLAUDE_CONFIG_DIR)", file=sys.stderr)
         return 1
     return 0
 
@@ -512,7 +512,7 @@ def cmd_digest(args):
         out = args.out
         write_private(out, text)
     else:
-        fd, out = tempfile.mkstemp(prefix=f"necromancy-{s.id[:8]}-", suffix=".md")
+        fd, out = tempfile.mkstemp(prefix=f"session-recover-{s.id[:8]}-", suffix=".md")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(text)
     print(f"digest: {out}")

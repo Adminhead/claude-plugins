@@ -1,6 +1,6 @@
 ---
-name: catchup-quiet-necromancy
-description: "Near miss: recovering a crashed session belongs to necromancy, not catchup."
+name: catchup-quiet-session-recover
+description: "Near miss: recovering a crashed session belongs to session-recover, not catchup."
 tags: [trigger]
 runs: 1
 max_turns: 6

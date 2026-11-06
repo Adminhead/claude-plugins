@@ -10,7 +10,7 @@ Brief a human who lost the thread, from state and not from memory. Long agent cy
 ## Not for
 
 - Writing a brief for a new agent session: use `handoff`.
-- Recovering a session that died: use `necromancy`.
+- Recovering a session that died: use `session-recover`.
 
 ## Workflow
 

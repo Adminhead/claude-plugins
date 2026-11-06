@@ -1,4 +1,4 @@
-"""Tests for necromancy.py. All transcripts are synthetic and built in a temp dir."""
+"""Tests for session_recover.py. All transcripts are synthetic and built in a temp dir."""
 import contextlib
 import io
 import json
@@ -12,7 +12,7 @@ from unittest import mock
 
 # `python3 -I` drops the script directory from sys.path, so add it explicitly.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-import necromancy as n  # noqa: E402
+import session_recover as n  # noqa: E402
 
 PROJECT = "/work/Demo_App"
 SLUG = "-work-Demo-App"
@@ -409,7 +409,7 @@ class TestCli(Store):
         self.assertEqual(code, 0)
         path = stdout.splitlines()[0].split(": ", 1)[1]
         self.addCleanup(os.unlink, path)
-        self.assertTrue(os.path.basename(path).startswith("necromancy-abcdef12-"))
+        self.assertTrue(os.path.basename(path).startswith("session-recover-abcdef12-"))
         self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
 
     def test_out_path_is_forced_to_0600(self):

@@ -39,8 +39,8 @@ Result: no finding came back WRONG. Two are PARTLY fixed. Everything else is OPE
 | V17 | aws-well-architected puts `--region <region>` on `aws ce` (README §3, G6 high) | OPEN | `references/cost.md:3,10`. The aws skill's `references/cost.md:11,28` uses us-east-1 and cites the AWS General Reference. |
 | V18 | aws-well-architected's secret-read deny list has drifted from the aws skills' list (README §3, G6 med) | OPEN | `SKILL.md:25` lacks `batch-get-secret-value`, `ecr get-login-password`, `eks get-token`, `rds generate-db-auth-token`, `ec2 get-password-data` and credential-minting `sts`. The full list is in `aws-resource-query/SKILL.md:29-43`. `aws-cloudwatch/SKILL.md:19` has the same drift. |
 | V19 | `plugins.py check` catches none of 14 injected defects. The eval lint is a line regex over `plugins/*/evals` only (README §4, G10 high) | OPEN | `scripts/plugins.py:286-302` (glob at `:292`). No YAML parse, regex compile, skill targeting, name/dir, description length or `autoCompactWindow` rule. |
-| V20 | 28 files fail strict YAML: 24 SKILL.md and 4 coder agents (README §4, G10 med) | OPEN | A PyYAML `safe_load` over 1136 frontmatter blocks finds the same 28: ansible, aspire, aspnet-core, aws, aws-cli, better-auth, blazor, catchup, deprecation-migration, docker, dotnet-testing, ef-core, gh-release, gh-triage, git-history, godot-csharp, godot-multiplayer, golang-cli, golang-performance, homelab-network, necromancy, rust, the-fool, threat-model, plus coder, coder-high, coder-critical, coder-max. All eval files parse. |
-| V21 | No version-bump guard. necromancy, vet, v0-rewrite, reorder and leakage-audit changed without a bump (README §4) | OPEN | Each is still at 0.1.0, and its last content commit (91b65f1, abdf3c0, 0e5a726) is newer than its last `plugin.json` change. Today's the-fool, ssot-consolidate, catchup, v0-restart and consult fixes did bump. |
+| V20 | 28 files fail strict YAML: 24 SKILL.md and 4 coder agents (README §4, G10 med) | OPEN | A PyYAML `safe_load` over 1136 frontmatter blocks finds the same 28: ansible, aspire, aspnet-core, aws, aws-cli, better-auth, blazor, catchup, deprecation-migration, docker, dotnet-testing, ef-core, gh-release, gh-triage, git-history, godot-csharp, godot-multiplayer, golang-cli, golang-performance, homelab-network, session-recover, rust, the-fool, threat-model, plus coder, coder-high, coder-critical, coder-max. All eval files parse. |
+| V21 | No version-bump guard. session-recover, vet, v0-rewrite, reorder and leakage-audit changed without a bump (README §4) | OPEN | Each is still at 0.1.0, and its last content commit (91b65f1, abdf3c0, 0e5a726) is newer than its last `plugin.json` change. Today's the-fool, ssot-consolidate, catchup, v0-restart and consult fixes did bump. |
 | V22 | No category rule; aspnet-core and ef-core are `meta` (README §4) | OPEN | Those two are the only `category`/`is_meta` mismatches in `marketplace.json`. `category` is never read by `check`. |
 | V23 | The root suites' plugin lists have drifted from the metas (README §5, G10 med) | OPEN | Against `closure()`: `evals/godot-meta` lacks feature-flags, leakage-audit and grep-app. `evals/jvm` lacks leakage-audit (its README excludes grep-app on purpose). |
 | V24 | No CI workflow (README §4) | OPEN | No `.github/`, `.forgejo/` or `.gitea/`. |
@@ -366,14 +366,14 @@ S0 (serial)
   - `uv run --with pytest pytest scripts/test_plugins.py`.
   - On the real repo, `check` reports the known set, compared against a list the worker writes to the scratchpad: 24 SKILL.md YAML errors (the 4 agents are already fixed by A6), 2 category errors, the inert graders, 2 manual-only graders, and closure drift for godot-meta (13 cases) and jvm (19 cases).
   - The worker diffs `check`'s inert list against the appendix. The planning probe found 92: the appendix plus `ship`/`pr-comments` `not-gh-pr`. Any difference is reviewed and recorded before C1 starts. C1 deletes the reviewed list, not a fixed count.
-  - `check --since 6fb8a05` reports necromancy, vet, v0-rewrite, reorder and leakage-audit only if they changed since that ref. They did not, so the stale bumps are found with an older ref such as `837b396`. Record what it prints.
+  - `check --since 6fb8a05` reports session-recover, vet, v0-rewrite, reorder and leakage-audit only if they changed since that ref. They did not, so the stale bumps are found with an older ref such as `837b396`. Record what it prints.
 - **Bump:** none (scripts only).
 
 ### B2. Apply: quote descriptions, fix categories, catch-up bumps (coder, Group C)
 
 - **Files:**
   - `plugins/<p>/skills/<p>/SKILL.md` for the 24 V20 skills.
-  - `plugins/<p>/.claude-plugin/plugin.json` for those 24, plus vet, v0-rewrite, reorder and leakage-audit (necromancy is in both sets).
+  - `plugins/<p>/.claude-plugin/plugin.json` for those 24, plus vet, v0-rewrite, reorder and leakage-audit (session-recover is in both sets).
   - `.claude-plugin/marketplace.json`. B2 is the only Group C slice that touches it, since C1 to C3 change only evals.
   - `README.md` (catalog).
 - **Changes:**

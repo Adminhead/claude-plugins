@@ -7,7 +7,7 @@
     "email": "support@adminhead.com"
   },
   "dependencies": [
-    "necromancy",
+    "session-recover",
     "catchup",
     "macrothink",
     "prism",
