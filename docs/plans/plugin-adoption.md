@@ -73,7 +73,7 @@ Reviewers also proposed `aws-meta`, `api-meta`, `observability-meta` and `databa
 | Debugging: archived problem-solving, mattpocock diagnose, agent-skills debugging, crew debugger | `problem-solving` (skill) | mattpocock's feedback-loop and "red-capable command" gate merge in. `debugger` is a general agent in `orchestration-meta`. |
 | TDD: archived unit, mattpocock tdd, agent-skills TDD, ECC tdd-workflow | `unit-testing` | mattpocock's seams and tautological-test rules merge into `references/tdd.md`. wshobson pytest and Jest/Vitest material goes into framework references. |
 | Grilling: archived planning stress-test, mattpocock grill, agent-skills interview-me | `planning` | grill's frontier rounds and agent-skills' confidence stop condition merge into `references/stress-test.md`. |
-| Idea critique: the-fool, doubt-review, second-opinion | all three, direct installs | Different jobs: critique an idea, review an in-flight decision with fresh context, get another model's opinion. |
+| Idea critique: devils-advocate, doubt-review, second-opinion | all three, direct installs | Different jobs: critique an idea, review an in-flight decision with fresh context, get another model's opinion. |
 | Tickets: archived issue-breakdown, mattpocock to-tickets and to-spec | `issue-breakdown` | to-tickets' blocking edges and to-spec's spec-first step merge in. |
 | PR body: archived gh-pr, mattpocock pr | `gh-pr` | Already adapted from mattpocock; diff upstream for new fixes. |
 | Git-skip guard: wshobson block-no-verify, ECC config-protection and block-no-verify | `check-bypass-guard` (one hooks.json) | Blocks `--no-verify`, `core.hooksPath=` and `SKIP=` on git, and asks before edits to existing lint configs (eslint, ruff, golangci, rustfmt, clippy, pre-commit). |
@@ -345,7 +345,7 @@ Type: S skill, A agent, H hooks.json, M mod, P MCP server. "Manual" means `disab
 | JVM frameworks | `play-framework`, `spring-boot`, `spring-boot-testing` (decision 12) |
 | Android extras | `android-performance` (Macrobenchmark, Baseline Profiles, app size), `play-publishing` (Gradle Play Publisher, fastlane `supply`, Play Console releases); both original text (decision 13) |
 | Auth | `app-auth`, `better-auth` (confirm it was rewritten from docs; upstream has no license) |
-| Review and critique | `poka-yoke`, `review-loop`, `second-opinion` + `consult` (M), `the-fool` (new), `doubt-review` (new) |
+| Review and critique | `poka-yoke`, `review-loop`, `second-opinion` + `consult` (M), `devils-advocate` (new), `doubt-review` (new) |
 | Design and docs | `codebase-design` (new, mattpocock + improve-codebase-architecture), `domain-modeling`, `adr-writing`, `docs-audit`, `agent-instructions`, `deprecation-migration` (new) |
 | Repo and config | `pre-commit` (+ hook-repair), `agent-config-audit` (+ mcp-dependency-review), `config-audit`, `devcontainer` (new), `plugin-vetter` (new A, alongside agent-config-audit) |
 | Workflow | `implement-plan`, `research`, `prototype`, `experiment-loop`, `modernize`, `session-retro` (new), `setup-wizard` (new), `test-gap-audit`, `git-history` (+ rebase safety rules) |
@@ -384,7 +384,7 @@ Remaining before release: run the evals, try every mod and the new agents in a l
 3. **GitHub, web, design and Kubernetes.** Fill `github-meta`, `web-meta`, `design-core`, `design-meta` and `kubernetes-meta`. About 30 plugins.
 4. **Orchestration.** `orchestration`, `agent-router`, the five general agents and `readonly-agent-gate`. About 8 plugins.
 5. **Direct installs from the archive.** API, AWS, databases, deploy, security, MCP, tools and specialized agents. About 45 plugins.
-6. **New third-party ports.** `prisma`, `dependency-vetting` (if not done in 2), `mcp-server-audit`, `the-fool`, `doubt-review`, `codebase-design`, `deprecation-migration`, `session-retro`, `setup-wizard`, `devcontainer`, `plugin-vetter`, then the extra ports.
+6. **New third-party ports.** `prisma`, `dependency-vetting` (if not done in 2), `mcp-server-audit`, `devils-advocate`, `doubt-review`, `codebase-design`, `deprecation-migration`, `session-retro`, `setup-wizard`, `devcontainer`, `plugin-vetter`, then the extra ports.
 
 Consider extending `scripts/plugins.py new` with a `--from <path>` option that copies an archived skill directory, so ports keep their references and scripts.
 

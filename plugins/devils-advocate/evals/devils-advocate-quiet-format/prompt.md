@@ -1,6 +1,6 @@
 ---
-name: fool-quiet-format
-description: A mechanical formatting request must not load the-fool.
+name: devils-advocate-quiet-format
+description: A mechanical formatting request must not load devils-advocate.
 tags: [trigger]
 runs: 1
 max_turns: 6

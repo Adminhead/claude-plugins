@@ -10,7 +10,7 @@ Check whether a validation is independent: does outside ground truth enter, or a
 ## Not for
 
 - Writing or running evals: not this skill.
-- Stress-testing a plan or claim with a pre-mortem or evidence audit: use `the-fool`.
+- Stress-testing a plan or claim with a pre-mortem or evidence audit: use `devils-advocate`.
 
 ## Workflow
 

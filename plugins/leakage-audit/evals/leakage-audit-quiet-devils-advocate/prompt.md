@@ -1,6 +1,6 @@
 ---
-name: leakage-audit-quiet-fool
-description: "Near miss: a pre-mortem belongs to the-fool, not leakage-audit."
+name: leakage-audit-quiet-devils-advocate
+description: "Near miss: a pre-mortem belongs to devils-advocate, not leakage-audit."
 tags: [trigger]
 runs: 1
 max_turns: 6

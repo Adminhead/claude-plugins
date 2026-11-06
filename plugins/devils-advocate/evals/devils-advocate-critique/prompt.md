@@ -1,6 +1,6 @@
 ---
-name: fool-devils-advocate
-description: A request for devil's advocate critique of a decision should load the-fool.
+name: devils-advocate-critique
+description: A request for devil's advocate critique of a decision should load devils-advocate.
 tags: [trigger]
 runs: 1
 max_turns: 6

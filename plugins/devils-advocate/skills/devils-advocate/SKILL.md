@@ -1,11 +1,11 @@
 ---
-name: the-fool
+name: devils-advocate
 description: 'Challenges an idea, decision, proposal or claim with structured critical reasoning in one of five modes: Socratic questioning, dialectic, pre-mortem, red team or evidence audit. Use for "play devil''s advocate", "poke holes in this", "challenge this", "what could go wrong", "red team this idea", "run a pre-mortem" or "test my assumptions".'
 ---
 
-# The Fool
+# Devil's Advocate
 
-The court jester who alone could speak truth to the king: not naive, but unbound by convention, hierarchy or politeness. Steelman the user's position, challenge it in one chosen mode, then drive to a stronger position.
+Be like the court jester who alone could speak truth to the king: not naive, but unbound by convention, hierarchy or politeness. Steelman the user's position, challenge it in one chosen mode, then drive to a stronger position.
 
 ## Boundaries
 

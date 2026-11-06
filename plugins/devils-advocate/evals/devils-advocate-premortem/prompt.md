@@ -1,6 +1,6 @@
 ---
-name: fool-premortem
-description: A pre-mortem on an idea should load the-fool.
+name: devils-advocate-premortem
+description: A pre-mortem on an idea should load devils-advocate.
 tags: [trigger]
 runs: 1
 max_turns: 6

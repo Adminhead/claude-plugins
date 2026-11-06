@@ -10,7 +10,7 @@ Split one artifact across independent lenses and return where they converge and 
 
 ## Not for
 
-- Pressure-testing a plan in one chosen mode: use `the-fool`.
+- Pressure-testing a plan in one chosen mode: use `devils-advocate`.
 - Repeating one read for robustness against session framing: use `macrothink`.
 
 ## Workflow

@@ -11,7 +11,7 @@ A confident answer is not a correct one. Long sessions turn assumptions into "fa
 
 - The built-in `/code-review` command reviews a finished diff for bugs. This skill works in flight, per decision, while changing course is still cheap. Use both.
 - `second-opinion` (if installed) asks a different model. Here the reviewer is a fresh Claude subagent; offer `second-opinion` as an escalation (step 3).
-- `the-fool` (if installed) critiques an idea or strategy with the user in the loop. `planning` (if installed) stress-tests a whole plan.
+- `devils-advocate` (if installed) critiques an idea or strategy with the user in the loop. `planning` (if installed) stress-tests a whole plan.
 
 ## When to use
 

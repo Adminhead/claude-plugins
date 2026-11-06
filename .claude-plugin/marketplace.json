@@ -1127,10 +1127,10 @@
       "category": "development"
     },
     {
-      "name": "the-fool",
-      "source": "./plugins/the-fool",
+      "name": "devils-advocate",
+      "source": "./plugins/devils-advocate",
       "description": "Devil's advocate skill that steelmans an idea or decision, then challenges it in one chosen mode (Socratic, dialectic, pre-mortem, red team, evidence audit) and drives to a stronger position.",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "category": "development"
     },
     {

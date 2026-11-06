@@ -6,7 +6,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 
 ## Done when
 - Ten new plugins pass `claude plugin validate --strict`, the skill validator and `python3 scripts/plugins.py check`: `cold-read`, `ssot-consolidate`, `v0-rewrite`, `debloat`, `reorder`, `catchup`, `leakage-audit`, `macrothink`, `prism` and `v0-restart`.
-- `prove`, `the-fool` and `session-retro` carry the folded rules, each with a minor version bump and a NOTICE that credits paperthin.
+- `prove`, `devils-advocate` and `session-retro` carry the folded rules, each with a minor version bump and a NOTICE that credits paperthin.
 - The five model-invoked plugins have trigger evals with hard negatives against the plugin they overlap, and one eval run is recorded in `docs/research/`.
 - paperthin is in `docs/3rd-party/README.md` with an overview and a generated catalog, and in the research ledger in `docs/README.md`.
 - Every skill that is not ported has its reason in the triage table below.
@@ -24,14 +24,14 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 - **Overlap evidence:**
   - `avoid-ai-writing` (conorbronsdon-skills 3.38.0, installed) already handles em-dashes.
   - `git-commit` already says "the diff already shows what changed" (`plugins/git-commit/skills/git-commit/SKILL.md:62`).
-  - `the-fool` has Socratic, dialectic, pre-mortem, red-team and evidence-audit modes.
+  - `devils-advocate` has Socratic, dialectic, pre-mortem, red-team and evidence-audit modes.
   - `doubt-review` runs fresh-context adversarial review.
   - `prove` checks claims and is manual.
   - `handoff` and `session-recover` write agent-facing briefs.
   - `docs-audit` compares docs against code, and `docs-sync` nudges at Stop.
   - The orchestration agent and agent-router already size coder tiers.
   - The system prompt already tells the model to read ambiguity like a careful colleague and to ask only when readings diverge materially, which is `readchk`'s whole workflow.
-- **Repo state:** local `main` equals `origin/main`. The working tree was clean at the start of this session, and this plan is the only new file. `the-fool` and `doubt-review` belong to no meta. baseline currently depends on `git-commit, recommend-plugins, handoff, check-bypass-guard, git-statusline, usage-band, mcp-health, bash-rules, prove, session-recover`.
+- **Repo state:** local `main` equals `origin/main`. The working tree was clean at the start of this session, and this plan is the only new file. `devils-advocate` and `doubt-review` belong to no meta. baseline currently depends on `git-commit, recommend-plugins, handoff, check-bypass-guard, git-statusline, usage-band, mcp-health, bash-rules, prove, session-recover`.
 
 ## Triage (all 28)
 
@@ -46,10 +46,10 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 | `nba` | **Fold** | into `catchup` | The single next action becomes catchup's optional last line ("Next move"). The two ship as a pair upstream, and a separate skill would duplicate the state read. |
 | `mandela` | **Port** | `leakage-audit` (model) | 8-pattern eval-leakage taxonomy. Relevant to `skill-evals`, `experiment-loop` and any A/B work, and nothing covers it. |
 | `macrothink` | **Port** | `macrothink` (manual) | Strip the session's framing, fan out 2-5 fresh reads, report divergence first. second-opinion is cross-model review of a diff, not a reframing check. |
-| `prism` | **Port** | `prism` (manual) | Split one artifact across 2-5 distinct lenses and return the question that resolves their disagreement. the-fool runs one mode at a time. |
+| `prism` | **Port** | `prism` (manual) | Split one artifact across 2-5 distinct lenses and return the question that resolves their disagreement. devils-advocate runs one mode at a time. |
 | `factchk` | **Fold** | into `prove` | Add "check both directions: could the absurd be real, the obvious false?" and "flag fiction as a declared choice, don't fix it". prove stays manual. |
-| `hate` | **Fold** | into `the-fool` red team | Add the `{root, first_nail}` output contract: one load-bearing objection plus the cheapest falsification. |
-| `feynman` | **Fold** | into `the-fool` Socratic | Add "the user explains, the critic never supplies the rationale; narrow on a shallow answer, never repeat". |
+| `hate` | **Fold** | into `devils-advocate` red team | Add the `{root, first_nail}` output contract: one load-bearing objection plus the cheapest falsification. |
+| `feynman` | **Fold** | into `devils-advocate` Socratic | Add "the user explains, the critic never supplies the rationale; narrow on a shallow answer, never repeat". |
 | `re0-memo` | **Fold** | into `session-retro` | Add "cluster specific complaints up to the class that catches them; a lesson that fixes one case isn't one". |
 | `readchk` | Skip | none | Already the harness system prompt's ambiguity rule. A model-invoked copy would pay listing cost to restate it. |
 | `aim` | Skip | none | Same: proposing intent from handed-over data is default behavior. |
@@ -66,7 +66,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 
 Result: 28 upstream skills split three ways:
 - 10 ported as new plugins;
-- 5 folded: `nba` into the new catchup, and 4 into the existing prove, the-fool (two of them) and session-retro;
+- 5 folded: `nba` into the new catchup, and 4 into the existing prove, devils-advocate (two of them) and session-retro;
 - 13 not ported.
 
 ## Decisions (defaults taken)
@@ -122,7 +122,7 @@ Each new skill keeps upstream's Goal/Workflow/Rules/Verification content in our 
   - "Not for": handoff (brief for a new agent session) and session-recover (dead-session recovery).
 - **leakage-audit** (`mandela`). Name the components (model, scorer, designer, dataset) and ask whether outside ground truth enters independently. Walk the 8 patterns (recall-not-reason, wrong null, shared hallucination, tautology, verifier=designer, shared-pool bias, frame injection, demand characteristics) and report only the ones that fire, each with an independence fix. Read-only.
   - Keep: you can blind the value and still leak the recipe; an optional N=1 fresh-context auditor for high stakes; the self-check (am I the tautology?).
-  - "Not for": skill-evals (writing and running evals) and the-fool evidence audit.
+  - "Not for": skill-evals (writing and running evals) and devils-advocate evidence audit.
 - **macrothink** (manual). Name the current direction. Strip the bait (the session's examples, its suggested answer, its naming) down to goal, constraints and facts. Spawn 2-5 fresh subagents (default 3) in one message. Classify each read as divergent-incompatible, divergent-compatible or convergent, cluster shared roots, and report divergence first.
   - Keep: no majority vote or averaging; same-model convergence is reassurance, never proof; advisory only.
   - Cross-model reads go through second-opinion.
@@ -131,8 +131,8 @@ Each new skill keeps upstream's Goal/Workflow/Rules/Verification content in our 
   - Lenses may run inline or as subagents. Inline is the default, because upstream doesn't require isolation.
 - **Folds:**
   - **prove:** a "Both directions" rule; "a claim stated as fiction or a declared choice is not checked"; the metacognitive trigger as a note ("about to assert a checkable fact from a feeling").
-  - **the-fool, red team:** the output ends with `Root:` (the objection whose failure makes the others moot) and `First nail:` (the cheapest check that could falsify it before the expensive work).
-  - **the-fool, Socratic:** never supply the rationale before the user attempts one; on a shallow answer, narrow to the vague part instead of repeating; an honestly unexplained gap is a valid ending and gets flagged on the decision.
+  - **devils-advocate, red team:** the output ends with `Root:` (the objection whose failure makes the others moot) and `First nail:` (the cheapest check that could falsify it before the expensive work).
+  - **devils-advocate, Socratic:** never supply the rationale before the user attempts one; on a shallow answer, narrow to the vague part instead of repeating; an honestly unexplained gap is a valid ending and gets flagged on the decision.
   - **session-retro:** a rule under its ranking step: cluster specific complaints into the class of failure before proposing a fix, and keep the specifics as evidence.
 
 ## Slices
@@ -179,7 +179,7 @@ Commits: one `feat(<p>): ...` per plugin.
   - Hard negatives: "write a handoff so a fresh session can continue" (handoff, manual) and "recover the session that crashed" (session-recover).
 - leakage-audit: `--meta programming-core`.
   - Evals: positives "is this A/B design actually measuring anything?" and "our eval grader was written by the same model, is that a problem?"
-  - Hard negatives: "write trigger evals for the vet plugin" (skill-evals) and "run a pre-mortem on the launch" (the-fool).
+  - Hard negatives: "write trigger evals for the vet plugin" (skill-evals) and "run a pre-mortem on the launch" (devils-advocate).
 
 ### S4. macrothink and prism (coder)
 Both use `--meta baseline` and are manual, with no evals. Smoke check: `claude --plugin-dir plugins/<p>` and the slash command appears.
@@ -202,8 +202,8 @@ Correction 2026-10-23 (codex review): the archive rule over-broadened upstream. 
 
 Commit: `feat(v0-restart): add evidence-based restart planning`.
 
-### S5. Folds into prove, the-fool and session-retro (coder)
-Edits as in "Folds" above, plus the NOTICE/LICENSE additions and minor bumps (0.1.0 → 0.2.0 for prove, the-fool and session-retro, in both `plugin.json` and the marketplace entry). No description change.
+### S5. Folds into prove, devils-advocate and session-retro (coder)
+Edits as in "Folds" above, plus the NOTICE/LICENSE additions and minor bumps (0.1.0 → 0.2.0 for prove, devils-advocate and session-retro, in both `plugin.json` and the marketplace entry). No description change.
 
 Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin validate --strict` for each. Commits: `feat(prove): check claims in both directions` and similar.
 
@@ -221,14 +221,14 @@ Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin valid
 - **A `hygiene-core` bundle** instead of baseline: no meta besides baseline wants doc hygiene, and a bundle with a single consumer adds a layer for nothing. Revisit if a project-scope meta needs these.
 - **Verbatim vendoring:** it imports em-dash-heavy prose, sibling cross-references to unported skills and Python-script edit-safety advice. Rewriting with listed Keep rules preserves the substance.
 - **Porting `readchk`/`aim`/`modelchk` as model-invoked reflexes:** they restate the system prompt or the router, in every session's listing.
-- **`hate` and `feynman` as their own manual plugins:** they would be a sixth and seventh challenge command next to the-fool's five modes and doubt-review. Folding gives the-fool the sharper output contract without another name.
+- **`hate` and `feynman` as their own manual plugins:** they would be a sixth and seventh challenge command next to devils-advocate's five modes and doubt-review. Folding gives devils-advocate the sharper output contract without another name.
 - **`sip`:** an every-change orchestrator. Its triggers are covered by docs-sync (Stop), review-loop and `ship-plugin`'s checks.
 
 ## Risks and rollback
 - **Mis-triggering:** five model-invoked skills, and four of them sit near doubt-review, docs-audit, handoff or skill-evals. Counter: hard-negative evals per plugin and "Not for" lines that name the neighbour. Fallback: flip the plugin to manual.
 - **Listing cost in every session:** four model-invoked descriptions are added to baseline. Counter: 60-word cap, and S6 compares the listing size before and after (`claude -p "/context"` skill section).
 - **Rewrite loses a rule:** counter: the Keep greps plus a reviewer check against the upstream file side by side.
-- **Folds change the-fool's output:** existing the-fool users get a Root/First nail tail in red team. It is additive, and no description change means no routing change.
+- **Folds change devils-advocate's output:** existing devils-advocate users get a Root/First nail tail in red team. It is additive, and no description change means no routing change.
 - **Upstream drift:** `python3 scripts/plugins.py upstream <p>` against `3rd-party/paperthin` reports changes after a pull.
 - **Rollback:** one commit per plugin. Revert it, then re-run `plugins.py catalog` and `check`.
 
@@ -256,6 +256,6 @@ Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin valid
     - baseline 0.3.0 and prove 0.2.0 at user scope;
     - the nine new baseline plugins installed at user scope;
     - programming-core 0.4.0 and leakage-audit 0.1.0 in all nine project and local scopes where programming-core was installed.
-  - the-fool and session-retro were not installed anywhere, so they were only published.
+  - devils-advocate and session-retro were not installed anywhere, so they were only published.
 - Note: the project-scope installs edited `.claude/settings.json` in voidrot/isktel, voidrot/orbital-runtime, eve-online/portal and eve-online/platform. Those edits are left uncommitted there.
 - Left: none.

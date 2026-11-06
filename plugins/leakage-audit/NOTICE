@@ -14,4 +14,4 @@ truth enters independently; the eight leakage patterns, reporting only those
 that fire, each with an independence fix; blinding the value does not blind the
 collection recipe; read-only; an optional single fresh-context auditor for high
 stakes; the self-check on tautology, verifier-is-designer and shared
-hallucination. Added "Not for" lines naming skill-evals and the-fool.
+hallucination. Added "Not for" lines naming skill-evals and devils-advocate.

@@ -1,6 +1,6 @@
 ---
 name: leakage-audit-quiet-evidence
-description: "Near miss: questioning whether evidence supports a decision belongs to the-fool evidence audit, not leakage-audit."
+description: "Near miss: questioning whether evidence supports a decision belongs to devils-advocate evidence audit, not leakage-audit."
 tags: [trigger]
 runs: 1
 max_turns: 6
