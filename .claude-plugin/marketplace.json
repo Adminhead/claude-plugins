@@ -150,7 +150,7 @@
       "name": "accessibility-review",
       "source": "./plugins/accessibility-review",
       "description": "Audits a design, mockup or page against WCAG 2.2 AA at design level: contrast, focus visibility, target size, keyboard and dragging alternatives, labels, errors and authentication. Use for \"audit accessibility\", \"check a11y\", \"is this accessible?\" or a WCAG check before handoff.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -241,28 +241,28 @@
       "name": "dependency-vetting",
       "source": "./plugins/dependency-vetting",
       "description": "Vet npm and PyPI packages before installing: fetch without running install code, GuardDog and OSV malware checks, lifecycle-script review, typosquat and dependency-confusion heuristics.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "design-critique",
       "source": "./plugins/design-critique",
       "description": "Gives structured feedback on a static design (mockup, wireframe, exported Figma frame or screenshot) covering usability, hierarchy, consistency and accessibility. Use for \"critique this mockup\", \"review this design\", \"what do you think of this screen?\". A rendered page or built UI goes to the ui-critic agent.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "design-handoff",
       "source": "./plugins/design-handoff",
       "description": "Writes a developer handoff spec from a finished design: layout, tokens, component props, states and interactions, responsive breakpoints, content limits, edge cases, motion and accessibility notes. Use when a design is ready for engineering, or for \"write handoff specs\", \"spec this screen for developers\".",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "design-system",
       "source": "./plugins/design-system",
       "description": "Audits, documents or extends a design system as a whole: token inventory, naming consistency, hardcoded values, component completeness, component docs, and proposals for a new component or pattern. Use for \"audit our design system\", \"document this component\", \"design a new pattern that fits\". Restyling a product screen goes to web-design.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -276,7 +276,7 @@
       "name": "docker",
       "source": "./plugins/docker",
       "description": "Docker skill: Dockerfiles, Compose and .dockerignore with multi-stage builds, non-root hardened runtime, daemon.json hardening, secret handling and container debugging.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -297,7 +297,7 @@
       "name": "gh-actions",
       "source": "./plugins/gh-actions",
       "description": "Create, review, harden and debug GitHub Actions workflows and custom actions with gh: least-privilege permissions, action pinning, script-injection and pull_request_target checks, and failed-run diagnosis.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -430,7 +430,7 @@
       "name": "kubernetes",
       "source": "./plugins/kubernetes",
       "description": "Writes and reviews Kubernetes manifests (probes, resources, RBAC, NetworkPolicy, Pod Security Standards and admission, Jobs, HPA, PDB, Kustomize) and triages failing workloads with read-only kubectl.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -584,7 +584,7 @@
       "name": "terraform",
       "source": "./plugins/terraform",
       "description": "Terraform, OpenTofu and Terragrunt skill: safe plan and saved-plan apply, plan review, state and refactoring blocks, Terratest, and security scanning with Trivy, Checkov and OPA.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -626,14 +626,14 @@
       "name": "ui-direction",
       "source": "./plugins/ui-direction",
       "description": "Art direction and build process for new UI or a visual reshape, such as a landing page, marketing site, portfolio, product page or a new app screen with no design system. Grounds the design in the subject, deals a researched direction, plans tokens and checks the render. Use when a page should look designed, or looks generic, templated or AI-made.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "uiux-lookup",
       "source": "./plugins/uiux-lookup",
       "description": "Offline lookup of cited UI/UX rules (WCAG 2.2, touch, forms, navigation), 22 stack UI guideline sets including SwiftUI, Compose, Flutter, React Native, WPF, WinUI and Avalonia, Google Fonts metadata and licences, and curated icons.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -654,7 +654,7 @@
       "name": "ux-copy",
       "source": "./plugins/ux-copy",
       "description": "Writes and reviews product microcopy: button and CTA labels, error messages, empty states, confirmation dialogs, tooltips, loading and onboarding text. Use for \"what should this button say?\", \"write copy for\", \"review this error message\" or wording a dialog. Not for marketing page copy or long-form docs.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -948,7 +948,7 @@
       "name": "mcp-server-audit",
       "source": "./plugins/mcp-server-audit",
       "description": "MCP server audit skill: checks configured or third-party MCP servers for tool poisoning, shadowing, rug pulls, SSRF and unauthenticated exposure, with offline description scanning and hash pinning.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1088,7 +1088,7 @@
       "name": "security-scan",
       "source": "./plugins/security-scan",
       "description": "Manual security audit of a branch: gitleaks, semgrep, trivy, govulncheck and pip-audit in one script, subagent verification, a ranked findings table, plus CI and supply-chain trust checks and SBOM guidance.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -1109,7 +1109,7 @@
       "name": "session-retro",
       "source": "./plugins/session-retro",
       "description": "Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, a review of recent or past sessions, or why a session went badly.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -1130,7 +1130,7 @@
       "name": "the-fool",
       "source": "./plugins/the-fool",
       "description": "Devil's advocate skill that steelmans an idea or decision, then challenges it in one chosen mode (Socratic, dialectic, pre-mortem, red team, evidence audit) and drives to a stronger position.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "category": "development"
     },
     {
@@ -1158,7 +1158,7 @@
       "name": "aspire",
       "source": "./plugins/aspire",
       "description": "Aspire skill: AppHost resource model and wiring, service defaults, the aspire CLI (start, wait, describe, logs), DistributedApplicationTestingBuilder tests, and aspire publish/deploy to Compose, Kubernetes and Azure.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1172,49 +1172,49 @@
       "name": "blazor",
       "source": "./plugins/blazor",
       "description": "Blazor skill: component rules, render modes, forms and validation, auth per render mode, shared state, data loading, prerendering, JS interop, and Blazor Server to Web App conversion.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "csharp",
       "source": "./plugins/csharp",
       "description": "Writes, reviews, refactors and debugs C# and .NET code (types, nullable references, async and cancellation, exceptions, DI, options and logging in the generic host, file-based apps). Use for work in *.cs or *.csx files, \"review this C# class\", CS86xx nullable warnings, a deadlock or sync-over-async bug, or a rename across a solution.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "dotnet-ai-apps",
       "source": "./plugins/dotnet-ai-apps",
       "description": "Chooses and wires AI and ML in .NET apps with Microsoft.Extensions.AI (IChatClient, embeddings), Microsoft Agent Framework, vector search and RAG, ML.NET, ONNX Runtime and OllamaSharp. Use for adding an LLM call or chatbot to a .NET service, a tool-calling agent in C#, RAG over documents, or choosing between an LLM and ML.NET for a prediction.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "dotnet-diagnostics",
       "source": "./plugins/dotnet-diagnostics",
       "description": "Collects runtime evidence from running or crashed .NET processes: dotnet-counters, dotnet-trace, dotnet-dump, dotnet-monitor, PerfView, perfcollect, crash dumps in containers and Kubernetes, mobile crash symbolication. Use for high CPU, memory growth, hangs or crashes in production, capturing a dump, or choosing a tool for Linux in k8s.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "dotnet-native-interop",
       "source": "./plugins/dotnet-native-interop",
       "description": "Writes, reviews and debugs .NET native interop with P/Invoke and LibraryImport, covering signatures from C headers, string and struct marshalling, memory ownership, SafeHandle, callbacks and library loading. Use for wrapping a C library, a DllNotFoundException or AccessViolationException at a native call, or moving DllImport to LibraryImport for AOT.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "dotnet-performance",
       "source": "./plugins/dotnet-performance",
       "description": "Measurement-first .NET performance work: hot-path anti-pattern scans (async, allocations, strings, LINQ, regex, JSON, I/O), BenchmarkDotNet setup and result reading, and SIMD with TensorPrimitives or Vector128. Use when C# code is slow or allocates too much, to review a hot path, write or compare benchmarks, or vectorize a loop.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "dotnet-template-authoring",
       "source": "./plugins/dotnet-template-authoring",
       "description": "Authors, validates and packages custom `dotnet new` templates, covering template.json from an existing project, symbols and conditional content, post-actions, constraints and template packs. Use for \"turn this project into a template\", a template missing from `dotnet new list` after install, or reviewing a template.json before publishing.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1228,7 +1228,7 @@
       "name": "dotnet-upgrade-guide",
       "source": "./plugins/dotnet-upgrade-guide",
       "description": "Upgrades .NET projects - TFM hops from .NET 8 to 11 with breaking changes by area, legacy csproj to SDK-style, packages.config to PackageReference, AOT and trim warnings, Thread.Abort removal, test framework moves. Use for \"upgrade to .NET 10\", SDK-style conversion, IL2026/IL3050 warnings, or moving to xUnit v3, MSTest v4 or MTP.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1242,7 +1242,7 @@
       "name": "game-ai",
       "source": "./plugins/game-ai",
       "description": "Engine-agnostic game AI skill: NPC and enemy decisions with FSMs, behavior trees and utility AI, steering and flocking, A*, flow fields and navmeshes in concept, perception and difficulty knobs.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1256,21 +1256,21 @@
       "name": "game-assets",
       "source": "./plugins/game-assets",
       "description": "Art direction and asset pipeline for game art, mainly 2D: a style bible, palette and scale rules, sprite, animation, tileset, UI and icon specs, an asset manifest with naming and licenses, image-generation briefs, and import checks. Use for a game's art style, sprites, tilesets, an asset list or sourcing art.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "game-audio",
       "source": "./plugins/game-audio",
       "description": "Engine-neutral game audio practice: bus and mixer layout, gain in dB, ducking, adaptive music with layers and quantised transitions, SFX variation and voice limits, beat sync, and platform loudness targets.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "game-design",
       "source": "./plugins/game-design",
       "description": "Game design documents and decisions: pitch, pillars, core loop, mechanic specs, progression, economy and balancing (curves, sinks and faucets, loot tables, simulation), difficulty and scope cuts. Engine-neutral templates and checklists.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1284,7 +1284,7 @@
       "name": "game-genres",
       "source": "./plugins/game-genres",
       "description": "Engine-agnostic genre playbooks: core systems, data model, feel targets, balancing norms and pitfalls for platformers, roguelikes, card games, puzzles, RPGs, FPS, tower defense, survival-crafting and visual novels, plus branching dialogue (Ink, Yarn Spinner, custom runners).",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1305,21 +1305,21 @@
       "name": "game-prototype",
       "source": "./plugins/game-prototype",
       "description": "Timeboxed game prototyping: a greybox mechanic spike or vertical slice that answers one question with keep or kill criteria, and game-jam planning (scope to the clock, hour schedule, cut list, submit early). Use when prototyping a mechanic, greyboxing, or planning a jam or 48-hour build.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "game-publish",
       "source": "./plugins/game-publish",
       "description": "Ships a game build to a store and plans the release: itch.io uploads with butler channels and versions, Steam with SteamPipe depots, app_build.vdf, steamcmd and branches, and Steam release timing (app fee wait, Coming Soon, reviews, Next Fest, discounts). Use for butler push, steamcmd or a Steam launch date.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "game-ui",
       "source": "./plugins/game-ui",
       "description": "Engine-neutral game UI and UX: HUDs, menus and overlays, a screen stack, resolution and aspect scaling, safe areas, gamepad focus navigation, event-driven HUDs, settings screens, and a game accessibility checklist.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1333,35 +1333,35 @@
       "name": "godot-addons",
       "source": "./plugins/godot-addons",
       "description": "Godot addon APIs for Beehave and LimboAI behavior trees, Phantom Camera and Dialogue Manager v4. Use when a project has addons/beehave, addons/limboai, addons/phantom_camera or addons/dialogue_manager, or when choosing, installing or writing code and .dialogue files for one of them.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "godot-csharp",
       "source": "./plugins/godot-csharp",
       "description": "Writes and fixes C# in Godot 4 .NET projects: partial node classes, the PascalCase lifecycle, [Export], [Signal] events, GDScript interop, the .csproj and the build. Use for .cs or .csproj files beside project.godot, \"port this GDScript to C#\", GD0201 errors, or ObjectDisposedException after a signal.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "godot-editor-tools",
       "source": "./plugins/godot-editor-tools",
       "description": "Godot 4 editor plugins and addons. Use when writing or fixing an EditorPlugin, plugin.cfg, @tool script, inspector plugin, EditorDock, 3D gizmo, tool menu, undoable scene edits or an addon that runs a server inside the editor, or when a project has addons/*/plugin.cfg.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "godot-export",
       "source": "./plugins/godot-export",
       "description": "Godot 4 export skill: export templates and presets, headless CLI exports, Web threads and COOP/COEP, Windows and macOS signing, dedicated-server builds, PCK patches and the Shader Baker, with references for CLI and presets, Android and iOS, and CI export jobs.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "godot-gdextension",
       "source": "./plugins/godot-gdextension",
       "description": "Native Godot 4 extensions with GDExtension, in C++ (godot-cpp) or Rust (godot-rust gdext). Use when a project has a .gdextension file, SConstruct or a godot-cpp submodule, or when binding a native class, building per-platform libraries, wrapping a C/C++ library, or debugging a native crash.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1375,21 +1375,21 @@
       "name": "godot-multiplayer",
       "source": "./plugins/godot-multiplayer",
       "description": "Builds and secures networked Godot 4 games: server-authoritative @rpc validation, ENet and WebSocket peers, MultiplayerSpawner and MultiplayerSynchronizer, lobbies, dedicated servers, interpolation and prediction. Use for @rpc, \"multiplayer\", \"netcode\" or a headless server in a Godot project.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "godot-physics",
       "source": "./plugins/godot-physics",
       "description": "Godot 4 physics skill: CharacterBody controllers and move_and_slide, rigid, static, animatable and area bodies, collision layers and masks, raycasts and space queries, physics interpolation and Jolt, with references for controller recipes, queries, ragdolls and soft bodies.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "godot-shaders",
       "source": "./plugins/godot-shaders",
       "description": "Godot 4 shaders and VFX skill: .gdshader canvas_item, spatial and particles shaders, uniforms and hints, screen and depth reading, visual shaders and materials, GPU particles, with references for shader fundamentals, effect recipes, particles, stencil, CompositorEffect and the Shader Baker.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1403,7 +1403,7 @@
       "name": "godot-xr",
       "source": "./plugins/godot-xr",
       "description": "Godot 4 XR with OpenXR for VR, AR and passthrough on Meta Quest, Pico and PC VR. Use for XROrigin3D and XRController3D setup, the action map, locomotion, grabbing, in-world UI, hand tracking, passthrough, spatial anchors, or a Quest export, and when project.godot has xr/openxr/enabled=true.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1417,21 +1417,21 @@
       "name": "msbuild",
       "source": "./plugins/msbuild",
       "description": "Diagnoses MSBuild failures and slow builds and reviews .NET build XML. Use for a failing dotnet build, restore, pack or publish, .csproj/.props/.targets conditions and custom targets, binlog capture and replay, \"it rebuilds when nothing changed\", slow evaluation or builds, bin/obj clashes, or Directory.Build.* layering.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "nuget",
       "source": "./plugins/nuget",
       "description": "Manages NuGet dependencies and packages in .NET repos. Use for Directory.Packages.props and Central Package Management, bumping or aligning package versions, NU1xxx restore warnings, nuget.config sources and source mapping, vulnerable-package audits, lock files, dotnet pack metadata, or publishing to nuget.org with trusted publishing.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "roslyn-analyzers",
       "source": "./plugins/roslyn-analyzers",
       "description": "Roslyn analyzer skill: DiagnosticAnalyzer, CodeFixProvider and IIncrementalGenerator design and tests, Microsoft.CodeAnalysis host-compatibility pinning, and analyzer NuGet packaging.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1501,7 +1501,7 @@
       "name": "aws",
       "source": "./plugins/aws",
       "description": "General AWS skill: resolve account, region and identity first, sign-in with SSO or aws login, IAM policy and trust traps, AccessDenied debugging and cost-query habits.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1655,7 +1655,7 @@
       "name": "maven",
       "source": "./plugins/maven",
       "description": "Edits and debugs Maven builds in pom.xml, .mvn and mvnw projects, including dependency management and BOM imports, NoSuchMethodError or duplicate jars from conflicting versions, multi-module reactor failures such as a sibling SNAPSHOT that won't resolve, plugin phases, annotation processors, settings.xml mirrors, and dependency audits before a release. Use when a pom.xml is being changed, a mvn or mvnw command fails, the user asks which module pulls in a library, or the user asks to check dependencies for updates or vulnerabilities.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1676,7 +1676,7 @@
       "name": "sbt",
       "source": "./plugins/sbt",
       "description": "Writes, edits and debugs sbt builds: build.sbt, project/*.sbt and project/build.properties, sbt 1 and sbt 2 command-line runs, slash keys such as Test/compile, dependency resolution and % or %% coordinates, eviction and version conflicts, cross-built Scala versions, multi-project builds and failing sbt tasks. Use when an sbt command errors with Expected whitespace character, Not a valid command or No such setting/task, when a test does not run or rerun under sbt, or when a build.sbt needs a dependency or cross-build change.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1697,98 +1697,98 @@
       "name": "spring-boot-testing",
       "source": "./plugins/spring-boot-testing",
       "description": "Writes and fixes Spring Boot 3/4 tests that need a Spring context. Covers test slices (@WebMvcTest, @DataJpaTest, @RestClientTest, @JsonTest, @WebFluxTest), @MockitoBean and @MockitoSpyBean, MockMvcTester, RestTestClient, Testcontainers with @ServiceConnection, Spring Security tests, and slow suites that rebuild the application context.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "prove",
       "source": "./plugins/prove",
       "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
       "name": "necromancy",
       "source": "./plugins/necromancy",
       "description": "Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "vet",
       "source": "./plugins/vet",
       "description": "Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "cold-read",
       "source": "./plugins/cold-read",
       "description": "Cold-reads an artifact through a fresh subagent that sees only its contents and reports where a stranger would stall.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "ssot-consolidate",
       "source": "./plugins/ssot-consolidate",
       "description": "Finds every copy of one fact scattered across code, config, CI and docs, proposes a canonical home and a consolidation plan, and edits only after approval.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "v0-rewrite",
       "source": "./plugins/v0-rewrite",
       "description": "Rewrites a drifted document as a clean v0 that says what is true now, with no trace of the edits that produced it.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "debloat",
       "source": "./plugins/debloat",
       "description": "Manual command that compresses correct but accreted prose to its load-bearing density, cutting words and never rules.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "reorder",
       "source": "./plugins/reorder",
       "description": "Manual command that realigns an arbitrarily ordered list, table or section set under one stated principle, moving items only.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "macrothink",
       "source": "./plugins/macrothink",
       "description": "Manual command that strips the session's framing and fans out fresh reads to check whether the current direction is tunnel-visioned.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "prism",
       "source": "./plugins/prism",
       "description": "Manual command that splits one artifact across distinct lenses and returns the question that resolves their disagreement.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "v0-restart",
       "source": "./plugins/v0-restart",
       "description": "Manual command that plans a restart from v0, keeping only the contracts, gates, vocabulary, tests and failing cases the previous attempt proved, and dropping its accidental architecture.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "catchup",
       "source": "./plugins/catchup",
       "description": "Rebuilds a returning human's context from live project state: what needs them, what changed, what new words mean, and a single next move when asked what to do.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "leakage-audit",
       "source": "./plugins/leakage-audit",
       "description": "Audits an eval, metric, experiment or benchmark for leakage and reports which independence checks fail, each with a fix.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1823,21 +1823,21 @@
       "name": "kotlin-testing",
       "source": "./plugins/kotlin-testing",
       "description": "Writes, runs and fixes JVM Kotlin tests (kotlin.test, JUnit, Kotest, MockK, coroutines-test, Turbine). Use for UncompletedCoroutinesError or a runTest that hangs, \"Module with the Main dispatcher\" errors and Dispatchers.setMain in ViewModel tests, MockK \"no answer found for\", coEvery versus every, Turbine flow assertions, tests slowed by delay, and running one test with ./gradlew :module:test --tests.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "android",
       "source": "./plugins/android",
       "description": "Writes and debugs Android app code outside the UI toolkit. Use for \"A migration from 3 to 4 was required but not found\", form input lost after the process is killed, a StateFlow that reloads on every rotation, \"cannot be provided without an @Inject constructor\", or adding a repository, ViewModel, DAO or worker. Covers ViewModel state, SavedStateHandle, repeatOnLifecycle, Hilt, Room migrations, DataStore, WorkManager and targetSdk behavior changes.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "jetpack-compose",
       "source": "./plugins/jetpack-compose",
       "description": "Writes everyday Jetpack Compose UI. Use for \"LaunchedEffect restarts on every keystroke\", state that resets on recomposition, a card or button component with many boolean flags, an ignored modifier, or adding a screen, theme or animation. Covers where state lives and which effect runs which work, component APIs with modifier and slot parameters, LazyColumn keys, unstable parameters, Material 3 theming, animation, focus and previews.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1851,7 +1851,7 @@
       "name": "android-testing",
       "source": "./plugins/android-testing",
       "description": "Writes and fixes Android tests where the test setup already exists. Use for \"No compose hierarchies found\", \"Method d in android.util.Log not mocked\", a Compose UI test that sleeps or flakes, onNodeWithText not finding a node, Hilt test rules, Robolectric versus instrumented tests, and connectedDebugAndroidTest failures. Covers createComposeRule, waitUntil, idling, useUnmergedTree, Gradle Managed Devices and Orchestrator.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
