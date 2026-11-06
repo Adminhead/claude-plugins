@@ -1,6 +1,6 @@
 {
   "name": "baseline",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "The adminhead default set, installed at user scope: the plugins every session should have. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -15,17 +15,7 @@
     "usage-band",
     "mcp-health",
     "bash-rules",
-    "prove",
-    "necromancy",
-    "cold-read",
-    "ssot-consolidate",
-    "v0-rewrite",
     "debloat",
-    "reorder",
-    "macrothink",
-    "prism",
-    "v0-restart",
-    "catchup",
     "session-retro"
   ]
 }
