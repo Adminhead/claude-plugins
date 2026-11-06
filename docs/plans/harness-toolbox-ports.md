@@ -1,16 +1,16 @@
-# Harness toolbox ports: prove, vet, session-recover and three bash-rules rules
+# Harness toolbox ports: fact-check, vet, session-recover and three bash-rules rules
 
 Status: draft, 2026-10-21. Not started; see `## Status` at the end.
 
-Source: [dtiger1889-ops/claude-harness-toolbox](https://github.com/dtiger1889-ops/claude-harness-toolbox) at `567967b45822d2ae20a1809e11f7ba783c93ab30` (2026-10-20, MIT, Copyright (c) 2026 Daniel Mack). Research: `docs/research/harness-toolbox-review.md` (staged, uncommitted). The user's scope (2026-10-21) overrides the review's "steal the idea" (vet) and "watching" (session-recover) verdicts. Ported from the upstream files, read in full and saved under the planning session's scratchpad (`upstream/skills/{prove,vet,session-recover}/`, `upstream/hooks/{deny_backstop,guard}.ps1`); none of it was run. Out of scope: the consult refactor (separate plan).
+Source: [dtiger1889-ops/claude-harness-toolbox](https://github.com/dtiger1889-ops/claude-harness-toolbox) at `567967b45822d2ae20a1809e11f7ba783c93ab30` (2026-10-20, MIT, Copyright (c) 2026 Daniel Mack). Research: `docs/research/harness-toolbox-review.md` (staged, uncommitted). The user's scope (2026-10-21) overrides the review's "steal the idea" (vet) and "watching" (session-recover) verdicts. Ported from the upstream files, read in full and saved under the planning session's scratchpad (`upstream/skills/{fact-check,vet,session-recover}/`, `upstream/hooks/{deny_backstop,guard}.ps1`); none of it was run. Out of scope: the consult refactor (separate plan).
 
 ## Done when
-- New plugins `prove`, `session-recover` (both in `baseline`, user-invoked) and `vet` (project scope for this repo, model-invoked, depends on `plugin-vetter`) pass `claude plugin validate --strict` and the skill validator.
+- New plugins `fact-check`, `session-recover` (both in `baseline`, user-invoked) and `vet` (project scope for this repo, model-invoked, depends on `plugin-vetter`) pass `claude plugin validate --strict` and the skill validator.
 - bash-rules denies kill-by-name, `~/.claude/.credentials.json` access and Claude Code's `grep --no-ignore`, with must-flag and must-pass tests; `claude plugin test plugins/bash-rules` passes; a usage-log replay shows no unintended flips.
 - `docs/research/tools-to-research.md` is the only inbox, `docs/README.md` holds the research ledger (one verdict line per researched repo), and `docs/Tools to research.md` is gone.
 - `harness-toolbox-review.md` records the decision and the "Ported" verdicts (2026-10-21), and corrects its `grep --no-ignore` claim.
 - `python3 scripts/plugins.py check` is clean. No change under `scripts/shared/`, `*/shell/`, `*/vendor/`, `*/log/usagelog.ts`.
-- bash-rules, prove, session-recover, vet and baseline shipped with `ship-plugin`.
+- bash-rules, fact-check, session-recover, vet and baseline shipped with `ship-plugin`.
 
 ## Findings from the code (verified 2026-10-21)
 - **Walker shape** (probe with `scan()` from `plugins/bash-rules/hooks/danger/rules.ts`):
@@ -43,7 +43,7 @@ Source: [dtiger1889-ops/claude-harness-toolbox](https://github.com/dtiger1889-op
   - Current versions: bash-rules 0.3.0, baseline 0.1.0. `codebase-memory-mcp` is configured in `~/.claude.json`, and codegraph is not.
 
 ## Decisions (defaults taken)
-1. **prove is user-invoked** (`disable-model-invocation: true`) and goes in `baseline` next to handoff. Its triggers ("prove it", "source?") are things the user types, and only the user knows a claim is disputed. Model invocation would fire on "are you sure?" about a plan, which wants reconsideration (doubt-review), not a claim audit. Manual costs no listing context and needs no trigger evals, and baseline reaches every session, not only programming metas. If it later becomes model-invocable, it moves to `programming-core` with trigger evals.
+1. **fact-check is user-invoked** (`disable-model-invocation: true`) and goes in `baseline` next to handoff. Its triggers ("prove it", "source?") are things the user types, and only the user knows a claim is disputed. Model invocation would fire on "are you sure?" about a plan, which wants reconsideration (doubt-review), not a claim audit. Manual costs no listing context and needs no trigger evals, and baseline reaches every session, not only programming metas. If it later becomes model-invocable, it moves to `programming-core` with trigger evals.
 2. **session-recover is user-invoked** and goes in `baseline`. Recovery is always user-initiated, sits next to handoff, and costs nothing in the listing.
 3. **vet is model-invocable** (it exists for mid-task dedupe before adopting a tool). It has **project scope for this repo only and no meta**: the ledger is this repo's `docs/README.md`, and no meta groups this repo's own tooling. It is enabled in a committed `.claude/settings.json` via `claude plugin install vet@adminhead --scope project`. If the install doesn't write `extraKnownMarketplaces.adminhead`, add that stanza from `examples/claude-settings/settings.project.json` so a fresh clone resolves `vet@adminhead`. It declares `"dependencies": ["plugin-vetter"]` (a focused plugin may depend on one it calls). vet never installs anything: an Adopted candidate goes to `plugin-vetter:plugin-vetter` on the exact files at a pinned commit before any separate install step.
 4. **The inbox is `docs/research/tools-to-research.md`.** `docs/Tools to research.md` folds into it: all 9 of its links are already researched, so only its group headings carry over. The file is then deleted. Today's detail content of `tools-to-research.md` moves with `git mv` to `docs/research/tools-2026-10-17.md`. One inbox path, no space in the path.
@@ -94,7 +94,7 @@ Source: [dtiger1889-ops/claude-harness-toolbox](https://github.com/dtiger1889-op
 
   Message: `bash-rules: refusing a command that touches ~/.claude/.credentials.json, Claude Code's OAuth token cache. Reading it exposes the token, and outside an interactive session it is often stale. For usage or rate-limit numbers, read the JSON Claude Code passes to a statusline command (rate_limits.five_hour / seven_day: used_percentage, resets_at).` Side effect: `cat ~/.claude/.credentials.json` now gets this deny instead of the read deny.
 - **R3 grep --no-ignore** (`hygiene.ts`). Add `Category 'flag'` and `Tool 'shell'`, with `LEAD.shell = 'passes a flag the command does not have'` and `INSTEAD.shell = 'Fix the flag and run it again.'`. Add `'flag'` at the end of `order`. The check runs per command where `c.depth === 0 && c.argv[0] === 'grep'` (literal word, not a path, not a view behind a wrapper), using `split(c.argv, 'efmABCdD', ['--regexp', '--file'])` and its `flags`. Note text: `In Claude Code, grep runs the bundled ugrep, which rejects --no-ignore (a ripgrep flag): it exits 2 and prints nothing on stdout, so a scan that never ran looks clean. This grep already skips gitignored files; add --no-ignore-files to include them, or use rg --no-ignore. `
-- **P prove.** Write it fresh with `skill-authoring`. Procedure:
+- **P fact-check.** Write it fresh with `skill-authoring`. Procedure:
   1. Take the passage from `$ARGUMENTS`, or the last answer.
   2. Extract the checkable claims (numbers, dates, names, paths, versions, behavior, attributions). Keep opinions apart, and put the consequential claims first.
   3. Check each one against the right source: project files and records (Read, `rg`, `git log`); the artifact itself (inspect config or logs, or run a harmless command); external facts (official docs or primary sources, fetched now).
@@ -222,9 +222,9 @@ git diff --stat -- scripts/shared plugins/*/hooks/shell plugins/*/hooks/vendor p
 ```
 Commit: `feat(bash-rules): deny kills by name, credentials file access and grep --no-ignore`.
 
-### S2. prove (coder)
-Files, created by `python3 scripts/plugins.py new prove --kind skill --meta baseline --description "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer."`:
-- `plugins/prove/skills/prove/SKILL.md`, `plugins/prove/LICENSE` (upstream MIT text), `plugins/prove/NOTICE` (`Paths: skills/prove/SKILL.md`)
+### S2. fact-check (coder)
+Files, created by `python3 scripts/plugins.py new fact-check --kind skill --meta baseline --description "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer."`:
+- `plugins/fact-check/skills/fact-check/SKILL.md`, `plugins/fact-check/LICENSE` (upstream MIT text), `plugins/fact-check/NOTICE` (`Paths: skills/prove/SKILL.md`)
 - the marketplace entry and baseline dependency added by `new`
 - root `README.md` Acknowledgements row `[dtiger1889-ops/claude-harness-toolbox](https://github.com/dtiger1889-ops/claude-harness-toolbox) | MIT`
 
@@ -235,7 +235,7 @@ Frontmatter:
 
 Body per "P" above, under 60 lines, with both kept rules quoted exactly. Depends on S0.
 
-Acceptance: the shared checks, plus `grep -c 'Memory may locate evidence but cannot confirm a claim' plugins/prove/skills/prove/SKILL.md` = 1 and `grep -ci 'absence of contradiction is not confirmation' plugins/prove/skills/prove/SKILL.md` = 1. Manual check: `claude --plugin-dir plugins/prove`, then `/prove` on a seeded wrong claim ("bash-rules is at 0.5.0"), which reports Wrong with `plugins/bash-rules/.claude-plugin/plugin.json` as the source.
+Acceptance: the shared checks, plus `grep -c 'Memory may locate evidence but cannot confirm a claim' plugins/fact-check/skills/fact-check/SKILL.md` = 1 and `grep -ci 'absence of contradiction is not confirmation' plugins/fact-check/skills/fact-check/SKILL.md` = 1. Manual check: `claude --plugin-dir plugins/fact-check`, then `/fact-check` on a seeded wrong claim ("bash-rules is at 0.5.0"), which reports Wrong with `plugins/bash-rules/.claude-plugin/plugin.json` as the source.
 Commit: `feat(prove): add claim-checking command`.
 
 ### S3. session-recover (coder-high)
@@ -274,7 +274,7 @@ python3 -I plugins/session-recover/skills/session-recover/scripts/session_recove
 python3 -I plugins/session-recover/skills/session-recover/scripts/session_recover.py digest --project "$PWD" --session 0d66b1f1
 ```
 The last two are a smoke test on the real store: the list is 25 lines or fewer, and digest prints a receipt with a 0600 file of 32 KB or less (`stat -c '%a %s' <path>`). Don't paste the digest content into the report.
-Commit: `feat(session-recover): add dead-session recovery from a transcript digest`.
+Commit: `feat(necromancy): add dead-session recovery from a transcript digest`.
 
 ### S4. vet (coder-high)
 Files, created by `python3 scripts/plugins.py new vet --kind skill --description "Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted."` (no `--meta`):
@@ -344,10 +344,10 @@ Commit: `docs: fold the tools inbox and add the research ledger`.
 
 ### S6. Review doc matches the decision (coder)
 File: `docs/research/harness-toolbox-review.md`. Depends on S1-S5, so the doc names real files.
-- Line 5: add `Decision (user, 2026-10-21): port prove, vet, session-recover and three guard rules; plan in docs/plans/harness-toolbox-ports.md.` Note that `necromancy.ps1` and the vet SKILL.md were read in full for the port.
+- Line 5: add `Decision (user, 2026-10-21): port fact-check, vet, session-recover and three guard rules; plan in docs/plans/harness-toolbox-ports.md.` Note that `necromancy.ps1` and the vet SKILL.md were read in full for the port.
 - **Bottom line:** keep "Don't install the plugin". Replace "Port two small pieces" and the "Two ideas" list with the five ported pieces and where each lives.
 - **Summary table:** dated 2026-10-21.
-  - prove: **Ported** (`prove`, baseline, manual).
+  - fact-check: **Ported** (`fact-check`, baseline, manual).
   - deny_backstop.ps1: **Ported 2 rules** (`kill-by-name`, `credentials-read`).
   - guard.ps1: **Ported 1 rule** (`grep --no-ignore`, scoped to Claude Code's ugrep grep).
   - vet: **Ported** (`vet`, project scope, ledger in docs/README.md).
@@ -367,19 +367,19 @@ Commit: `docs(research): record harness-toolbox port decisions`.
 ### S7. Integration and release (coordinator, main session)
 1. Bump the versions in `plugin.json` and the marketplace entry together:
    - bash-rules 0.3.0 → 0.4.0, with its description extended by "kill processes by name, touch Claude Code's credentials file".
-   - baseline 0.1.0 → 0.2.0 (adds prove and session-recover).
+   - baseline 0.1.0 → 0.2.0 (adds fact-check and session-recover).
    - New plugins stay at 0.1.0.
 2. Run the checks: `python3 scripts/plugins.py catalog && python3 scripts/plugins.py check`, `claude plugin validate --strict .`, then `claude plugin validate --strict plugins/<p>` for each of the five. Commit `chore(release): bump bash-rules and baseline for harness-toolbox ports`.
-3. Run `ship-plugin` for bash-rules, prove, session-recover, vet and baseline. The marketplace installs from GitHub, so the first `ship-plugin` stops to ask about the push: one push carries 8141554, 1d6a972 and the S0-S7 commits (open question 1). After the push, every later `ship-plugin` continues straight to the update.
+3. Run `ship-plugin` for bash-rules, fact-check, session-recover, vet and baseline. The marketplace installs from GitHub, so the first `ship-plugin` stops to ask about the push: one push carries 8141554, 1d6a972 and the S0-S7 commits (open question 1). After the push, every later `ship-plugin` continues straight to the update.
 4. Enable vet at project scope: from the repo root, `claude plugin install vet@adminhead --scope project`. Commit the resulting `.claude/settings.json` as `chore(settings): enable vet for this repo`.
 5. Live checks after `/reload-plugins`:
    - `claude -p "Run exactly: pkill -f zzz-no-such-process"` is denied, and `grep -c '"rule":"kill-by-name"' ~/.local/state/claude-usage/bash-rules-$(date +%F).jsonl` ≥ 1.
-   - `/prove` and `/session-recover` appear in a new session's slash commands.
+   - `/fact-check` and `/session-recover` appear in a new session's slash commands.
    - In this repo, `claude -p "Is https://github.com/jarrodwatts/claude-hud worth adding?"` uses vet and reports JUDGED from the ledger.
 6. If the user approves (open question 2): `claude plugin eval plugins/vet --trust-plugin`. Record the results in `docs/research/evals-2026-10-21.md` and add that file to `docs/README.md` "Other research".
 
 ## Rejected alternatives
-- **prove model-invocable in `programming-core`:** reaches only programming metas, needs trigger evals, and the obvious near-miss ("are you sure?") is common.
+- **fact-check model-invocable in `programming-core`:** reaches only programming metas, needs trigger evals, and the obvious near-miss ("are you sure?") is common.
 - **vet in `baseline`:** its ledger is this repo's. **vet as `.claude/skills/vet/`** (like ship-plugin): the user asked for a plugin, and repo-local skills aren't versioned or released.
 - **Inbox stays `docs/Tools to research.md`**, with `tools-to-research.md` as a detail file: it doesn't fold either file, it keeps two near-identical names, and it keeps a space in a linked path.
 - **session-recover in bun or TS:** skill-side scripts here are python3 stdlib (test-run, adr-writing, mcp-server-audit, docs-audit), and bun is for hook-side scripts. **A `MULTI_COMPONENT` exception:** not needed, because a script inside the skill dir isn't a component.
@@ -403,7 +403,7 @@ Commit: `docs(research): record harness-toolbox port decisions`.
 
 ## Follow-ups (not in this plan)
 - Deny `Read(~/.claude/.credentials.json)` for the Read tool too: a `permissions.deny` entry in `examples/claude-settings/settings.global.json`, or a bash-rules `tool.call` on Read.
-- Promote `prove` to model-invocable in `programming-core` if the usage log shows it being used often, and add trigger evals with "are you sure?" hard negatives first.
+- Promote `fact-check` to model-invocable in `programming-core` if the usage log shows it being used often, and add trigger evals with "are you sure?" hard negatives first.
 
 ## Critique log
 Self-run: `mcp__consult__consult` is not available in this session. Each point was checked against the code or a probe.
@@ -430,5 +430,5 @@ Self-run: `mcp__consult__consult` is not available in this session. Each point w
 ## Status
 - Done: S0-S6; S7 steps 1, 2 and 6 (bumps, catalog/check/validate, vet evals: see docs/research/evals-2026-10-21.md). Review fixes landed as eeeb640, 1222d9c (bash-rules), 91b65f1 (session-recover) and abdf3c0 (docs).
 - In progress: none.
-- S7 steps 3-4 done 2026-10-21: pushed (ab4ebbb..8588c1b), bash-rules 0.4.0 and baseline 0.2.0 updated at user scope, prove and session-recover installed at user scope (a baseline update does not install new dependencies), vet 0.1.0 + plugin-vetter enabled at project scope in `.claude/settings.json`.
+- S7 steps 3-4 done 2026-10-21: pushed (ab4ebbb..8588c1b), bash-rules 0.4.0 and baseline 0.2.0 updated at user scope, fact-check and session-recover installed at user scope (a baseline update does not install new dependencies), vet 0.1.0 + plugin-vetter enabled at project scope in `.claude/settings.json`.
 - Left: S7 step 5 live checks, after `/reload-plugins`.

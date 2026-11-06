@@ -1701,10 +1701,10 @@
       "category": "development"
     },
     {
-      "name": "prove",
-      "source": "./plugins/prove",
+      "name": "fact-check",
+      "source": "./plugins/fact-check",
       "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "category": "development"
     },
     {

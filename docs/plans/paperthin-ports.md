@@ -6,7 +6,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 
 ## Done when
 - Ten new plugins pass `claude plugin validate --strict`, the skill validator and `python3 scripts/plugins.py check`: `cold-read`, `ssot-consolidate`, `v0-rewrite`, `debloat`, `reorder`, `catchup`, `leakage-audit`, `macrothink`, `prism` and `v0-restart`.
-- `prove`, `devils-advocate` and `session-retro` carry the folded rules, each with a minor version bump and a NOTICE that credits paperthin.
+- `fact-check`, `devils-advocate` and `session-retro` carry the folded rules, each with a minor version bump and a NOTICE that credits paperthin.
 - The five model-invoked plugins have trigger evals with hard negatives against the plugin they overlap, and one eval run is recorded in `docs/research/`.
 - paperthin is in `docs/3rd-party/README.md` with an overview and a generated catalog, and in the research ledger in `docs/README.md`.
 - Every skill that is not ported has its reason in the triage table below.
@@ -26,7 +26,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
   - `git-commit` already says "the diff already shows what changed" (`plugins/git-commit/skills/git-commit/SKILL.md:62`).
   - `devils-advocate` has Socratic, dialectic, pre-mortem, red-team and evidence-audit modes.
   - `doubt-review` runs fresh-context adversarial review.
-  - `prove` checks claims and is manual.
+  - `fact-check` checks claims and is manual.
   - `handoff` and `session-recover` write agent-facing briefs.
   - `docs-audit` compares docs against code, and `docs-sync` nudges at Stop.
   - The orchestration agent and agent-router already size coder tiers.
@@ -47,7 +47,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 | `mandela` | **Port** | `leakage-audit` (model) | 8-pattern eval-leakage taxonomy. Relevant to `skill-evals`, `experiment-loop` and any A/B work, and nothing covers it. |
 | `macrothink` | **Port** | `macrothink` (manual) | Strip the session's framing, fan out 2-5 fresh reads, report divergence first. second-opinion is cross-model review of a diff, not a reframing check. |
 | `prism` | **Port** | `prism` (manual) | Split one artifact across 2-5 distinct lenses and return the question that resolves their disagreement. devils-advocate runs one mode at a time. |
-| `factchk` | **Fold** | into `prove` | Add "check both directions: could the absurd be real, the obvious false?" and "flag fiction as a declared choice, don't fix it". prove stays manual. |
+| `factchk` | **Fold** | into `fact-check` | Add "check both directions: could the absurd be real, the obvious false?" and "flag fiction as a declared choice, don't fix it". fact-check stays manual. |
 | `hate` | **Fold** | into `devils-advocate` red team | Add the `{root, first_nail}` output contract: one load-bearing objection plus the cheapest falsification. |
 | `feynman` | **Fold** | into `devils-advocate` Socratic | Add "the user explains, the critic never supplies the rationale; narrow on a shallow answer, never repeat". |
 | `re0-memo` | **Fold** | into `session-retro` | Add "cluster specific complaints up to the class that catches them; a lesson that fixes one case isn't one". |
@@ -66,7 +66,7 @@ Source: [LilMGenius/paperthin](https://github.com/LilMGenius/paperthin) at `7d5d
 
 Result: 28 upstream skills split three ways:
 - 10 ported as new plugins;
-- 5 folded: `nba` into the new catchup, and 4 into the existing prove, devils-advocate (two of them) and session-retro;
+- 5 folded: `nba` into the new catchup, and 4 into the existing fact-check, devils-advocate (two of them) and session-retro;
 - 13 not ported.
 
 ## Decisions (defaults taken)
@@ -130,7 +130,7 @@ Each new skill keeps upstream's Goal/Workflow/Rules/Verification content in our 
   - Keep: lenses, not roles; never average; don't manufacture disagreement.
   - Lenses may run inline or as subagents. Inline is the default, because upstream doesn't require isolation.
 - **Folds:**
-  - **prove:** a "Both directions" rule; "a claim stated as fiction or a declared choice is not checked"; the metacognitive trigger as a note ("about to assert a checkable fact from a feeling").
+  - **fact-check:** a "Both directions" rule; "a claim stated as fiction or a declared choice is not checked"; the metacognitive trigger as a note ("about to assert a checkable fact from a feeling").
   - **devils-advocate, red team:** the output ends with `Root:` (the objection whose failure makes the others moot) and `First nail:` (the cheapest check that could falsify it before the expensive work).
   - **devils-advocate, Socratic:** never supply the rationale before the user attempts one; on a shallow answer, narrow to the vague part instead of repeating; an honestly unexplained gap is a valid ending and gets flagged on the decision.
   - **session-retro:** a rule under its ranking step: cluster specific complaints into the class of failure before proposing a fix, and keep the specifics as evidence.
@@ -202,8 +202,8 @@ Correction 2026-10-23 (codex review): the archive rule over-broadened upstream. 
 
 Commit: `feat(v0-restart): add evidence-based restart planning`.
 
-### S5. Folds into prove, devils-advocate and session-retro (coder)
-Edits as in "Folds" above, plus the NOTICE/LICENSE additions and minor bumps (0.1.0 → 0.2.0 for prove, devils-advocate and session-retro, in both `plugin.json` and the marketplace entry). No description change.
+### S5. Folds into fact-check, devils-advocate and session-retro (coder)
+Edits as in "Folds" above, plus the NOTICE/LICENSE additions and minor bumps (0.1.0 → 0.2.0 for fact-check, devils-advocate and session-retro, in both `plugin.json` and the marketplace entry). No description change.
 
 Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin validate --strict` for each. Commits: `feat(prove): check claims in both directions` and similar.
 
@@ -213,7 +213,7 @@ Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin valid
 3. Add the root README Acknowledgements row.
 4. Commit `chore(release): bump baseline and programming-core for paperthin ports`.
 5. Run `claude plugin eval plugins/<p> --trust-plugin` for the five model-invoked plugins (user-approved 2026-10-23). Record the result in `docs/research/evals-2026-10-22.md` and list it in `docs/README.md`. Fix any description that misfires (at most one rewrite round per plugin), and re-run only that plugin.
-6. Run `ship-plugin` for each new plugin, the three folded plugins, baseline and programming-core. The marketplace installs from GitHub, so the first run asks to push (Open question 1). A baseline update doesn't install new dependencies, so install the ten new plugins at user scope by hand, as was done for prove and session-recover.
+6. Run `ship-plugin` for each new plugin, the three folded plugins, baseline and programming-core. The marketplace installs from GitHub, so the first run asks to push (Open question 1). A baseline update doesn't install new dependencies, so install the ten new plugins at user scope by hand, as was done for fact-check and session-recover.
 
 ## Rejected alternatives
 - **Install paperthin as-is** (`npx skills add` or the clone as a plugin): it brings 28 skills, 16 model-invoked, with upstream names and the `re0-upgrade` hook writer. That is listing cost and overlap we already pay for elsewhere.
@@ -253,7 +253,7 @@ Acceptance: a grep per folded rule, `plugins.py check`, and `claude plugin valid
   - Evals: 21/21 with the plugin (`docs/research/evals-2026-10-23.md`).
   - Pushed to origin.
   - Installed and updated:
-    - baseline 0.3.0 and prove 0.2.0 at user scope;
+    - baseline 0.3.0 and fact-check 0.2.0 at user scope;
     - the nine new baseline plugins installed at user scope;
     - programming-core 0.4.0 and leakage-audit 0.1.0 in all nine project and local scopes where programming-core was installed.
   - devils-advocate and session-retro were not installed anywhere, so they were only published.

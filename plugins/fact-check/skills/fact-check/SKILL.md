@@ -1,11 +1,11 @@
 ---
-name: prove
+name: fact-check
 description: Checks each factual claim in an earlier answer against the files, commands and authoritative sources it rests on, reports every claim as Confirmed, Wrong or Unverified, and restates the corrected answer. Manual command, for "prove it", "source?" or "did you make that up".
 argument-hint: "[claim or passage to check; blank for the last answer]"
 disable-model-invocation: true
 ---
 
-# Prove
+# Fact-check
 
 Check the claims in a passage against sources, and give each one a verdict.
 
