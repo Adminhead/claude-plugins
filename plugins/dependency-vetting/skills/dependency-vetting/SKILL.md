@@ -127,5 +127,3 @@ Offer these when the project lacks them, without changing config unasked:
 - A wheel has no install hooks, but a `.pth` file in it runs on every Python start once installed.
 - A package can be clean at one version and malicious at the next after an account takeover. Never extend a verdict to other versions.
 - Registry pages can show a different README or repository than the tarball contains. Trust the artifact you downloaded.
-
-Adapted from Anthropic-Cybersecurity-Skills (mukul975/Anthropic-Cybersecurity-Skills) `detecting-malicious-npm-packages`, `detecting-typosquatting-packages-in-npm-pypi` and `detecting-dependency-confusion`, Apache License 2.0. Modified; see `NOTICE`.

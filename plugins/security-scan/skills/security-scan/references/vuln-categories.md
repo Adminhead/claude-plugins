@@ -2,8 +2,6 @@
 
 Read this when briefing the step 2 subagent, and again before accepting its table. Part 1 is the checklist, part 2 is the reachability filter, part 3 is how to prove a finding.
 
-The anti-pattern list in part 1 is adapted from `instructions/security-and-owasp.instructions.md` in github/awesome-copilot (Copyright GitHub, Inc., MIT License; see the plugin's LICENSE), condensed and rewritten.
-
 ## 1. Categories
 
 | Category | Look for | Safe form |

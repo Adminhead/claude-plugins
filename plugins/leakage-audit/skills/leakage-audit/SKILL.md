@@ -7,8 +7,6 @@ description: Audits an eval, metric, experiment or benchmark for leakage and rep
 
 Check whether a validation is independent: does outside ground truth enter, or are the designer, model and scorer confirming each other? A whole group can confidently agree on something nobody independently produced, and a leaky validation has the same shape.
 
-Adapted from the `mandela` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Writing or running evals: not this skill.

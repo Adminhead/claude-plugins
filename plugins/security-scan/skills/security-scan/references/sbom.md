@@ -2,8 +2,6 @@
 
 Read this when the user asks for an SBOM, wants a vulnerability gate in CI, wants to scan a container image rather than the branch, or asks how to sign or verify an SBOM. The step 1 scanner does not produce SBOMs; these commands are separate and run only when the user asks. Use the tools only if they are installed; never install them during an audit.
 
-Adapted from the `generating-and-analyzing-sboms` skill in https://github.com/mukul975/Anthropic-Cybersecurity-Skills (author: mahipal), Apache License 2.0. Modified: condensed, keyless Cosign updated to current behaviour, verification flags added. See the plugin's LICENSE and NOTICE.
-
 Treat an SBOM as sensitive inventory: it lists exactly which vulnerable versions an attacker could target.
 
 ## Formats

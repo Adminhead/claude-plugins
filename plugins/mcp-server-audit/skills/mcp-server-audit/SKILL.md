@@ -7,8 +7,6 @@ allowed-tools:
 
 # Audit MCP servers for tool poisoning
 
-Adapted from the `auditing-mcp-servers-for-tool-poisoning` skill in [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills) (author: mahipal), Apache-2.0. See `LICENSE` and `NOTICE` in this plugin.
-
 Not for reviewing the source of a server you are about to release (`mcp-server-review`, if installed), designing or building one (`mcp-server`, if installed), or classifying how MCP packages and plugin versions are pinned across agent config (`agent-config-audit`, if installed, which owns that check).
 
 A tool's name, description and schema go into the model's context before it decides to call anything, so a server can inject instructions without ever being called. The audit reads that surface without letting an agent load it, checks how the server is launched and reached, and pins what was approved so a later change shows up.
