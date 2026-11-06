@@ -353,7 +353,7 @@
       "name": "git-history",
       "source": "./plugins/git-history",
       "description": "Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development"
     },
     {
@@ -619,14 +619,14 @@
       "name": "ui-critic",
       "source": "./plugins/ui-critic",
       "description": "Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a page looks generic. Not for mockups, e2e tests or WCAG audits.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "ui-direction",
       "source": "./plugins/ui-direction",
       "description": "Art direction and build process for new UI or a visual reshape, such as a landing page, marketing site, portfolio, product page or a new app screen with no design system. Grounds the design in the subject, deals a researched direction, plans tokens and checks the render. Use when a page should look designed, or looks generic, templated or AI-made.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -703,14 +703,14 @@
       "name": "agent-config-audit",
       "source": "./plugins/agent-config-audit",
       "description": "Read-only security review of your own Claude Code configuration: CLAUDE.md, settings permissions, hooks, subagents and .mcp.json, including static classification of unpinned npx, uvx, pipx and docker MCP selectors.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "agent-instructions",
       "source": "./plugins/agent-instructions",
       "description": "Builds and maintains a repo's CLAUDE.md, .claude/rules and AGENTS.md from verified evidence, and turns repeated agent mistakes into checks, hooks and failure notes.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -731,7 +731,7 @@
       "name": "api-grpc",
       "source": "./plugins/api-grpc",
       "description": "gRPC and protobuf contract design and review: AIP conventions, buf lint and breaking gates, proto diff compatibility, streaming, google.rpc.Status errors and gateway mapping.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -780,21 +780,21 @@
       "name": "aws-cloudwatch",
       "source": "./plugins/aws-cloudwatch",
       "description": "AWS incident investigation from CloudWatch alarms, metrics, Logs Insights and CloudTrail: blast radius, change correlation, timeline and per-resource health, with mutating fixes only after approval.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development"
     },
     {
       "name": "aws-resource-query",
       "source": "./plugins/aws-resource-query",
       "description": "Read-only AWS CLI resource inspection: what exists in an account or region and how it is configured, with a deny-list for secret and data reads, --query projections, and changes only on request.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development"
     },
     {
       "name": "aws-well-architected",
       "source": "./plugins/aws-well-architected",
       "description": "AWS Well-Architected and cost review of a workload from its IaC and read-only live calls: per-pillar findings rated High, Medium or Low, plus right-sizing candidates backed by CloudWatch and Cost Explorer.",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "category": "development"
     },
     {
@@ -864,7 +864,7 @@
       "name": "devcontainer",
       "source": "./plugins/devcontainer",
       "description": "Dev container skill: review and write devcontainer.json, Dev Container Features and Codespaces config against sourced spec rules, plus Codespaces startup and cost tuning.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -906,7 +906,7 @@
       "name": "experiment-loop",
       "source": "./plugins/experiment-loop",
       "description": "Runs a bounded, unattended optimize-and-measure loop on a dedicated git branch, one hypothesis per commit, with a fixed metric command, keep-or-revert decisions and a results log. Use when the user wants many experiments against a measurable goal such as benchmark time, bundle size, memory or test pass rate.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -962,7 +962,7 @@
       "name": "modernize",
       "source": "./plugins/modernize",
       "description": "Plans the modernization of a legacy system (runtime, framework or dependency upgrade, migration or rewrite) with a feasibility spike, testability milestone, safety ladder, hazard red-team and phased exit criteria. Use for \"modernize this\", \"plan the migration\", \"how do we get off this stack\", or a major version upgrade plan.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1109,7 +1109,7 @@
       "name": "session-retro",
       "source": "./plugins/session-retro",
       "description": "Runs a retrospective on a Claude Code session and proposes fixes to the agent's environment (checks, hooks, navigation pointers, steering files, tool economy) ranked by severity. Use when the user asks for a retro, a post-session review, a review of recent or past sessions, or why a session went badly.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "category": "development"
     },
     {
@@ -1158,7 +1158,7 @@
       "name": "aspire",
       "source": "./plugins/aspire",
       "description": "Aspire skill: AppHost resource model and wiring, service defaults, the aspire CLI (start, wait, describe, logs), DistributedApplicationTestingBuilder tests, and aspire publish/deploy to Compose, Kubernetes and Azure.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -1172,7 +1172,7 @@
       "name": "blazor",
       "source": "./plugins/blazor",
       "description": "Blazor skill: component rules, render modes, forms and validation, auth per render mode, shared state, data loading, prerendering, JS interop, and Blazor Server to Web App conversion.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -1417,7 +1417,7 @@
       "name": "msbuild",
       "source": "./plugins/msbuild",
       "description": "Diagnoses MSBuild failures and slow builds and reviews .NET build XML. Use for a failing dotnet build, restore, pack or publish, .csproj/.props/.targets conditions and custom targets, binlog capture and replay, \"it rebuilds when nothing changed\", slow evaluation or builds, bin/obj clashes, or Directory.Build.* layering.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1431,7 +1431,7 @@
       "name": "roslyn-analyzers",
       "source": "./plugins/roslyn-analyzers",
       "description": "Roslyn analyzer skill: DiagnosticAnalyzer, CodeFixProvider and IIncrementalGenerator design and tests, Microsoft.CodeAnalysis host-compatibility pinning, and analyzer NuGet packaging.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1704,14 +1704,14 @@
       "name": "prove",
       "source": "./plugins/prove",
       "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
       "name": "necromancy",
       "source": "./plugins/necromancy",
       "description": "Manual command that recovers a Claude Code session that died without a handoff: a script digests its transcript into anchors, and the skill verifies them and writes a handoff-shaped brief for a fresh session.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
