@@ -46,5 +46,3 @@ Each reference starts with an "Addon vX checked against Godot 4.x" line. The ver
 - A Phantom Camera `PhantomCameraHost` must be a **child** of the real `Camera2D`/`Camera3D`. PCam nodes never render on their own.
 - Dialogue Manager 4 renamed titles to **cues**, made response conditions self-closing (`[if cond /]`), and replaced `set`/`do` with `$>`. Code or docs written for 3.x will not parse cleanly.
 - Dialogue Manager's C# events stay silent until C# code touches `DialogueManager.Instance` (the bridge is lazy).
-
-Adapted from GodotPrompter (MIT, jame581/GodotPrompter), skills `beehave`, `limboai`, `phantom-camera` and `dialogue-manager`; see `NOTICE`.

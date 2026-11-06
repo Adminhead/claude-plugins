@@ -79,5 +79,3 @@ Godot 4.7 additions worth knowing: `EditorInterface.get_unsaved_scenes()`; `Scri
 | Editor freezes while the tool works | Blocking I/O or `OS.execute` on the main thread | Poll from `_process` or use a thread; for processes use `OS.create_process` or `OS.execute_with_pipe` and poll |
 | C#: `Could not find type "MyPlugin"` | The C# project didn't build | Build (MSBuild panel shows errors), then re-enable |
 | Runtime scene breaks only in exports (C#) | A runtime `[Tool]` class wrapped in `#if TOOLS` | Unwrap it; wrap only editor-only classes |
-
-Adapted from GodotPrompter (MIT, jame581/GodotPrompter), skill `addon-development`; see `NOTICE`.

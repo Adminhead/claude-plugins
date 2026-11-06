@@ -102,5 +102,3 @@ C# attribute form: `[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, Tran
 - [references/join-and-disconnect.md](references/join-and-disconnect.md): the lobby flow, the authentication handshake with a version check, max-player limits and kicks, disconnect cleanup and reconnecting.
 - [references/sync-prediction.md](references/sync-prediction.md): state versus input sync, snapshot interpolation, client-side prediction and reconciliation, lag compensation, bandwidth.
 - [references/dedicated-server.md](references/dedicated-server.md): headless runs and the `dedicated_server` feature tag, the "Export as dedicated server" preset, server configuration from the command line, match flow, Docker and systemd.
-
-Adapted from awesome-gamedev-agent-skills `godot-multiplayer` (Apache-2.0) and GodotPrompter `multiplayer-basics`, `multiplayer-sync` and `dedicated-server` (MIT). See NOTICE.

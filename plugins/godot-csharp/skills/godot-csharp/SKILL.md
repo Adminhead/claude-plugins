@@ -135,5 +135,3 @@ For calls between C# and GDScript, `Godot.Collections` versus `System.Collection
 | `GetNode` returns null after a refactor | Path changed | `%Unique` names or `[Export]` node references |
 | GDScript can't find a C# member | Wrong case | GDScript uses the C# name as written: `node.MaxHealth`, `node.TakeDamage(1)` |
 | Build fails with an unknown engine type | GDScript spelling of a renamed class | Use the C# spelling (`GodotObject`, `GpuParticles2D`, `HttpRequest`) |
-
-Adapted from awesome-gamedev-agent-skills `godot-csharp` (Apache-2.0) and GodotPrompter `csharp-godot` and `csharp-signals` (MIT). See NOTICE.

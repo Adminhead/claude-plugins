@@ -122,5 +122,3 @@ More Jolt detail, joints, ragdolls, soft bodies and Area overrides: [references/
 - [references/controllers.md](references/controllers.md): read when building or fixing a controller: coyote time, jump buffer, dash, wall jump, one-way and moving platforms, `move_and_collide`, a 3D first-person controller, CharacterBody property table.
 - [references/queries.md](references/queries.md): read for RayCast nodes, `intersect_ray`/`intersect_shape`/`cast_motion`, 3D mouse picking, layer bit tricks.
 - [references/bodies-advanced.md](references/bodies-advanced.md): read for RigidBody recipes, Area gravity and damping overrides, joints, ragdolls (`PhysicalBoneSimulator3D`), `SoftBody3D`, full Jolt notes and the troubleshooting table.
-
-Adapted from awesome-gamedev-agent-skills (Apache-2.0) and GodotPrompter (MIT); see NOTICE.

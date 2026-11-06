@@ -126,5 +126,3 @@ Global uniforms must exist in Project Settings before the shader saves; set them
 - [references/recipes.md](references/recipes.md): read for ready-made 2D and 3D effects and full-screen post-processing.
 - [references/particles.md](references/particles.md): read for any `GPUParticles*`, `CPUParticles*` or `ParticleProcessMaterial` work, or a custom `particles` shader.
 - [references/advanced.md](references/advanced.md): read for stencil effects (4.5+), `Compositor` and `CompositorEffect`, the Shader Baker and pipeline precompilation, and screen-space AA choices.
-
-Adapted from awesome-gamedev-agent-skills (Apache-2.0) and GodotPrompter (MIT); see NOTICE.

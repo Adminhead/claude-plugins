@@ -68,5 +68,3 @@ For production locomotion, grabbing and UI, suggest Godot XR Tools (GodotVR/godo
 | Trigger fires at odd pressure | Runtime thresholds on bool trigger actions vary | Bind triggers and grips as Float and apply your own threshold |
 | Hand tracking returns nothing | Extension off, or the wrong tracker name | Enable `xr/openxr/extensions/hand_tracking`; trackers are `/user/hand_tracker/left` and `/right` |
 | Quest export fails or runs flat | Missing gradle build or XR Mode | Install the Android build template, enable Use Gradle Build, set XR Mode to OpenXR, arm64 only |
-
-Adapted from GodotPrompter (MIT, jame581/GodotPrompter), skill `xr-development`; see `NOTICE`.

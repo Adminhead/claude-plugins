@@ -87,5 +87,3 @@ Per-preset Shader Baker > Enabled pre-compiles shaders into the PCK for faster f
 - [references/presets-and-cli.md](references/presets-and-cli.md): read for the CLI flag table, `export_presets.cfg` layout, feature tags, PCK patches and DLC, encryption, desktop options and the dedicated-server preset.
 - [references/mobile.md](references/mobile.md): read for Android (SDK, keystore, AAB, Gradle build, permissions, plugins, JavaClassWrapper) and iOS (Xcode, Team ID), app lifecycle and safe areas.
 - [references/ci.md](references/ci.md): read when writing a CI export job: GitHub Actions matrix with setup-godot, templates, secrets, version injection, artifacts and Shader Baker runners.
-
-Adapted from awesome-gamedev-agent-skills (Apache-2.0) and GodotPrompter (MIT); see NOTICE.

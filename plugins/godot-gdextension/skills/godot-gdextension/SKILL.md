@@ -53,5 +53,3 @@ Debugging native code, hot reload and sanitizers for both: [references/debugging
 - Classes registered at `MODULE_INITIALIZATION_LEVEL_SCENE` exist in the editor and in exports. Editor-only classes (an `EditorPlugin` written natively) register at `MODULE_INITIALIZATION_LEVEL_EDITOR` and are absent from exports, so runtime scenes must never reference them.
 - In godot-cpp, a node class whose `_process` should not run inside the editor is registered with `GDREGISTER_RUNTIME_CLASS`; plain `GDREGISTER_CLASS` runs its virtuals in the editor too, like a `@tool` script.
 - Native code that touches the scene tree from a worker thread crashes like any other engine code; use `call_deferred` or the WorkerThreadPool and keep tree access on the main thread.
-
-Adapted from GodotPrompter (MIT, jame581/GodotPrompter), skill `gdextension`; see `NOTICE`.
