@@ -9,7 +9,7 @@ Paths: plugins/dotnet/skills/msbuild/SKILL.md, plugins/dotnet/skills/msbuild/ref
 
 Modifications: SKILL.md rewritten and shortened from the upstream msbuild entry
 skill with a new description; the entry's references copied with PowerShell
-command blocks converted to bash and attribution lines added; new references
+command blocks converted to bash; new references
 bin-obj-clash.md, redundant-restores.md, directory-build.md,
 items-and-properties.md and targets.md condensed from the listed dotnet-msbuild
 skills, with binlog MCP server workflows replaced by text-log replay, some
