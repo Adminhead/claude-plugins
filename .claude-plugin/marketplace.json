@@ -178,7 +178,7 @@
       "name": "bash",
       "source": "./plugins/bash",
       "description": "Bash skill: defensive scripts with strict mode and its holes, quoting, trap cleanup, argument parsing, ShellCheck configuration and Bats tests.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -199,7 +199,7 @@
       "name": "click-path-audit",
       "source": "./plugins/click-path-audit",
       "description": "Audits UI event handlers for behavior bugs. It maps each state action's side effects, then traces every handler call in order to find sequential undo, async races, stale closures, dead paths and effects that reset what a click just set. Use when a button does nothing or leaves the wrong state though each function works alone, or after a shared-state refactor.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -220,7 +220,7 @@
       "name": "coding",
       "source": "./plugins/coding",
       "description": "Makes the smallest complete, maintainable code change for a bounded feature, fix, integration, or behavior-preserving refactor. Use when implementing or modifying code whose approach is already clear (\"add X to Y\", \"fix this function\", \"refactor this without changing behavior\", \"simplest solution\", \"this is over-engineered\").",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -318,7 +318,7 @@
       "name": "gh-pr",
       "source": "./plugins/gh-pr",
       "description": "Prepare and open a reviewer-ready GitHub pull request with gh: convention-following commits, a body with summary visuals, evidence and merge danger, opened as a draft after approval.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -339,7 +339,7 @@
       "name": "gh-triage",
       "source": "./plugins/gh-triage",
       "description": "Triage existing GitHub issues and external PRs with gh: category and state labels, duplicate and prior-rejection checks, claim verification, needs-info notes, agent briefs and stale policy.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -353,7 +353,7 @@
       "name": "git-history",
       "source": "./plugins/git-history",
       "description": "Edits and repairs Git history safely without opening an editor: fixup and autosquash, rebasing onto the default branch or a new base, splitting commits, cherry-pick backports, bisect, and reflog recovery.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -367,42 +367,42 @@
       "name": "gitops",
       "source": "./plugins/gitops",
       "description": "Sets up and reviews GitOps delivery with Argo CD or Flux: choosing between them, repo layout, sync policy per environment, and secrets with External Secrets, Sealed Secrets or SOPS.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "golang",
       "source": "./plugins/golang",
       "description": "Go language skill: packages, errors, interfaces, context, goroutines and shutdown, modules, tests, with references for pitfalls, security, database/sql, gRPC, linting and modernizing.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "golang-cli",
       "source": "./plugins/golang-cli",
       "description": "Go command-line tools with cobra and viper: command tree and hooks, flag, env and config precedence, output and exit codes, signal shutdown, testable commands.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "golang-performance",
       "source": "./plugins/golang-performance",
       "description": "Measurement-first Go performance: benchstat comparisons, pprof and trace reading, escape analysis, GC and GOMEMLIMIT tuning, and CI regression checks.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "handoff",
       "source": "./plugins/handoff",
       "description": "Compacts the current conversation into a handoff document a fresh session can pick up, and with --bg launches that session as a background agent. Manual command.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "helm",
       "source": "./plugins/helm",
       "description": "Authors, validates and releases Helm charts: values and schema, helpers, dependencies, lint and template checks, helm diff, atomic upgrades, OCI publishing and provenance.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -416,7 +416,7 @@
       "name": "issue-breakdown",
       "source": "./plugins/issue-breakdown",
       "description": "Turn a spec, plan or conversation into a reviewed set of linked GitHub issues cut as vertical slices with blocking edges, writing a spec first when needed, and publish them with gh after a dry run and approval.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -430,7 +430,7 @@
       "name": "kubernetes",
       "source": "./plugins/kubernetes",
       "description": "Writes and reviews Kubernetes manifests (probes, resources, RBAC, NetworkPolicy, Pod Security Standards and admission, Jobs, HPA, PDB, Kustomize) and triages failing workloads with read-only kubectl.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -451,7 +451,7 @@
       "name": "planning",
       "source": "./plugins/planning",
       "description": "Writes, reviews, or revises implementation plans whose scope, verification, and reruns are proportionate to risk. Use for \"plan this\", \"review this plan\", \"cheapest way to verify\", work spanning several slices or risky boundaries, acceptance criteria for an ambiguous change, multi-agent or multi-session plans, and \"grill me\" stress-tests.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -472,28 +472,28 @@
       "name": "prisma",
       "source": "./plugins/prisma",
       "description": "Prisma ORM 6 and 7 traps for TypeScript backends, such as updateMany returning a count, interactive transaction timeouts, migrate dev resets, edited applied migrations, undefined filters, P2002/P2025/P2003 handling, serverless connections and driver adapters. Use when writing a Prisma schema, query, transaction or migration, or debugging one.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "problem-solving",
       "source": "./plugins/problem-solving",
       "description": "Root-cause diagnosis for failures, flaky tests and performance regressions: a red-capable feedback loop, competing falsifiable hypotheses, one-variable probes and evidence-backed fixes. Also algorithm choice under unclear constraints.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "production-readiness",
       "source": "./plugins/production-readiness",
       "description": "Evidence-based ship-or-block review (Blocked, Risky or Caveats) of an application before launch, built from local repo evidence.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "python",
       "source": "./plugins/python",
       "description": "Python idiom, review and diagnosis: typing, exceptions, resource lifetimes, asyncio, retries and background jobs, profiling and pytest.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -507,7 +507,7 @@
       "name": "react",
       "source": "./plugins/react",
       "description": "Changes, reviews and debugs React components: state ownership, effects, keys, render purity, Server Components and Actions, accessibility, measured performance, React 19 upgrades and component tests. Use for .tsx/.jsx behavior or render cost, such as \"this list lags when I type\", \"it re-renders too much\", effect loops or hydration mismatches.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -535,7 +535,7 @@
       "name": "rollout-plan",
       "source": "./plugins/rollout-plan",
       "description": "Plans and verifies production rollouts: strategy choice, preflight go/no-go, phased verification signals, numeric rollback criteria and post-deploy follow-up.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -591,7 +591,7 @@
       "name": "test-gap-audit",
       "source": "./plugins/test-gap-audit",
       "description": "Read-only audit of missing, weak and stale tests for a repo, PR or feature: maps source to tests with a bundled script and ranks gaps P0-P3 by behavior and risk, never by coverage percentage.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -605,21 +605,21 @@
       "name": "ts-module-boundaries",
       "source": "./plugins/ts-module-boundaries",
       "description": "Sets up dependency-cruiser in a TypeScript repo so each package is reachable only through its root entry-point files, with no deep imports and no cycles, then proves the rules fail on a violation. Use when the user asks to enforce package boundaries, stop deep imports or add dependency-cruiser.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "typescript",
       "source": "./plugins/typescript",
       "description": "Handles TypeScript type-level and compiler work, covering tsconfig strictness, narrowing, generics, discriminated unions, declarations and module resolution, public type APIs, runtime validation of unknown data, and type tests. Use when editing *.ts/*.tsx types or tsconfig.json, or fixing tsc errors.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "ui-critic",
       "source": "./plugins/ui-critic",
       "description": "Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a page looks generic. Not for mockups, e2e tests or WCAG audits.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -640,7 +640,7 @@
       "name": "unit-testing",
       "source": "./plugins/unit-testing",
       "description": "Focused unit and regression tests and test-strategy guidance for changed behavior or a confirmed bug, in any language: smallest proving test, test-first slices, seams and boundary-only mocks, plus pytest and Vitest/Jest references. No coverage quotas.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -689,28 +689,28 @@
       "name": "web-perf-auditor",
       "source": "./plugins/web-perf-auditor",
       "description": "Agent that audits a web app's performance: a static source scan marked not measured, or a deep audit from Lighthouse, PageSpeed or CrUX data, with no fabricated numbers.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "adr-writing",
       "source": "./plugins/adr-writing",
       "description": "ADR skill: create, review, supersede and index Markdown Architecture Decision Records in docs/adr/ (Nygard or MADR) with a numbering helper that avoids cross-branch collisions.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "agent-config-audit",
       "source": "./plugins/agent-config-audit",
       "description": "Read-only security review of your own Claude Code configuration: CLAUDE.md, settings permissions, hooks, subagents and .mcp.json, including static classification of unpinned npx, uvx, pipx and docker MCP selectors.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "agent-instructions",
       "source": "./plugins/agent-instructions",
       "description": "Builds and maintains a repo's CLAUDE.md, .claude/rules and AGENTS.md from verified evidence, and turns repeated agent mistakes into checks, hooks and failure notes.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -724,77 +724,77 @@
       "name": "api-graphql",
       "source": "./plugins/api-graphql",
       "description": "Public GraphQL API design and review: when GraphQL fits, schema conventions, Relay pagination, result-union errors, query ceilings, federation boundary, persisted queries and field deprecation.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "api-grpc",
       "source": "./plugins/api-grpc",
       "description": "gRPC and protobuf contract design and review: AIP conventions, buf lint and breaking gates, proto diff compatibility, streaming, google.rpc.Status errors and gateway mapping.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "api-idempotency",
       "source": "./plugins/api-idempotency",
       "description": "Idempotency keys and safe retries for HTTP APIs: per-account client keys, atomic claim, in-flight and replay states with recovery jobs, and client retry policy with full-jitter backoff, retry budgets and deadlines.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "api-keys",
       "source": "./plugins/api-keys",
       "description": "API keys a platform issues to its consumers: prefixed checksummed key format, hash-only storage and lookup, scopes, dual-key rotation with last-used telemetry, service-account ownership and offboarding, keys versus OAuth.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "api-oauth-provider",
       "source": "./plugins/api-oauth-provider",
       "description": "OAuth 2.1 authorization-server design and review: grants and PKCE, redirect matching, token lifetimes, refresh rotation with reuse detection, scopes, consent, client registration and MCP auth.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "api-rest-design",
       "source": "./plugins/api-rest-design",
       "description": "REST/HTTP API contract design and review skill: resources and methods, status codes, RFC 9457 errors, pagination, rate-limit headers, contract-first OpenAPI with drift checks, and versioning and deprecation policy.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "api-webhooks",
       "source": "./plugins/api-webhooks",
       "description": "Provider-side outbound webhooks skill: event catalog and payloads, Standard Webhooks signing and rotation, at-least-once delivery with backoff and dead-lettering, SSRF defenses, and the delivery log and replay surface.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "app-auth",
       "source": "./plugins/app-auth",
       "description": "Application-side authentication and authorization: sessions, password and recovery flows, OAuth/OIDC callbacks, JWT validation, tenant and ownership checks, cookies, CSRF and rate limits.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "aws-cloudwatch",
       "source": "./plugins/aws-cloudwatch",
       "description": "AWS incident investigation from CloudWatch alarms, metrics, Logs Insights and CloudTrail: blast radius, change correlation, timeline and per-resource health, with mutating fixes only after approval.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "aws-resource-query",
       "source": "./plugins/aws-resource-query",
       "description": "Read-only AWS CLI resource inspection: what exists in an account or region and how it is configured, with a deny-list for secret and data reads, --query projections, and changes only on request.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "aws-well-architected",
       "source": "./plugins/aws-well-architected",
       "description": "AWS Well-Architected and cost review of a workload from its IaC and read-only live calls: per-pillar findings rated High, Medium or Low, plus right-sizing candidates backed by CloudWatch and Cost Explorer.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development"
     },
     {
@@ -822,7 +822,7 @@
       "name": "codebase-design",
       "source": "./plugins/codebase-design",
       "description": "Deep-module design skill: module, interface, seam and adapter vocabulary, deepening by dependency category, design-it-twice, and a user-invoked architecture review that finds deepening candidates with codebase-memory.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -857,14 +857,14 @@
       "name": "deprecation-migration",
       "source": "./plugins/deprecation-migration",
       "description": "Deprecation and migration skill: Hyrum's law, a sunset-or-keep decision tree, incremental consumer migration (strangler, adapter, flags), and expand/contract for zero-downtime schema changes.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "devcontainer",
       "source": "./plugins/devcontainer",
       "description": "Dev container skill: review and write devcontainer.json, Dev Container Features and Codespaces config against sourced spec rules, plus Codespaces startup and cost tuning.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -885,14 +885,14 @@
       "name": "domain-modeling",
       "source": "./plugins/domain-modeling",
       "description": "Domain modeling skill: challenge and sharpen project terms in conversation and keep GLOSSARY.md (and GLOSSARY-MAP.md for multi-context repos) current as terms settle.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "doubt-review",
       "source": "./plugins/doubt-review",
       "description": "Fresh-context adversarial review of non-trivial in-flight decisions: state the claim, hand the artifact and contract to a subagent told to disprove it, reconcile findings, stop after three cycles.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -906,14 +906,14 @@
       "name": "experiment-loop",
       "source": "./plugins/experiment-loop",
       "description": "Runs a bounded, unattended optimize-and-measure loop on a dedicated git branch, one hypothesis per commit, with a fixed metric command, keep-or-revert decisions and a results log. Use when the user wants many experiments against a measurable goal such as benchmark time, bundle size, memory or test pass rate.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "file-conversion",
       "source": "./plugins/file-conversion",
       "description": "Local-only file conversion skill: image, audio, video, document and CSV/JSON conversions with ffmpeg, ImageMagick, pandoc, LibreOffice and the Python stdlib, inspecting inputs first, preserving originals and verifying outputs.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -934,7 +934,7 @@
       "name": "homelab-network",
       "source": "./plugins/homelab-network",
       "description": "Home and homelab network planning, read-only first: inventory, VLANs and trust zones, default-deny firewall rules, Pi-hole DNS cutover, WireGuard remote access and interface error diagnosis.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -962,7 +962,7 @@
       "name": "modernize",
       "source": "./plugins/modernize",
       "description": "Plans the modernization of a legacy system (runtime, framework or dependency upgrade, migration or rewrite) with a feasibility spike, testability milestone, safety ladder, hazard red-team and phased exit criteria. Use for \"modernize this\", \"plan the migration\", \"how do we get off this stack\", or a major version upgrade plan.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -976,14 +976,14 @@
       "name": "observability-instrumentation",
       "source": "./plugins/observability-instrumentation",
       "description": "Observability instrumentation skill: structured logs with correlation IDs, metrics with bounded labels, OpenTelemetry traces, profiling, symptom alerts, and SLOs with burn-rate alerts, starting from the questions on-call will ask.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "open-source-release-audit",
       "source": "./plugins/open-source-release-audit",
       "description": "A read-only subagent that audits a repo before it goes public: secrets (gitleaks or trufflehog, regex fallback), PII, internal references, dangerous files, .env.example gaps, git history and unreadable binaries, returning PASS, PASS WITH WARNINGS or FAIL.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -997,7 +997,7 @@
       "name": "plugin-vetter",
       "source": "./plugins/plugin-vetter",
       "description": "A read-only subagent that statically vets a third-party plugin, skill, agent, hooks.json or .mcp.json before install for hidden directives, invisible unicode, encoded payloads, tool shadowing and scope mismatch, with a PASS, FAIL or NEEDS HUMAN REVIEW verdict.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1011,7 +1011,7 @@
       "name": "postgres",
       "source": "./plugins/postgres",
       "description": "PostgreSQL skill: EXPLAIN reading and pg_stat_statements, index choice, statistics, locks, vacuum, isolation retries, online DDL, partitioning, RLS cost, Postgres types and table-design gotchas, and pgvector.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1046,7 +1046,7 @@
       "name": "prototype",
       "source": "./plugins/prototype",
       "description": "Builds a throwaway prototype that answers one design question, either a single-file HTML demo that drives a state model through hard cases or several structurally different UI variants on one route. Use to sanity-check a state model, data shape or API feel, or to compare layouts before committing.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1060,7 +1060,7 @@
       "name": "research",
       "source": "./plugins/research",
       "description": "Answers an external, decision-relevant question with sourced, cited evidence at quick, standard or deep depth. Use for \"compare X vs Y\", \"is it true that...\", \"what's the current state of...\", choosing a library or tool, or explaining a topic from authoritative sources.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1116,7 +1116,7 @@
       "name": "setup-wizard",
       "source": "./plugins/setup-wizard",
       "description": "Manual skill that generates a bash wizard for human-only setup steps: opens each dashboard, captures secrets with hidden input, writes a gitignored .env and sets GitHub secrets.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1137,7 +1137,7 @@
       "name": "threat-model",
       "source": "./plugins/threat-model",
       "description": "STRIDE threat modeling from the code: trust boundaries, data-flow diagram, verified findings tiered by exploitability, attack trees, testable security requirements and mapped controls.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1578,7 +1578,7 @@
       "name": "forgejo-pr",
       "source": "./plugins/forgejo-pr",
       "description": "Prepare and open a reviewer-ready Forgejo or Codeberg pull request with fj: convention-following commits, a body with summary visuals, evidence and merge danger, opened as a WIP draft after approval.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1648,7 +1648,7 @@
       "name": "java-testing",
       "source": "./plugins/java-testing",
       "description": "Writes, runs, debugs and fixes Java tests with JUnit Jupiter 5/6, Mockito, AssertJ and Testcontainers. Use whenever editing or debugging JUnit test code (*Test.java, *IT.java): rewriting copy-pasted cases as one @ParameterizedTest with @CsvSource or @MethodSource, @Nested tests, Mockito UnnecessaryStubbingException or a when(...) stub that is never used, strict stubs, \"No tests found for given includes\", filtering with -Dtest or --tests, Surefire versus Failsafe, flaky tests that sleep or depend on the clock, a slow suite that starts a container per class, and Mockito agent warnings on Java 21+.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1690,7 +1690,7 @@
       "name": "spring-boot",
       "source": "./plugins/spring-boot",
       "description": "Writes, reviews and debugs Spring Boot 3/4 applications. Covers @ConfigurationProperties and profiles, bean wiring and auto-configuration (\"No qualifying bean\", condition report), MVC and WebFlux controllers, validation and ProblemDetail, Spring Data JPA and @Transactional, Spring Security SecurityFilterChain, Actuator, and the 3.x to 4 upgrade (modular starters, Jackson 3). Use for @SpringBootApplication code, application.yml or application.properties, spring-boot-starter-* dependencies, startup failures such as \"required a bean of type ... that could not be found\" after moving classes, and a @Transactional method that does not roll back.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1816,7 +1816,7 @@
       "name": "kotlin",
       "source": "./plugins/kotlin",
       "description": "Writes, reviews and fixes idiomatic Kotlin outside @Composable code. Use for \"Smart cast to String is impossible, because name is a mutable property\", a non-exhaustive when, !! NullPointerException, events lost from a MutableSharedFlow, stateIn that never emits, a coroutine that outlives its owner, GlobalScope or runBlocking freezing the caller, swallowed CancellationException, or a Java-to-Kotlin conversion. Covers null safety, sealed classes, scope functions, structured concurrency, Flow and Java interop.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
