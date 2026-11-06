@@ -1,6 +1,6 @@
 {
   "name": "vet",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "dependencies": ["plugin-vetter"],
   "description": "Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted.",
   "author": {

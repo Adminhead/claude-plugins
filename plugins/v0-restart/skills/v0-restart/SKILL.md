@@ -8,8 +8,6 @@ disable-model-invocation: true
 
 Start over from what the previous attempt proved, not from what it happened to build. A restart is not amnesia: contracts, schemas, vocabulary, real-surface tests, quality gates and the negative corpus (failing cases and their inputs) survive when they earned it. Scaffold, explanatory UI, debug panels, shallow generated content and code whose only value was learning what not to do do not.
 
-Adapted from the `re0-work` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Metric-driven iteration on a working approach: use `experiment-loop`.

@@ -7,8 +7,6 @@ description: 'Rebuilds a returning human''s context from live project state: wha
 
 Brief a human who lost the thread, from state and not from memory. Long agent cycles coin words, rename files and make calls faster than the owner can follow, so reload their mental model before any next action is decided.
 
-Adapted from the `catchup` and `nba` skills in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Writing a brief for a new agent session: use `handoff`.

@@ -14,8 +14,6 @@ description: >-
 
 # vet -- is someone else's thing worth adding to this marketplace?
 
-Adapted from dtiger1889-ops/claude-harness-toolbox (MIT, see NOTICE).
-
 Someone HAS shipped it, here is the link: does it earn a place here? **vet** ends in a
 ledger entry, not an opinion, so the same repo never gets evaluated twice from scratch. For
 a general research question, use `research`, not this skill.

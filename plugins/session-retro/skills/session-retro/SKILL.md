@@ -9,10 +9,6 @@ argument-hint: "[session id, transcript path, 'recent' or a day window, or blank
 
 Review a Claude Code session and propose changes to the agent's **environment** so future sessions go better. The output is a ranked list of proposals for the user to accept or reject. Make no edits until the user picks proposals.
 
-Adapted from mattpocock/skills `retro` (MIT, Copyright (c) 2026 Matt Pocock); see LICENSE.
-
-The clustering rule under step 4 is adapted from the `re0-memo` skill in LilMGenius/paperthin (MIT).
-
 ## Steps
 
 1. **Find the transcript.** If `$ARGUMENTS` asks for recent, all or past sessions, or gives a window (for example "last 14 days"), follow `references/multi-session.md` first: it starts from the usage log and ends with the few sessions worth a transcript read. Otherwise, with no argument, review this session (`${CLAUDE_SESSION_ID}`). Otherwise take the session id or path from `$ARGUMENTS`, or search recent transcripts by topic. Read `references/transcripts.md` for where transcripts live and the `jq` recipes to pull tool calls, errors, user corrections and token usage without loading a whole transcript into context. Done when you have the transcript path and a list of the session's tool calls, failures and corrections.

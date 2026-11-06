@@ -7,8 +7,6 @@ description: Finds every copy of one fact scattered across code, config, CI and 
 
 One fact gets one home, and every other place references it. References do not drift; copies do. This edits artifacts, so it starts read-only and changes nothing until the user approves the plan.
 
-Adapted from the `ssotize` skill in LilMGenius/paperthin (MIT).
-
 ## Scope
 
 A fact whose copies span mixed surfaces (code constants, config, CI, scripts and docs together), or only code and config. When every copy lives in docs, that is `docs-audit`'s job: it already finds duplication across docs and keeps one canonical owner.

@@ -7,8 +7,6 @@ description: Cold-reads an artifact through a fresh subagent that sees only its 
 
 Check whether an artifact stands on its own by letting a reader with no session context read it. A long session hides what you left unsaid, so the judge must be someone who never saw it.
 
-Adapted from the `shower` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Attacking a decision or plan: use `doubt-review`.

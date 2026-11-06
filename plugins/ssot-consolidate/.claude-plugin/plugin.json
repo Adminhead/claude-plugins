@@ -1,6 +1,6 @@
 {
   "name": "ssot-consolidate",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Finds every copy of one fact scattered across code, config, CI and docs, proposes a canonical home and a consolidation plan, and edits only after approval.",
   "author": {
     "name": "AdminHead",

@@ -7,8 +7,6 @@ description: Rewrites a drifted document as a clean v0 that says what is true no
 
 Refresh an artifact as if it were the first clean version. The result is lighter, more current and more accurate than the input, and never reads like a changelog, a cleanup note or a patch over an older draft.
 
-Adapted from the `re0` skill in LilMGenius/paperthin (MIT).
-
 ## Not for
 
 - Changelogs, ADRs and plans: their append-only history is the point.
