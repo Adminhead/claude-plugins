@@ -2,7 +2,7 @@ Copyright AdminHead
 
 This plugin contains material adapted from the MIT-licensed sources below (see LICENSE).
 
-github/awesome-copilot (https://github.com/github/awesome-copilot), Copyright GitHub, Inc..
+github/awesome-copilot (https://github.com/github/awesome-copilot), Copyright GitHub, Inc.
 Derived: `aws-cloudwatch-investigation` and `aws-resource-health-diagnose`; skills/aws-cloudwatch/SKILL.md and its references.
 
 Modifications: rewritten and edited for this marketplace.
