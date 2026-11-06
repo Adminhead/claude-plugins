@@ -1,5 +1,8 @@
 roslyn-analyzers
 Copyright AdminHead
+Copyright GitHub, Inc. (github/awesome-copilot)
+Copyright (c) Microsoft Corporation (assets/CSharpCodeFixVerifier.cs, assets/SourceWriter.cs)
+Copyright (c) 2023 Eirik Tsarpalis (PolyType; assets/SourceWriter.cs is adapted from it)
 
 This plugin contains material adapted from github/awesome-copilot, licensed
 under the MIT License (see LICENSE).
