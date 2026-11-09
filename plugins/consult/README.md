@@ -107,6 +107,7 @@ WantedBy=default.target
 - **Refusals.** A server missing a required flag, or a thread that is not locked, is refused with `not-locked`, and the message names the flag. Do not point `codexSocket` at the desktop app's daemon (`~/.codex/app-server-control/app-server-control.sock`). It is not started with these flags.
 - **Upgrades.** After a codex upgrade, run `systemctl --user restart codex-consult`. The running server keeps the old binary until then.
 - **Socket override.** Set `codexSocket` in `/config` to use another socket path. It must be at most 100 bytes and match `^/[A-Za-z0-9._/-]+$`. Empty means `$XDG_RUNTIME_DIR/codex-consult.sock`.
+- **Enabled.** Set `enabled` to `false` in `/config` and the consult tool is not registered, so no code or plan text can be sent to codex or agy. Only an exact `false` turns it off; it takes effect after a reload or in a new session.
 - **Lock policy.** Set `codexLockPolicy` in `/config`. Empty or `thread` (the default) checks the consult thread, as described in "The codex client", and requires of the server only the required flags. `strict` requires every flag in the unit on the server and skips the thread readback. Any other value refuses the codex call, and the message names the option.
 - **Probe.** To check the server without a review:
 

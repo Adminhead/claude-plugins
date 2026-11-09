@@ -106,6 +106,7 @@ async function runAgy($: any, c: Consult, repo: string, top: string) {
 }
 
 export const register: Register = (on, options) => {
+  if (options?.enabled === false) return
   // Checked per call, so a bad value is a tool error naming the option rather than a failed load.
   const socket = socketOption(options?.codexSocket)
   const policy = lockPolicyOption(options?.codexLockPolicy)

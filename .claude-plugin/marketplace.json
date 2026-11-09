@@ -836,7 +836,7 @@
       "name": "consult",
       "source": "./plugins/consult",
       "description": "A mod that registers the mcp__consult__consult tool: a read-only diff or plan review by codex (OpenAI, the default, on the user's locked codex-consult app server) or agy (Google Gemini), with a repo opt-out marker, a secret-file block, timeouts and a read-only agy hook gate.",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "category": "development"
     },
     {
@@ -1480,7 +1480,7 @@
       "name": "usage-log",
       "source": "./plugins/usage-log",
       "description": "Mod that logs skill use and the skill listing per prompt to local JSONL, for finding skills that should have fired and didn't. Ships usage-report, which summarizes this log and the bash-rules log.",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "category": "development"
     },
     {

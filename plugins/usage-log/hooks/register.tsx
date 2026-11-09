@@ -47,6 +47,7 @@ async function logListing($: any) {
 }
 
 export const register: Register = (on, options) => {
+  if (options?.enabled === false) return
   const o = parseOptions(options)
 
   on('session.start', async ($, e, next) => {

@@ -1,12 +1,13 @@
 {
   "name": "consult",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "A mod that registers the mcp__consult__consult tool: a read-only diff or plan review by codex (OpenAI, the default, on the user's locked codex-consult app server) or agy (Google Gemini), with a repo opt-out marker, a secret-file block, timeouts and a read-only agy hook gate.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
   "userConfig": {
+    "enabled": { "type": "boolean", "title": "Enable the mod", "description": "Off: the consult tool is not registered, so no code or plan text can be sent to codex or agy. Only an exact false turns it off. Takes effect after a reload or in a new session.", "default": true },
     "codexSocket": {
       "type": "string",
       "title": "Codex app server socket",

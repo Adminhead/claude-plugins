@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
+import { register } from '../hooks/register'
 import { DEFAULTS, commandsOf, listingKey, listingOf, parseOptions, slashCommand } from '../hooks/events'
 
 const skills = (names: string[], included = names.length) => ({
@@ -74,6 +75,57 @@ describe('register', () => {
     expect(lines[2]).toMatchObject({ prompt: 1, skill: 'b:b', agentId: 'ag1', isError: false })
     expect(lines[3]).toMatchObject({ prompt: 1, skill: 'b:b' })
     expect(lines[4]).toMatchObject({ type: 'coder:coder', description: 'fix it', model: 'sonnet', effort: 'high' })
+  })
+
+  test('enabled: false logs nothing and prunes nothing', { options: { enabled: false } }, async ($, on) => {
+    const runs: string[][] = []
+    mock.clock(on, { now: Date.UTC(2026, 9, 18) })
+    on('ui.log', async () => ({ value: undefined }))
+    on('session.id', async () => ({ value: 's1' }))
+    on('session.usage', async () => ({ value: { context: { window: 1, breakdown: { skills: skills(['a:a', 'b:b']) } }, rateLimits: [] } }))
+    on('command.list', async () => ({ value: [] }))
+    on('process.run', async (_$: any, e: any) => {
+      runs.push(e.argv)
+      return { value: { exitCode: 0, stdout: '', stderr: '' } }
+    })
+    on('session.start', async (_$: any, e: any) => ({ cwd: e.cwd }) as any)
+    on('prompt.submit', async (_$: any, e: any) => ({ text: e.text }))
+    on('tool.call', async () => ({ result: 'ok' }))
+    await $.session.start({ cwd: '/x', surface: 'terminal', isInteractive: true } as never)
+    await $.prompt.submit({ text: '/a:a do the thing' } as never)
+    await $.tool.call({ tool: 'Skill', skill: 'b:b', agentId: 'ag1' } as never)
+    expect(runs).toEqual([])
+  })
+
+  test('with default options the same session prunes and appends', async ($, on) => {
+    const runs: string[][] = []
+    mock.clock(on, { now: Date.UTC(2026, 9, 18) })
+    on('ui.log', async () => ({ value: undefined }))
+    on('session.id', async () => ({ value: 's1' }))
+    on('session.usage', async () => ({ value: { context: { window: 1, breakdown: { skills: skills(['a:a', 'b:b']) } }, rateLimits: [] } }))
+    on('command.list', async () => ({ value: [] }))
+    on('process.run', async (_$: any, e: any) => {
+      runs.push(e.argv)
+      return { value: { exitCode: 0, stdout: '', stderr: '' } }
+    })
+    on('session.start', async (_$: any, e: any) => ({ cwd: e.cwd }) as any)
+    on('prompt.submit', async (_$: any, e: any) => ({ text: e.text }))
+    on('tool.call', async () => ({ result: 'ok' }))
+    await $.session.start({ cwd: '/x', surface: 'terminal', isInteractive: true } as never)
+    await $.prompt.submit({ text: '/a:a do the thing' } as never)
+    await $.tool.call({ tool: 'Skill', skill: 'b:b', agentId: 'ag1' } as never)
+    expect(runs.some(a => a[2]?.includes('cat >>'))).toBe(true)
+    expect(runs.some(a => !a[2]?.includes('cat >>'))).toBe(true)
+  })
+
+  test('enabled: false registers nothing; anything else keeps the mod on', () => {
+    const events = (opts: Record<string, unknown>) => {
+      const seen: string[] = []
+      register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+      return seen
+    }
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [undefined, {}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) expect(events(o as any).length).toBeGreaterThan(0)
   })
 
   test('an unchanged listing is not logged twice', async ($, on) => {

@@ -60,5 +60,6 @@ Find the plugin root with `claude plugin list --json` (`installPath`). The repor
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `enabled` | `true` | Off: nothing is logged and old logs are no longer pruned. Only an exact `false` turns it off; takes effect after a reload or in a new session |
 | `retentionDays` | `30` | Days of logs to keep |
 | `promptText` | `true` | Log prompt text, masked |

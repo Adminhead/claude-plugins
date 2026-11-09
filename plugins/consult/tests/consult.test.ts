@@ -4,6 +4,7 @@ import {
   agyCall, agyHooksJson, agyInputText, blockedFiles, clientArgv, CLIENT_SLACK_SEC, clip, codexRequest, diffArgv, failure, fileListArgvs, header,
   lockPolicyOption, MAX_NOTES, preamble, socketOption, tail, validate, type Consult,
 } from '../hooks/consult/consult'
+import { register } from '../hooks/register'
 import { checkClientRequest } from '../hooks/consult/appserver'
 
 const REPO = '/home/u/repo'
@@ -435,5 +436,17 @@ describe('consult tool', () => {
     await start($, on, happy)
     await $.tool.call(base)
     expect(JSON.parse(calls.find(c => isClient(c.argv)).init.stdin).socket).toBeUndefined()
+  })
+})
+
+describe('the enabled option', () => {
+  test('enabled: false registers nothing; anything else keeps the consult tool on', () => {
+    const events = (opts: Record<string, unknown>) => {
+      const seen: string[] = []
+      register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+      return seen
+    }
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [undefined, {}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) expect(events(o as any).length).toBeGreaterThan(0)
   })
 })
