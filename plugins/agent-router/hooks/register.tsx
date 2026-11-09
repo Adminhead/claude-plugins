@@ -14,9 +14,11 @@
 // only agents that can spawn, and the main thread first.
 
 import type { Register } from 'claude-code'
-import { isOrchestrator, MAX_NAME, MAX_TRACKED, renderTable, withTable, type Offer } from './routes'
+import { isOrchestrator, limitsOf, MAX_NAME, MAX_TRACKED, renderTable, withTable, type Offer } from './routes'
 
-export const register: Register = (on) => {
+export const register: Register = (on, options) => {
+  if (options?.enabled === false) return
+  const limits = limitsOf(options)
   // Every type the model was offered, by name; a type a hook beneath refused is dropped.
   const offers = new Map<string, Offer>()
   // The main thread's agent type, from the classic hook inputs (main thread: agent_type, no agent_id).
@@ -55,7 +57,7 @@ export const register: Register = (on) => {
       offers.delete(e.agent)
     }
     // A type installed or removed mid-session: redescribe the Agent tool once the table changed.
-    if (rendered !== undefined && rendered !== null && renderTable(offers.values()) !== rendered) {
+    if (rendered !== undefined && rendered !== null && renderTable(offers.values(), limits) !== rendered) {
       rendered = undefined
       $.ui.invalidate('tool.describe')
     }
@@ -76,7 +78,7 @@ export const register: Register = (on) => {
       rendered = null
       return out
     }
-    const table = renderTable(offers.values())
+    const table = renderTable(offers.values(), limits)
     rendered = table
     return { ...out, description: withTable(out.description, table) }
   })

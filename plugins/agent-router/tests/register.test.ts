@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
+import { register } from '../hooks/register'
 
 const ENGINE = { plugin: 'engine', tier: 'core' } as never
 const PLUGIN = { plugin: 'reviewer@adminhead', tier: 'user' } as never
@@ -80,5 +81,38 @@ describe('register', () => {
     await s.offer('coder:coder', 'Writes code.')
     expect(s.invalidations()).toBe(1)
     expect(await s.describe()).toContain('`scribe:scribe`')
+  })
+})
+
+describe('options', () => {
+  test('maxAgents and hideAgents shape the table', { options: { maxAgents: 1, hideAgents: 'reviewer' } }, async ($, on) => {
+    const s = await session($, on, { agent: 'orchestration' })
+    await s.offer('alpha', 'Does alpha work.')
+    await s.offer('reviewer', 'Read-only reviewer.')
+    await s.offer('zeta', 'Does zeta work.')
+    const d = await s.describe()
+    expect(d.match(/^- `/gm)?.length).toBe(1)
+    expect(d).toContain('`alpha`')
+    expect(d.includes('`reviewer`')).toBe(false)
+  })
+
+  test('default options list all three', async ($, on) => {
+    const s = await session($, on, { agent: 'orchestration' })
+    await s.offer('alpha', 'Does alpha work.')
+    await s.offer('reviewer', 'Read-only reviewer.')
+    await s.offer('zeta', 'Does zeta work.')
+    expect((await s.describe()).match(/^- `/gm)?.length).toBe(3)
+  })
+
+  test('only a boolean false switches the mod off', () => {
+    const events = (opts: Record<string, unknown> | undefined) => {
+      const seen: string[] = []
+      register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+      return seen
+    }
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [undefined, {}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) {
+      expect(events(o).length).toBeGreaterThan(0)
+    }
   })
 })

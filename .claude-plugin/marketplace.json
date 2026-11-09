@@ -157,7 +157,7 @@
       "name": "agent-router",
       "source": "./plugins/agent-router",
       "description": "Mod that lists the installed agent types, each with when to use it, in the Agent tool's description in an orchestration session (CLAUDE_ORCHESTRATE set, or the main thread runs the orchestration agent), so new agents get routes without editing it.",
-      "version": "0.2.2",
+      "version": "0.3.0",
       "category": "development"
     },
     {
@@ -717,7 +717,7 @@
       "name": "agent-status",
       "source": "./plugins/agent-status",
       "description": "A mod that adds a live-agent count by status and task done/total above the prompt, with an `agents` pane giving each agent's model, time in status and time since spawn, which the built-in agent panel lacks.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {

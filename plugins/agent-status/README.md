@@ -38,9 +38,14 @@ Dropped from the archived coremods version: the description line under each agen
 
 usage-band draws in the same `AbovePrompt` band. Both mods call `next(e)` and compose, so you get the band first and the agent line under it, whatever order the plugins load in. Install both or either.
 
+## Options
+
+- `enabled` (default on): off removes the count line and the pane. Only an exact `false` turns it off; takes effect after a reload or in a new session.
+- `pollSeconds` (default 5): how often the agent list is re-read, clamped to 1-60 seconds. Takes effect after a reload or in a new session.
+
 ## How it works
 
-- It polls `$.agent.list()` every 5 s and also right after a spawn or Task call. It redraws only when the drawn content changes.
+- It polls `$.agent.list()` every 5 s (`pollSeconds`) and also right after a spawn or Task call. It redraws only when the drawn content changes.
 - The `tool.call` and `agent.spawn` hooks only observe (`await next(e)`, then read the result), so `claude plugin validate` lists them as `gating hook without .catch`. A throw skips the observer and the call goes through.
 - Agent names, descriptions and models are model-written text. They are capped at 1000 characters before cleaning, then stripped of escape sequences and control characters and truncated.
 - `session.end` (including `/clear`) resets the state and closes the pane.

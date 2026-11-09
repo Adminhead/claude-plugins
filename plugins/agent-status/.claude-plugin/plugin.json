@@ -1,9 +1,20 @@
 {
   "name": "agent-status",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A mod that adds a live-agent count by status and task done/total above the prompt, with an `agents` pane giving each agent's model, time in status and time since spawn, which the built-in agent panel lacks.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "enabled": { "type": "boolean", "title": "Enable the mod", "description": "Off removes the agent count line above the prompt and the agents pane. Takes effect after a reload or in a new session. Only an exact false turns it off.", "default": true },
+    "pollSeconds": {
+      "type": "number",
+      "title": "Agent list refresh (seconds)",
+      "description": "How often the agent list is re-read while nothing else triggers a refresh (a spawn or Task call always refreshes at once). Whole seconds, 1 to 60. Takes effect after a reload or in a new session.",
+      "default": 5,
+      "min": 1,
+      "max": 60
+    }
   }
 }

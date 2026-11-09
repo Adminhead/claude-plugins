@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
-import { applyTask, buildView, clean, fmtIdle, MAX_SPAWNED, noteSpawn, paneRows, pruneSpawned, shortModel, track, type Seen } from '../hooks/line'
+import { register } from '../hooks/register'
+import { applyTask, buildView, clean, fmtIdle, MAX_SPAWNED, noteSpawn, paneRows, pollMsOf, pruneSpawned, shortModel, track, type Seen } from '../hooks/line'
 
 const agent = (id: string, status: string, over: Record<string, unknown> = {}) => ({
   id,
@@ -212,6 +213,50 @@ describe('count line', () => {
     await clock.advance(30_000)
     expect(lists.n > polled).toBe(true)
     expect(lists.draws).toBe(drawn)
+  })
+})
+
+describe('polling interval option', () => {
+  test('pollSeconds 2 polls within a 2 s advance', { options: { pollSeconds: 2 } }, async ($, on) => {
+    const { clock, lists } = await mountLine($, on, () => [agent('a', 'running')])
+    await clock.advance(5000)
+    const polled = lists.n
+    await clock.advance(2000)
+    expect(lists.n > polled).toBe(true)
+  })
+
+  test('with default options a 2 s advance does not poll again', async ($, on) => {
+    const { clock, lists } = await mountLine($, on, () => [agent('a', 'running')])
+    await clock.advance(5000)
+    const polled = lists.n
+    await clock.advance(2000)
+    expect(lists.n).toBe(polled)
+  })
+
+  test('pollMsOf defaults, clamps and floors', () => {
+    expect(pollMsOf(undefined)).toBe(5000)
+    expect(pollMsOf({})).toBe(5000)
+    for (const v of [undefined, '', 'abc', NaN, null, {}]) expect(pollMsOf({ pollSeconds: v })).toBe(5000)
+    expect(pollMsOf({ pollSeconds: 0 })).toBe(1000)
+    expect(pollMsOf({ pollSeconds: 999 })).toBe(60_000)
+    expect(pollMsOf({ pollSeconds: '1e400' })).toBe(60_000)
+    expect(pollMsOf({ pollSeconds: 2.9 })).toBe(2000)
+    expect(pollMsOf({ pollSeconds: '3' })).toBe(3000)
+  })
+})
+
+describe('enabled option', () => {
+  const events = (opts: Record<string, unknown> | undefined) => {
+    const seen: string[] = []
+    register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+    return seen
+  }
+
+  test('only a boolean false switches the mod off', () => {
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [undefined, {}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) {
+      expect(events(o).length).toBeGreaterThan(0)
+    }
   })
 })
 

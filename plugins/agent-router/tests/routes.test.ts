@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { HEADING, isOrchestrator, MAX_AGENTS, MAX_DESCRIPTION, renderTable, selectRows, summarize, withTable } from '../hooks/routes'
+import { DEFAULT_LIMITS, HEADING, hiddenOf, isOrchestrator, limitsOf, MAX_AGENTS, MAX_DESCRIPTION, renderTable, selectRows, summarize, withTable } from '../hooks/routes'
 
 const offer = (agent: string, description = `Does ${agent} work.`) => ({ agent, description, source: 'plugin', provider: 'x' })
 
@@ -73,5 +73,50 @@ describe('routes', () => {
     const twice = withTable(once, t2)
     expect(twice).toBe(withTable('Launch an agent.', t2))
     expect(withTable(once, null)).toBe('Launch an agent.')
+  })
+})
+
+describe('limits', () => {
+  const many = ['alpha', 'bravo', 'charlie', 'delta', 'reviewer'].map((a) => offer(a, 'x '.repeat(300)))
+
+  test('defaults give the same output as the one-argument call', () => {
+    expect(renderTable(many, DEFAULT_LIMITS)).toBe(renderTable(many))
+    expect(selectRows(many, limitsOf({}))).toEqual(selectRows(many))
+    expect(limitsOf(undefined)).toEqual(DEFAULT_LIMITS)
+  })
+
+  test('maxAgents lists that many rows and reports the rest as omitted', () => {
+    const { rows, omitted } = selectRows(many, limitsOf({ maxAgents: 2 }))
+    expect(rows.map((r) => r.agent)).toEqual(['alpha', 'bravo'])
+    expect(omitted).toBe(3)
+  })
+
+  test('hidden drops that type', () => {
+    const { rows } = selectRows(many, { ...DEFAULT_LIMITS, hidden: new Set(['reviewer']) })
+    expect(rows.map((r) => r.agent)).toEqual(['alpha', 'bravo', 'charlie', 'delta'])
+  })
+
+  test('descriptionChars shortens each row', () => {
+    const { rows } = selectRows(many, limitsOf({ descriptionChars: 50 }))
+    expect(rows.every((r) => r.when.length <= 50)).toBe(true)
+  })
+
+  test('a missing or unreadable number keeps the default, out-of-range values clamp', () => {
+    for (const v of [undefined, '', 'abc', NaN, null]) {
+      expect(limitsOf({ maxAgents: v, descriptionChars: v }).maxAgents).toBe(30)
+      expect(limitsOf({ maxAgents: v, descriptionChars: v }).descriptionChars).toBe(320)
+    }
+    expect(limitsOf({ maxAgents: 0 }).maxAgents).toBe(1)
+    expect(limitsOf({ maxAgents: '1e400' }).maxAgents).toBe(100)
+    expect(limitsOf({ descriptionChars: 5 }).descriptionChars).toBe(40)
+    expect(limitsOf({ descriptionChars: 99999 }).descriptionChars).toBe(1000)
+    expect(limitsOf({ maxAgents: 2.9 }).maxAgents).toBe(2)
+  })
+
+  test('hideAgents splits on commas and spaces, drops invalid names, and ignores long or non-string values', () => {
+    expect([...hiddenOf('a, b  c,d')].sort()).toEqual(['a', 'b', 'c', 'd'])
+    expect([...hiddenOf('good,bad name!,`x`,ok:2')].sort()).toEqual(['bad', 'good', 'ok:2'])
+    expect(limitsOf({ hideAgents: 'a'.repeat(5000) }).hidden.size).toBe(0)
+    for (const v of [undefined, 5, true, null, ['a'], { a: 1 }]) expect(hiddenOf(v).size).toBe(0)
   })
 })

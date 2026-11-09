@@ -6,6 +6,7 @@ import {
   PANE_COLUMNS,
   PANE_ID,
   paneRows,
+  pollMsOf,
   pruneSpawned,
   renderLine,
   renderPane,
@@ -19,7 +20,7 @@ import {
 // A live-agent count line above the prompt and an `agents` pane with each agent's model and age.
 // Everything that touches `$` lives here; the logic and drawing are in ./line.
 
-const POLL_MS = 5000
+let pollMs = 5000
 
 let seen: Seen = {}
 let spawned: Spawned = {}
@@ -87,10 +88,13 @@ async function refreshAgents($: any) {
 function startPolling($: any) {
   if (polling) return
   polling = true
-  $.clock.every(POLL_MS, () => void refreshAgents($))
+  $.clock.every(pollMs, () => void refreshAgents($))
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  if (options?.enabled === false) return
+  pollMs = pollMsOf(options)
+
   on('session.start', async ($, e, next) => {
     startPolling($)
     return next(e)

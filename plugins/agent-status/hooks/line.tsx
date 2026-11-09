@@ -194,3 +194,11 @@ export function renderPane({ Box, Text, Button }: any, view: View | null, onColl
     </Box>
   )
 }
+
+// The polling interval from the `pollSeconds` option: an integer 1 to 60 seconds, 5 when missing or unreadable.
+export const intIn = (v: unknown, min: number, max: number, d: number): number => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
+  return Number.isNaN(n) ? d : Math.min(max, Math.max(min, Math.floor(n)))
+}
+
+export const pollMsOf = (options: Readonly<Record<string, unknown>> | undefined): number => intIn(options?.pollSeconds, 1, 60, 5) * 1000

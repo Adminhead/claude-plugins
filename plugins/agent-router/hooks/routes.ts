@@ -50,24 +50,49 @@ function cleanName(name: string): string | null {
   return /^[A-Za-z0-9_.:@-]+$/.test(name) ? name : null
 }
 
+export type RouteLimits = { maxAgents: number; descriptionChars: number; hidden: ReadonlySet<string> }
+
+export const DEFAULT_LIMITS: RouteLimits = { maxAgents: MAX_AGENTS, descriptionChars: MAX_DESCRIPTION, hidden: new Set() }
+
+const intIn = (v: unknown, min: number, max: number, d: number): number => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
+  return Number.isNaN(n) ? d : Math.min(max, Math.max(min, Math.floor(n)))
+}
+
+// Agent types to leave out of the table: names split on commas and spaces, invalid names dropped,
+// nothing hidden when the raw value is over 4096 characters or is not a string.
+export function hiddenOf(raw: unknown): ReadonlySet<string> {
+  if (typeof raw !== 'string' || raw.length > 4096) return new Set()
+  return new Set(raw.split(/[\s,]+/).filter((n) => cleanName(n) !== null))
+}
+
+// The table bounds from the plugin options; a missing or unreadable value keeps the default.
+export function limitsOf(options: Readonly<Record<string, unknown>> | undefined): RouteLimits {
+  return {
+    maxAgents: intIn(options?.maxAgents, 1, 100, MAX_AGENTS),
+    descriptionChars: intIn(options?.descriptionChars, 40, 1000, MAX_DESCRIPTION),
+    hidden: hiddenOf(options?.hideAgents),
+  }
+}
+
 // The rows to list: offered, not the orchestrator, not a helper, sorted by name for a stable
 // prompt cache, bounded in count. `omitted` counts what the bound dropped.
-export function selectRows(offers: Iterable<Offer>): { rows: { agent: string; when: string }[]; omitted: number } {
+export function selectRows(offers: Iterable<Offer>, limits: RouteLimits = DEFAULT_LIMITS): { rows: { agent: string; when: string }[]; omitted: number } {
   const seen = new Map<string, { agent: string; when: string }>()
   for (const o of offers) {
     const agent = cleanName(o.agent)
-    if (agent === null || isOrchestrator(agent) || NEVER_LIST.has(agent)) continue
-    seen.set(agent, { agent, when: summarize(o.description) || '(no description)' })
+    if (agent === null || isOrchestrator(agent) || NEVER_LIST.has(agent) || limits.hidden.has(agent)) continue
+    seen.set(agent, { agent, when: summarize(o.description, limits.descriptionChars) || '(no description)' })
   }
   const all = [...seen.values()].sort((a, b) => (a.agent < b.agent ? -1 : a.agent > b.agent ? 1 : 0))
-  return { rows: all.slice(0, MAX_AGENTS), omitted: Math.max(0, all.length - MAX_AGENTS) }
+  return { rows: all.slice(0, limits.maxAgents), omitted: Math.max(0, all.length - limits.maxAgents) }
 }
 
 export const HEADING = '## Installed agent routes (agent-router)'
 
 // The section appended to the Agent tool's description, or null when there is nothing to list.
-export function renderTable(offers: Iterable<Offer>): string | null {
-  const { rows, omitted } = selectRows(offers)
+export function renderTable(offers: Iterable<Offer>, limits: RouteLimits = DEFAULT_LIMITS): string | null {
+  const { rows, omitted } = selectRows(offers, limits)
   if (rows.length === 0) return null
   const lines = [
     HEADING,
