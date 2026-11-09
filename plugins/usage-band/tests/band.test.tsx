@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import { allocate, gradeLimits, inCollapsed, isShown, resetPart } from '../hooks/band'
 import { DEFAULTS } from '../hooks/options'
+import { register } from '../hooks/register'
 
 const cat = (name: string, tokens: number, color: string, kind: string) => ({
   name,
@@ -330,6 +331,37 @@ describe('pace, windows and stats', () => {
     const ui = await mountBand($, on, () => usage(LIMITS))
     const t = await text(ui)
     expect(t).toMatch(/^ctx .*other$/)
+  })
+})
+
+describe('pace thresholds in the band', () => {
+  const at = (hoursLeft: number) => new Date(NOW + hoursLeft * 3600_000).toISOString()
+  const bar = async (ui: any) =>
+    (await ui.findAll({ type: 'Text' })).find((el: any) => /^━+$/.test(el.text))
+
+  test('custom pace thresholds recolour the bar', { options: { warnPace: 50, critPace: 80 } }, async ($, on) => {
+    const ui = await mountBand($, on, () => usage([{ kind: 'five_hour', percentUsed: 30, resetsAt: at(2.5) }]))
+    expect((await bar(ui)).props.color).toBe('warning')
+  })
+
+  test('default thresholds keep the same window green', async ($, on) => {
+    const ui = await mountBand($, on, () => usage([{ kind: 'five_hour', percentUsed: 30, resetsAt: at(2.5) }]))
+    expect((await bar(ui)).props.color).toBe('success')
+  })
+})
+
+describe('enabled option', () => {
+  const events = (opts: Record<string, unknown> | undefined) => {
+    const seen: string[] = []
+    register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+    return seen
+  }
+
+  test('only a boolean false switches the mod off', () => {
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [undefined, {}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) {
+      expect(events(o).length).toBeGreaterThan(0)
+    }
   })
 })
 

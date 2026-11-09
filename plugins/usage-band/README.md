@@ -61,6 +61,11 @@ Set these in `/config` (the plugin's `userConfig`):
 | `resetStyle` | `countdown` | `countdown` shows the time left (`↻1h29m`). `clock` shows when the window resets in local time (`↻14:30`, `↻Thu 09:00`). |
 | `alerts` | `true` | Turns the limit toasts on or off. |
 | `sessionStats` | `true` | Shows cost, cache hit rate, compaction count and effort. |
+| `enabled` | `true` | Off removes the band and its toasts. Only an exact `false` turns it off; takes effect after a reload or in a new session. |
+| `warnPace` | `90` | Projected end-of-window percentage (1 to 200) at which a window turns amber. |
+| `critPace` | `100` | Projected percentage (1 to 200) above which a window turns red. The `▲` still means a projection past 100. If `warnPace` is not below `critPace`, both revert to the defaults. |
+| `warnPercent` | `60` | Percentage used (1 to 100) at which a window whose pace can't be read turns amber. |
+| `critPercent` | `85` | Percentage used (1 to 100) at which such a window turns red. If `warnPercent` is not below `critPercent`, both revert to the defaults. |
 
 ## Limits
 

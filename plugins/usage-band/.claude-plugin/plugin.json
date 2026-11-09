@@ -1,12 +1,18 @@
 {
   "name": "usage-band",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A band above the prompt with context fill by category and rate-limit windows coloured by pace, a toast when a window turns amber or red or resets, plus session cost, cache hit rate, compactions and effort.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
   "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enable the mod",
+      "description": "Off removes the usage band above the prompt and its limit toasts. Takes effect after a reload or in a new session.",
+      "default": true
+    },
     "limitsThreshold": {
       "type": "number",
       "title": "Hide limits below (%)",
@@ -41,6 +47,38 @@
       "title": "Session stats",
       "description": "Show session cost, the last response's cache hit rate, the compaction count and the effort level.",
       "default": true
+    },
+    "warnPace": {
+      "type": "number",
+      "title": "Amber at projected pace (%)",
+      "description": "Colour a window amber when its current rate projects to at least this percentage of the window by its reset. Changes colours and toasts only. Must be below the red value, or both revert to the defaults.",
+      "default": 90,
+      "min": 1,
+      "max": 200
+    },
+    "critPace": {
+      "type": "number",
+      "title": "Red above projected pace (%)",
+      "description": "Colour a window red when its current rate projects past this percentage by its reset. Changes colours and toasts only; the run-out marker still means a projection past 100.",
+      "default": 100,
+      "min": 1,
+      "max": 200
+    },
+    "warnPercent": {
+      "type": "number",
+      "title": "Amber at used (%), unknown pace",
+      "description": "For a window whose pace can't be read (no reset time or length), colour it amber at this percentage used. Changes colours and toasts only. Must be below the red value, or both revert.",
+      "default": 60,
+      "min": 1,
+      "max": 100
+    },
+    "critPercent": {
+      "type": "number",
+      "title": "Red at used (%), unknown pace",
+      "description": "For a window whose pace can't be read, colour it red at this percentage used. Changes colours and toasts only.",
+      "default": 85,
+      "min": 1,
+      "max": 100
     }
   }
 }

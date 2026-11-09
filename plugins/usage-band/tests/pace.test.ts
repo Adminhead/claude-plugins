@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 import { cacheHit, effortBadge, fmtClock, fmtReset, fmtUsd, labelOf } from '../hooks/format'
-import { parseOptions } from '../hooks/options'
-import { checkAlerts, grade, levelColor, readMemo, WINDOW_MS } from '../hooks/pace'
+import { paceOf, parseOptions } from '../hooks/options'
+import { checkAlerts, DEFAULT_PACE, grade, levelColor, readMemo, WINDOW_MS } from '../hooks/pace'
 
 const NOW = Date.UTC(2026, 9, 4, 12, 0)
 const H = 3_600_000
@@ -153,5 +153,62 @@ describe('format', () => {
   test('options fall back to defaults and clamp percentages', () => {
     expect(parseOptions(undefined)).toEqual({ limitsThreshold: 0, weeklyThreshold: 80, resetStyle: 'countdown', alerts: true, sessionStats: true })
     expect(parseOptions({ limitsThreshold: 150, weeklyThreshold: 'x', resetStyle: 'clock', alerts: false })).toMatchObject({ limitsThreshold: 100, weeklyThreshold: 80, resetStyle: 'clock', alerts: false })
+  })
+})
+
+describe('pace thresholds', () => {
+  // One hour of five elapsed: the projection is five times the percent used.
+  const at1h = (pct: number) => five(pct, 1)
+
+  test('the defaults grade as before', () => {
+    expect(grade(at1h(12), NOW).level).toBe('ok')
+    expect(grade(at1h(18), NOW).level).toBe('warn')
+    const g = grade(at1h(24), NOW, DEFAULT_PACE)
+    expect(g.level).toBe('crit')
+    expect(g.ahead).toBe(true)
+  })
+
+  test('custom pace thresholds move the colours; ahead stays the physical fact', () => {
+    const t = { warnPace: 50, critPace: 80, warnPercent: 60, critPercent: 85 }
+    expect(grade(at1h(12), NOW, t).level).toBe('warn')
+    const g = grade(at1h(18), NOW, t)
+    expect(g.level).toBe('crit')
+    expect(g.ahead).toBe(false)
+    const loose = grade(at1h(24), NOW, { ...DEFAULT_PACE, critPace: 150 })
+    expect(loose.level).toBe('warn')
+    expect(loose.ahead).toBe(true)
+    expect(loose.runsOutAt).toBeDefined()
+  })
+
+  test('custom percent thresholds grade a window whose pace cannot be read', () => {
+    const l = { kind: 'spend_limit', percentUsed: 50 }
+    expect(grade(l, NOW).level).toBe('ok')
+    expect(grade(l, NOW, { ...DEFAULT_PACE, warnPercent: 40, critPercent: 70 }).level).toBe('warn')
+    expect(grade(l, NOW, { ...DEFAULT_PACE, warnPercent: 20, critPercent: 45 }).level).toBe('crit')
+  })
+
+  test('checkAlerts honours the thresholds', () => {
+    const t = { warnPace: 50, critPace: 80, warnPercent: 60, critPercent: 85 }
+    expect(checkAlerts({}, [at1h(12)], NOW).toasts).toEqual([])
+    const out = checkAlerts({}, [at1h(12)], NOW, t)
+    expect(out.toasts.length).toBe(1)
+    expect(out.toasts[0]).toContain('on pace for')
+  })
+
+  test('paceOf reads values, falls back and reverts an invalid pair', () => {
+    expect(paceOf({})).toEqual(DEFAULT_PACE)
+    expect(paceOf(undefined)).toEqual(DEFAULT_PACE)
+    expect(paceOf({ warnPace: 100, critPace: 90 })).toEqual(DEFAULT_PACE)
+    expect(paceOf({ warnPace: 100, critPace: 100 })).toEqual(DEFAULT_PACE)
+    expect(paceOf({ warnPercent: '' })).toEqual(DEFAULT_PACE)
+    expect(paceOf({ warnPace: 50, critPace: 80, warnPercent: 99, critPercent: 10 })).toEqual({ ...DEFAULT_PACE, warnPace: 50, critPace: 80 })
+    expect(paceOf({ warnPace: '40.7', critPace: '120' })).toMatchObject({ warnPace: 40, critPace: 120 })
+  })
+
+  test('paceOf clamps and floors; bad numbers use the default', () => {
+    expect(paceOf({ warnPace: 0, critPace: 999 })).toMatchObject({ warnPace: 1, critPace: 200 })
+    expect(paceOf({ warnPace: 1, critPace: '1e400' }).critPace).toBe(200)
+    expect(paceOf({ warnPace: 'abc', critPace: NaN })).toMatchObject({ warnPace: 90, critPace: 100 })
+    expect(paceOf({ warnPercent: 10, critPercent: 500 })).toMatchObject({ warnPercent: 10, critPercent: 100 })
   })
 })

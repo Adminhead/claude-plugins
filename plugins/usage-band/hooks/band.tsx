@@ -3,7 +3,7 @@
 import type { SessionUsage } from 'claude-code'
 import { fmtClock, fmtReset, fmtTokens, fmtUsd, labelOf } from './format'
 import type { BandOptions } from './options'
-import { grade, levelColor, type Grade } from './pace'
+import { DEFAULT_PACE, grade, levelColor, type Grade, type PaceThresholds } from './pace'
 
 type Cell = { ch: string; color?: string }
 type Breakdown = NonNullable<SessionUsage['context']['breakdown']>
@@ -27,6 +27,7 @@ export type BandInput = {
   expanded: boolean
   now: number
   options: BandOptions
+  pace?: PaceThresholds
   extras: SessionExtras
   onToggle: () => void
 }
@@ -134,13 +135,13 @@ export function resetPart(r: RateLimit, now: number, spaced: boolean, style: Ban
 type Lim = { r: RateLimit; g: Grade; color: string }
 
 // The windows in band order (5h, weekly, spend, then any other), each graded.
-export function gradeLimits(limits: readonly RateLimit[], now: number): Lim[] {
+export function gradeLimits(limits: readonly RateLimit[], now: number, t: PaceThresholds = DEFAULT_PACE): Lim[] {
   const rank = (k: string) => (ORDER.indexOf(k) + ORDER.length + 1) % (ORDER.length + 1)
   return [...limits]
     .filter(r => typeof r?.kind === 'string' && Number.isFinite(Number(r.percentUsed)))
     .sort((a, b) => rank(a.kind) - rank(b.kind))
     .map(r => {
-      const g = grade(r, now)
+      const g = grade(r, now, t)
       return { r, g, color: levelColor(g.level) }
     })
 }
@@ -178,7 +179,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 export function renderBand(input: BandInput) {
   const { ui, usage, breakdown: b, columns, maxRows, expanded, now, options: o, extras, onToggle } = input
   const { Box, Text, Button } = ui
-  const shown = gradeLimits(usage.rateLimits ?? [], now).filter(l => isShown(l, o))
+  const shown = gradeLimits(usage.rateLimits ?? [], now, input.pace).filter(l => isShown(l, o))
   const free = b.categories.find((c: Category) => c.kind === 'free')?.tokens ?? 0
   const toggle = (label: string) => <Button key="toggle" plain dimColor label={label} onPress={onToggle} />
 

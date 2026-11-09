@@ -647,7 +647,7 @@
       "name": "usage-band",
       "source": "./plugins/usage-band",
       "description": "A band above the prompt with context fill by category and rate-limit windows coloured by pace, a toast when a window turns amber or red or resets, plus session cost, cache hit rate, compactions and effort.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {

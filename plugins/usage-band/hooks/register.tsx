@@ -1,8 +1,8 @@
 import type { Register, SessionUsage } from 'claude-code'
 import { renderBand } from './band'
 import { cacheHit, effortBadge } from './format'
-import { DEFAULTS, parseOptions, type BandOptions } from './options'
-import { checkAlerts, readMemo } from './pace'
+import { DEFAULTS, parseOptions, paceOf, type BandOptions } from './options'
+import { checkAlerts, DEFAULT_PACE, readMemo, type PaceThresholds } from './pace'
 
 // Everything that touches `$` lives here; band.tsx, pace.ts, format.ts and options.ts are pure.
 
@@ -18,6 +18,7 @@ let compactions = 0
 let effort: string | undefined
 let ticking = false
 let options: BandOptions = DEFAULTS
+let pace: PaceThresholds = DEFAULT_PACE
 
 // The last error per source, so a repeat stays quiet until that source succeeds again.
 const lastError: Record<string, string | null> = {}
@@ -32,7 +33,7 @@ async function alert($: any, now: number) {
   if (!options.alerts || !usage?.rateLimits.length) return
   try {
     const memo = readMemo(await $.store.get(MEMO_KEY))
-    const out = checkAlerts(memo, usage.rateLimits, now)
+    const out = checkAlerts(memo, usage.rateLimits, now, pace)
     if (JSON.stringify(out.memo) !== JSON.stringify(memo)) await $.store.set(MEMO_KEY, out.memo)
     for (const text of out.toasts) $.ui.toast(text, { timeoutMs: TOAST_MS })
     lastError.alerts = null
@@ -54,7 +55,9 @@ async function refresh($: any) {
 }
 
 export const register: Register = (on, rawOptions) => {
+  if (rawOptions?.enabled === false) return
   options = parseOptions(rawOptions)
+  pace = paceOf(rawOptions)
 
   on('session.start', async ($, e, next) => {
     await refresh($)
@@ -114,6 +117,7 @@ export const register: Register = (on, rawOptions) => {
       expanded: expanded && !e.props.isWorking,
       now: await $.clock.now(),
       options,
+      pace,
       extras: { costUsd: usage.cost?.usd, cacheHit: cacheHit(breakdown.apiUsage), compactions, effort },
       onToggle: () => {
         expanded = !expanded

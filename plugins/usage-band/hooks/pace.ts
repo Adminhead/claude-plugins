@@ -26,15 +26,15 @@ export const WINDOW_MS: Record<string, number> = {
 
 // Under this much use a projection is noise (3% five minutes in projects 180%).
 const MIN_USED = 10
-const WARN_PROJECTED = 90
-const CRIT_PROJECTED = 100
-// Fallback colours for a window whose pace can't be read (no reset time, unknown length).
-const WARN_PCT = 60
-const CRIT_PCT = 85
+
+// Where a window turns amber or red: by projected end-of-window percent (`*Pace`), or, for a window whose pace
+// can't be read (no reset time, unknown length), by percent used (`*Percent`).
+export type PaceThresholds = { warnPace: number; critPace: number; warnPercent: number; critPercent: number }
+export const DEFAULT_PACE: PaceThresholds = { warnPace: 90, critPace: 100, warnPercent: 60, critPercent: 85 }
 
 const RANK: Record<Level, number> = { ok: 0, warn: 1, crit: 2 }
 
-export function grade(l: Limit, now: number): Grade {
+export function grade(l: Limit, now: number, t: PaceThresholds = DEFAULT_PACE): Grade {
   const pct = Number(l.percentUsed)
   if (!Number.isFinite(pct)) return { level: 'ok', ahead: false }
   if (pct >= 100) return { level: 'crit', ahead: false }
@@ -44,12 +44,12 @@ export function grade(l: Limit, now: number): Grade {
     if (pct < MIN_USED) return { level: 'ok', ahead: false }
     const elapsed = windowMs - remaining
     const projected = (pct * windowMs) / elapsed
-    if (projected > CRIT_PROJECTED) {
-      return { level: 'crit', ahead: true, projected, runsOutAt: now + ((100 - pct) / pct) * elapsed }
-    }
-    return { level: projected >= WARN_PROJECTED ? 'warn' : 'ok', ahead: false, projected }
+    const level: Level = projected > t.critPace ? 'crit' : projected >= t.warnPace ? 'warn' : 'ok'
+    // `ahead` is the physical fact (the window would run out), whatever the colour thresholds say.
+    if (projected > 100) return { level, ahead: true, projected, runsOutAt: now + ((100 - pct) / pct) * elapsed }
+    return { level, ahead: false, projected }
   }
-  return { level: pct >= CRIT_PCT ? 'crit' : pct >= WARN_PCT ? 'warn' : 'ok', ahead: false }
+  return { level: pct >= t.critPercent ? 'crit' : pct >= t.warnPercent ? 'warn' : 'ok', ahead: false }
 }
 
 export function levelColor(level: Level): string {
@@ -97,7 +97,7 @@ function alertText(l: Limit, g: Grade, now: number): string {
   if (g.ahead && g.runsOutAt !== undefined) {
     return `${name}: on pace to run out ~${fmtClock(g.runsOutAt, now)}${reset ? `, before its reset at ${reset}` : ''}`
   }
-  if (g.level === 'warn' && g.projected !== undefined) {
+  if (!g.ahead && g.projected !== undefined) {
     return `${name}: on pace for ~${Math.round(g.projected)}% by its reset${reset ? ` at ${reset}` : ''}`
   }
   return `${name}${reset ? `, resets ${reset}` : ''}`
@@ -105,12 +105,12 @@ function alertText(l: Limit, g: Grade, now: number): string {
 
 // Compares this reading with the memo: one toast when a window first reaches amber or red (and again on red after amber),
 // and one when a window that had alerted resets. A window that dips and climbs again before resetting stays quiet.
-export function checkAlerts(memo: AlertMemo, limits: readonly Limit[], now: number): { memo: AlertMemo; toasts: string[] } {
+export function checkAlerts(memo: AlertMemo, limits: readonly Limit[], now: number, t: PaceThresholds = DEFAULT_PACE): { memo: AlertMemo; toasts: string[] } {
   const next: AlertMemo = { ...memo }
   const toasts: string[] = []
   for (const l of limits) {
     if (typeof l?.kind !== 'string' || !Number.isFinite(Number(l.percentUsed))) continue
-    const g = grade(l, now)
+    const g = grade(l, now, t)
     let prior = memo[l.kind]
     if (prior && isReset(prior, l)) {
       if (prior.peak !== 'ok') toasts.push(`${labelOf(l.kind)} limit reset (it reached ${prior.top}%)`)
