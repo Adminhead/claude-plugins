@@ -22,6 +22,7 @@ The text is compact (duration, output tokens with `↑`, cache hit rate with `%c
 
 Set with `/config` or `pluginConfigs["turn-stats"].options`:
 
+- `enabled` (default on): off removes the toast. Only an exact `false` turns it off; it takes effect after a reload or in a new session.
 - `thresholdSeconds` (default 60): toast only for turns at least this long; 0 toasts after every turn.
 - `includeAborted` (default off): also toast after a long turn you interrupted (marked `interrupted`).
 

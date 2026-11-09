@@ -35,6 +35,7 @@ function startTicking($: any) {
 }
 
 export const register: Register = (on, rawOptions) => {
+  if (rawOptions?.enabled === false) return
   options = parseOptions(rawOptions)
 
   on('session.start', async ($, e, next) => {

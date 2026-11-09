@@ -1,5 +1,5 @@
 import type { Register } from 'claude-code'
-import { EMPTY, outcomeOf, record, segment, serverOf, toastEnabled, toastText, type Health } from './health'
+import { EMPTY, outcomeOf, record, segment, serverOf, ignoredServers, toastEnabled, toastText, type Health } from './health'
 
 // Shows `mcp: <server> ✗` under the prompt hint while an MCP server's latest call errored.
 // It only observes: every call goes through untouched. Logic lives in ./health.
@@ -7,11 +7,13 @@ import { EMPTY, outcomeOf, record, segment, serverOf, toastEnabled, toastText, t
 let health: Health = EMPTY
 
 export const register: Register = (on, options) => {
+  if (options?.enabled === false) return
   const toast = toastEnabled(options)
+  const ignored = ignoredServers(options)
 
   on('tool.call', async ($, e, next) => {
     const server = serverOf(e.tool)
-    if (server === null) return next(e)
+    if (server === null || ignored.has(server)) return next(e)
     const out = await next(e)
     try {
       const r = record(health, server, outcomeOf(out))

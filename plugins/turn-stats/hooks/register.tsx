@@ -8,6 +8,7 @@ const TOAST_MS = 8000
 let options: StatsOptions = DEFAULTS
 
 export const register: Register = (on, rawOptions) => {
+  if (rawOptions?.enabled === false) return
   options = parseOptions(rawOptions)
 
   on('turn.complete', async ($, e, next) => {

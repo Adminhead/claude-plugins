@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 import { cacheHit, DEFAULTS, fmtDuration, fmtTokens, parseOptions, toastText } from '../hooks/stats'
+import { register } from '../hooks/register'
 
 const usage = { input_tokens: 500, output_tokens: 41_200, cache_read_input_tokens: 9_000, cache_creation_input_tokens: 500, model: 'claude-x' }
 const turn = (over: Record<string, unknown> = {}) => ({
@@ -59,5 +60,15 @@ describe('register', () => {
     await $.turn.complete(turn({ durationMs: 5_000 }) as never)
     await $.turn.complete(turn({ agentId: 'a1' }) as never)
     expect(toasts).toEqual(['3m12s 41k↑ 90%c'])
+  })
+
+  test('enabled: false registers nothing; anything else keeps the mod on', () => {
+    const events = (opts: Record<string, unknown>) => {
+      const seen: string[] = []
+      register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+      return seen
+    }
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [{}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) expect(events(o).length).toBeGreaterThan(0)
   })
 })

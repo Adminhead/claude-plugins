@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import { fmtClock, label, parseOptions, refreshesCache, TTL_MS } from '../hooks/clock'
+import { register } from '../hooks/register'
 
 const T0 = new Date(2026, 9, 17, 14, 27, 0).getTime()
 const MIN = 60_000
@@ -86,5 +87,15 @@ describe('register', () => {
     await $.turn.complete(turn({ usage: undefined, reason: 'error' }) as never)
     await ui.redraw(PROPS)
     expect(await rows(ui)).toEqual(['? for shortcuts'])
+  })
+
+  test('enabled: false registers nothing; anything else keeps the mod on', () => {
+    const events = (opts: Record<string, unknown>) => {
+      const seen: string[] = []
+      register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+      return seen
+    }
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [{}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) expect(events(o).length).toBeGreaterThan(0)
   })
 })

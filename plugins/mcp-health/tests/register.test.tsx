@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { EMPTY, MAX_TOOL_NAME, outcomeOf, record, segment, serverOf, toastEnabled } from '../hooks/health'
+import { register } from '../hooks/register'
+import { EMPTY, ignoredServers, MAX_TOOL_NAME, outcomeOf, record, segment, serverOf, toastEnabled } from '../hooks/health'
 
 describe('serverOf', () => {
   test('parses the server from mcp__<server>__<tool>', async () => {
@@ -51,6 +52,19 @@ describe('record and segment', () => {
   test('toast defaults on', async () => {
     expect(toastEnabled({})).toBe(true)
     expect(toastEnabled({ toast_on_first_error: false })).toBe(false)
+  })
+})
+
+describe('ignoredServers', () => {
+  test('splits on commas and spaces and drops invalid names', async () => {
+    expect([...ignoredServers({ ignore_servers: 'github, sentry  claude_ai_Gmail,,a@b.c' })]).toEqual(['github', 'sentry', 'claude_ai_Gmail', 'a@b.c'])
+    expect([...ignoredServers({ ignore_servers: 'ok bad/name $x ' + 'x'.repeat(65) })]).toEqual(['ok'])
+  })
+
+  test('an over-long list, a non-string and no options give an empty set', async () => {
+    expect(ignoredServers({ ignore_servers: 'a '.repeat(2049) }).size).toBe(0)
+    for (const v of [undefined, 42, true, ['github'], { github: 1 }, null]) expect(ignoredServers({ ignore_servers: v }).size).toBe(0)
+    expect(ignoredServers(undefined).size).toBe(0)
   })
 })
 
@@ -114,5 +128,31 @@ describe('register', () => {
     await ui.redraw({ isDraft: false, isWorking: false, hint: '? for shortcuts' })
     expect(await rows(ui)).toEqual(['? for shortcuts'])
     expect(toasts).toEqual([])
+  })
+
+  test('an ignored server never shows or toasts', { options: { ignore_servers: 'github' } }, async ($, on) => {
+    const toasts: string[] = []
+    const ui = await setup($, on, () => true, toasts)
+    const props = { isDraft: false, isWorking: false, hint: '? for shortcuts' }
+
+    await $.tool.call({ tool: 'mcp__github__get_issue', number: 1 } as never)
+    await ui.redraw(props)
+    expect(await rows(ui)).toEqual(['? for shortcuts'])
+    expect(toasts).toEqual([])
+
+    await $.tool.call({ tool: 'mcp__sentry__get_issue', number: 1 } as never)
+    await ui.redraw(props)
+    expect(await rows(ui)).toEqual(['? for shortcuts', 'mcp: sentry ✗'])
+    expect(toasts).toEqual(['MCP server sentry returned an error'])
+  })
+
+  test('enabled: false registers nothing; anything else keeps the mod on', () => {
+    const events = (opts: Record<string, unknown>) => {
+      const seen: string[] = []
+      register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+      return seen
+    }
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [{}, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) expect(events(o).length).toBeGreaterThan(0)
   })
 })

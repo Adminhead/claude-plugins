@@ -74,3 +74,14 @@ export function toastText(server: string): string {
 export function toastEnabled(options: Readonly<Record<string, unknown>> | undefined): boolean {
   return options?.toast_on_first_error !== false
 }
+
+const SERVER_NAME = /^[A-Za-z0-9_.@-]{1,64}$/
+const MAX_IGNORE_LIST = 4096
+
+// Server names to leave out, from the comma or space separated `ignore_servers` string.
+// Any other type, an over-long string and invalid names give nothing to ignore.
+export function ignoredServers(options: Readonly<Record<string, unknown>> | undefined): ReadonlySet<string> {
+  const raw = options?.ignore_servers
+  if (typeof raw !== 'string' || raw.length > MAX_IGNORE_LIST) return new Set()
+  return new Set(raw.split(/[\s,]+/).filter(n => SERVER_NAME.test(n)))
+}

@@ -12,6 +12,8 @@ A mod that adds `mcp: <server> ✗` under the prompt hint (terminal only) while 
 
 With `toast_on_first_error` (default on) it also shows a toast the first time each server errors in a session. Turn it off with `/config` or `pluginConfigs["mcp-health"].options`.
 
+Other options: `enabled` (default on) switches the whole mod off, and only an exact `false` does; it takes effect after a reload or in a new session. `ignore_servers` (default empty) lists MCP server names, separated by commas or spaces, to leave out of the segment and toast; give only the `<server>` part of `mcp__<server>__<tool>`, for example `github`, not `mcp__github`.
+
 How it works: a `tool.call` hook passes every call through (`await next(e)`) and only looks at the result. A result with `isError` marks the server failing; any other result clears it; a deny is ignored because it never reached the server. The server comes from the tool name `mcp__<server>__<tool>`, parsed only when the name is at most 256 characters. The record resets on `session.end` (including `/clear`). The segment stacks under whatever the engine and other plugins draw at the hint, by rendering `await next(e)` first.
 
 `claude plugin validate` lists the hook as `gating hook without .catch`: it never denies, so a throw only skips the observer and the call goes through.

@@ -1,17 +1,24 @@
 {
   "name": "mcp-health",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A mod that shows `mcp: <server> ✗` under the prompt while an MCP server's latest tool call errored, hidden while all are fine, with an optional toast on each server's first error.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
   "userConfig": {
+    "enabled": { "type": "boolean", "title": "Enable the mod", "description": "Off removes the failing-server segment and its toast. Takes effect after a reload or in a new session. Only an exact false turns it off.", "default": true },
     "toast_on_first_error": {
       "type": "boolean",
       "title": "Toast on first error",
       "description": "Show a toast the first time each MCP server returns an error in a session.",
       "default": true
+    },
+    "ignore_servers": {
+      "type": "string",
+      "title": "Ignored MCP servers",
+      "description": "MCP server names to leave out of the failing-server line and toast, separated by commas or spaces. Give only the <server> part of the tool name mcp__<server>__<tool>, for example github, not mcp__github.",
+      "default": ""
     }
   }
 }

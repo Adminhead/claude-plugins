@@ -17,6 +17,7 @@ The next prompt after the cache goes cold pays to write the whole context to the
 
 Set with `/config` or `pluginConfigs["cache-clock"].options`:
 
+- `enabled` (default on): off removes the line under the prompt. Only an exact `false` turns it off; it takes effect after a reload or in a new session.
 - `ttl`: `5m` (default, the API's standard cache, which API-key sessions use) or `1h`. Claude Code (checked on 2.1.302) caches the main conversation for 1 hour on a Claude subscription while you're not on overage usage, and also with `ENABLE_PROMPT_CACHING_1H`. Set `1h` in those cases. `FORCE_PROMPT_CACHING_5M` or `CLAUDE_CODE_PROMPT_CACHE_TTL` override it.
 - `display`: `hint` (default) stacks a coloured segment under the prompt hint; `status` pins a plain `$.ui.status` line instead (no colour).
 

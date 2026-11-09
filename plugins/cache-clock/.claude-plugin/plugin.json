@@ -1,12 +1,13 @@
 {
   "name": "cache-clock",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A mod that shows when the prompt cache likely expires (`cache warm → ~14:32`) under the prompt, turning to a cold warning past a configured TTL. Approximate: last main-loop turn plus the TTL.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
   "userConfig": {
+    "enabled": { "type": "boolean", "title": "Enable the mod", "description": "Off removes the cache warm and cold line under the prompt. Takes effect after a reload or in a new session. Only an exact false turns it off.", "default": true },
     "ttl": {
       "type": "string",
       "title": "Cache TTL",
