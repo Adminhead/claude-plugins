@@ -96,13 +96,15 @@ const text = async (ui: any) => {
   return walk(row)
 }
 
-// Cell width of each drawn row (a column Box is one row per child).
+// Cell width of each drawn row. The drawn root is a column Box holding the band
+// (itself a column of rows when expanded, one row Box when compact) plus engine
+// placeholders for other mods, so column Boxes are flattened down to their rows.
 const rowWidths = async (ui: any) => {
-  const root = await ui.drawn()
   const walk = (n: any): string =>
     typeof n === 'string' ? n : (n.children ?? []).map(walk).join('')
-  const rows = root.props?.flexDirection === 'column' ? root.children : [root]
-  return rows.map((r: any) => [...walk(r)].length)
+  const rowsOf = (n: any): any[] =>
+    n.type === 'engine' ? [] : n.type === 'Box' && n.props?.flexDirection === 'column' ? (n.children ?? []).flatMap(rowsOf) : [n]
+  return rowsOf(await ui.drawn()).map((r: any) => [...walk(r)].length)
 }
 
 describe('allocate', () => {
