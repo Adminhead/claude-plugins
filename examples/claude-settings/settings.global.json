@@ -95,7 +95,6 @@
     "avoid-ai-writing@conorbronsdon-skills": true,
     "baseline@adminhead": true,
     "orchestration-meta@adminhead": true,
-    "agent-status@adminhead": true,
     "cache-clock@adminhead": true,
     "turn-stats@adminhead": true,
     "usage-log@adminhead": true

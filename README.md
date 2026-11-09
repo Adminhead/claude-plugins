@@ -19,7 +19,7 @@ The plugins do not ship it. Install it yourself. Its installer sets up its own h
 
 ## Quick start
 
-One script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs at user scope every plugin that file enables: the `baseline` and `orchestration-meta` meta plugins and the `agent-status`, `cache-clock`, `turn-stats` and `usage-log` mods. Plugins the file sets to `false` from an installable marketplace, such as `exa@claude-plugins-official`, are installed and then disabled (when not installed anywhere and not enabled in your settings). It needs Node 18+ and `claude` on `PATH`.
+One script sets up a user account: it adds the marketplaces from GitHub, merges [`settings.global.json`](examples/claude-settings/settings.global.json) into `~/.claude/settings.json`, and installs at user scope every plugin that file enables: the `baseline` and `orchestration-meta` meta plugins and the `cache-clock`, `turn-stats` and `usage-log` mods. Plugins the file sets to `false` from an installable marketplace, such as `exa@claude-plugins-official`, are installed and then disabled (when not installed anywhere and not enabled in your settings). It needs Node 18+ and `claude` on `PATH`.
 
 Without a clone, in one line. The repo is private, so the request carries your GitHub CLI token:
 
@@ -192,7 +192,6 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`adr-writing`](plugins/adr-writing) | skill | ADR skill: create, review, supersede and index Markdown Architecture Decision Records in docs/adr/ (Nygard or MADR) with a numbering helper that avoids cross-branch collisions. | - |
 | [`agent-config-audit`](plugins/agent-config-audit) | skill | Read-only security review of your own Claude Code configuration: CLAUDE.md, settings permissions, hooks, subagents and .mcp.json, including static classification of unpinned npx, uvx, pipx and docker MCP selectors. | - |
 | [`agent-instructions`](plugins/agent-instructions) | skill | Builds and maintains a repo's CLAUDE.md, .claude/rules and AGENTS.md from verified evidence, and turns repeated agent mistakes into checks, hooks and failure notes. | - |
-| [`agent-status`](plugins/agent-status/README.md) | hook | A mod that adds a live-agent count by status and task done/total above the prompt, with an `agents` pane giving each agent's model, time in status and time since spawn, which the built-in agent panel lacks. | - |
 | [`api-graphql`](plugins/api-graphql) | skill | Public GraphQL API design and review: when GraphQL fits, schema conventions, Relay pagination, result-union errors, query ceilings, federation boundary, persisted queries and field deprecation. | - |
 | [`api-grpc`](plugins/api-grpc) | skill | gRPC and protobuf contract design and review: AIP conventions, buf lint and breaking gates, proto diff compatibility, streaming, google.rpc.Status errors and gateway mapping. | - |
 | [`api-idempotency`](plugins/api-idempotency) | skill | Idempotency keys and safe retries for HTTP APIs: per-account client keys, atomic claim, in-flight and replay states with recovery jobs, and client retry policy with full-jitter backoff, retry budgets and deadlines. | - |
