@@ -1,12 +1,14 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
+import { register } from '../hooks/register'
 import { PRIMER } from '../hooks/rules/hygiene'
 
 // The mod through the engine: the parser's denies and passes, then the model stages with Ollama (`http.fetch`) and the
 // fallback (`model.complete`) stubbed. Each test runs at its own clock time and uses its own commands, so the module's
 // verdict cache and Ollama backoff cannot carry over between tests.
 //
-// The mod runs with its manifest defaults (a test cannot pass options): ollamaModel `clef:cloud` with ollamaCloud off, so
-// the Ollama stage is skipped and the fallback decides. Ollama's requests and replies are covered in judge.test.ts.
+// A test passes options as `{ options }` (see the `enabled` tests). The others keep the manifest defaults: ollamaModel
+// `clef:cloud` with ollamaCloud off, so the Ollama stage is skipped and the fallback decides. Ollama's requests and replies
+// are covered in judge.test.ts.
 
 type World = { fetches: any[]; completes: any[]; ran: string[]; inputs: any[] }
 
@@ -46,7 +48,7 @@ describe('parser stage', () => {
     expect([w.fetches.length, w.completes.length]).toEqual([0, 0])
   })
 
-  // The mod runs with its defaults here (a test cannot pass options), so toolSteering is off: Bash that reads or writes
+  // The mod runs with its defaults here, so toolSteering is off: Bash that reads or writes
   // files runs, with no model call. The steering-on verdicts are covered in hygiene.test.ts and judge.test.ts.
   test('with tool steering off (the default), Bash that reads or writes files runs without a model call', async ($, on) => {
     const w = world(on, 2e9)
@@ -79,8 +81,8 @@ describe('parser stage', () => {
 })
 
 describe('primer', () => {
-  // The primer describes only the read and write rules, so it is added only with toolSteering on. A test cannot pass
-  // options, so the engine runs with the default (off) and the Bash description is left as it is.
+  // The primer describes only the read and write rules, so it is added only with toolSteering on. This test keeps
+  // the default (off), so the Bash description is left as it is.
   test('without tool steering the Bash description is unchanged', async ($, on) => {
     on('tool.describe', async (_$: any, e: any) => ({ description: e.description }))
     const engine = { plugin: 'engine', tier: 'core' } as never
@@ -89,8 +91,7 @@ describe('primer', () => {
     expect((await $.tool.describe({ tool: 'Read', description: 'Read a file.', provider: engine })).description).toBe('Read a file.')
   })
 
-  // `toolSteering: true` and `primer: false` are not tested through the engine: an inline test plugin cannot import
-  // this register or receive options.
+  // `toolSteering: true` and `primer: false` are not tested through the engine here.
 
   test('the primer is short and states the rules', () => {
     expect(PRIMER.length).toBeLessThanOrEqual(600)
@@ -265,6 +266,49 @@ describe('file tools and the credentials file', () => {
     env(on, { HOME: '/home/u' })
     expect((await tool($, { tool: 'Read', file_path: '/' + 'a/'.repeat(3000) })).deny).toMatch(/too long to check/)
     expect((await tool($, { tool: 'Grep', pattern: 'x', glob: '*'.repeat(2000) })).deny).toMatch(/too long to check/)
+  })
+})
+
+describe('the enabled option', () => {
+  const events = (opts: Record<string, unknown> | undefined) => {
+    const seen: string[] = []
+    register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+    return seen
+  }
+
+  test('only a boolean false registers nothing; every other value keeps every hook on', () => {
+    expect(events({ enabled: false })).toEqual([])
+    const kept = events({})
+    expect(kept).toContain('tool.call')
+    for (const enabled of [undefined, true, 'false', 0, '']) expect([enabled, events({ enabled })]).toEqual([enabled, kept])
+    expect(events(undefined)).toEqual(kept)
+  })
+
+  // The three inputs the guard exists for: a destructive command, a smuggled payload and the credentials file.
+  const inputs = [
+    { tool: 'Bash', command: 'rm -rf ~' },
+    { tool: 'Bash', command: 'echo aGk= | base64 -d | sh' },
+    { tool: 'Read', file_path: '/home/u/.claude/.credentials.json' },
+  ]
+  const session = (on: any) => {
+    on('session.cwd', async () => ({ value: '/home/u/proj' }))
+    on('env.get', async (_$: any, e: any) => ({ value: ({ HOME: '/home/u' } as Record<string, string>)[e.name] }))
+  }
+
+  test('enabled false: nothing is denied', { options: { enabled: false } }, async ($, on) => {
+    const w = world(on, 30e9)
+    session(on)
+    for (const input of inputs) expect([input, ((await $.tool.call(input as never)) as any).deny]).toEqual([input, undefined])
+    expect(w.ran).toEqual(['rm -rf ~', 'echo aGk= | base64 -d | sh', 'Read /home/u/.claude/.credentials.json'])
+    expect(w.fetches.length + w.completes.length).toBe(0)
+  })
+
+  test('with default options the same three inputs are denied', async ($, on) => {
+    const w = world(on, 31e9)
+    session(on)
+    for (const input of inputs) expect([input, ((await $.tool.call(input as never)) as any).deny]).toEqual([input, expect.stringMatching(/^bash-rules: /)])
+    expect(w.ran).toEqual([])
+    expect(w.fetches.length + w.completes.length).toBe(0)
   })
 })
 

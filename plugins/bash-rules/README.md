@@ -68,6 +68,7 @@ Set these in `/config` under bash-rules:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `enabled` | `true` | Off removes every check, including the credentials-file check on Bash and the file tools, the asks, the model stages and the usage log. Only an exact `false` turns it off; takes effect after a reload or in a new session |
 | `modelStages` | `true` | Off: parser only, and unsure commands run |
 | `ollamaUrl` | `http://localhost:11434` | Empty skips Ollama |
 | `ollamaModel` | `clef:cloud` | Empty skips Ollama; a `:cloud` model needs `ollamaCloud` |

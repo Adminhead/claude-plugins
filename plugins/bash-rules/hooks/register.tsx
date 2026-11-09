@@ -181,6 +181,7 @@ async function logLine($: any, kind: string, fields: Record<string, unknown>) {
 }
 
 export const register: Register = (on, options) => {
+  if (options?.enabled === false) return
   const o = parseOptions(options)
   const logging = options?.usageLog !== false
 
