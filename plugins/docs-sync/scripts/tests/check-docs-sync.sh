@@ -228,6 +228,53 @@ hook stop "$r"
 n=$(printf '%s' "$out" | grep -o '\.md:' | wc -l)
 check "docs list is capped at 10" $(( n == 10 ? 0 : 1 ))
 
+# enabled option: only an exact "false" switches the hook off.
+r=$root/off; mkrepo "$r"
+CLAUDE_PLUGIN_OPTION_ENABLED=false hook start "$r"
+echo 'print(2)' >"$r/widget.py"
+CLAUDE_PLUGIN_OPTION_ENABLED=false edit "$r" "$r/widget.py"
+CLAUDE_PLUGIN_OPTION_ENABLED=false hook stop "$r"
+check "enabled=false: silent, exit 0" "$(st silent_quiet)"
+check "enabled=false: nothing recorded" "$([ ! -e "$root/data/docs-sync/off.edited" ] && [ ! -e "$root/data/docs-sync/off.head" ]; echo $?)"
+for v in '' 0 FALSE true; do
+  r=$root/on$v; mkrepo "$r"; CLAUDE_PLUGIN_OPTION_ENABLED=$v hook start "$r"
+  echo 'print(2)' >"$r/widget.py"; CLAUDE_PLUGIN_OPTION_ENABLED=$v edit "$r" "$r/widget.py"
+  CLAUDE_PLUGIN_OPTION_ENABLED=$v hook stop "$r"
+  nudges_doc; check "enabled='$v' still nudges" $?
+done
+
+# maxDocs option on the 15-doc repo.
+r=$root/many
+for v in 3:3 '':10 abc:10 0:1 999:16; do
+  echo 'print(2)' >"$r/widget.py"; echo "$RANDOM" >>"$r/widget.py"; rm -f "$root/data/docs-sync/many.seen"
+  CLAUDE_PLUGIN_OPTION_MAXDOCS=${v%%:*} hook stop "$r"
+  n=$(printf '%s' "$out" | grep -o '\.md:' | wc -l)
+  check "maxDocs='${v%%:*}' lists ${v##*:} docs" $(( n == ${v##*:} ? 0 : 1 ))
+done
+
+# skipPaths option.
+mkskip() { # path: the only mention of widget.py is in vendor-docs/x.md
+  mkrepo "$1"; git -C "$1" rm -q docs/guide.md; mkdir -p "$1/vendor-docs"
+  echo 'widget.py' >"$1/vendor-docs/x.md"; git -C "$1" add -A; git -C "$1" commit -qm vd; hook start "$1"
+  echo 'print(2)' >"$1/widget.py"; edit "$1" "$1/widget.py"
+}
+r=$root/skip; mkskip "$r"; CLAUDE_PLUGIN_OPTION_SKIPPATHS=vendor-docs hook stop "$r"
+check "skipPaths excludes a listed prefix" "$(st silent_quiet)"
+r=$root/noskip; mkskip "$r"; hook stop "$r"
+nudges 'vendor-docs/x.md:1 → widget.py'; check "without skipPaths the same mention nudges" $?
+r=$root/skipmix; mkskip "$r"; CLAUDE_PLUGIN_OPTION_SKIPPATHS=':(top)*,../x,/etc,--foo vendor-docs' hook stop "$r"
+check "skipPaths keeps valid entries next to invalid ones" "$(st silent_quiet)"
+r=$root/hostile; mkrepo "$r"; hook start "$r"
+echo 'print(2)' >"$r/widget.py"; edit "$r" "$r/widget.py"
+CLAUDE_PLUGIN_OPTION_SKIPPATHS=':(top)*,../x,/etc,--foo,:(glob)**,docs/../docs,.' hook stop "$r"
+nudges_doc; check "skipPaths drops magic, parent, absolute and option-like entries" $?
+many_skips=$(for i in $(seq 1 50); do printf 'p%s,' "$i"; done)
+r=$root/skipcap; mkskip "$r"; CLAUDE_PLUGIN_OPTION_SKIPPATHS="${many_skips}vendor-docs" hook stop "$r"
+nudges 'vendor-docs/x.md:1'; check "skipPaths entries past the 50th are ignored" $?
+long=$(head -c 5000 /dev/zero | tr '\0' 'a')
+r=$root/skiplong; mkskip "$r"; CLAUDE_PLUGIN_OPTION_SKIPPATHS="vendor-docs,$long" hook stop "$r"
+nudges 'vendor-docs/x.md:1'; check "skipPaths over 4096 characters is ignored whole" $?
+
 echo
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]

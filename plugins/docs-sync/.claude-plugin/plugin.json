@@ -1,9 +1,31 @@
 {
   "name": "docs-sync",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Hook that, once per change set at Stop, nudges Claude with docs that mention a file this session edited or a name its edits removed. Skips plans, research, ADRs and changelogs; fails open. Needs git and bun.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enable the nudge",
+      "description": "Off: nothing is recorded and no docs nudge appears. Only an exact false turns it off.",
+      "default": true
+    },
+    "maxDocs": {
+      "type": "number",
+      "title": "Docs listed per nudge",
+      "description": "Most docs the nudge lists, 1 to 50.",
+      "default": 10,
+      "min": 1,
+      "max": 50
+    },
+    "skipPaths": {
+      "type": "string",
+      "title": "Extra paths to skip",
+      "description": "Repo-relative path prefixes, separated by commas or spaces, that never count as docs to check, in addition to docs/plans, docs/research, docs/adr, .agents, .claude/plans and CHANGELOG files. An entry must start with a letter, digit or `_` and use only letters, digits, `_ . / -`; anything else, or an entry containing `..`, is ignored, so hidden folders such as .github cannot be listed.",
+      "default": ""
+    }
   }
 }

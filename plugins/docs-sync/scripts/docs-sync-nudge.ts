@@ -9,6 +9,10 @@
 //
 // Fails open: any error, a non-git directory, or missing state prints nothing and exits 0 so a
 // broken nudge never traps a session.
+//
+// Options (env, set by the plugin's userConfig): CLAUDE_PLUGIN_OPTION_ENABLED (only an exact
+// "false" turns the hook off), CLAUDE_PLUGIN_OPTION_MAXDOCS (docs listed per nudge, 1-50) and
+// CLAUDE_PLUGIN_OPTION_SKIPPATHS (extra repo-relative prefixes that never count as docs).
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
@@ -23,6 +27,30 @@ const MAX_DOCS = 10;
 const MAX_IDENTS = 100;
 const PRUNE_DAYS = 30;
 const MIN_NAME = 4; // shorter names match too much prose
+const MAX_SKIPS = 50;
+const MAX_SKIP_RAW = 4096;
+const SKIP_ENTRY = /^[A-Za-z0-9_][A-Za-z0-9_./-]*$/;
+
+/** Docs listed per nudge: the option parsed as a number and clamped to 1-50, else MAX_DOCS. */
+function maxDocs(raw: string | undefined): number {
+  const n = raw !== undefined && raw.trim() !== "" ? Number(raw) : NaN;
+  return Number.isFinite(n) ? Math.min(50, Math.max(1, Math.floor(n))) : MAX_DOCS;
+}
+
+/**
+ * Exclude pathspecs for the skipPaths option. Only plain relative prefixes survive: an entry that
+ * starts with anything but a letter, digit or `_` (so no `:` magic, `/`, `.` or `-` option lookalike),
+ * uses other characters, or contains `..` is dropped. Each result is passed to git as its own argv
+ * element after `--`, never through a shell.
+ */
+function extraSkips(raw: string | undefined): string[] {
+  if (!raw || raw.length > MAX_SKIP_RAW) return [];
+  return raw
+    .split(/[\s,]+/)
+    .filter((e) => SKIP_ENTRY.test(e) && !e.includes(".."))
+    .slice(0, MAX_SKIPS)
+    .map((e) => `:(exclude)${e}`);
+}
 
 type Hook = { session_id: string; cwd: string; stop_hook_active?: boolean; tool_input?: { file_path?: string; notebook_path?: string } };
 
@@ -133,7 +161,7 @@ function stillPresent(top: string, idents: string[]): Set<string> {
 
 /** First `line` of each doc hit, as [doc, line, text]. */
 function docHits(top: string, names: string[], word: boolean): [string, string, string][] {
-  const out = git(top, ["grep", "-n", "-z", "-F", ...(word ? ["-w"] : []), ...patternArgs(names), "--", ...DOC_GLOBS, ...SKIP_DOCS], [0, 1]);
+  const out = git(top, ["grep", "-n", "-z", "-F", ...(word ? ["-w"] : []), ...patternArgs(names), "--", ...DOC_GLOBS, ...SKIP_DOCS, ...extraSkips(process.env.CLAUDE_PLUGIN_OPTION_SKIPPATHS)], [0, 1]);
   // -z output: path NUL line NUL text NL
   const hits: [string, string, string][] = [];
   for (const m of out.matchAll(/([^\0\n]+)\0(\d+)\0([^\n]*)/g)) hits.push([m[1], m[2], m[3]]);
@@ -189,8 +217,9 @@ function stop(data: Hook) {
     }
   }
 
-  const room = MAX_DOCS - Math.min(gone.length, MAX_DOCS);
-  const shownGone = gone.slice(0, MAX_DOCS);
+  const cap = maxDocs(process.env.CLAUDE_PLUGIN_OPTION_MAXDOCS);
+  const room = cap - Math.min(gone.length, cap);
+  const shownGone = gone.slice(0, cap);
   const shownMentions = mentions.slice(0, room);
   if (!shownGone.length && !shownMentions.length) return;
 
@@ -205,6 +234,7 @@ function stop(data: Hook) {
   console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: reason } }));
 }
 
+if (process.env.CLAUDE_PLUGIN_OPTION_ENABLED === "false") process.exit(0);
 try {
   const modes: Record<string, (d: Hook) => void> = { start, edit, stop };
   const mode = modes[process.argv[2] ?? ""];
