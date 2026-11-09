@@ -1,9 +1,17 @@
 {
   "name": "check-bypass-guard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides or git config changes, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files, git hooks and .git/config, and Bash writes to those configs. Needs bun.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enable the guard",
+      "description": "Off removes the guard: --no-verify, commit -n, --no-gpg-sign, core.hooksPath changes and SKIP= are no longer denied, and edits to lint, format and hook configs, git hooks and .git/config no longer ask, so your permission rules decide. Only an exact false turns it off.",
+      "default": true
+    }
   }
 }

@@ -9,6 +9,9 @@
 // - Edit, Write, MultiEdit: asks before changing an existing lint, format or hook config, or its ignore file (creating
 //   a new one passes), and before writing anything under .husky/ or .git/hooks/, or .git/config, new or not.
 //
+// The `enabled` plugin option arrives as CLAUDE_PLUGIN_OPTION_ENABLED. Only the exact string 'false' turns the guard
+// off, so it prints nothing and the normal permission flow decides; anything else, unset included, keeps it on.
+//
 // Prints one JSON decision or nothing, and always exits 0. An internal error prints `ask`, so a broken guard never
 // silently lets a call through. Reasons are static apart from the config's name or path.
 
@@ -66,6 +69,7 @@ export function decide(input: any): Decision {
 }
 
 function main(): void {
+  if (process.env.CLAUDE_PLUGIN_OPTION_ENABLED === 'false') return
   let out: Decision
   try {
     const raw = readFileSync(0, 'utf8')

@@ -13,13 +13,14 @@ mkdirSync(join(dir, '.git', 'hooks'), { recursive: true })
 writeFileSync(join(dir, '.git', 'config'), '[core]\n')
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-function run(stdin: string): { code: number; out: any } {
-  const p = Bun.spawnSync(['bun', '--no-env-file', '--config=/dev/null', SCRIPT], { stdin: Buffer.from(stdin), env: { PATH: process.env.PATH ?? '' }, cwd: dir })
+function run(stdin: string, env: Record<string, string> = {}): { code: number; out: any } {
+  const p = Bun.spawnSync(['bun', '--no-env-file', '--config=/dev/null', SCRIPT], { stdin: Buffer.from(stdin), env: { PATH: process.env.PATH ?? '', ...env }, cwd: dir })
   const text = p.stdout.toString().trim()
   return { code: p.exitCode ?? -1, out: text ? JSON.parse(text).hookSpecificOutput : null }
 }
 
-const hook = (tool_name: string, tool_input: object) => run(JSON.stringify({ hook_event_name: 'PreToolUse', cwd: dir, tool_name, tool_input }))
+const hook = (tool_name: string, tool_input: object, env: Record<string, string> = {}) =>
+  run(JSON.stringify({ hook_event_name: 'PreToolUse', cwd: dir, tool_name, tool_input }), env)
 
 describe('the hook as Claude Code runs it', () => {
   test('a --no-verify commit is denied', () => {
@@ -61,5 +62,23 @@ describe('the hook as Claude Code runs it', () => {
 
   test('malformed input asks', () => {
     expect(run('{not json').out?.permissionDecision).toBe('ask')
+  })
+
+  describe('the enabled option', () => {
+    const bypass = { command: 'git commit --no-verify -m x' }
+    const edit = { file_path: join(dir, '.eslintrc.json'), old_string: '{}', new_string: '{"rules":{}}' }
+
+    test("'false' turns the guard off for Bash and Edit", () => {
+      const env = { CLAUDE_PLUGIN_OPTION_ENABLED: 'false' }
+      expect(hook('Bash', bypass, env)).toEqual({ code: 0, out: null })
+      expect(hook('Edit', edit, env)).toEqual({ code: 0, out: null })
+      expect(run('{not json', env)).toEqual({ code: 0, out: null })
+    })
+
+    test.each([['unset', undefined], ['true', 'true'], ['FALSE', 'FALSE'], ['0', '0'], ['empty', '']])('%s keeps the guard on', (_name, value) => {
+      const env = value === undefined ? {} : { CLAUDE_PLUGIN_OPTION_ENABLED: value }
+      expect(hook('Bash', bypass, env).out?.permissionDecision).toBe('deny')
+      expect(hook('Edit', edit, env).out?.permissionDecision).toBe('ask')
+    })
   })
 })

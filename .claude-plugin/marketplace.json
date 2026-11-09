@@ -192,7 +192,7 @@
       "name": "check-bypass-guard",
       "source": "./plugins/check-bypass-guard",
       "description": "Hook that denies git hook and signing bypasses (--no-verify, commit -n, --no-gpg-sign, core.hooksPath overrides or git config changes, SKIP=) and asks before edits to existing lint, format and pre-commit configs or their ignore files, git hooks and .git/config, and Bash writes to those configs. Needs bun.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "development"
     },
     {
