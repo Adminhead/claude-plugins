@@ -171,7 +171,7 @@ Slices point at these by name. A step that says "recipe A" means apply exactly t
 2. In the script's entry point, before stdin is read, add `if (process.env.CLAUDE_PLUGIN_OPTION_ENABLED === 'false') return` (inside `main()`) or `process.exit(0)` (top level). Copy `plugins/check-bypass-guard/scripts/check-bypass-guard.ts:72`.
 3. Test with the env param pattern of `plugins/check-bypass-guard/scripts/tests/hook.spec.ts:67-83`: `'false'` prints nothing and exits as a pass (also for malformed stdin), and each of unset, `'true'`, `'FALSE'`, `'0'`, `''` keeps the denial.
 
-**Recipe B: mod `enabled`.**
+**Recipe B: mod `enabled`.** Every "keeps the mod on" test loop includes `undefined`, `true`, `'false'`, `0` and `''` (reviews of slices 4 and 5 caught loops that omitted `0` and `''`, which let a loosened `== false` guard pass). In the engine test config, options go in `{ options }`; a `process.run` event carries its timeout at `e.init.timeoutMs`.
 
 1. Add the same boolean to `userConfig`, title "Enable the mod", description ending "Takes effect after a reload or in a new session." and a first clause naming what off removes.
 2. Make the first statement of `register` `if (options?.enabled === false) return` (the argument is named `rawOptions` in `cache-clock`, `turn-stats` and `usage-band`; put the guard before the line that assigns the module-level `options`).
@@ -187,10 +187,10 @@ Slices point at these by name. A step that says "recipe A" means apply exactly t
 ```ts
 export const intIn = (v: unknown, min: number, max: number, d: number): number => {
   const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
-  return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.floor(n))) : d
+  return Number.isNaN(n) ? d : Math.min(max, Math.max(min, Math.floor(n)))
 }
 ```
-Tests: undefined, `''`, `'abc'`, `NaN` give the default; below min and above max clamp; a fractional value floors.
+Tests: undefined, `''`, `'abc'`, `NaN` give the default; below min and above max clamp (`'1e400'` is Infinity and clamps to max, which `Number.isFinite` would have sent to the default, found in the slice 5 review); a fractional value floors.
 
 **Recipe D: name-list parser** (copy `plugins/readonly-agent-gate/scripts/agents.ts:27-47`, minus the JSON branch): split on `/[\s,]+/`, keep entries matching the plugin's name regex, return an empty list when the raw value is over 4096 characters. Tests: split on commas and spaces, drop invalid names, over-long gives empty.
 
