@@ -1,9 +1,17 @@
 {
   "name": "orchestration",
-  "version": "0.3.10",
+  "version": "0.4.0",
   "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "linkLauncher": {
+      "type": "boolean",
+      "title": "Link the claude-orchestrate launcher",
+      "description": "Off: the SessionStart hook leaves ~/.local/bin/claude-orchestrate alone. An existing link keeps pointing at the install it was made from. Only an exact false turns it off.",
+      "default": true
+    }
   }
 }

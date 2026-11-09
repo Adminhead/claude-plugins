@@ -5,8 +5,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat",
+            "command": "sh",
             "args": [
+              "-c",
+              "[ \"$CLAUDE_PLUGIN_OPTION_ENABLED\" = false ] || cat \"$1\"",
+              "sh",
               "${CLAUDE_PLUGIN_ROOT}/hooks/session-context.md"
             ],
             "timeout": 10

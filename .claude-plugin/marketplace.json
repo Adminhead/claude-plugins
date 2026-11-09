@@ -444,7 +444,7 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
-      "version": "0.3.10",
+      "version": "0.4.0",
       "category": "development"
     },
     {
@@ -1459,7 +1459,7 @@
       "name": "outline-docs",
       "source": "./plugins/outline-docs",
       "description": "SessionStart hook that tells Claude to record decisions, runbooks and other knowledge worth keeping in Outline as well as the repo. Installs outline-mcp.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "development"
     },
     {
@@ -1473,7 +1473,7 @@
       "name": "atlassian-docs",
       "source": "./plugins/atlassian-docs",
       "description": "SessionStart hook that tells Claude to record knowledge worth keeping in Confluence and track follow-up work as Jira issues, as well as in the repo. Installs atlassian-mcp.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {

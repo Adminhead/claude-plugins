@@ -2,6 +2,7 @@
 # SessionStart hook: points ~/.local/bin/claude-orchestrate at this install's launcher, so the
 # link follows plugin updates. Leaves a regular file at that path alone. Prints nothing and
 # always exits 0, so a failure never blocks a session.
+[ "${CLAUDE_PLUGIN_OPTION_LINKLAUNCHER:-}" = false ] && exit 0
 src=${CLAUDE_PLUGIN_ROOT:-}/scripts/claude-orchestrate
 dest=$HOME/.local/bin/claude-orchestrate
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -x "$src" ] || exit 0
