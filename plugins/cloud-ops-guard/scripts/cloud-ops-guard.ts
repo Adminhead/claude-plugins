@@ -11,8 +11,9 @@
 // applies, destroys, imports, and state surgery, asks when it cannot tell, and otherwise
 // prints nothing so the normal permission flow decides.
 //
-// Options arrive as CLAUDE_PLUGIN_OPTION_<KEY>: AUTOALLOWREADONLY ('true' turns the allowlist
-// on) and PRODPATTERN (the regex source that names a production context, stack or environment).
+// Options arrive as CLAUDE_PLUGIN_OPTION_<KEY>: ENABLED (only an exact 'false' switches the guard
+// off), AUTOALLOWREADONLY ('true' turns the allowlist on) and PRODPATTERN (the regex source that
+// names a production context, stack or environment).
 //
 // Any exception or malformed input prints `ask` and exits 0, because Claude Code runs the
 // tool call on any other exit code. Reasons are static: the command and environment are
@@ -1320,6 +1321,7 @@ export function decide(d: unknown): Decision | null {
 const autoAllow = (): boolean => process.env.CLAUDE_PLUGIN_OPTION_AUTOALLOWREADONLY === 'true'
 
 function main(): void {
+  if (process.env.CLAUDE_PLUGIN_OPTION_ENABLED === 'false') return
   let out: Decision | null
   try {
     out = decide(JSON.parse(readFileSync(0, 'utf8')))

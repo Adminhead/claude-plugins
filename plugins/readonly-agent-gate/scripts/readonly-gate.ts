@@ -14,6 +14,9 @@
 // longer than 4096 characters is not cut: extra_agents then blocks every subagent, and
 // plan_writers and plan_dirs add nothing.
 //
+// The `enabled` option switches the gate off: only an exact 'false' (CLAUDE_PLUGIN_OPTION_ENABLED)
+// exits 0 before stdin is read; anything else keeps it on.
+//
 // Ported from the archived crew plugin's readonly-gate.ts.
 
 import { isPlanWriter, isReadOnly, parseExtra } from './agents.ts'
@@ -22,6 +25,8 @@ function deny(reason: string): never {
   console.error(`readonly-gate: ${reason}; blocking.`)
   process.exit(2)
 }
+
+if (process.env.CLAUDE_PLUGIN_OPTION_ENABLED === 'false') process.exit(0)
 
 try {
   const input = await Bun.stdin.text()

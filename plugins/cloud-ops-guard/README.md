@@ -33,6 +33,7 @@ Set these in `/config` under cloud-ops-guard:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `enabled` | `true` | Off removes the guard. Only an exact `false` turns it off. |
 | `autoAllowReadOnly` | `false` | On: approve without a prompt the exact forms `tofu`/`terraform` `plan`, `init`, `validate`, `fmt`, `version`, `state list` and `state show`, also through `mise run tofu <env>` and `mise exec --`, and `aws --version` or `aws … help`. Off: the guard has no opinion on them. |
 | `prodPattern` | `prod(uction)?\d*\|prd\|live` | Regex, at most 200 characters, matched case-insensitively as a whole word against kube contexts, kubeconfig paths, pulumi stacks and helmfile environments. An invalid pattern makes every production check ask. Keep it linear: no nested quantifiers such as `(a+)+`, since the hook runs it on command text the model writes. |
 

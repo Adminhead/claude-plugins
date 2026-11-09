@@ -1,12 +1,18 @@
 {
   "name": "readonly-agent-gate",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "PreToolUse hook that limits the read-only agents (architect, reviewer, debugger, security-auditor, open-source-release-audit, plus any you list) to Bash commands, and Write/Edit/MultiEdit/NotebookEdit calls, that don't write outside /tmp and the session scratchpad. architect, and any plan writers you list, may also save Markdown plans with Write/Edit under .claude/plans or docs/plans in the project (CLAUDE_PROJECT_DIR) or in a git worktree of it that holds the agent's cwd. Needs bun.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
   "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enable the guard",
+      "description": "Off removes the gate: read-only agents may then run any Bash and write anywhere their permissions allow. Only an exact false turns it off.",
+      "default": true
+    },
     "extra_agents": {
       "type": "string",
       "title": "Extra read-only agents",

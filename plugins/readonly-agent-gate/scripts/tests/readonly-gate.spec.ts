@@ -95,6 +95,7 @@ const SP = '/home/u/.claude/scratch/abc'
 const BASE_ENV = {
   TMPDIR: '', CLAUDE_PROJECT_DIR: '/home/u/repo', CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS: '',
   CLAUDE_PLUGIN_OPTION_PLAN_WRITERS: '', CLAUDE_PLUGIN_OPTION_PLAN_DIRS: '',
+  CLAUDE_PLUGIN_OPTION_ENABLED: '',
 }
 
 function gate(payload: Record<string, unknown>, env: Record<string, string> = {}): { code: number; err: string } {
@@ -147,7 +148,7 @@ describe('file tools', () => {
     const t = (tmp: string, file_path: string) => {
       const r = Bun.spawnSync(['bun', '--no-env-file', '--config=/dev/null', GATE], {
         stdin: new TextEncoder().encode(JSON.stringify({ agent_type: 'architect', agent_id: 'a1', tool_name: 'Write', tool_input: { file_path }, cwd: '/home/u/repo' })),
-        stdout: 'pipe', stderr: 'pipe', env: { ...process.env, TMPDIR: tmp },
+        stdout: 'pipe', stderr: 'pipe', env: { ...process.env, TMPDIR: tmp, CLAUDE_PLUGIN_OPTION_ENABLED: '' },
       })
       return r.exitCode
     }
@@ -613,4 +614,35 @@ describe('gate', () => {
     expect(out).toMatch(/\d+ passed, 0 failed/)
     expect(r.exitCode).toBe(0)
   }, 120_000)
+})
+
+describe('the enabled option', () => {
+  const write = (env: Record<string, string>) =>
+    gate({ agent_type: 'reviewer', agent_id: 'a1', tool_name: 'Write', tool_input: { file_path: '/home/u/repo/a.ts', content: 'x' }, cwd: '/home/u/repo', scratchpad_dir: SP }, env)
+
+  test("'false' turns the gate off", () => {
+    expect(write({ CLAUDE_PLUGIN_OPTION_ENABLED: 'false' }).code).toBe(0)
+  })
+
+  test('malformed stdin passes only with an exact false', () => {
+    const raw = (enabled: string) => Bun.spawnSync(['bun', '--no-env-file', '--config=/dev/null', GATE], {
+      stdin: new TextEncoder().encode('{not json'), stdout: 'pipe', stderr: 'pipe',
+      env: { ...process.env, ...BASE_ENV, CLAUDE_PLUGIN_OPTION_ENABLED: enabled },
+    }).exitCode
+    expect(raw('false')).toBe(0)
+    expect(raw('true')).toBe(2)
+  })
+
+  test.each([['true', 'true'], ['FALSE', 'FALSE'], ['0', '0'], ['empty', '']])('%s keeps the gate on', (_name, value) => {
+    expect(write({ CLAUDE_PLUGIN_OPTION_ENABLED: value }).code).toBe(2)
+  })
+
+  test('unset keeps the gate on', () => {
+    const { CLAUDE_PLUGIN_OPTION_ENABLED: _unused, ...rest } = BASE_ENV
+    const r = Bun.spawnSync(['bun', '--no-env-file', '--config=/dev/null', GATE], {
+      stdin: new TextEncoder().encode(JSON.stringify({ agent_type: 'reviewer', agent_id: 'a1', tool_name: 'Write', tool_input: { file_path: '/home/u/repo/a.ts' }, cwd: '/home/u/repo', scratchpad_dir: SP })),
+      stdout: 'pipe', stderr: 'pipe', env: { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== 'CLAUDE_PLUGIN_OPTION_ENABLED')), ...rest },
+    })
+    expect(r.exitCode).toBe(2)
+  })
 })

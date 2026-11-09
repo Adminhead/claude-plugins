@@ -19,7 +19,7 @@ READ_ONLY=(architect architect:architect reviewer reviewer:reviewer debugger deb
 # Every payload carries a subagent identity; the dispatch cases at the end vary it.
 ID='"agent_type":"'"$AGENT"'","agent_id":"a1"'
 # The options and the project root are the hook's, never inherited from the shell running the cases.
-unset CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS CLAUDE_PLUGIN_OPTION_PLAN_WRITERS CLAUDE_PLUGIN_OPTION_PLAN_DIRS CLAUDE_PROJECT_DIR
+unset CLAUDE_PLUGIN_OPTION_EXTRA_AGENTS CLAUDE_PLUGIN_OPTION_PLAN_WRITERS CLAUDE_PLUGIN_OPTION_PLAN_DIRS CLAUDE_PLUGIN_OPTION_ENABLED CLAUDE_PROJECT_DIR
 
 invoke() { # invoke <gate path>: runs a gate the way hooks.json does, payload on stdin
   bun --no-env-file --config=/dev/null "$1"
