@@ -1,12 +1,13 @@
 {
   "name": "git-statusline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A mod that draws a git line under the prompt: repo path, branch, linked-worktree marker, ahead/behind with colour past unpushed-commit thresholds, staged/modified/new/conflict counts, changed lines and stash count.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
   "userConfig": {
+    "enabled": { "type": "boolean", "title": "Enable the mod", "description": "Off removes the git line under the prompt. Takes effect after a reload or in a new session. Only an exact false turns it off.", "default": true },
     "push_warning_threshold": {
       "type": "number",
       "title": "Unpushed commits: warning",
@@ -18,6 +19,26 @@
       "title": "Unpushed commits: critical",
       "description": "Colour the ahead count red at this many unpushed commits. 0 turns it off.",
       "default": 20
+    },
+    "show_changed_lines": {
+      "type": "boolean",
+      "title": "Show changed lines",
+      "description": "Off skips git diff HEAD --numstat and leaves the added and deleted line counts off the line. Only an exact false turns it off.",
+      "default": true
+    },
+    "show_stashes": {
+      "type": "boolean",
+      "title": "Show stash count",
+      "description": "Off skips git stash list and leaves the stash count off the line. Only an exact false turns it off.",
+      "default": true
+    },
+    "git_timeout_seconds": {
+      "type": "number",
+      "title": "Git timeout (seconds)",
+      "description": "How long each git call may run before it is abandoned. Values outside 1 to 60 are clamped; anything unreadable uses 10.",
+      "default": 10,
+      "min": 1,
+      "max": 60
     }
   }
 }

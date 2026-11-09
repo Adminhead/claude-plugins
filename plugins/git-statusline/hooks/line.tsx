@@ -115,6 +115,22 @@ export function thresholdsOf(options: Readonly<Record<string, unknown>> | undefi
   }
 }
 
+export const intIn = (v: unknown, min: number, max: number, d: number): number => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
+  return Number.isNaN(n) ? d : Math.min(max, Math.max(min, Math.floor(n)))
+}
+
+export type RefreshOptions = { lines: boolean; stashes: boolean; timeoutMs: number }
+
+// Which git calls to make and how long each may run. Only boolean false skips a call.
+export function refreshOptionsOf(options: Readonly<Record<string, unknown>> | undefined): RefreshOptions {
+  return {
+    lines: options?.show_changed_lines !== false,
+    stashes: options?.show_stashes !== false,
+    timeoutMs: intIn(options?.git_timeout_seconds, 1, 60, 10) * 1000,
+  }
+}
+
 // The theme colour for `ahead` unpushed commits.
 export function aheadColor(ahead: number, t: PushThresholds): 'success' | 'warning' | 'error' {
   if (t.critical > 0 && ahead >= t.critical) return 'error'

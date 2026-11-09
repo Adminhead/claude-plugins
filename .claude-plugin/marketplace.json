@@ -360,7 +360,7 @@
       "name": "git-statusline",
       "source": "./plugins/git-statusline",
       "description": "A mod that draws a git line under the prompt: repo path, branch, linked-worktree marker, ahead/behind with colour past unpushed-commit thresholds, staged/modified/new/conflict counts, changed lines and stash count.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "development"
     },
     {

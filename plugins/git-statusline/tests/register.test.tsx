@@ -6,9 +6,12 @@ import {
   parseNumstat,
   parseRevParse,
   parseStatus,
+  intIn,
   placeOf,
+  refreshOptionsOf,
   thresholdsOf,
 } from '../hooks/line'
+import { register } from '../hooks/register'
 
 const TOP = '/home/u/src/repo'
 const MAIN_DIRS = `${TOP}\n${TOP}/.git\n${TOP}/.git\n`
@@ -37,12 +40,14 @@ const AHEAD = (n: number) => `# branch.oid 0123456789abcdef\n# branch.head main\
 const DETACHED = '# branch.oid 0123456789abcdef\n# branch.head (detached)\n'
 const STASHES = 'stash@{0}: WIP on main: abc fix\nstash@{1}: On main: try\n'
 
+type Run = { argv: string[]; timeoutMs?: number }
 type Git = { dirs?: string; dirsExit?: number; status?: string; statusExit?: number; diff?: string; stash?: string } | Error
 
 // Mounts the line on a session in `cwd` whose git answers per `git`.
-async function mountLine($: any, on: any, cwd: string, git: () => Git, logs: string[] = []) {
+async function mountLine($: any, on: any, cwd: string, git: () => Git, logs: string[] = [], runs: Run[] = []) {
   on('session.cwd', async () => ({ value: cwd }))
   on('process.run', async (_$: any, e: any) => {
+    runs.push({ argv: e.argv, timeoutMs: e.init?.timeoutMs })
     const g = git()
     if (g instanceof Error) return { deny: g.message }
     const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '' } })
@@ -150,6 +155,52 @@ describe('stash, place and thresholds', () => {
   })
 })
 
+const events = (opts: Record<string, unknown>) => {
+  const seen: string[] = []
+  register(((e: string) => { seen.push(e); return { catch() {} } }) as any, opts as any)
+  return seen
+}
+
+describe('enabled option', () => {
+  test('only boolean false turns the mod off', () => {
+    expect(events({ enabled: false })).toEqual([])
+    for (const o of [{}, { enabled: undefined }, { enabled: true }, { enabled: 'false' }, { enabled: 0 }, { enabled: '' }]) {
+      expect(events(o).length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('refresh options', () => {
+  test('defaults', () => {
+    expect(refreshOptionsOf({})).toEqual({ lines: true, stashes: true, timeoutMs: 10000 })
+    expect(refreshOptionsOf(undefined)).toEqual({ lines: true, stashes: true, timeoutMs: 10000 })
+  })
+
+  test('only boolean false skips the diff and stash calls', () => {
+    for (const v of [undefined, true, 'false', 0, '']) {
+      expect(refreshOptionsOf({ show_changed_lines: v, show_stashes: v })).toMatchObject({ lines: true, stashes: true })
+    }
+    expect(refreshOptionsOf({ show_changed_lines: false, show_stashes: false })).toMatchObject({ lines: false, stashes: false })
+  })
+
+  test('timeout uses the number parser: junk gives 10s, clamp 1..60', () => {
+    expect(refreshOptionsOf({ show_changed_lines: false, git_timeout_seconds: '' })).toMatchObject({ lines: false, timeoutMs: 10000 })
+    expect(refreshOptionsOf({ git_timeout_seconds: 0 }).timeoutMs).toBe(1000)
+    expect(refreshOptionsOf({ git_timeout_seconds: 999 }).timeoutMs).toBe(60000)
+    expect(refreshOptionsOf({ git_timeout_seconds: 2.9 }).timeoutMs).toBe(2000)
+    expect(refreshOptionsOf({ git_timeout_seconds: '7' }).timeoutMs).toBe(7000)
+    expect(refreshOptionsOf({ git_timeout_seconds: '1e400' }).timeoutMs).toBe(60000)
+    expect(refreshOptionsOf({ git_timeout_seconds: '-1e400' }).timeoutMs).toBe(1000)
+  })
+
+  test('intIn: junk gives the default, clamps, floors', () => {
+    for (const v of [undefined, '', 'abc', NaN, null, {}]) expect(intIn(v, 1, 60, 10)).toBe(10)
+    expect(intIn(-5, 1, 60, 10)).toBe(1)
+    expect(intIn(100, 1, 60, 10)).toBe(60)
+    expect(intIn(3.7, 1, 60, 10)).toBe(3)
+  })
+})
+
 describe('line', () => {
   test('draws under the engine hint with place, branch, counts and stashes', async ($, on) => {
     const ui = await mountLine($, on, `${TOP}/hooks`, () => ({ status: STATUS, diff: NUMSTAT, stash: STASHES }))
@@ -196,5 +247,46 @@ describe('line', () => {
     await ui.redraw({ isDraft: false, isWorking: false, hint: '? for shortcuts' })
     expect((await rows(ui))[1]).toBe('repo  ⎇ main  ✓')
     expect(logs.filter(l => l.includes('git-statusline: fatal: bad index')).length).toBe(1)
+  })
+
+  test('with both calls switched off no diff or stash runs and every run uses the timeout', { options: { show_changed_lines: false, show_stashes: false, git_timeout_seconds: 3 } }, async ($, on) => {
+    const runs: Run[] = []
+    const ui = await mountLine($, on, `${TOP}/hooks`, () => ({ status: STATUS, diff: NUMSTAT, stash: STASHES }), [], runs)
+    const r = await rows(ui)
+    expect(runs.length).toBeGreaterThan(0)
+    expect(runs.some(x => x.argv[1] === 'diff' || x.argv[1] === 'stash')).toBe(false)
+    expect(r[1]).not.toContain('+13')
+    expect(r[1]).not.toContain('stash 2')
+    expect(runs.every(x => x.timeoutMs === 3000)).toBe(true)
+    // The second refresh trigger honours the options too.
+    runs.length = 0
+    await $.session.measure({ context: {} as any, rateLimits: [], changed: [] })
+    expect(runs.length).toBeGreaterThan(0)
+    expect(runs.some(x => x.argv[1] === 'diff' || x.argv[1] === 'stash')).toBe(false)
+    expect(runs.every(x => x.timeoutMs === 3000)).toBe(true)
+  })
+
+  test('default options run diff and stash with a 10s timeout', async ($, on) => {
+    const runs: Run[] = []
+    const ui = await mountLine($, on, `${TOP}/hooks`, () => ({ status: STATUS, diff: NUMSTAT, stash: STASHES }), [], runs)
+    const r = await rows(ui)
+    expect(runs.some(x => x.argv[1] === 'diff')).toBe(true)
+    expect(runs.some(x => x.argv[1] === 'stash')).toBe(true)
+    expect(runs.every(x => x.timeoutMs === 10000)).toBe(true)
+    expect(r[1]).toContain('+13 -2')
+  })
+
+  test('only show_stashes false: diff runs, stash does not', { options: { show_stashes: false } }, async ($, on) => {
+    const runs: Run[] = []
+    await mountLine($, on, TOP, () => ({ status: STATUS, diff: NUMSTAT, stash: STASHES }), [], runs)
+    expect(runs.some(x => x.argv[1] === 'diff')).toBe(true)
+    expect(runs.some(x => x.argv[1] === 'stash')).toBe(false)
+  })
+
+  test('only show_changed_lines false: stash runs, diff does not', { options: { show_changed_lines: false } }, async ($, on) => {
+    const runs: Run[] = []
+    await mountLine($, on, TOP, () => ({ status: STATUS, diff: NUMSTAT, stash: STASHES }), [], runs)
+    expect(runs.some(x => x.argv[1] === 'stash')).toBe(true)
+    expect(runs.some(x => x.argv[1] === 'diff')).toBe(false)
   })
 })
