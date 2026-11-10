@@ -1091,13 +1091,16 @@ async function unlockPlan($: Dollar, planId: string): Promise<string> {
   if ('error' in where) return where.error
   const { lock } = where.paths
   if (!(await $.fs.exists(lock))) return `Plan ${planId} is not locked.`
-  let ownerText = ''
-  try {
-    ownerText = (await $.fs.read(`${lock}/owner`)) as string
-  } catch {
-    // A lock whose owner file is missing or unreadable is shown as having an unreadable owner.
+  const readOwner = async () => {
+    let text = ''
+    try {
+      text = (await $.fs.read(`${lock}/owner`)) as string
+    } catch {
+      // A lock whose owner file is missing or unreadable is shown as having an unreadable owner.
+    }
+    return lockOwner(text, await $.clock.now())
   }
-  const owner = lockOwner(ownerText, await $.clock.now())
+  const owner = await readOwner()
   let said: unknown
   try {
     said = await $.ui.ask(unlockQuestion(planId, owner), { options: [REMOVE_LOCK, KEEP_LOCK], header: 'Unlock plan' })
@@ -1105,9 +1108,14 @@ async function unlockPlan($: Dollar, planId: string): Promise<string> {
     return 'Nobody could be asked, so the lock was left. Run /plans unlock in an interactive session.'
   }
   if (said !== REMOVE_LOCK) return 'The lock was left.'
-  const argv = owner === null ? ['rm', '-rf', '--', lock] : lockReleaseArgv(lock, owner.token)
+  // Only the lock the person was shown may go: read the owner again, and a different holder (or one that appeared where
+  // there was none) means it changed hands. The holder's token then goes to the compare-and-remove release.
+  const now = await readOwner()
+  const changed = `The lock of plan ${planId} changed hands or is already gone; nothing was removed. Run /plans unlock again if it is still held.`
+  if ((owner === null) !== (now === null) || (owner !== null && now !== null && owner.token !== now.token)) return changed
+  const argv = now === null ? ['rm', '-rf', '--', lock] : lockReleaseArgv(lock, now.token)
   const r = await $.process.run(argv, { timeoutMs: IO_TIMEOUT_MS })
-  return r.exitCode === 0 ? `Removed the lock of plan ${planId}.` : `The lock of plan ${planId} changed hands or is already gone; nothing was removed. Run /plans unlock again if it is still held.`
+  return r.exitCode === 0 ? `Removed the lock of plan ${planId}.` : changed
 }
 
 async function goalFor($: Dollar, planId: string): Promise<string> {

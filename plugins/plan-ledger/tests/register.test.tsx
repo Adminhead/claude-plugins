@@ -130,6 +130,7 @@ function world(on: any): World & { $: any } {
     'ui.log': () => undefined,
     'fs.exists': (e) => w.files.has(e.path) || w.dirs.has(e.path) || w.locks.has(e.path),
     'fs.read': (e) => {
+      if (e.path.endsWith('/owner') && w.locks.get(e.path.slice(0, -'/owner'.length)) === '') throw new Error(`ENOENT ${e.path}`)
       if (e.path.endsWith('/owner') && w.locks.has(e.path.slice(0, -'/owner'.length))) {
         return `${w.locks.get(e.path.slice(0, -'/owner'.length))} ${Math.floor(w.now / 1000) - w.lockAge}`
       }
@@ -182,6 +183,11 @@ function world(on: any): World & { $: any } {
         w.log.push('check')
         w.checkRuns.push({ argv: e.argv, cwd: e.init?.cwd, timeoutMs: e.init?.timeoutMs })
         return Promise.resolve(w.checkImpl(e.argv, e.init?.cwd)).then((r) => res(r.exit, r.out ?? ''))
+      }
+      if (a0 === 'rm' && e.argv[1] === '-rf') {
+        w.log.push('rm-rf')
+        w.locks.delete(e.argv[3])
+        return res(0)
       }
       if (a0 === 'rm') {
         w.log.push('rm')
@@ -1660,6 +1666,21 @@ describe('/plans', () => {
       expect(w.locks.has(lock)).toBe(false)
       expect(w.asked[0].question).toContain('tok-1234')
       expect(w.asked[0].question).toMatch(/held for 12[5-9] s/)
+    })
+
+    test('a lock with no readable owner is removed only while it still has none', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const lock = held(w, id, '') // the owner file is missing
+      w.answer = 'Remove the lock'
+      expect((await plans(w, `unlock ${id}`)).text).toContain('Removed')
+      expect(w.asked[0].question).toContain('unreadable')
+      expect(w.locks.has(lock)).toBe(false)
+
+      const lock2 = held(w, id, '')
+      w.onAsk = () => w.locks.set(lock2, 'live-holder-1') // a caller took the lock and wrote its owner while the question was open
+      expect((await plans(w, `unlock ${id}`)).text).toContain('changed hands')
+      expect(w.locks.get(lock2)).toBe('live-holder-1')
     })
 
     test('keeping it, dismissing the question and a lock that changed hands all leave the lock', async ($: any, on: any) => {
