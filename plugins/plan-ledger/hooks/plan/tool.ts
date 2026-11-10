@@ -132,7 +132,8 @@ const ALLOWED: Record<(typeof ACTIONS)[number], Fields> = {
   get: keys('action', 'plan', 'item'),
 }
 
-const ENGINE_KEYS: Fields = keys('tool', 'tool_use_id', 'agentId')
+/** The keys the engine puts on a `tool.call` beside the arguments (`ToolCallReserved`, `AgentLoop`, `ToolRequestMeta`). */
+const ENGINE_KEYS: Fields = keys('tool', 'tool_use_id', 'agentId', 'requestMeta', 'consent')
 /** Fields that would carry a verification result; named in the refusal so the model stops looking for them. */
 const RESULT_KEYS: Fields = keys('verification', 'results', 'result', 'verified', 'checksHash', 'outcome')
 

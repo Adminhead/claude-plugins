@@ -23,6 +23,8 @@ describe('parseInput', () => {
 
   test('the engine keys are ignored, other unknown keys are refused', () => {
     expect(ok(parseInput({ tool: 'x', tool_use_id: 't', agentId: 'a1', action: 'claim', plan: PLAN, item: 's1' }))).toEqual({ action: 'claim', plan: PLAN, item: 's1' })
+    // the other keys the engine puts on a tool.call (ToolRequestMeta, ToolCallReserved) are not the model's and are ignored
+    expect(ok(parseInput({ tool: 'x', requestMeta: { 'anthropic/sources': 's' }, consent: 'The user pressed "1: Yes"', action: 'claim', plan: PLAN, item: 's1' }))).toEqual({ action: 'claim', plan: PLAN, item: 's1' })
     expect(err(parseInput({ action: 'claim', plan: PLAN, item: 's1', status: 'verified' }))).toContain('Unknown field "status"')
   })
 
@@ -147,7 +149,7 @@ describe('the tool spec', () => {
   })
 
   test('no property is named like an engine key', () => {
-    for (const k of ['tool', 'tool_use_id', 'agentId']) expect(Object.keys(TOOL.inputSchema.properties)).not.toContain(k)
+    for (const k of ['tool', 'tool_use_id', 'agentId', 'requestMeta', 'consent']) expect(Object.keys(TOOL.inputSchema.properties)).not.toContain(k)
   })
 })
 
