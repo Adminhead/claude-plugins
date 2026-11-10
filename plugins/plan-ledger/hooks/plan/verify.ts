@@ -12,12 +12,18 @@ export const CRASH_EXIT = -1
 /** `Tree.head` for a directory with no commit to name (not a git repository, or no commits yet). */
 export const NO_HEAD = 'none'
 
-/** The three git commands that identify a working tree, run in the check's cwd before the first check and after the last. */
+/**
+ * The three git commands that identify a working tree, run in the check's cwd before the first check and after the last.
+ * The directory is the caller's and its `.git/config` and `.gitattributes` are the repository's, so each command turns off
+ * what could start a program from them: the fsmonitor hook (`-c core.fsmonitor=false`), external diff drivers and textconv
+ * filters, and the index refresh a read would otherwise write (`--no-optional-locks`).
+ */
 export function treeArgvs(): { head: string[]; diff: string[]; status: string[] } {
+  const git = ['git', '-c', 'core.fsmonitor=false', '--no-optional-locks']
   return {
-    head: ['git', 'rev-parse', 'HEAD'],
-    diff: ['git', 'diff', 'HEAD'],
-    status: ['git', 'status', '--porcelain'],
+    head: [...git, 'rev-parse', 'HEAD'],
+    diff: [...git, 'diff', '--no-ext-diff', '--no-textconv', 'HEAD'],
+    status: [...git, 'status', '--porcelain'],
   }
 }
 

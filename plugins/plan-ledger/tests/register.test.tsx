@@ -180,8 +180,8 @@ function world(on: any): World & { $: any } {
       if (a0 === 'git') {
         w.log.push('git')
         w.gitCalls.push({ argv: e.argv, cwd: e.init?.cwd })
-        if (a1 === 'rev-parse') return res(0, `${w.git.head}\n`)
-        return res(0, a1 === 'diff' ? w.git.diff : w.git.status)
+        if (e.argv.includes('rev-parse')) return res(0, `${w.git.head}\n`)
+        return res(0, e.argv.includes('diff') ? w.git.diff : w.git.status)
       }
       if (a0 !== 'sh' && a0 !== 'rm' && a0 !== 'mv') {
         w.log.push('check')
@@ -884,6 +884,9 @@ describe('verification', () => {
       'git', 'git', 'git',
     ])
     expect(w.gitCalls.every((g) => g.cwd === '/work/repo')).toBe(true)
+    // the git commands that run in the named directory switch off what the repository's config could start
+    for (const g of w.gitCalls) expect(g.argv.slice(0, 4)).toEqual(['git', '-c', 'core.fsmonitor=false', '--no-optional-locks'])
+    expect(w.gitCalls.find((g) => g.argv.includes('diff'))?.argv).toEqual(expect.arrayContaining(['--no-ext-diff', '--no-textconv']))
     expect(w.checked).toEqual([`'bun' 'test' 'x'`, `'bun' 'lint'`])
     const it = await itemOf(w, id)
     expect(it.status).toBe('verified')

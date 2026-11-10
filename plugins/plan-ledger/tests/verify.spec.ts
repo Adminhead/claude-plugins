@@ -45,11 +45,21 @@ const tree: Tree = { head: 'a'.repeat(40), fingerprint: fingerprint('d', 's') }
 
 describe('treeArgvs and fingerprint', () => {
   test('the git commands are fixed argv', () => {
+    const safe = ['git', '-c', 'core.fsmonitor=false', '--no-optional-locks']
     expect(treeArgvs()).toEqual({
-      head: ['git', 'rev-parse', 'HEAD'],
-      diff: ['git', 'diff', 'HEAD'],
-      status: ['git', 'status', '--porcelain'],
+      head: [...safe, 'rev-parse', 'HEAD'],
+      diff: [...safe, 'diff', '--no-ext-diff', '--no-textconv', 'HEAD'],
+      status: [...safe, 'status', '--porcelain'],
     })
+  })
+
+  test('no git command can start a program named by the repository\'s own config', () => {
+    for (const argv of Object.values(treeArgvs())) {
+      const sub = argv.findIndex((a) => ['rev-parse', 'diff', 'status'].includes(a))
+      // the global options come before the subcommand: fsmonitor off, no optional locks
+      expect(argv.slice(0, sub)).toEqual(expect.arrayContaining(['-c', 'core.fsmonitor=false', '--no-optional-locks']))
+    }
+    expect(treeArgvs().diff).toEqual(expect.arrayContaining(['--no-ext-diff', '--no-textconv']))
   })
 
   test('the fingerprint changes with either input and not between the two', () => {

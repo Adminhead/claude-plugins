@@ -628,6 +628,8 @@ async function resolveCwd($: Dollar, given: unknown): Promise<{ ok: true; cwd: s
  * not see it; `$.tool.check` reports only the user's own rules (and not the directory), and shows a guard's target as
  * `ask`. So `allow` means "the user's rules allow it", `deny` refuses, and `ask` or any other answer (a throw, an unknown
  * shape) goes to the person with the exact argv and directory. A refused, dismissed or unanswerable question (`-p`) refuses.
+ * On `allow` nothing is asked, so the directory is not shown: showing it there would be one more prompt, which the user's
+ * own allow rule exists to avoid. The directory is recorded in the verification either way.
  *
  * TODO(G3, docs/plans/goal-ledger.md "Open interactive gates"): the real `$.ui.ask` dialog is unverified. Headless runs and
  * tests only show that a rejection (`-p`) refuses. A person must confirm in an interactive session that the dialog shows
