@@ -595,7 +595,7 @@ export type VerifyArgs = {
 /**
  * What one `verify` call keeps between its own attempts, so a retry never repeats what already happened: the approval
  * the person gave, the tree before, the results of the run, and the judged verification awaiting its commit. The caller
- * makes one per tool call. `key` names the checks and directory they belong to; a changed key starts over.
+ * makes one per tool call. `key` names the checks, directory and item gen they belong to; a changed key starts over.
  */
 export type VerifyMemo = {
   key?: string
@@ -764,7 +764,10 @@ export async function verifyItem(
     if (!seen.ok) return failure('error', 'The plan ledger could not be read. Retry.', planId, opts.op)
     if (seen.change !== null) return commit(base, null)
   }
-  if (memo.verification !== undefined) return commit({ ...unguarded(), verification: memo.verification }, memo.verification)
+  // A judged result is committed again only for the gen it was judged at (it carries it); a memo from an earlier gen starts over below.
+  if (memo.verification !== undefined && memo.verification.gen === args.gen) {
+    return commit({ ...unguarded(), verification: memo.verification }, memo.verification)
+  }
 
   const read = await readPlan($, planId)
   if (!read.ok) return failure('error', read.message, planId, null)
@@ -789,9 +792,9 @@ export async function verifyItem(
 
   const checks: Check[] = item.checks.map((c) => ({ label: c.label, argv: c.argv.slice(), expectExit: c.expectExit }))
   const ranHash = checksHash(checks)
-  const key = `${ranHash}\u0000${cwd}`
+  const key = `${ranHash}\u0000${cwd}\u0000${item.gen}`
   if (memo.key !== key) {
-    // A changed set of checks or directory (an amend between attempts) invalidates everything kept.
+    // A changed set of checks, directory or item gen (an amend, or a reopen and a new claim between attempts) invalidates everything kept.
     for (const k of Object.keys(memo)) delete (memo as Record<string, unknown>)[k]
     memo.key = key
   }

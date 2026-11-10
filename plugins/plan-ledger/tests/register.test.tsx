@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dirOf, listPlans, mutate, planTool, plansCommand, readPlan, register, verifyItem } from '../hooks/register'
+import { dirOf, listPlans, mutate, planTool, plansCommand, readPlan, register, verifyItem, type VerifyMemo } from '../hooks/register'
 import { parseLedger } from '../hooks/plan/replay'
 import { appendArgv, lockAcquireArgv, lockReleaseArgv, mkdirArgv, publishArgv, tailArgv } from '../hooks/plan/store'
 import { MAX_LEDGER_BYTES } from '../hooks/plan/types'
@@ -1111,6 +1111,29 @@ describe('verification', () => {
       const it = await itemOf(w, id)
       expect(it.gen).toBeGreaterThan(gen0)
       expect(it).toMatchObject({ status: 'claimed_done', verification: null })
+    })
+
+    test('a memo kept at an earlier gen is not reused at a later one: the checks run again and the result lands at the new gen', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const gen0 = (await itemOf(w, id)).gen
+      const memo: VerifyMemo = {}
+      w.failAppend = true // the run finishes and is judged, then the commit fails: the memo keeps the old result
+      expect(await verifyItem(w.$, id, 's1', { gen: gen0 }, MAIN, { memo })).toMatchObject({ ok: false, code: 'error' })
+      expect(w.checkRuns).toHaveLength(1)
+      w.failAppend = false
+      for (const [action, actor] of [
+        [{ action: 'reopen', plan: id, item: 's1' }, MAIN],
+        [{ action: 'claim', plan: id, item: 's1' }, A1],
+        [{ action: 'claim_done', plan: id, item: 's1', summary: 'again', commands: [], commits: [], files: [] }, A1],
+      ] as const) {
+        expect((await mutate(w.$, id, action as any, actor as any)).ok).toBe(true)
+      }
+      const gen1 = (await itemOf(w, id)).gen
+      expect(gen1).toBeGreaterThan(gen0)
+      expect(await verifyItem(w.$, id, 's1', { gen: gen1 }, MAIN, { memo })).toMatchObject({ ok: true, code: 'applied' })
+      expect(w.checkRuns).toHaveLength(2) // not the old run reused
+      expect(await itemOf(w, id)).toMatchObject({ status: 'verified', verification: { gen: gen1 } })
     })
 
     test('other items changing during the run do not block the commit', async ($: any, on: any) => {
