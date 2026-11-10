@@ -1606,7 +1606,7 @@
       "name": "forgejo-mcp",
       "source": "./plugins/forgejo-mcp",
       "description": "Connects to a forgejo-mcp server hosted at https://<host>/mcp on a self-hosted Forgejo instance, sending your access token as the Authorization header; prompts for the host and a token kept in secure storage.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {

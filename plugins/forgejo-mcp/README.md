@@ -90,7 +90,7 @@ Append these entries to the existing `permissions.deny` array in `~/.claude/sett
 }
 ```
 
-The tool names in `tests/tools.txt` (163 tools) were read from a running forgejo-mcp 3.3.0 server on 2026-11-10; refresh the file after a server upgrade. If a tool you want is missing, remove the pattern of its group from your deny list. A rule that matches nothing only warns at startup and names containing `_` or `*` are exempt, so a renamed upstream tool goes stale silently. Tested with Claude Code: not yet recorded.
+The tool names in `tests/tools.txt` (163 tools) were read from a running forgejo-mcp 3.3.0 server on 2026-11-10; refresh the file after a server upgrade. If a tool you want is missing, remove the pattern of its group from your deny list. A rule that matches nothing only warns at startup and names containing `_` or `*` are exempt, so a renamed upstream tool goes stale silently. Tested with Claude Code 2.1.322: a session with this deny block lists 113 of the 163 forgejo tools.
 
 ### What stays
 
