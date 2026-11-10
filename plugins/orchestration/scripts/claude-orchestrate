@@ -24,6 +24,8 @@ HERDR_SESSION=NAME picks a named herdr session.
                       gets no orchestration prompt and no CLAUDE_ORCHESTRATE
   -p, --prompt FILE   append FILE instead of the orchestration prompt
       --no-prompt     append nothing
+  -r, --replace-prompt  replace Claude Code's built-in system prompt with the prompt file
+                      (--system-prompt-file) instead of appending to it
   -H, --herdr         launch in a new herdr workspace (default when CLAUDE_ORCHESTRATE_HERDR=1)
       --no-herdr      run here even when CLAUDE_ORCHESTRATE_HERDR=1
   -t, --tab           inside herdr, open a new tab instead of using this pane
@@ -46,6 +48,7 @@ root=$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")
 agent=${CLAUDE_ORCHESTRATE_AGENT:-}
 prompt=
 prompt_set=0
+replace=0
 herdr_mode=${CLAUDE_ORCHESTRATE_HERDR:-0}
 tab=0
 attach=1
@@ -56,6 +59,7 @@ while (($#)); do
     -a|--agent) (($# > 1)) || die "$1 needs an agent"; agent=$2; shift 2 ;;
     -p|--prompt) (($# > 1)) || die "$1 needs a file"; prompt=$(realpath -e -- "$2" 2>/dev/null) || die "no such prompt file: $2"; prompt_set=1; shift 2 ;;
     --no-prompt) prompt=; prompt_set=1; shift ;;
+    -r|--replace-prompt) replace=1; shift ;;
     -H|--herdr) herdr_mode=1; shift ;;
     --no-herdr) herdr_mode=0; shift ;;
     -t|--tab) tab=1; shift ;;
@@ -95,7 +99,9 @@ fi
 
 claude_args=()
 [[ -z $agent ]] || claude_args+=(--agent "$agent")
-[[ -z $prompt ]] || claude_args+=(--append-system-prompt-file "$prompt")
+if [[ -n $prompt ]]; then
+  if ((replace)); then claude_args+=(--system-prompt-file "$prompt"); else claude_args+=(--append-system-prompt-file "$prompt"); fi
+fi
 # The orchestrator runs on sonnet unless the caller picks a model. An empty
 # CLAUDE_ORCHESTRATE_MODEL leaves the choice to Claude Code's settings.
 model=${CLAUDE_ORCHESTRATE_MODEL-sonnet}
