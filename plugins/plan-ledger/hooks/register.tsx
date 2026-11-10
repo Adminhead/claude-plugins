@@ -1,10 +1,12 @@
 // plan-ledger: the transaction around the pure plan modules (decision 3 in docs/plans/goal-ledger.md), the plan reads, and
-// the directory guard. Slice 7 adds `verifyItem`, slice 8 the tool and `/plans`, slice 9 the spawn hook.
+// the directory guard, and `verifyItem` (slice 7). Slice 8 adds the tool and `/plans`, slice 9 the spawn hook.
 //
 // `claude plugin validate` fails on "$ is passed to X, which is not a function declared at the top of this file", so every
 // helper that takes `$` is a top-level function declaration below and `register` only wires hooks to them.
 import type { Register } from 'claude-code'
 import { apply } from './plan/apply'
+import { authorize } from './plan/authorize'
+import { checksHash } from './plan/checks'
 import { GUARD_REASON, isUnder, normalizePath, commandNamesPlans, plansRoot, writtenPath } from './plan/guard'
 import { findOp, needsReplay, parseLedger, parsePlanJson, reconcile, type Reconciled } from './plan/replay'
 import {
@@ -23,9 +25,21 @@ import {
   tmpPath,
   type PlanPaths,
 } from './plan/store'
-import { utf8Bytes } from './plan/shared'
-import type { Action, Actor, Change, Plan } from './plan/types'
+import { hasControl, utf8Bytes } from './plan/shared'
+import type { Action, Actor, Change, Check, CheckResult, Plan, Tree } from './plan/types'
 import { DEFAULT_ATTEMPT_CAP, MAX_DENIED_LOGGED, MAX_LEDGER_BYTES } from './plan/types'
+import {
+  CRASH_EXIT,
+  NO_HEAD,
+  commandFor,
+  fingerprint,
+  gateQuestion,
+  judge,
+  outTail,
+  summarize,
+  treeArgvs,
+  verdictOf,
+} from './plan/verify'
 
 // `$` is the engine's interface; the d.ts for it is written by the engine at load, so helpers take it untyped.
 type Dollar = any
@@ -34,6 +48,11 @@ type Dollar = any
 const LOCK_WAIT_SEC = 5
 const LOCK_PROCESS_TIMEOUT_MS = 8000
 const IO_TIMEOUT_MS = 5000
+/** One check may run this long (the engine's own ceiling for `process.run`); a longer one counts as a failed run. */
+const CHECK_TIMEOUT_MS = 600_000
+const TREE_TIMEOUT_MS = 30_000
+const RUN_IT = 'Run it'
+const REFUSE_IT = 'Refuse'
 /** Mutations that stay allowed once the ledger is full, so a plan can still be closed. */
 const TERMINAL_ACTIONS: ReadonlySet<string> = new Set(['verify', 'abandon'])
 
@@ -503,6 +522,164 @@ export async function mutate(
     // An exception after the lock was taken, before or after the ledger line: the op id tells a retry which.
     return failure('error', 'The plan could not be updated. Retry; the same call will not apply twice.', id, op)
   }
+}
+
+// ---------------------------------------------------------------- verification
+
+export type VerifyArgs = {
+  /** The item `gen` the caller saw; a changed item is refused. */
+  gen: number
+  /** Verify by hand, for an item with no checks; needs `note`. Runs nothing. */
+  manual?: boolean
+  note?: string
+  /** Absolute directory to run the checks in (default: the session's). Recorded, canonicalized, shown before any run. */
+  cwd?: string
+}
+
+const refusal = (message: string, planId: string, op: string | null = null): MutateFail =>
+  failure('denied', message, planId, op)
+
+/** The canonical directory the checks run in, or why not. The caller's `cwd` is a location only: never a command. */
+async function resolveCwd($: Dollar, given: unknown): Promise<{ ok: true; cwd: string } | { ok: false; message: string }> {
+  const bad = { ok: false as const, message: 'cwd must be an absolute path to an existing directory.' }
+  const raw: unknown = given === undefined ? await $.session.cwd() : given
+  if (typeof raw !== 'string' || !raw.startsWith('/') || raw.length > 1024 || hasControl(raw)) return bad
+  try {
+    const st = (await $.fs.stat(raw, { resolve: true })) as { kind?: string; realPath?: string }
+    if (st.kind !== 'dir' || typeof st.realPath !== 'string' || !st.realPath.startsWith('/')) return bad
+    return { ok: true, cwd: st.realPath }
+  } catch {
+    return bad
+  }
+}
+
+/**
+ * The execution gate for one check, before anything runs. `$.process.run` is not a Bash call, so installed Bash guards do
+ * not see it; `$.tool.check` reports only the user's own rules (and not the directory), and shows a guard's target as
+ * `ask`. So `allow` means "the user's rules allow it", `deny` refuses, and `ask` or any other answer (a throw, an unknown
+ * shape) goes to the person with the exact argv and directory. A refused, dismissed or unanswerable question (`-p`) refuses.
+ *
+ * TODO(G3, docs/plans/goal-ledger.md "Open interactive gates"): the real `$.ui.ask` dialog is unverified. Headless runs and
+ * tests only show that a rejection (`-p`) refuses. A person must confirm in an interactive session that the dialog shows
+ * the exact argv and cwd, that "Run it" runs the check, and that "Refuse" and dismissing it refuse.
+ */
+async function gateCheck($: Dollar, check: Check, cwd: string): Promise<string | null> {
+  let decision: 'allow' | 'ask' | 'deny'
+  try {
+    decision = verdictOf(await $.tool.check({ tool: 'Bash', input: { command: commandFor(check.argv) } }))
+  } catch {
+    decision = 'ask'
+  }
+  if (decision === 'deny') {
+    return `Check "${check.label}" is denied by the user's permission rules, so nothing was run and the item is not verified. Tell the person.`
+  }
+  if (decision === 'allow') return null
+  let answer: unknown
+  try {
+    answer = await $.ui.ask(gateQuestion(check, cwd), { options: [RUN_IT, REFUSE_IT], header: 'Run check' })
+  } catch {
+    return `Check "${check.label}" needs the person's approval and could not be asked, so nothing was run and the item is not verified. Tell the person to verify in an interactive session.`
+  }
+  return answer === RUN_IT ? null : `The person refused check "${check.label}", so nothing was run and the item is not verified.`
+}
+
+/** HEAD and a fingerprint of the tree in `cwd`; null when git could not be run at all. */
+async function captureTree($: Dollar, cwd: string): Promise<Tree | null> {
+  const argvs = treeArgvs()
+  try {
+    const head = await $.process.run(argvs.head, { cwd, timeoutMs: TREE_TIMEOUT_MS })
+    const diff = await $.process.run(argvs.diff, { cwd, timeoutMs: TREE_TIMEOUT_MS })
+    const status = await $.process.run(argvs.status, { cwd, timeoutMs: TREE_TIMEOUT_MS })
+    const part = (r: { exitCode: number; stdout: string }) => (r.exitCode === 0 ? r.stdout : `exit ${r.exitCode}`)
+    return {
+      head: head.exitCode === 0 && typeof head.stdout === 'string' ? head.stdout.trim() : NO_HEAD,
+      fingerprint: fingerprint(part(diff), part(status)),
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Runs one recorded check. A run that cannot finish (timeout, no such program) is a failed result, never a pass. */
+async function runCheck($: Dollar, check: Check, cwd: string): Promise<CheckResult> {
+  try {
+    const r = await $.process.run(check.argv, { cwd, timeoutMs: CHECK_TIMEOUT_MS })
+    const exit = Number.isInteger(r.exitCode) ? (r.exitCode as number) : CRASH_EXIT
+    return { label: check.label, exit, expectExit: check.expectExit, outTail: outTail(r.stdout, r.stderr) }
+  } catch (err) {
+    const why = err instanceof Error ? err.message.slice(0, 200) : 'unknown error'
+    return { label: check.label, exit: CRASH_EXIT, expectExit: check.expectExit, outTail: `The check could not run to completion: ${why}` }
+  }
+}
+
+/**
+ * `verify` for one item. Order matters: (1) read the plan and run `authorize` and the `claimed_done` and `gen`
+ * preconditions, and when any fails hand the plain action to `mutate`, which denies it and logs it, with no prompt and no
+ * subprocess for a check; (2) a `manual` verify runs nothing; (3) gate every check before any runs; (4) HEAD and tree
+ * fingerprint, the checks (the argv recorded at plan time, in the canonical cwd, outside the lock), the tree again;
+ * (5) `judge`; (6) `mutate` records the verification built here (the public input has no field for one), and `apply`
+ * refuses it if the item is no longer `claimed_done` at the same `gen` or its checks changed during the run.
+ * Other items changing meanwhile does not matter, so the plan `rev` is not part of the commit condition.
+ */
+export async function verifyItem(
+  $: Dollar,
+  planId: string,
+  itemId: string,
+  args: VerifyArgs,
+  actor: Actor,
+  opts: MutateOpts = {},
+): Promise<MutateResult> {
+  const read = await readPlan($, planId)
+  if (!read.ok) return failure('error', read.message, planId, null)
+  const plan = read.plan
+  const item = plan.items.find((i) => i.id === itemId)
+
+  const base: Action = {
+    action: 'verify',
+    plan: planId,
+    item: itemId,
+    gen: args.gen,
+    ...(args.manual === true ? { manual: true } : {}),
+    ...(typeof args.note === 'string' ? { note: args.note } : {}),
+    ...(typeof args.cwd === 'string' ? { cwd: args.cwd } : {}),
+  }
+  const auth = authorize(plan, base, actor)
+  if (!auth.ok || item === undefined || item.status !== 'claimed_done' || item.gen !== args.gen) {
+    // Denied by the same pure rules, under the lock, and logged. Without `verification` or `manual` apply can only deny.
+    return mutate($, planId, base, actor, opts)
+  }
+  if (args.manual === true) return mutate($, planId, base, actor, opts)
+  if (item.checks.length === 0) {
+    return refusal(`${item.id} has no checks, so there is nothing to run. If you checked it by hand, verify it with manual: true and a note.`, planId)
+  }
+
+  const where = await resolveCwd($, args.cwd)
+  if (!where.ok) return refusal(where.message, planId)
+  const { cwd } = where
+
+  const checks: Check[] = item.checks.map((c) => ({ label: c.label, argv: c.argv.slice(), expectExit: c.expectExit }))
+  for (const check of checks) {
+    const why = await gateCheck($, check, cwd)
+    if (why !== null) return refusal(why, planId)
+  }
+
+  const before = await captureTree($, cwd)
+  if (before === null) return failure('error', 'Could not read the working tree state with git, so nothing was run. Retry.', planId, null)
+  const results: CheckResult[] = []
+  for (const check of checks) results.push(await runCheck($, check, cwd))
+  const after = await captureTree($, cwd)
+
+  const at = new Date(await $.clock.now()).toISOString()
+  const judged = judge({ ...item, checks }, results, before, after, { cwd, at, ranHash: checksHash(checks) })
+  if (!judged.ok) return refusal(`${judged.why} ${item.id} stays claimed_done.`, planId)
+
+  const done = await mutate($, planId, { ...base, verification: judged.verification }, actor, opts)
+  if (!done.ok) {
+    return done.code === 'denied'
+      ? { ...done, message: `The checks ran, but the result was not recorded: ${done.message}` }
+      : done
+  }
+  return { ...done, message: `${summarize(item.id, judged.verification)} ${done.message}` }
 }
 
 // ---------------------------------------------------------------- the directory guard

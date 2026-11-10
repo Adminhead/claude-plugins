@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dirOf, listPlans, mutate, readPlan } from '../hooks/register'
+import { dirOf, listPlans, mutate, readPlan, verifyItem } from '../hooks/register'
 import { parseLedger } from '../hooks/plan/replay'
 import { appendArgv, lockAcquireArgv, lockReleaseArgv, mkdirArgv, publishArgv, tailArgv } from '../hooks/plan/store'
 import { MAX_LEDGER_BYTES } from '../hooks/plan/types'
@@ -37,6 +37,18 @@ type World = {
   /** path -> where a symlink leads, for `fs.stat(..., { resolve: true })` */
   links: Map<string, string>
   cwdThrows: boolean
+  /** `$.tool.check` for a Bash command; may throw. */
+  verdict: (command: string) => { decision: string; reason?: string }
+  /** What `$.ui.ask` answers; 'reject' makes it reject (dismissed, or `-p`). */
+  answer: string
+  asked: { question: string; options: unknown }[]
+  checked: string[]
+  /** Every check argv the mod ran (anything that is not store plumbing or git), with its cwd. */
+  checkRuns: { argv: string[]; cwd: unknown; timeoutMs: unknown }[]
+  /** Runs one check; may throw (a timeout). Default: exit 0. */
+  checkImpl: (argv: string[], cwd: unknown) => Promise<{ exit: number; out?: string }> | { exit: number; out?: string }
+  git: { head: string; diff: string; status: string }
+  gitCalls: { argv: string[]; cwd: unknown }[]
 }
 
 let homes = 0
@@ -67,6 +79,14 @@ function world(on: any): World & { $: any } {
     ledgerSize: null,
     links: new Map(),
     cwdThrows: false,
+    verdict: () => ({ decision: 'allow' }),
+    answer: 'Run it',
+    asked: [],
+    checked: [],
+    checkRuns: [],
+    checkImpl: () => ({ exit: 0, out: 'ok' }),
+    git: { head: 'a'.repeat(40), diff: '', status: '' },
+    gitCalls: [],
   }
   const h: Record<string, (e: any) => any> = {
     'env.get': () => w.home,
@@ -105,8 +125,30 @@ function world(on: any): World & { $: any } {
         ...(e.resolve ? { realPath: w.links.get(e.path) ?? e.path } : {}),
       }
     },
+    'tool.check': (e) => {
+      w.log.push('tool.check')
+      w.checked.push(e.input.command)
+      return w.verdict(e.input.command)
+    },
+    'ui.ask': (e) => {
+      w.log.push('ask')
+      w.asked.push({ question: e.question, options: e.options })
+      if (w.answer === 'reject') throw new Error('dismissed')
+      return w.answer
+    },
     'process.run': (e) => {
       const [a0, a1, script, , ...a] = e.argv as string[]
+      if (a0 === 'git') {
+        w.log.push('git')
+        w.gitCalls.push({ argv: e.argv, cwd: e.init?.cwd })
+        if (a1 === 'rev-parse') return res(0, `${w.git.head}\n`)
+        return res(0, a1 === 'diff' ? w.git.diff : w.git.status)
+      }
+      if (a0 !== 'sh' && a0 !== 'rm' && a0 !== 'mv') {
+        w.log.push('check')
+        w.checkRuns.push({ argv: e.argv, cwd: e.init?.cwd, timeoutMs: e.init?.timeoutMs })
+        return Promise.resolve(w.checkImpl(e.argv, e.init?.cwd)).then((r) => res(r.exit, r.out ?? ''))
+      }
       if (a0 === 'rm') {
         w.log.push('rm')
         w.files.delete(e.argv[3])
@@ -166,13 +208,16 @@ function world(on: any): World & { $: any } {
       throw new Error(`unknown script ${String(script).slice(0, 60)}`)
     },
   }
-  for (const name of Object.keys(h)) on(name, (_$: any, e: any) => ({ value: h[name](e) }))
+  // `tool.check` and `ui.ask` are called only through the fake `$` below: stubbing them on the engine would change what
+  // the stub's `{ value }` wrapper means for an event.
+  for (const name of Object.keys(h)) if (name !== 'tool.check' && name !== 'ui.ask') on(name, (_$: any, e: any) => ({ value: h[name](e) }))
 
   const $ = {
     env: { get: async (name: string) => h['env.get']({ name }) },
     session: { repo: async () => h['session.repo']({}), cwd: async () => h['session.cwd']({}) },
     clock: { now: async () => h['clock.now']({}), sleep: async (ms: number) => h['clock.sleep']({ ms }) },
-    ui: { log: (text: string) => h['ui.log']({ text }) },
+    ui: { log: (text: string) => h['ui.log']({ text }), ask: async (question: string, options?: unknown) => h['ui.ask']({ question, options }) },
+    tool: { check: async (input: unknown) => h['tool.check'](input) },
     fs: {
       exists: async (path: string) => h['fs.exists']({ path }),
       read: async (path: string) => h['fs.read']({ path }),
@@ -622,5 +667,400 @@ describe('directory guard', () => {
     on('tool.call', () => ({ result: 'ran' }))
     const r = await call($, { tool: 'Write', file_path: `${w.home}/x.txt`, content: 'x' })
     expect(r.deny).toBe('plan-ledger: could not check this call. Retry.')
+  })
+})
+
+describe('verification', () => {
+  const A1 = { kind: 'agent', agentId: 'a1', agentType: 'coder', session: 's1' } as const
+  const unit = { label: 'unit', argv: ['bun', 'test', 'x'], expectExit: 0 }
+  const lint = { label: 'lint', argv: ['bun', 'lint'], expectExit: 1 }
+
+  /** A plan whose only item `s1` is `claimed_done` by the bound agent `a1`. */
+  async function claimed(w: World & { $: any }, checks: unknown[] = [unit]) {
+    w.dirs.add('/work/repo')
+    w.dirs.add('/work/other')
+    w.links.set('/work/link', '/work/other')
+    const made = await mutate(w.$, null, { action: 'create', title: 'Plan', items: [{ ...item, checks }] } as any, MAIN)
+    expect(made.ok).toBe(true)
+    const id = made.planId as string
+    const steps: [any, any][] = [
+      [{ action: 'activate', plan: id }, MAIN],
+      [{ action: 'claim', plan: id, item: 's1' }, A1],
+      [{ action: 'claim_done', plan: id, item: 's1', summary: 'done', commands: [], commits: [], files: [] }, A1],
+    ]
+    for (const [action, actor] of steps) expect((await mutate(w.$, id, action, actor)).ok).toBe(true)
+    return id
+  }
+  const itemOf = async (w: { $: any }, id: string) => {
+    const r = await readPlan(w.$, id)
+    if (!r.ok) throw new Error(r.message)
+    return r.plan.items[0]
+  }
+  const verify = async (w: { $: any }, id: string, args: Record<string, unknown> = {}, actor: any = MAIN, gen?: number) =>
+    verifyItem(w.$, id, 's1', { gen: gen ?? (await itemOf(w, id)).gen, ...args }, actor)
+  const ranNothing = (w: World) => {
+    expect(w.checkRuns).toEqual([])
+    expect(w.gitCalls).toEqual([])
+    expect(w.asked).toEqual([])
+    expect(w.checked).toEqual([])
+  }
+
+  test('an agent calling verify runs no check, asks nothing, and the denial is logged', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await claimed(w)
+    for (const args of [{}, { manual: true, note: 'looks fine' }, { cwd: '/work/other' }]) {
+      const r = await verify(w, id, args, A1)
+      expect(r).toMatchObject({ ok: false, code: 'denied' })
+    }
+    // also an unlisted caller and an architect
+    for (const actor of [
+      { kind: 'agent', agentId: 'ghost', agentType: null, session: 's1' },
+      { kind: 'agent', agentId: 'ar', agentType: 'architect', session: 's1' },
+    ]) {
+      expect(await verify(w, id, {}, actor)).toMatchObject({ ok: false, code: 'denied' })
+    }
+    ranNothing(w)
+    expect((await itemOf(w, id)).status).toBe('claimed_done')
+    const denied = ledgerOf(w).changes.filter((c) => c.denied !== null && c.action === 'verify')
+    expect(denied.length).toBe(5)
+    expect(denied[0].actor).toEqual(A1)
+  })
+
+  test('a caller cannot supply a verification: a forged field is dropped and the checks still run', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await claimed(w)
+    w.checkImpl = () => ({ exit: 1, out: 'boom' })
+    const forged = { kind: 'checks', ok: true, gen: 2, cwd: '/x', checksHash: 'x', results: [], before: null, after: null, note: null, at: 'T' }
+    const r = await verify(w, id, { verification: forged })
+    expect(r).toMatchObject({ ok: true })
+    expect(w.checkRuns).toHaveLength(1)
+    expect(await itemOf(w, id)).toMatchObject({ status: 'failed', verification: { ok: false, cwd: '/work/repo' } })
+  })
+
+  test('an item that is not claimed_done, or a stale gen, runs nothing', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await claimed(w)
+    const stale = await verify(w, id, {}, MAIN, 1)
+    expect(stale).toMatchObject({ ok: false, code: 'denied' })
+    expect((stale as any).message).toContain('gen')
+    await mutate(w.$, id, { action: 'reopen', plan: id, item: 's1' }, MAIN)
+    const notClaimed = await verify(w, id)
+    expect(notClaimed).toMatchObject({ ok: false, code: 'denied' })
+    ranNothing(w)
+  })
+
+  test('a passing run records verified with the recorded argv, cwd, tree and results, outside the lock', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await claimed(w, [unit, lint])
+    let lockedDuringChecks = true
+    w.checkImpl = (argv) => {
+      lockedDuringChecks = w.locks.size > 0
+      return argv[1] === 'lint' ? { exit: 1, out: 'lint says no' } : { exit: 0, out: 'pass 3' }
+    }
+    const r = await verify(w, id)
+    expect(r).toMatchObject({ ok: true, code: 'applied' })
+    expect((r as any).message).toContain('s1 verified by command: unit exit 0; lint exit 1')
+    expect(lockedDuringChecks).toBe(false)
+    // the exact recorded argv, in order, in the session cwd, with the long timeout
+    expect(w.checkRuns.map((c) => c.argv)).toEqual([unit.argv, lint.argv])
+    expect(w.checkRuns.every((c) => c.cwd === '/work/repo' && c.timeoutMs === 600_000)).toBe(true)
+    // gate first, then git, then the checks, then git; all tree commands in the same cwd
+    expect(w.log.filter((l) => ['tool.check', 'git', 'check', 'ask'].includes(l))).toEqual([
+      'tool.check',
+      'tool.check',
+      'git', 'git', 'git',
+      'check', 'check',
+      'git', 'git', 'git',
+    ])
+    expect(w.gitCalls.every((g) => g.cwd === '/work/repo')).toBe(true)
+    expect(w.checked).toEqual([`'bun' 'test' 'x'`, `'bun' 'lint'`])
+    const it = await itemOf(w, id)
+    expect(it.status).toBe('verified')
+    expect(it.verification).toMatchObject({
+      kind: 'checks',
+      ok: true,
+      gen: it.gen,
+      cwd: '/work/repo',
+      before: { head: 'a'.repeat(40) },
+      after: { head: 'a'.repeat(40) },
+      results: [
+        { label: 'unit', exit: 0, expectExit: 0, outTail: 'pass 3' },
+        { label: 'lint', exit: 1, expectExit: 1, outTail: 'lint says no' },
+      ],
+    })
+    const last = ledgerOf(w).changes.at(-1)
+    expect(last).toMatchObject({ action: 'verify', from: 'claimed_done', to: 'verified', actor: MAIN })
+    expect(w.locks.size).toBe(0)
+  })
+
+  test('a failing check sets failed and closes the cycle; the agent must claim again', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await claimed(w)
+    w.checkImpl = () => ({ exit: 2, out: 'assertion failed' })
+    const r = await verify(w, id)
+    expect(r).toMatchObject({ ok: true })
+    expect((r as any).message).toContain('s1 failed by command: unit exit 2 (expected 0): assertion failed')
+    const it = await itemOf(w, id)
+    expect(it).toMatchObject({ status: 'failed', attempts: 1, failure: expect.stringContaining('assertion failed') })
+    // the cycle is closed: the same agent claims again, attempts 2
+    expect((await mutate(w.$, id, { action: 'claim', plan: id, item: 's1' }, A1)).ok).toBe(true)
+    expect((await itemOf(w, id)).attempts).toBe(2)
+  })
+
+  test('a check that cannot run (timeout, no such program) counts as failed, not skipped', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await claimed(w, [unit, lint])
+    w.checkImpl = (argv) => {
+      if (argv[1] === 'test') throw new Error('timed out')
+      return { exit: 1 }
+    }
+    const r = await verify(w, id)
+    expect(r).toMatchObject({ ok: true })
+    const it = await itemOf(w, id)
+    expect(it.status).toBe('failed')
+    expect(it.verification?.results).toHaveLength(2)
+    expect(it.verification?.results[0]).toMatchObject({ label: 'unit', exit: -1 })
+    expect(it.verification?.results[0].outTail).toContain('timed out')
+  })
+
+  describe('the execution gate', () => {
+    test('tool.check deny refuses without running anything, git included', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.verdict = () => ({ decision: 'deny', reason: 'no' })
+      const r = await verify(w, id)
+      expect(r).toMatchObject({ ok: false, code: 'denied' })
+      expect((r as any).message).toContain('denied by the user')
+      expect(w.checkRuns).toEqual([])
+      expect(w.gitCalls).toEqual([])
+      expect(w.asked).toEqual([])
+      expect((await itemOf(w, id)).status).toBe('claimed_done')
+    })
+
+    test('every check is gated before the first one runs', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, [unit, lint])
+      w.verdict = (command) => (command.includes('lint') ? { decision: 'deny' } : { decision: 'allow' })
+      expect(await verify(w, id)).toMatchObject({ ok: false, code: 'denied' })
+      expect(w.checked).toHaveLength(2)
+      expect(w.checkRuns).toEqual([])
+      expect(w.gitCalls).toEqual([])
+    })
+
+    test('ask goes to the person with the exact argv and cwd; "Run it" runs, anything else refuses', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.verdict = () => ({ decision: 'ask', reason: 'needs approval' })
+      w.answer = 'Run it'
+      expect(await verify(w, id)).toMatchObject({ ok: true })
+      expect(w.asked).toHaveLength(1)
+      expect(w.asked[0].question).toContain(JSON.stringify(unit.argv))
+      expect(w.asked[0].question).toContain('"/work/repo"')
+      expect(w.asked[0].options).toMatchObject({ options: ['Run it', 'Refuse'] })
+      expect(w.checkRuns).toHaveLength(1)
+
+      for (const answer of ['Refuse', 'reject', 'Run it please', '', 'run it']) {
+        const w2 = world(on)
+        const id2 = await claimed(w2)
+        w2.verdict = () => ({ decision: 'ask' })
+        w2.answer = answer
+        const r = await verify(w2, id2)
+        expect([answer, r.ok]).toEqual([answer, false])
+        expect(w2.asked).toHaveLength(1)
+        expect(w2.checkRuns).toEqual([])
+        expect(w2.gitCalls).toEqual([])
+        expect((await itemOf(w2, id2)).status).toBe('claimed_done')
+      }
+    })
+
+    test('an unavailable or unrecognised verdict is an ask, never a run', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.verdict = () => {
+        throw new Error('no engine')
+      }
+      w.answer = 'Refuse'
+      expect(await verify(w, id)).toMatchObject({ ok: false })
+      expect(w.asked).toHaveLength(1)
+      w.verdict = () => ({ decision: 'maybe' })
+      expect(await verify(w, id)).toMatchObject({ ok: false })
+      expect(w.asked).toHaveLength(2)
+      expect(w.checkRuns).toEqual([])
+    })
+
+    test('allow runs without asking', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      expect(await verify(w, id)).toMatchObject({ ok: true })
+      expect(w.asked).toEqual([])
+    })
+  })
+
+  describe('cwd', () => {
+    test('the named cwd is canonicalized, recorded, shown to the person, and used for every command', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.verdict = () => ({ decision: 'ask' })
+      const r = await verify(w, id, { cwd: '/work/link' })
+      expect(r).toMatchObject({ ok: true })
+      expect(w.asked[0].question).toContain('"/work/other"')
+      expect(w.checkRuns[0].cwd).toBe('/work/other')
+      expect(w.gitCalls.every((g) => g.cwd === '/work/other')).toBe(true)
+      expect((await itemOf(w, id)).verification?.cwd).toBe('/work/other')
+    })
+
+    test('a relative, missing or non-directory cwd is refused before anything runs', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.files.set('/work/file.txt', 'x')
+      for (const cwd of ['work/repo', '/work/missing', '/work/file.txt', '/work/repo\nx', '', '/' + 'a'.repeat(2000)]) {
+        const r = await verify(w, id, { cwd })
+        expect([cwd.slice(0, 20), r.ok]).toEqual([cwd.slice(0, 20), false])
+      }
+      ranNothing(w)
+    })
+  })
+
+  describe('a moving tree', () => {
+    test('HEAD changing during the run refuses verified and records nothing', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const revBefore = (await itemOf(w, id)).status
+      w.checkImpl = () => {
+        w.git.head = 'b'.repeat(40)
+        return { exit: 0 }
+      }
+      const r = await verify(w, id)
+      expect(r).toMatchObject({ ok: false, code: 'denied' })
+      expect((r as any).message).toContain('HEAD moved')
+      const it = await itemOf(w, id)
+      expect(it.status).toBe(revBefore)
+      expect(it.verification).toBeNull()
+      expect(ledgerOf(w).changes.some((c) => c.action === 'verify')).toBe(false)
+    })
+
+    test('a changed diff or status refuses, a quiet tree does not', async ($: any, on: any) => {
+      for (const [field, ok] of [['diff', false], ['status', false], [null, true]] as const) {
+        const w = world(on)
+        const id = await claimed(w)
+        w.checkImpl = () => {
+          if (field !== null) w.git[field] = 'changed'
+          return { exit: 0 }
+        }
+        expect([field, (await verify(w, id)).ok]).toEqual([field, ok])
+        expect((await itemOf(w, id)).status).toBe(ok ? 'verified' : 'claimed_done')
+      }
+    })
+
+    test('a directory with no git is fingerprinted as none and can still be verified', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const run = w.$.process.run
+      w.$.process.run = async (argv: string[], init?: any) => (argv[0] === 'git' ? { exitCode: 128, stdout: '', stderr: 'fatal' } : run(argv, init))
+      expect(await verify(w, id)).toMatchObject({ ok: true })
+      expect((await itemOf(w, id)).verification?.before?.head).toBe('none')
+    })
+  })
+
+  describe('commit only if the item is unchanged', () => {
+    test('an item reopened during the run is not marked verified', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.checkImpl = async () => {
+        await mutate(w.$, id, { action: 'reopen', plan: id, item: 's1' }, MAIN)
+        return { exit: 0 }
+      }
+      const r = await verify(w, id)
+      expect(r).toMatchObject({ ok: false, code: 'denied' })
+      expect((r as any).message).toContain('not recorded')
+      expect(await itemOf(w, id)).toMatchObject({ status: 'pending', verification: null })
+    })
+
+    test('an item that went through reopen, claim and claim_done again (a new gen) is not verified by the old run', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const gen0 = (await itemOf(w, id)).gen
+      w.checkImpl = async () => {
+        w.checkImpl = () => ({ exit: 0 })
+        for (const [action, actor] of [
+          [{ action: 'reopen', plan: id, item: 's1' }, MAIN],
+          [{ action: 'claim', plan: id, item: 's1' }, A1],
+          [{ action: 'claim_done', plan: id, item: 's1', summary: 'again', commands: [], commits: [], files: [] }, A1],
+        ] as const) {
+          expect((await mutate(w.$, id, action as any, actor as any)).ok).toBe(true)
+        }
+        return { exit: 0 }
+      }
+      const r = await verify(w, id)
+      expect(r).toMatchObject({ ok: false, code: 'denied' })
+      const it = await itemOf(w, id)
+      expect(it.gen).toBeGreaterThan(gen0)
+      expect(it).toMatchObject({ status: 'claimed_done', verification: null })
+    })
+
+    test('other items changing during the run do not block the commit', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.checkImpl = async () => {
+        await mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'Renamed meanwhile' }, MAIN)
+        return { exit: 0 }
+      }
+      expect(await verify(w, id)).toMatchObject({ ok: true })
+      expect((await itemOf(w, id)).status).toBe('verified')
+    })
+
+    test('a verify retried with its op is not applied twice', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const gen = (await itemOf(w, id)).gen
+      const first = await verifyItem(w.$, id, 's1', { gen }, MAIN, { op: 'op-v1' })
+      expect(first).toMatchObject({ ok: true, code: 'applied' })
+      const runs = w.checkRuns.length
+      // the item is no longer claimed_done, so the retry runs nothing and the ledger's op id answers it
+      const again = await verifyItem(w.$, id, 's1', { gen }, MAIN, { op: 'op-v1' })
+      expect(again).toMatchObject({ ok: true, code: 'duplicate' })
+      expect(w.checkRuns.length).toBe(runs)
+      expect(ledgerOf(w).changes.filter((c) => c.action === 'verify' && c.denied === null)).toHaveLength(1)
+    })
+  })
+
+  describe('manual', () => {
+    test('an item with no checks is verified by hand with a note, running nothing, counted as manual', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, [])
+      const r = await verify(w, id, { manual: true, note: 'read the diff' })
+      expect(r).toMatchObject({ ok: true })
+      ranNothing(w)
+      expect((await itemOf(w, id)).verification).toMatchObject({ kind: 'manual', ok: true, note: 'read the diff', results: [] })
+    })
+
+    test('manual needs a note, and is refused for an item that has checks', async ($: any, on: any) => {
+      const w = world(on)
+      const none = await claimed(w, [])
+      expect(await verify(w, none, { manual: true })).toMatchObject({ ok: false, code: 'denied' })
+      expect(await verify(w, none, { manual: true, note: '   ' })).toMatchObject({ ok: false })
+      const some = await claimed(w, [unit])
+      expect(await verify(w, some, { manual: true, note: 'trust me' })).toMatchObject({ ok: false, code: 'denied' })
+      ranNothing(w)
+      expect((await itemOf(w, some)).status).toBe('claimed_done')
+    })
+
+    test('an item with no checks and no manual flag is refused without running anything', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, [])
+      const r = await verify(w, id)
+      expect(r).toMatchObject({ ok: false, code: 'denied' })
+      expect((r as any).message).toContain('manual')
+      ranNothing(w)
+    })
+  })
+
+  test('an unknown plan or item is an error without a run', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await claimed(w)
+    expect(await verifyItem(w.$, 'p-0zzzzzzzz-zzzzzz', 's1', { gen: 1 }, MAIN)).toMatchObject({ ok: false })
+    expect(await verifyItem(w.$, id, 's9', { gen: 1 }, MAIN)).toMatchObject({ ok: false })
+    expect(await verifyItem(w.$, '../x', 's1', { gen: 1 }, MAIN)).toMatchObject({ ok: false })
+    ranNothing(w)
   })
 })
