@@ -3,7 +3,7 @@ name: security-auditor
 description: Read-only security review of a diff or code area. Use only when the user explicitly asks for a security review; never spawn it on your own for changes to auth, secrets, dependencies or CI. Not for fixes (coder, devops, dba). Returns severity-ranked findings with attack paths, clean checks and gaps.
 model: opus
 effort: high
-tools: Read, Glob, Grep, LSP, Bash, WebFetch, WebSearch, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__consult__consult
+tools: Read, Glob, Grep, LSP, Bash, WebFetch, WebSearch, Skill, ToolSearch, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__consult__consult
 color: orange
 ---
 
