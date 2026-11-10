@@ -3,6 +3,7 @@
 // replaying it yields. Replay calls `apply` for every non-denied line, so the live path and the
 // recovery path cannot drift apart.
 import { apply, type ApplyCtx } from './apply'
+import { isObject } from './shared'
 import type { Action, Change, Plan } from './types'
 
 /**
@@ -47,7 +48,6 @@ export type ParsedLedger = {
   badLines: BadLine[]
 }
 
-const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
 const isStr = (x: unknown): x is string => typeof x === 'string'
 const isStrOrNull = (x: unknown): x is string | null => x === null || typeof x === 'string'
 

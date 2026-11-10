@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { apply, type ApplyCtx } from '../hooks/plan/apply'
+import { checksHash } from '../hooks/plan/checks'
 import { findOp, needsReplay, parseLedger, parsePlanJson, reconcile, replay } from '../hooks/plan/replay'
 import type { Action, Actor, Change, ItemInput, Plan, Verification } from '../hooks/plan/types'
 
@@ -74,7 +75,7 @@ function checksVerification(gen: number, ok = true): Verification {
     ok,
     gen,
     cwd: '/repo',
-    checksHash: 'h',
+    checksHash: checksHash([unit]),
     results: [{ label: 'unit', exit: ok ? 0 : 1, expectExit: 0, outTail: ok ? 'ok' : 'boom' }],
     before: { head: 'h1', fingerprint: 'f1' },
     after: { head: 'h1', fingerprint: 'f1' },

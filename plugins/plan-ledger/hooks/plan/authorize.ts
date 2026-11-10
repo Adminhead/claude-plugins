@@ -3,6 +3,7 @@
 // docs/plans/goal-ledger.md. It checks identity and ownership, not status transitions (that is
 // `apply`), except where a rule is itself status-based: `claim` needs an `active` plan, and a
 // binding from an earlier session can be taken over only for a `failed` or `blocked` item.
+import { isObject } from './shared'
 import type { Action, Actor, Item, Plan } from './types'
 
 export type AuthResult = { ok: true } | { ok: false; reason: string }
@@ -44,10 +45,6 @@ export function normalizeAgentType(t: unknown): string | null {
   if (typeof t !== 'string') return null
   const name = t.slice(t.lastIndexOf(':') + 1).trim()
   return name === '' ? null : name
-}
-
-function isObject(x: unknown): x is Record<string, unknown> {
-  return typeof x === 'object' && x !== null
 }
 
 function isBoundTo(item: Item, agentId: string): boolean {

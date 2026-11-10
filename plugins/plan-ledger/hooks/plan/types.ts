@@ -180,6 +180,18 @@ export const MAX_INSTRUCTIONS_BYTES = 8000
 export const MAX_ITEMS = 20
 export const MAX_CHECKS = 8
 export const MAX_ARGV_BYTES = 600
+/** An item's `agent` and `model` (characters). */
+export const MAX_AGENT_CHARS = 60
+export const MAX_MODEL_CHARS = 60
+/** An item's `acceptance` and `files`: entries per list, and bytes per entry (an over-long entry is refused). */
+export const MAX_ACCEPTANCE = 20
+export const MAX_FILES = 50
+export const MAX_ENTRY_BYTES = 500
+/** `claim_done` evidence: entries per list; a string is cut to `MAX_ENTRY_BYTES`. */
+export const MAX_EVIDENCE_COMMANDS = 10
+export const MAX_EVIDENCE_ARGV = 20
+export const MAX_EVIDENCE_COMMITS = 20
+export const MAX_EVIDENCE_FILES = 50
 export const DEFAULT_ATTEMPT_CAP = 3
 /** Evidence and note tails stored in the ledger. */
 export const MAX_TAIL_BYTES = 2000

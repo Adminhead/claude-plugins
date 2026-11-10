@@ -13,13 +13,14 @@
 //   `ifRev` is not recorded. Replay passes `ctx.actor`, `ctx.op`, `ctx.nowMs` (the line's `ts`) and
 //   `ctx.newPlanId` (the line's `plan`) from the line.
 import { authorize, normalizeAgentType } from './authorize'
+import { checksHash, validateChecks } from './checks'
+import { hasControl, isNonEmpty, isObject, utf8Bytes } from './shared'
 import type {
   Action,
   Actor,
   BoundAgent,
   Change,
   CheckResult,
-  Check,
   Claimed,
   CommandEvidence,
   Item,
@@ -28,7 +29,21 @@ import type {
   Plan,
   Verification,
 } from './types'
-import { MAX_ARGV_BYTES, MAX_CHECKS, MAX_INSTRUCTIONS_BYTES, MAX_ITEMS, MAX_TAIL_BYTES, MAX_TITLE_CHARS } from './types'
+import {
+  MAX_ACCEPTANCE,
+  MAX_AGENT_CHARS,
+  MAX_ENTRY_BYTES,
+  MAX_EVIDENCE_ARGV,
+  MAX_EVIDENCE_COMMANDS,
+  MAX_EVIDENCE_COMMITS,
+  MAX_EVIDENCE_FILES,
+  MAX_FILES,
+  MAX_INSTRUCTIONS_BYTES,
+  MAX_ITEMS,
+  MAX_MODEL_CHARS,
+  MAX_TAIL_BYTES,
+  MAX_TITLE_CHARS,
+} from './types'
 
 export type ApplyCtx = {
   actor: Actor
@@ -214,15 +229,6 @@ function safeIso(ms: number): string {
   }
 }
 
-function utf8Bytes(s: string): number {
-  let n = 0
-  for (const ch of s) {
-    const c = ch.codePointAt(0) as number
-    n += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4
-  }
-  return n
-}
-
 /** Cuts to at most `max` UTF-8 bytes on a character boundary. Idempotent, so replay agrees with the live run. */
 function truncBytes(s: string, max: number = MAX_TAIL_BYTES): string {
   if (s.length * 4 <= max || utf8Bytes(s) <= max) return s
@@ -239,7 +245,6 @@ function truncBytes(s: string, max: number = MAX_TAIL_BYTES): string {
 }
 
 const isStr = (x: unknown): x is string => typeof x === 'string'
-const isNonEmpty = (x: unknown): x is string => typeof x === 'string' && x.trim() !== ''
 const isStrArray = (x: unknown): x is string[] => Array.isArray(x) && x.every(isStr)
 const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x)
 
@@ -269,41 +274,28 @@ function isBoundTo(item: Item, agentId: string): boolean {
 
 // ---------------------------------------------------------------- item input validation
 
-function validateChecks(raw: unknown): Check[] | string {
-  if (!Array.isArray(raw)) return 'checks must be a list.'
-  if (raw.length > MAX_CHECKS) return `At most ${MAX_CHECKS} checks per item.`
-  const labels = new Set<string>()
-  const out: Check[] = []
-  for (const c of raw) {
-    if (typeof c !== 'object' || c === null) return 'Each check needs a label, argv and expectExit.'
-    const { label, argv, expectExit } = c as Record<string, unknown>
-    if (!isNonEmpty(label)) return 'Each check needs a label.'
-    if (labels.has(label)) return `Duplicate check label "${label}".`
-    labels.add(label)
-    if (!Array.isArray(argv) || argv.length === 0 || !argv.every(isNonEmpty)) {
-      return `Check "${label}" needs a non-empty argv of non-empty strings.`
-    }
-    if (argv.reduce((n: number, a: string) => n + utf8Bytes(a), 0) > MAX_ARGV_BYTES) {
-      return `Check "${label}" argv is over ${MAX_ARGV_BYTES} bytes.`
-    }
-    if (!isInt(expectExit)) return `Check "${label}" needs an integer expectExit.`
-    out.push({ label, argv: argv.slice(), expectExit })
-  }
-  return out
+/** Validates a list of strings: at most `maxCount` entries of at most `MAX_ENTRY_BYTES` bytes each (nothing is cut). */
+function boundedList(name: string, raw: unknown, maxCount: number): string[] | string {
+  if (!isStrArray(raw)) return `${name} must be a list of strings.`
+  if (raw.length > maxCount) return `At most ${maxCount} entries in ${name}.`
+  if (raw.some((x) => utf8Bytes(x) > MAX_ENTRY_BYTES)) return `Each entry in ${name} is at most ${MAX_ENTRY_BYTES} bytes.`
+  return raw.slice()
 }
 
-/** Validates the fields of an item (all of them at `create`, only those present in an `amend` patch). */
+/**
+ * Validates the fields of an item (all of them at `create`, only those present in an `amend` patch).
+ * Every rule here tests the value that is stored, so replaying a stored line passes the same checks.
+ */
 function readFields(raw: unknown, complete: boolean): Partial<ItemInput> | string {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return 'An item must be an object.'
-  const r = raw as Record<string, unknown>
+  if (!isObject(raw)) return 'An item must be an object.'
+  const r = raw
   for (const k of Object.keys(r)) {
     if (!ITEM_FIELDS.has(k)) return `Unknown item field "${k}".`
   }
   const out: Partial<ItemInput> = {}
   const need = (k: string) => complete && r[k] === undefined
   if (r.title !== undefined || need('title')) {
-    if (!isNonEmpty(r.title)) return 'An item needs a title.'
-    if (r.title.length > MAX_TITLE_CHARS) return `An item title is at most ${MAX_TITLE_CHARS} characters.`
+    if (!validTitle(r.title)) return TITLE_RULE
     out.title = r.title
   }
   if (r.instructions !== undefined || need('instructions')) {
@@ -313,23 +305,29 @@ function readFields(raw: unknown, complete: boolean): Partial<ItemInput> | strin
     }
     out.instructions = r.instructions
   }
-  for (const k of ['acceptance', 'files', 'deps'] as const) {
+  for (const [k, max] of [['acceptance', MAX_ACCEPTANCE], ['files', MAX_FILES], ['deps', MAX_ITEMS]] as const) {
     if (r[k] !== undefined || need(k)) {
-      if (!isStrArray(r[k])) return `${k} must be a list of strings.`
-      out[k] = (r[k] as string[]).slice()
+      const l = boundedList(k, r[k], max)
+      if (typeof l === 'string') return l
+      if (k === 'deps' && l.some(hasControl)) return 'A dependency id must not contain control characters.'
+      out[k] = l
     }
   }
   if (r.agent !== undefined || need('agent')) {
-    if (!isNonEmpty(r.agent)) return 'An item needs an agent type.'
+    if (!isNonEmpty(r.agent) || normalizeAgentType(r.agent) === null) return 'An item needs an agent type.'
+    if (r.agent.length > MAX_AGENT_CHARS) return `An agent type is at most ${MAX_AGENT_CHARS} characters.`
+    if (hasControl(r.agent)) return 'An agent type must not contain control characters.'
     out.agent = r.agent
   }
   if (r.model !== undefined || need('model')) {
     if (!isStr(r.model)) return 'An item needs a model (a string).'
+    if (r.model.length > MAX_MODEL_CHARS) return `A model is at most ${MAX_MODEL_CHARS} characters.`
+    if (hasControl(r.model)) return 'A model must not contain control characters.'
     out.model = r.model
   }
   if (r.checks !== undefined || need('checks')) {
     const c = validateChecks(r.checks)
-    if (typeof c === 'string') return c
+    if (!Array.isArray(c)) return c.error
     out.checks = c
   }
   return out
@@ -366,15 +364,17 @@ function checkDeps(items: { id: string; deps: string[] }[]): string | null {
   return null
 }
 
+const TITLE_RULE = `A title must be non-empty, at most ${MAX_TITLE_CHARS} characters, with no control characters.`
+
 function validTitle(t: unknown): t is string {
-  return isNonEmpty(t) && t.length <= MAX_TITLE_CHARS
+  return isNonEmpty(t) && t.length <= MAX_TITLE_CHARS && !hasControl(t)
 }
 
 // ---------------------------------------------------------------- transitions
 
 function create(e: Env<'create'>): Out {
   const { action, ctx, now } = e
-  if (!validTitle(action.title)) return deny(`A plan needs a title of at most ${MAX_TITLE_CHARS} characters.`)
+  if (!validTitle(action.title)) return deny(`A plan needs a title. ${TITLE_RULE}`)
   if (!Array.isArray(action.items)) return deny('A plan needs a list of items.')
   if (action.items.length > MAX_ITEMS) return deny(`At most ${MAX_ITEMS} items per plan. Split the work into two plans.`)
 
@@ -474,7 +474,8 @@ function claim(e: Env<'claim'>): Out {
         `${item.id} waits for ${unmet.join(', ')} to be verified. Do not start it; tell the orchestrator you are waiting.`,
       )
     }
-  } else if (item.attempts >= cap) {
+  }
+  if (item.attempts >= cap) {
     return deny(
       `${item.id} has used all ${cap} attempts. Stop and report; the orchestrator must reopen it with extraAttempts.`,
     )
@@ -491,8 +492,12 @@ function claim(e: Env<'claim'>): Out {
   return done(next, `Claimed ${item.id} (attempt ${next.attempts} of ${cap}). Read it with get, then work.`)
 }
 
+// Cut first, then test the stored value: a note of 2000 spaces plus text keeps only the spaces, and replay
+// would refuse that line if the live run had accepted it.
 function noteOf(note: unknown): string | null {
-  return isNonEmpty(note) ? truncBytes(note) : null
+  if (!isStr(note)) return null
+  const stored = truncBytes(note)
+  return isNonEmpty(stored) ? stored : null
 }
 
 function progress(e: Env<'progress'>): Out {
@@ -550,22 +555,27 @@ function fail(e: Env<'fail'>): Out {
 }
 
 function readEvidence(a: Env<'claim_done'>['action']): { summary: string; commands: CommandEvidence[]; commits: string[]; files: string[] } | string {
-  if (!isNonEmpty(a.summary)) return 'claim_done needs a summary of what you did.'
+  const summary = isStr(a.summary) ? truncBytes(a.summary) : ''
+  if (!isNonEmpty(summary)) return 'claim_done needs a summary of what you did.'
   if (!Array.isArray(a.commands)) return 'commands must be a list.'
+  if (a.commands.length > MAX_EVIDENCE_COMMANDS) return `At most ${MAX_EVIDENCE_COMMANDS} commands as evidence.`
   const commands: CommandEvidence[] = []
   for (const c of a.commands) {
-    if (typeof c !== 'object' || c === null) return 'Each command needs argv, exit and outTail.'
-    const { argv, exit, outTail } = c as Record<string, unknown>
+    if (!isObject(c)) return 'Each command needs argv, exit and outTail.'
+    const { argv, exit, outTail } = c
     if (!isStrArray(argv) || !isInt(exit) || !isStr(outTail)) return 'Each command needs argv, exit and outTail.'
-    commands.push({ argv: argv.map((x) => truncBytes(x)), exit, outTail: truncBytes(outTail) })
+    if (argv.length > MAX_EVIDENCE_ARGV) return `A command has at most ${MAX_EVIDENCE_ARGV} argv entries.`
+    commands.push({ argv: argv.map((x) => truncBytes(x, MAX_ENTRY_BYTES)), exit, outTail: truncBytes(outTail) })
   }
   if (!isStrArray(a.commits)) return 'commits must be a list of strings.'
+  if (a.commits.length > MAX_EVIDENCE_COMMITS) return `At most ${MAX_EVIDENCE_COMMITS} commits as evidence.`
   if (!isStrArray(a.files)) return 'files must be a list of strings.'
+  if (a.files.length > MAX_EVIDENCE_FILES) return `At most ${MAX_EVIDENCE_FILES} files as evidence.`
   return {
-    summary: truncBytes(a.summary),
+    summary,
     commands,
-    commits: a.commits.map((x) => truncBytes(x)),
-    files: a.files.map((x) => truncBytes(x)),
+    commits: a.commits.map((x) => truncBytes(x, MAX_ENTRY_BYTES)),
+    files: a.files.map((x) => truncBytes(x, MAX_ENTRY_BYTES)),
   }
 }
 
@@ -615,6 +625,36 @@ function failureTail(results: CheckResult[]): string {
   return truncBytes(text)
 }
 
+/**
+ * Why a supplied verification cannot stand for this item, or null. The mod builds it after running the
+ * checks, but `apply` does not take that on trust: it must be for this gen, run this item's current
+ * checks in order, and `ok` must be what the results say.
+ */
+function verificationProblem(item: Item, v: Verification): string | null {
+  if (!isObject(v) || typeof v.ok !== 'boolean' || !Array.isArray(v.results)) return 'The verification is malformed, so it is refused.'
+  if (v.gen !== item.gen) return `The verification is for gen ${String(v.gen)} of ${item.id}, which is at gen ${item.gen}.`
+  if ((v.kind === 'checks') !== (item.checks.length > 0) || (v.kind !== 'checks' && v.kind !== 'manual')) {
+    return `The verification kind does not match ${item.id}: items with checks are verified by running them, items without by manual.`
+  }
+  if (v.kind === 'checks') {
+    if (v.checksHash !== checksHash(item.checks)) {
+      return `The verification ran different checks from the ones ${item.id} has now (its checks changed), so it is refused.`
+    }
+    if (v.results.length !== item.checks.length) return `The verification has ${v.results.length} results for ${item.checks.length} checks of ${item.id}.`
+    for (let i = 0; i < v.results.length; i++) {
+      const r: unknown = v.results[i]
+      const c = item.checks[i]
+      if (!isObject(r) || r.label !== c.label || r.expectExit !== c.expectExit || !isInt(r.exit) || !isStr(r.outTail)) {
+        return `Result ${i + 1} of the verification does not match check "${c.label}" of ${item.id}.`
+      }
+    }
+  } else if (v.results.length > 0) {
+    return 'A manual verification has no check results.'
+  }
+  if (v.ok !== v.results.every((r) => r.exit === r.expectExit)) return 'The verification says ok, but its results say otherwise.'
+  return null
+}
+
 function verify(e: Env<'verify'>): Out {
   const { plan, action, now } = e
   const item = findItem(plan, action.item)
@@ -627,26 +667,22 @@ function verify(e: Env<'verify'>): Out {
   let v: Verification
   if (action.verification !== undefined) {
     v = action.verification
-    if (typeof v !== 'object' || v === null || typeof v.ok !== 'boolean' || !Array.isArray(v.results)) {
-      return deny('The verification is malformed, so it is refused.')
-    }
-    if (v.gen !== item.gen) return deny(`The verification is for gen ${String(v.gen)} of ${item.id}, which is at gen ${item.gen}.`)
-    if ((v.kind === 'checks') !== (item.checks.length > 0) || (v.kind !== 'checks' && v.kind !== 'manual')) {
-      return deny(`The verification kind does not match ${item.id}: items with checks are verified by running them, items without by manual.`)
-    }
+    const bad = verificationProblem(item, v)
+    if (bad !== null) return deny(bad)
   } else if (action.manual === true) {
     if (item.checks.length > 0) return deny(`${item.id} has checks, so it is verified by running them, not manually.`)
-    if (!isNonEmpty(action.note)) return deny('A manual verify needs a note saying what you checked by hand.')
+    const note = isStr(action.note) ? truncBytes(action.note) : ''
+    if (!isNonEmpty(note)) return deny('A manual verify needs a note saying what you checked by hand.')
     v = {
       kind: 'manual',
       ok: true,
       gen: item.gen,
-      cwd: isStr(action.cwd) ? action.cwd : '',
+      cwd: isStr(action.cwd) ? truncBytes(action.cwd) : '',
       checksHash: '',
       results: [],
       before: null,
       after: null,
-      note: truncBytes(action.note),
+      note,
       at: now,
     }
   } else {
@@ -678,9 +714,7 @@ function amend(e: Env<'amend'>): Out {
   const hasTitle = action.planTitle !== undefined
   if (!hasPatch && !hasTitle) return deny('amend needs a patch for an item, a planTitle, or both.')
   if (hasPatch && action.item === undefined) return deny('A patch needs the item it applies to.')
-  if (hasTitle && !validTitle(action.planTitle)) {
-    return deny(`The plan title must be non-empty and at most ${MAX_TITLE_CHARS} characters.`)
-  }
+  if (hasTitle && !validTitle(action.planTitle)) return deny(`The plan title is not valid. ${TITLE_RULE}`)
 
   let next: Plan = hasTitle ? { ...plan, title: action.planTitle as string } : plan
   const data: Record<string, unknown> = {}

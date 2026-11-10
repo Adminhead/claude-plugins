@@ -1,26 +1,16 @@
 // plan-ledger: plan-time checks (argv the mod runs itself at `verify`). Pure: no `$`, no `crypto`.
 // See decision 4 in docs/plans/goal-ledger.md.
 import type { Check } from './types'
+import { isNonEmpty, utf8Bytes } from './shared'
 import { MAX_ARGV_BYTES, MAX_CHECKS } from './types'
 
 const CHECK_KEYS: ReadonlySet<string> = new Set(['label', 'argv', 'expectExit'])
 
-function utf8Bytes(s: string): number {
-  let n = 0
-  for (const ch of s) {
-    const c = ch.codePointAt(0) as number
-    n += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4
-  }
-  return n
-}
-
-const isNonEmpty = (x: unknown): x is string => typeof x === 'string' && x.trim() !== ''
-
 /**
- * Validates the `checks` of an item. The rules match the ones `apply` enforces at `create` and
- * `amend` (a check this accepts, `apply` accepts), with one addition: `expectExit` defaults to 0
- * here. Unknown keys are rejected rather than ignored, because a misspelled `expectExit` would
- * otherwise silently become a check that expects exit 0. Nothing is truncated.
+ * Validates the `checks` of an item; `apply` uses this one function at `create` and `amend`.
+ * `expectExit` defaults to 0 when absent. Unknown keys are rejected rather than ignored, because a
+ * misspelled `expectExit` would otherwise silently become a check that expects exit 0. Nothing is
+ * truncated.
  */
 export function validateChecks(raw: unknown): Check[] | { error: string } {
   if (!Array.isArray(raw)) return { error: 'checks must be a list.' }

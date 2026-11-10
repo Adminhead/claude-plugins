@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { apply, type ApplyCtx, type ApplyResult } from '../hooks/plan/apply'
+import { checksHash } from '../hooks/plan/checks'
 import type { Action, Actor, Item, ItemInput, ItemStatus, Plan, Verification } from '../hooks/plan/types'
 
 const PLAN_ID = 'p-0abcdefgh-abc123'
@@ -100,12 +101,13 @@ const itemOf = (p: Plan, id = 's1') => p.items.find((i) => i.id === id) as Item
 const inProgress = (over: Partial<Item> = {}) =>
   item({ status: 'in_progress', attempts: 1, boundAgent: bound('a1'), ...over })
 
+const unit = { label: 'unit', argv: ['bun', 'test'], expectExit: 0 }
 const checksVerification = (over: Partial<Verification> = {}): Verification => ({
   kind: 'checks',
   ok: true,
   gen: 2,
   cwd: '/repo',
-  checksHash: 'h',
+  checksHash: checksHash([unit]),
   results: [{ label: 'unit', exit: 0, expectExit: 0, outTail: 'ok' }],
   before: { head: 'h1', fingerprint: 'f1' },
   after: { head: 'h1', fingerprint: 'f1' },
@@ -113,7 +115,6 @@ const checksVerification = (over: Partial<Verification> = {}): Verification => (
   at: '2026-11-09T12:00:00.000Z',
   ...over,
 })
-const unit = { label: 'unit', argv: ['bun', 'test'], expectExit: 0 }
 
 describe('apply: denial shape', () => {
   test('authorize runs first and the Change records the reason with rev unchanged', () => {
@@ -278,6 +279,55 @@ describe('create', () => {
     expect(denied(create([input({ checks: [{ label: 'a', argv: [], expectExit: 0 }] })]))).toContain('argv')
   })
 
+  test('bounds the lists and the agent and model names', () => {
+    const list = (n: number, size = 1) => Array.from({ length: n }, () => 'x'.repeat(size))
+    expect(denied(create([input({ acceptance: list(21) })]))).toContain('acceptance')
+    ok(create([input({ acceptance: list(20, 500) })]))
+    expect(denied(create([input({ acceptance: list(1, 501) })]))).toContain('500')
+    expect(denied(create([input({ files: list(51) })]))).toContain('files')
+    ok(create([input({ files: list(50, 500) })]))
+    expect(denied(create([input({ files: ['é'.repeat(251)] })]))).toContain('500')
+    expect(denied(create([input({ agent: 'a'.repeat(61) })]))).toContain('60')
+    ok(create([input({ agent: 'a'.repeat(60) })]))
+    expect(denied(create([input({ model: 'm'.repeat(61) })]))).toContain('60')
+    ok(create([input({ model: 'm'.repeat(60) })]))
+    // amend applies the same bounds
+    const p = plan()
+    const amend = (patch: Record<string, unknown>) =>
+      apply(p, { action: 'amend', plan: PLAN_ID, item: 's1', patch } as Action, ctx(main))
+    expect(denied(amend({ acceptance: list(21) }))).toContain('acceptance')
+    expect(denied(amend({ files: list(1, 501) }))).toContain('500')
+    expect(denied(amend({ agent: 'a'.repeat(61) }))).toContain('60')
+    expect(denied(amend({ model: 'm'.repeat(61) }))).toContain('60')
+  })
+
+  test('rejects control characters in the title, agent, model and dependency ids, at create and amend', () => {
+    for (const bad of ['a\nb', 'a\rb', 'a\tb', 'a\u0000b', 'a\u001bb', 'a\u0085b', 'a\u2028b']) {
+      expect(typeof denied(create([input({ title: bad })]))).toBe('string')
+      expect(typeof denied(create([input({ agent: bad })]))).toBe('string')
+      expect(typeof denied(create([input({ model: bad })]))).toBe('string')
+      expect(typeof denied(create([input({ deps: [bad] })]))).toBe('string')
+      expect(denied(create([input()], main, bad))).toContain('control')
+      const p = plan()
+      const amend = (a: Record<string, unknown>) => apply(p, { action: 'amend', plan: PLAN_ID, ...a } as Action, ctx(main))
+      expect(denied(amend({ planTitle: bad }))).toContain('control')
+      for (const field of ['title', 'agent', 'model']) {
+        expect(typeof denied(amend({ item: 's1', patch: { [field]: bad } }))).toBe('string')
+      }
+      expect(typeof denied(amend({ item: 's1', patch: { deps: [bad] } }))).toBe('string')
+    }
+    // instructions and criteria may span lines
+    ok(create([input({ instructions: 'a\nb', acceptance: ['x\ny'] })]))
+  })
+
+  test('checks go through the one validator: unknown keys are refused and expectExit defaults to 0', () => {
+    expect(denied(create([input({ checks: [{ label: 'a', argv: ['x'], expectexit: 1 } as never] })]))).toContain('expectexit')
+    const r = ok(create([input({ checks: [{ label: 'a', argv: ['x'] } as never] })]))
+    expect(r.plan.items[0].checks).toEqual([{ label: 'a', argv: ['x'], expectExit: 0 }])
+    expect(r.change.data).toMatchObject({ items: [{ checks: [{ label: 'a', argv: ['x'], expectExit: 0 }] }] })
+    expect(denied(create([input({ checks: [{ label: 'a', argv: ['x'], expectExit: 1.5 }] })]))).toContain('expectExit')
+  })
+
   test('rejects malformed items', () => {
     expect(denied(create([{ ...input(), status: 'verified' } as unknown as ItemInput]))).toContain('Unknown item field')
     expect(denied(create([{ title: 'x' } as unknown as ItemInput]))).toContain('s1')
@@ -375,6 +425,18 @@ describe('claim', () => {
     expect(denied(claim(q))).toContain('4 attempts')
   })
 
+  test('after the cap, reopen without extraAttempts leaves the item unclaimable, from every route to pending', () => {
+    for (const status of ['failed', 'blocked', 'claimed_done', 'verified', 'abandoned'] as const) {
+      const p = plan([item({ status, attempts: 3, gen: 2, boundAgent: bound('a1') })])
+      const reopened = ok(apply(p, { action: 'reopen', ...ref }, ctx(main))).plan
+      expect(itemOf(reopened).status).toBe('pending')
+      expect(denied(claim(reopened))).toContain('3 attempts')
+      expect(denied(claim(reopened))).toContain('extraAttempts')
+      const extra = ok(apply(p, { action: 'reopen', extraAttempts: 1, ...ref }, ctx(main))).plan
+      expect(itemOf(ok(claim(extra)).plan).attempts).toBe(4)
+    }
+  })
+
   test('attemptCap comes from ctx', () => {
     const p = plan([item({ status: 'failed', attempts: 1, boundAgent: bound('a1') })])
     expect(denied(claim(p, A1, { attemptCap: 1 }))).toContain('1 attempts')
@@ -446,6 +508,15 @@ describe('progress', () => {
         status,
         d: 'string',
       })
+    }
+  })
+})
+
+describe('padded notes', () => {
+  test('progress, block and fail refuse a note that is empty once cut to the stored size', () => {
+    const padded = ' '.repeat(2000) + 'x'
+    for (const action of ['progress', 'block', 'fail'] as const) {
+      expect(denied(apply(plan([inProgress()]), { action, note: padded, ...ref }, ctx(A1)))).toContain('note')
     }
   })
 })
@@ -529,6 +600,28 @@ describe('claim_done', () => {
       expect(typeof denied(apply(p, claimDone(), ctx(A1)))).toBe('string')
     }
   })
+
+  test('bounds the evidence: counts are refused, long strings are cut', () => {
+    const p = plan([inProgress()])
+    const cmd = { argv: ['t'], exit: 0, outTail: '' }
+    const run = (over: Record<string, unknown>) => apply(p, claimDone(over), ctx(A1))
+    expect(denied(run({ commands: Array.from({ length: 11 }, () => cmd) }))).toContain('commands')
+    ok(run({ commands: Array.from({ length: 10 }, () => cmd) }))
+    expect(denied(run({ commands: [{ ...cmd, argv: Array.from({ length: 21 }, () => 'x') }] }))).toContain('argv')
+    ok(run({ commands: [{ ...cmd, argv: Array.from({ length: 20 }, () => 'x') }] }))
+    expect(denied(run({ commits: Array.from({ length: 21 }, () => 'a') }))).toContain('commits')
+    expect(denied(run({ files: Array.from({ length: 51 }, () => 'a') }))).toContain('files')
+    ok(run({ commits: Array.from({ length: 20 }, () => 'a'), files: Array.from({ length: 50 }, () => 'a') }))
+    const cut = ok(run({ commits: ['c'.repeat(900)], files: ['é'.repeat(900)], commands: [{ ...cmd, argv: ['a'.repeat(900)] }] }))
+    const claimed = itemOf(cut.plan).claimed
+    expect(claimed?.commits[0]).toHaveLength(500)
+    expect(new TextEncoder().encode(claimed?.files[0]).length).toBeLessThanOrEqual(500)
+    expect(claimed?.commands[0].argv[0]).toHaveLength(500)
+  })
+
+  test('a summary that is empty once cut to the stored size is refused', () => {
+    expect(denied(apply(plan([inProgress()]), claimDone({ summary: ' '.repeat(2000) + 'x' }), ctx(A1)))).toContain('summary')
+  })
 })
 
 describe('verify', () => {
@@ -587,6 +680,47 @@ describe('verify', () => {
       typeof denied(apply(claimed({ checks: [unit] }), v(checksVerification({ kind: 'manual' })), ctx(main))),
     ).toBe('string')
     expect(typeof denied(apply(claimed(), v(checksVerification()), ctx(main)))).toBe('string')
+  })
+
+  test('a supplied verification must match the item: checks hash, results and ok', () => {
+    const two = [unit, { label: 'lint', argv: ['eslint', '.'], expectExit: 1 }]
+    const good = checksVerification({
+      checksHash: checksHash(two),
+      results: [
+        { label: 'unit', exit: 0, expectExit: 0, outTail: '' },
+        { label: 'lint', exit: 1, expectExit: 1, outTail: '' },
+      ],
+    })
+    const run = (over: Partial<Verification>, checks = two) =>
+      apply(claimed({ checks }), v({ ...good, ...over }), ctx(main))
+    ok(run({}))
+    // checks edited after the run (amend bumps gen, so only a forged gen could reach here)
+    expect(denied(run({ checksHash: checksHash([unit]) }))).toContain('checks')
+    expect(denied(run({ checksHash: 'h' }))).toContain('checks')
+    expect(denied(run({}, [unit, { ...two[1], argv: ['eslint'] }]))).toContain('checks')
+    // results that do not line up with the checks
+    expect(denied(run({ results: good.results.slice(0, 1) }))).toContain('results')
+    expect(denied(run({ results: [...good.results].reverse() }))).toContain('does not match')
+    expect(denied(run({ results: [good.results[0], { ...good.results[1], label: 'other' }] }))).toContain('does not match')
+    expect(denied(run({ results: [good.results[0], { ...good.results[1], expectExit: 0 }] }))).toContain('does not match')
+    expect(typeof denied(run({ results: [good.results[0], { ...good.results[1], exit: 1.5 }] }))).toBe('string')
+    // ok must agree with the results, both ways
+    expect(denied(run({ ok: false }))).toContain('ok')
+    const failing = [good.results[0], { ...good.results[1], exit: 0 }]
+    expect(denied(run({ results: failing, ok: true }))).toContain('ok')
+    const r = ok(run({ results: failing, ok: false }))
+    expect(itemOf(r.plan).status).toBe('failed')
+  })
+
+  test('a supplied manual verification has no results and ok true', () => {
+    const manual = checksVerification({ kind: 'manual', checksHash: '', results: [], note: 'by hand' })
+    ok(apply(claimed(), v(manual), ctx(main)))
+    expect(typeof denied(apply(claimed(), v({ ...manual, ok: false }), ctx(main)))).toBe('string')
+    expect(typeof denied(apply(claimed(), v({ ...manual, results: checksVerification().results }), ctx(main)))).toBe('string')
+  })
+
+  test('a manual note that is empty once cut is refused', () => {
+    expect(denied(apply(claimed(), v(undefined, { manual: true, note: ' '.repeat(2000) + 'x' }), ctx(main)))).toContain('note')
   })
 
   test('an agent cannot verify, with or without a verification', () => {
