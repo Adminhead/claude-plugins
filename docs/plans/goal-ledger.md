@@ -351,3 +351,12 @@ Found in review of the pure slices (authorize, apply, replay, checks, render, st
 - Teammates run in separate tmux processes and may see their own loop with `agentId` absent. The tool handler would then treat them as `main` with the orchestrator's full rights. This is unverified until G4, and must be settled before slice 10 relies on teammates.
 - The interactive prompts have never been run in a real session: the verify gate (G3), `/plans unlock`, `/plans repair` (the plan file ahead of its ledger) and `/plans abandon`. Headless runs and tests show only that a rejected `$.ui.ask` refuses.
 - The `status` of an idle teammate fails closed: `buildActor` trusts only `running`, so an idle teammate that calls the tool is an unlisted agent and is denied.
+
+## Review carry-forwards (slice 9)
+
+- The spawn hook reserves the item before `next`. When `next` is denied or throws, the reservation stays, so a retry of the spawn hits "already reserved". Accepted for v0, no change. The effect is a lost reminder and a lost early bind only; claim-time binding still works.
+- `loadPlans` reads up to 100 plan files on every prompt and every subagent start, with no pruning. An mtime cache comes later.
+- The token cost of slice 9 step 4 is not in the repo, and slice 10's README must carry it. Measured headless on haiku: the tool schema is about 1,230 tokens, the block is about 160 tokens for 3 open plans, and the no-plugin baseline is 53,479 tokens against 54,708 with the tool and no plan.
+- A teammate in a tmux pane is still unverified (see slices 6-8).
+- `promptContext` advances `$.state` before the prompt is delivered. A deny from a hook below it could drop a delta.
+- Live checks the person still has to run: `/clear` and `/compact` re-injection in a real session, and the reminder of a resumed agent.
