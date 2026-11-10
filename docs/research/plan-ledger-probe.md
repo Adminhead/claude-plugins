@@ -56,3 +56,13 @@ Setup: `cd /tmp/probe-cwd && claude --plugin-dir /home/buck/Projects/adminhead/c
 4. Decision 5: use `$.agent.list()` `status` to refuse calls from agents that are not `running`; keep the plugin-prefix tolerance (untested).
 5. Slice 6: helpers that receive `$` must be top-level function declarations, not closures inside `register`.
 6. Slice 1 text: validate does not write the d.ts on 2.1.322, so step 5 was done against the older agent-router copy.
+
+## Slice 8 API re-check (2026-11-10)
+
+Re-read the GitHub `mods/types/claude-code.d.ts` (saved to `/tmp/claude-code.d.ts`; its header says "Written by Claude Code 2.1.277", older than the installed 2.1.322 and than the 2.1.302 copies under `plugins/*/.claude-plugin/types/`). Differences from the slice 1 notes and the plan text:
+
+- `ToolSpec` is `{ name, description, inputSchema? }` in both d.ts versions. There is no `isDeferred` on it (the `$.tool.register` doc comment still names one in the 2.1.302 copy). Deferral is the `tool.describe` result's `isDeferred`. The tool was not deferred in the headless runs (a subagent listing it got the schema without ToolSearch), so nothing is set.
+- `AgentInfo.status` is documented in the GitHub copy as `running`, `completed`, `failed`, `killed` "or another"; the 2.1.302 copy types `AgentStatus` as `pending | running | waiting | idle | completed | failed | killed`. The plan said `running` and `idle`. `buildActor` trusts only `running`.
+- `AgentSpawnInput.resume` (`{ agentId }`, "a hook can only refuse it; a changed content key is ignored") exists in the 2.1.302 copy and the 2.1.322 probe, and is absent from the GitHub copy. Slice 9 relies on it.
+- `$.ui.notice(tool_use_id, text | undefined)`, `$.ui.ask(question, options?)` (2 to 4 labels, "the question, ending in a question mark", rejects when dismissed and in `-p`), `$.prompt.fill({ text, mode? })` (`decorations` belongs to the `prompt.fill` event input, not to the call's arguments; the slice 1 note listed it there), `CommandRunResult` (`{ text?, context?, ref? }`), `classic.SubagentStart` (input `agent_id`, `agent_type`; result field `additionalContext` only): same in both copies.
+- `tool.call`: `tool`, `tool_use_id` and `agentId` are reserved, and `$.tool.call({ ..., agentId })` drops `agentId`. A tool argument must not be named `agentId` (the `assign` action takes `assignee`), and a test cannot make a subagent call through `$.tool.call`.
