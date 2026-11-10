@@ -1,6 +1,6 @@
 {
   "name": "architect",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "A planning subagent, read-only by instruction (enforced only when readonly-agent-gate is installed), that grounds an implementation plan in the code and returns ordered slices of step-by-step instructions a coder can follow, with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under .claude/plans.",
   "author": {
     "name": "AdminHead",
