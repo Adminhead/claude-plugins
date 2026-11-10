@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dirOf, listPlans, mutate, readPlan, verifyItem } from '../hooks/register'
+import { dirOf, listPlans, mutate, planTool, plansCommand, readPlan, register, verifyItem } from '../hooks/register'
 import { parseLedger } from '../hooks/plan/replay'
 import { appendArgv, lockAcquireArgv, lockReleaseArgv, mkdirArgv, publishArgv, tailArgv } from '../hooks/plan/store'
 import { MAX_LEDGER_BYTES } from '../hooks/plan/types'
@@ -49,6 +49,19 @@ type World = {
   checkImpl: (argv: string[], cwd: unknown) => Promise<{ exit: number; out?: string }> | { exit: number; out?: string }
   git: { head: string; diff: string; status: string }
   gitCalls: { argv: string[]; cwd: unknown }[]
+  /** What `$.agent.list()` returns. */
+  agents: { id: string; type: string; status: string }[]
+  agentListThrows: boolean
+  sessionId: string
+  /** Texts handed to `$.prompt.fill`, and whether the prompt box takes them. */
+  filled: string[]
+  fillOk: boolean
+  /** Called by `$.clock.sleep`: lets a test change the world between a call and its retry. */
+  onSleep: (() => void) | null
+  /** Called by `$.ui.ask` before it answers. */
+  onAsk: (() => void) | null
+  /** How many seconds old a held lock's owner file says it is. */
+  lockAge: number
 }
 
 let homes = 0
@@ -87,6 +100,14 @@ function world(on: any): World & { $: any } {
     checkImpl: () => ({ exit: 0, out: 'ok' }),
     git: { head: 'a'.repeat(40), diff: '', status: '' },
     gitCalls: [],
+    agents: [],
+    agentListThrows: false,
+    sessionId: 'sess-1',
+    filled: [],
+    fillOk: true,
+    onSleep: null,
+    onAsk: null,
+    lockAge: 0,
   }
   const h: Record<string, (e: any) => any> = {
     'env.get': () => w.home,
@@ -96,10 +117,22 @@ function world(on: any): World & { $: any } {
       return '/work/repo'
     },
     'clock.now': () => (w.now += 1000),
-    'clock.sleep': () => undefined,
+    'clock.sleep': () => w.onSleep?.(),
+    'session.id': () => w.sessionId,
+    'agent.list': () => {
+      if (w.agentListThrows) throw new Error('boom')
+      return w.agents
+    },
+    'prompt.fill': (e) => {
+      w.filled.push(e.text)
+      return { isFilled: w.fillOk, text: e.text, cursor: e.text.length }
+    },
     'ui.log': () => undefined,
-    'fs.exists': (e) => w.files.has(e.path) || w.dirs.has(e.path),
+    'fs.exists': (e) => w.files.has(e.path) || w.dirs.has(e.path) || w.locks.has(e.path),
     'fs.read': (e) => {
+      if (e.path.endsWith('/owner') && w.locks.has(e.path.slice(0, -'/owner'.length))) {
+        return `${w.locks.get(e.path.slice(0, -'/owner'.length))} ${Math.floor(w.now / 1000) - w.lockAge}`
+      }
       const text = w.files.get(e.path)
       if (text === undefined) throw new Error(`ENOENT ${e.path}`)
       return text
@@ -133,6 +166,7 @@ function world(on: any): World & { $: any } {
     'ui.ask': (e) => {
       w.log.push('ask')
       w.asked.push({ question: e.question, options: e.options })
+      w.onAsk?.()
       if (w.answer === 'reject') throw new Error('dismissed')
       return w.answer
     },
@@ -214,7 +248,9 @@ function world(on: any): World & { $: any } {
 
   const $ = {
     env: { get: async (name: string) => h['env.get']({ name }) },
-    session: { repo: async () => h['session.repo']({}), cwd: async () => h['session.cwd']({}) },
+    session: { repo: async () => h['session.repo']({}), cwd: async () => h['session.cwd']({}), id: async () => h['session.id']({}) },
+    agent: { list: async () => h['agent.list']({}) },
+    prompt: { fill: async (input: { text: string }) => h['prompt.fill'](input) },
     clock: { now: async () => h['clock.now']({}), sleep: async (ms: number) => h['clock.sleep']({ ms }) },
     ui: { log: (text: string) => h['ui.log']({ text }), ask: async (question: string, options?: unknown) => h['ui.ask']({ question, options }) },
     tool: { check: async (input: unknown) => h['tool.check'](input) },
@@ -1062,5 +1098,466 @@ describe('verification', () => {
     expect(await verifyItem(w.$, id, 's9', { gen: 1 }, MAIN)).toMatchObject({ ok: false })
     expect(await verifyItem(w.$, '../x', 's1', { gen: 1 }, MAIN)).toMatchObject({ ok: false })
     ranNothing(w)
+  })
+})
+
+// ---------------------------------------------------------------- the plan tool (slice 8)
+
+const PLAN_TOOL = 'mcp__plan-ledger__plan'
+const RUNNING = (id: string, type: string) => ({ id, type, status: 'running' })
+const twoItems = [
+  { title: 'First', instructions: 'Do the first thing.', acceptance: ['it works'], agent: 'coder' },
+  { title: 'Second', instructions: 'Do the second thing.', agent: 'coder' },
+]
+/** A call of the tool from the main loop (no agentId) or from the agent loop `agentId`, served by `planTool` on the fake `$`. */
+const callTool = (w: World & { $: any }, args: Record<string, unknown>, agentId?: string) =>
+  planTool(w.$, { tool: PLAN_TOOL, tool_use_id: 'tu', ...(agentId === undefined ? {} : { agentId }), ...args }, 3) as Promise<any>
+const idIn = (text: string) => /p-[0-9a-z]{9}-[0-9a-z]{6}/.exec(text)?.[0] as string
+
+async function activePlan(w: World & { $: any }) {
+  const made = await callTool(w, { action: 'create', title: 'Two items', items: twoItems })
+  const id = idIn(made.result)
+  expect((await callTool(w, { action: 'activate', plan: id })).result).toContain('active')
+  return id
+}
+const entries = (w: World) => ledgerOf(w).changes
+
+describe('plan tool', () => {
+  test('a main-loop create and activate through the engine write a draft, then an active plan', async ($: any, on: any) => {
+    const w = world(on)
+    const made = await $.tool.call({ tool: PLAN_TOOL, action: 'create', title: 'Plan', items: twoItems })
+    expect(made.result).toContain('draft')
+    const id = idIn(made.result)
+    expect(jsonOf(w)).toMatchObject({ id, status: 'draft', rev: 1 })
+    expect(jsonOf(w).items.map((i: any) => i.id)).toEqual(['s1', 's2'])
+    const activated = await $.tool.call({ tool: PLAN_TOOL, action: 'activate', plan: id })
+    expect(activated.result).toContain('active')
+    expect(jsonOf(w)).toMatchObject({ status: 'active', rev: 2 })
+    expect(entries(w).map((c) => [c.action, c.actor.kind])).toEqual([['create', 'main'], ['activate', 'main']])
+  })
+
+  test('a subagent gets, claims and claims done its own item, each entry carrying its agent id', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [RUNNING('agent-1', 'coder')]
+    const got = await callTool(w, { action: 'get', plan: id, item: 's1' }, 'agent-1')
+    expect(got.result).toContain('Do the first thing.')
+    expect(got.result).toContain('it works')
+    expect((await callTool(w, { action: 'claim', plan: id, item: 's1' }, 'agent-1')).result).toContain('s1')
+    expect(jsonOf(w).items[0]).toMatchObject({ status: 'in_progress', boundAgent: { agentId: 'agent-1', session: 'sess-1' } })
+    const done = await callTool(w, { action: 'claim_done', plan: id, item: 's1', summary: 'did it', commits: ['abc123'] }, 'agent-1')
+    expect(done.result).toContain('claimed done')
+    expect(jsonOf(w).items[0]).toMatchObject({ status: 'claimed_done', claimed: { summary: 'did it', commits: ['abc123'] } })
+    const mine = entries(w).filter((c) => c.actor.kind === 'agent')
+    expect(mine.map((c) => c.action)).toEqual(['claim', 'claim_done'])
+    for (const c of mine) expect(c.actor).toMatchObject({ kind: 'agent', agentId: 'agent-1', agentType: 'coder' })
+  })
+
+  test('the same agent on another agent\'s item is denied and the denial is in the ledger with its agent id', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [RUNNING('agent-1', 'coder'), RUNNING('agent-2', 'coder')]
+    expect((await callTool(w, { action: 'claim', plan: id, item: 's2' }, 'agent-2')).result).toBeDefined()
+    const stolen = await callTool(w, { action: 'claim', plan: id, item: 's2' }, 'agent-1')
+    expect(stolen.deny).toContain('another agent')
+    const read = await callTool(w, { action: 'get', plan: id, item: 's2' }, 'agent-1')
+    expect(read.deny).toContain('another agent')
+    const progress = await callTool(w, { action: 'progress', plan: id, item: 's2', note: 'sneaky' }, 'agent-1')
+    expect(progress.deny).toBeDefined()
+    expect(jsonOf(w).items[1]).toMatchObject({ boundAgent: { agentId: 'agent-2' }, status: 'in_progress', note: null })
+    const denials = entries(w).filter((c) => c.denied !== null)
+    expect(denials.map((c) => c.action)).toEqual(['claim', 'get', 'progress'])
+    for (const c of denials) expect(c.actor).toMatchObject({ agentId: 'agent-1', agentType: 'coder' })
+    expect(revsOf(w)).toEqual([1, 2, 3]) // a denial never moves the rev
+  })
+
+  test('an agent cannot verify, amend, assign or activate, and verify runs no check', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [RUNNING('agent-1', 'coder')]
+    for (const args of [
+      { action: 'verify', plan: id, item: 's1', gen: 1, manual: true, note: 'trust me' },
+      { action: 'amend', plan: id, planTitle: 'mine' },
+      { action: 'assign', plan: id, item: 's1', assignee: 'agent-1' },
+      { action: 'activate', plan: id },
+      { action: 'abandon', plan: id },
+    ]) {
+      expect([args.action, (await callTool(w, args, 'agent-1')).deny]).toEqual([args.action, expect.stringContaining('orchestrator')])
+    }
+    expect(w.checkRuns).toEqual([])
+    expect(w.asked).toEqual([])
+    expect(jsonOf(w)).toMatchObject({ title: 'Two items', status: 'active' })
+  })
+
+  test('verify with a verification or results field is refused before any state is read', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const logBefore = w.log.length
+    const r = await callTool(w, { action: 'verify', plan: id, item: 's1', gen: 1, verification: { kind: 'checks', ok: true, results: [] } })
+    expect(r.deny).toContain('runs the checks itself')
+    expect((await callTool(w, { action: 'verify', plan: id, item: 's1', gen: 1, results: [] })).deny).toBeDefined()
+    expect(w.log.length).toBe(logBefore)
+    expect(entries(w)).toHaveLength(2)
+  })
+
+  test('an id the agent list does not name, and a listed agent that is not running, are untrusted', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [{ id: 'agent-idle', type: 'coder', status: 'idle' }, { id: 'agent-done', type: 'coder', status: 'completed' }]
+    for (const agentId of ['agent-unlisted', 'agent-idle', 'agent-done']) {
+      const r = await callTool(w, { action: 'claim', plan: id, item: 's1' }, agentId)
+      expect([agentId, r.deny]).toEqual([agentId, expect.stringContaining('not available')])
+      expect((await callTool(w, { action: 'list' }, agentId)).deny).toContain('not available')
+    }
+    const denials = entries(w).filter((c) => c.denied !== null)
+    expect(denials).toHaveLength(3)
+    for (const c of denials) expect(c.actor).toMatchObject({ kind: 'agent', agentType: null })
+    expect(jsonOf(w).items[0].status).toBe('pending')
+  })
+
+  test('a failing agent list makes the caller untrusted, never the main loop', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agentListThrows = true
+    expect((await callTool(w, { action: 'claim', plan: id, item: 's1' }, 'agent-1')).deny).toContain('not available')
+  })
+
+  test('a plugin-prefixed agent type matches the item agent type', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [RUNNING('agent-1', 'coder:coder')]
+    expect((await callTool(w, { action: 'claim', plan: id, item: 's1' }, 'agent-1')).deny).toBeUndefined()
+  })
+
+  test('an architect creates a draft plan no agent can claim until the orchestrator activates it', async ($: any, on: any) => {
+    const w = world(on)
+    w.agents = [RUNNING('arch-1', 'architect'), RUNNING('agent-1', 'coder')]
+    const made = await callTool(w, { action: 'create', title: 'Drafted', items: twoItems }, 'arch-1')
+    expect(made.result).toContain('draft')
+    const id = idIn(made.result)
+    expect(jsonOf(w)).toMatchObject({ status: 'draft', creator: { kind: 'agent', agentId: 'arch-1' } })
+    expect((await callTool(w, { action: 'claim', plan: id, item: 's1' }, 'agent-1')).deny).toContain('activate')
+    expect((await callTool(w, { action: 'activate', plan: id }, 'arch-1')).deny).toContain('orchestrator')
+    expect((await callTool(w, { action: 'activate', plan: id })).result).toContain('active')
+    expect((await callTool(w, { action: 'claim', plan: id, item: 's1' }, 'agent-1')).deny).toBeUndefined()
+  })
+
+  test('list and status show a caller only the plans it may see', async ($: any, on: any) => {
+    const w = world(on)
+    w.agents = [RUNNING('arch-1', 'architect'), RUNNING('arch-2', 'architect'), RUNNING('agent-1', 'coder')]
+    const mine = idIn((await callTool(w, { action: 'create', title: 'Mine', items: twoItems }, 'arch-1')).result)
+    const other = idIn((await callTool(w, { action: 'create', title: 'Other', items: twoItems }, 'arch-2')).result)
+    const orch = idIn((await callTool(w, { action: 'create', title: 'Orchestrator', items: twoItems })).result)
+    const seen = async (agentId?: string) => (await callTool(w, { action: 'list' }, agentId)).result as string
+    const asArch = await seen('arch-1')
+    expect(asArch).toContain(mine)
+    expect(asArch).not.toContain(other)
+    expect(asArch).not.toContain(orch)
+    for (const id of [mine, other, orch]) expect(await seen()).toContain(id)
+    expect(await seen('agent-1')).toContain(orch)
+    expect((await callTool(w, { action: 'status', plan: other }, 'arch-1')).deny).toBeDefined()
+    expect((await callTool(w, { action: 'status', plan: mine }, 'arch-1')).result).toContain('s1 pending')
+    const open = (await callTool(w, { action: 'status' }, 'arch-1')).result as string
+    expect(open).toContain(mine)
+    expect(open).not.toContain(other)
+  })
+
+  test('bad input is refused with an instruction and touches nothing', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const before = w.log.length
+    for (const args of [
+      { action: 'claim', plan: '../etc', item: 's1' },
+      { action: 'bind', plan: id, item: 's1' },
+      { action: 'create', title: 'x', items: [{ title: 't', instructions: 'x'.repeat(9000), agent: 'coder' }] },
+    ]) expect((await callTool(w, args)).deny).toBeDefined()
+    expect(w.log.length).toBe(before)
+  })
+
+  test('a failure after the change was recorded is retried with its op and applies once', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.failMv = true
+    w.onSleep = () => {
+      w.failMv = false
+    }
+    const r = await callTool(w, { action: 'amend', plan: id, planTitle: 'Renamed' })
+    expect(r.result).toContain('already applied')
+    expect(jsonOf(w)).toMatchObject({ title: 'Renamed', rev: 3 })
+    expect(revsOf(w)).toEqual([1, 2, 3])
+    expect(entries(w).filter((c) => c.action === 'amend')).toHaveLength(1)
+  })
+
+  test('a create that was recorded but not published is retried with its plan id and makes one plan', async ($: any, on: any) => {
+    const w = world(on)
+    w.failMv = true
+    w.onSleep = () => {
+      w.failMv = false
+    }
+    const r = await callTool(w, { action: 'create', title: 'Once', items: twoItems })
+    expect(r.result).toContain('already applied')
+    expect(entries(w).filter((c) => c.action === 'create')).toHaveLength(1)
+    expect([...w.files.keys()].filter((k) => k.endsWith('.jsonl'))).toHaveLength(1)
+  })
+
+  test('a lock that clears between attempts is retried; a lock that stays held ends in the busy instruction', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.stuck = true
+    w.onSleep = () => {
+      w.stuck = false
+    }
+    expect((await callTool(w, { action: 'amend', plan: id, planTitle: 'After wait' })).result).toBeDefined()
+    expect(jsonOf(w).title).toBe('After wait')
+    w.stuck = true
+    w.onSleep = null
+    const acquires = w.log.filter((l) => l === 'acquire').length
+    const busy = await callTool(w, { action: 'amend', plan: id, planTitle: 'Never' })
+    expect(busy.deny).toContain('/plans unlock')
+    expect(w.log.filter((l) => l === 'acquire').length - acquires).toBe(3)
+    expect(jsonOf(w).title).toBe('After wait')
+  })
+
+  test('a denial is final: it is not retried and is logged once', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const acquires = w.log.filter((l) => l === 'acquire').length
+    const r = await callTool(w, { action: 'claim_done', plan: id, item: 's1', summary: 'x' })
+    expect(r.deny).toBeDefined()
+    expect(w.log.filter((l) => l === 'acquire').length - acquires).toBe(1)
+  })
+
+  test('registers the tool and command at session start, tolerating a taken name', async ($: any, on: any) => {
+    const registered: unknown[] = []
+    on('session.start', () => ({ cwd: '/work/repo' }))
+    on('ui.log', () => ({ value: undefined }))
+    on('tool.register', (_$: any, e: any) => {
+      registered.push(['tool', e.name])
+      return { value: { tool: PLAN_TOOL } }
+    })
+    on('command.register', (_$: any, e: any) => {
+      registered.push(['command', e.name])
+      return { deny: 'name taken' }
+    })
+    await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+    expect(registered).toEqual([['tool', 'plan'], ['command', 'plans']])
+  })
+
+  test('registerTool: false serves no tool calls and registers no tool', async ($: any, on: any) => {
+    const seen = (options: Record<string, unknown> | undefined) => {
+      const hooks: { event: string; matcher: any }[] = []
+      const chain: any = { catch: () => chain }
+      register(((event: string, matcher: any) => (hooks.push({ event, matcher }), chain)) as any, options as any)
+      return hooks.filter((h) => h.event === 'tool.call' && JSON.stringify(h.matcher).includes('plan-ledger'))
+    }
+    expect(seen(undefined)).toHaveLength(1)
+    expect(seen({ registerTool: true })).toHaveLength(1)
+    expect(seen({ registerTool: false })).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------- /plans (slice 8)
+
+const plans = (w: World & { $: any }, args: string) => plansCommand(w.$, { command: 'plans', args }, 3)
+
+describe('/plans', () => {
+  test('status through the engine lists open plans, and says so when there are none', async ($: any, on: any) => {
+    const w = world(on)
+    expect((await $.command.run({ command: 'plans', args: '' })).text).toBe('No open plans.')
+    const id = await activePlan(w)
+    const out = await $.command.run({ command: 'plans', args: 'status' })
+    expect(out.text).toContain(id)
+    expect(out.text).toContain('0/2 verified')
+    expect((await $.command.run({ command: 'plans', args: `status ${id}` })).text).toContain('s2 pending')
+  })
+
+  test('bad arguments print the usage and read nothing', async ($: any, on: any) => {
+    const w = world(on)
+    const before = w.log.length
+    for (const args of ['nuke', 'show ../../x', 'show', 'x'.repeat(300)]) expect((await plans(w, args)).text).toContain('Usage')
+    expect(w.log.length).toBe(before)
+  })
+
+  test('show prints every item with its evidence', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [RUNNING('agent-1', 'coder')]
+    await callTool(w, { action: 'claim', plan: id, item: 's1' }, 'agent-1')
+    await callTool(w, { action: 'claim_done', plan: id, item: 's1', summary: 'wrote it' }, 'agent-1')
+    const text = (await plans(w, `show ${id}`)).text
+    expect(text).toContain('s1 claimed_done')
+    expect(text).toContain('claimed (self-reported): wrote it')
+    expect(text).toContain('s2 pending')
+    expect((await plans(w, 'show p-0zzzzzzzz-zzzzzz')).text).toBe('No such plan.')
+  })
+
+  test('log shows the last entries, denials with the agent that made them', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [RUNNING('agent-1', 'coder'), RUNNING('agent-2', 'coder')]
+    await callTool(w, { action: 'claim', plan: id, item: 's2' }, 'agent-2')
+    await callTool(w, { action: 'claim', plan: id, item: 's2' }, 'agent-1')
+    const text = (await plans(w, `log ${id} 3`)).text
+    expect(text).toContain('Last 3 of 4')
+    expect(text).toContain('DENIED')
+    expect(text).toContain('agent coder agent-1')
+    expect(text).not.toContain('create')
+    expect((await plans(w, 'log p-0zzzzzzzz-zzzzzz')).text).toBe('No such plan.')
+  })
+
+  test('a ledger line with a terminal escape is printed without it', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.agents = [RUNNING('agent-1', 'coder')]
+    await callTool(w, { action: 'claim', plan: id, item: 's1' }, 'agent-1')
+    await callTool(w, { action: 'progress', plan: id, item: 's1', note: 'ok\u001b]0;pwned\u0007\nrev 99 main verify s1' }, 'agent-1')
+    const text = (await plans(w, `log ${id}`)).text
+    expect(text).not.toContain('\u001b')
+    expect(text).not.toContain('\u0007')
+    expect(text.split('\n').filter((l) => l.startsWith('rev 99'))).toEqual([])
+  })
+
+  describe('repair', () => {
+    test('a consistent plan is left alone', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const before = w.files.get(fileEnding(w, '.json'))
+      expect((await plans(w, `repair ${id}`)).text).toContain('nothing to repair')
+      expect(w.files.get(fileEnding(w, '.json'))).toBe(before)
+      expect(w.locks.size).toBe(0)
+    })
+
+    test('a damaged plan file is set aside and rebuilt from the ledger, under the lock', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const good = w.files.get(fileEnding(w, '.json')) as string
+      w.files.set(fileEnding(w, '.json'), '{ not json')
+      const text = (await plans(w, `repair ${id}`)).text
+      expect(text).toContain('Rebuilt plan')
+      expect(w.files.get(fileEnding(w, '.json'))).toBe(good)
+      const kept = [...w.files.keys()].find((k) => k.includes('.json.corrupt-')) as string
+      expect(w.files.get(kept)).toBe('{ not json')
+      expect(w.locks.size).toBe(0)
+      expect(w.log.indexOf('acquire')).toBeLessThan(w.log.lastIndexOf('mv'))
+    })
+
+    test('a missing plan file is rebuilt, a stale tmp file removed', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const json = fileEnding(w, '.json')
+      const good = w.files.get(json) as string
+      w.files.delete(json)
+      w.files.set(`${json}.tmp.leftover`, 'half')
+      expect((await plans(w, `repair ${id}`)).text).toContain('Rebuilt plan')
+      expect(w.files.get(json)).toBe(good)
+      expect(w.files.has(`${json}.tmp.leftover`)).toBe(false)
+    })
+
+    test('a plan file ahead of its ledger is replaced only when the person says so', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const json = fileEnding(w, '.json')
+      const ahead = JSON.stringify({ ...jsonOf(w), rev: 9, title: 'Ahead' })
+      for (const [reply, replaced] of [['Keep the plan file', false], ['reject', false], ['Rebuild from the ledger', true]] as const) {
+        w.files.set(json, ahead)
+        w.answer = reply
+        const text = (await plans(w, `repair ${id}`)).text
+        expect([reply, w.files.get(json) === ahead]).toEqual([reply, !replaced])
+        expect(text.length).toBeGreaterThan(0)
+      }
+      expect(w.asked).toHaveLength(3)
+      expect(w.asked[0].question).toContain('rev 9')
+      expect(jsonOf(w).rev).toBe(2)
+    })
+
+    test('a ledger that cannot be replayed leaves the plan file alone', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const ledger = fileEnding(w, '.jsonl')
+      const lines = (w.files.get(ledger) as string).split('\n')
+      w.files.set(ledger, `${lines[1]}\n`) // the create line is gone: a rev gap
+      const json = w.files.get(fileEnding(w, '.json'))
+      expect((await plans(w, `repair ${id}`)).text).toContain('cannot be replayed')
+      expect(w.files.get(fileEnding(w, '.json'))).toBe(json)
+    })
+
+    test('an unknown plan and a busy lock are reported', async ($: any, on: any) => {
+      const w = world(on)
+      await activePlan(w)
+      expect((await plans(w, 'repair p-0zzzzzzzz-zzzzzz')).text).toContain('no change ledger')
+      w.stuck = true
+      expect((await plans(w, `repair ${idIn([...w.files.keys()].find((k) => k.endsWith('.json')) as string)}`)).text).toContain('busy')
+    })
+  })
+
+  describe('unlock', () => {
+    const held = (w: World & { $: any }, id: string, token = 'tok-123456789') => {
+      w.locks.set(`${dirname(fileEnding(w, '.json'))}/${id}.lock`, token)
+      return `${dirname(fileEnding(w, '.json'))}/${id}.lock`
+    }
+
+    test('a plan that is not locked says so and asks nothing', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      expect((await plans(w, `unlock ${id}`)).text).toContain('not locked')
+      expect(w.asked).toEqual([])
+    })
+
+    test('the question shows the holder and its age; removing releases only that holder\'s lock', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const lock = held(w, id)
+      w.lockAge = 125
+      w.answer = 'Remove the lock'
+      expect((await plans(w, `unlock ${id}`)).text).toContain('Removed')
+      expect(w.locks.has(lock)).toBe(false)
+      expect(w.asked[0].question).toContain('tok-1234')
+      expect(w.asked[0].question).toMatch(/held for 12[5-9] s/)
+    })
+
+    test('keeping it, dismissing the question and a lock that changed hands all leave the lock', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const lock = held(w, id)
+      w.answer = 'Keep the lock'
+      expect((await plans(w, `unlock ${id}`)).text).toContain('left')
+      w.answer = 'reject'
+      expect((await plans(w, `unlock ${id}`)).text).toContain('Nobody could be asked')
+      expect(w.locks.has(lock)).toBe(true)
+      w.answer = 'Remove the lock'
+      w.onAsk = () => w.locks.set(lock, 'someone-else') // a new holder took it while the question was open
+      expect((await plans(w, `unlock ${id}`)).text).toContain('changed hands')
+      expect(w.locks.get(lock)).toBe('someone-else')
+    })
+  })
+
+  describe('abandon', () => {
+    test('abandons the plan as the main actor and records it', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      expect((await plans(w, `abandon ${id}`)).text).toContain('abandoned')
+      expect(jsonOf(w).status).toBe('abandoned')
+      expect(entries(w).at(-1)).toMatchObject({ action: 'abandon', actor: { kind: 'main' } })
+      expect((await plans(w, `abandon ${id}`)).text).toContain('abandoned') // a second one is refused with the reason
+    })
+  })
+
+  describe('goal-text', () => {
+    test('fills the prompt with a /goal condition naming the counts, and submits nothing', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const out = (await plans(w, `goal-text ${id}`)).text
+      expect(w.filled).toHaveLength(1)
+      expect(w.filled[0]).toContain(`/goal Every item of plan ${id}`)
+      expect(w.filled[0]).toContain('0 verified by command, 0 manually, 2 open')
+      expect(out).toContain('nothing was submitted')
+    })
+
+    test('when the prompt cannot be filled the text is printed', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      w.fillOk = false
+      expect((await plans(w, `goal-text ${id}`)).text).toContain(`/goal Every item of plan ${id}`)
+    })
   })
 })

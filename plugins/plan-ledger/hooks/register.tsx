@@ -1,5 +1,5 @@
-// plan-ledger: the transaction around the pure plan modules (decision 3 in docs/plans/goal-ledger.md), the plan reads, and
-// the directory guard, and `verifyItem` (slice 7). Slice 8 adds the tool and `/plans`, slice 9 the spawn hook.
+// plan-ledger: the transaction around the pure plan modules (decision 3 in docs/plans/goal-ledger.md), the plan reads,
+// `verifyItem`, the directory guard, and (slice 8) the `plan` tool and the `/plans` command. Slice 9 adds the spawn hook.
 //
 // `claude plugin validate` fails on "$ is passed to X, which is not a function declared at the top of this file", so every
 // helper that takes `$` is a top-level function declaration below and `register` only wires hooks to them.
@@ -7,6 +7,16 @@ import type { Register } from 'claude-code'
 import { apply } from './plan/apply'
 import { authorize } from './plan/authorize'
 import { checksHash } from './plan/checks'
+import {
+  COMMAND_NAME,
+  goalCounts,
+  goalText,
+  lockOwner,
+  parseArgs,
+  renderLog,
+  renderShow,
+  unlockQuestion,
+} from './plan/command'
 import { GUARD_REASON, isUnder, normalizePath, commandNamesPlans, plansRoot, writtenPath } from './plan/guard'
 import { findOp, needsReplay, parseLedger, parsePlanJson, reconcile, type Reconciled } from './plan/replay'
 import {
@@ -25,7 +35,9 @@ import {
   tmpPath,
   type PlanPaths,
 } from './plan/store'
+import { renderItem } from './plan/render'
 import { hasControl, utf8Bytes } from './plan/shared'
+import { MAX_INPUT_CHARS, TOOL, TOOL_NAME, buildActor, parseInput, renderListing, renderPlanStatus, shouldRetry, statusFor } from './plan/tool'
 import type { Action, Actor, Change, Check, CheckResult, Plan, Tree } from './plan/types'
 import { DEFAULT_ATTEMPT_CAP, MAX_DENIED_LOGGED, MAX_LEDGER_BYTES } from './plan/types'
 import {
@@ -740,9 +752,335 @@ async function guardPlanDir($: Dollar, e: any, next: (e: unknown) => unknown): P
   return { deny: GUARD_REASON }
 }
 
+// ---------------------------------------------------------------- the plan tool
+
+type ToolAnswer = { result: string } | { deny: string }
+
+const told = (text: string): ToolAnswer => ({ result: text })
+const refused = (text: string): ToolAnswer => ({ deny: text })
+
+async function sessionOf($: Dollar): Promise<string> {
+  try {
+    const id: unknown = await $.session.id()
+    return typeof id === 'string' ? id : ''
+  } catch {
+    return ''
+  }
+}
+
+/** Who is calling, from the engine-set `e.agentId` (absent on the main loop) and `$.agent.list()` for the type. */
+async function callerOf($: Dollar, e: any, session: string): Promise<Actor> {
+  if (e.agentId === undefined) return { kind: 'main' }
+  let agents: unknown = []
+  try {
+    agents = await $.agent.list()
+  } catch {
+    // An id that cannot be looked up is an untrusted one (agentType null).
+  }
+  return buildActor(e.agentId, agents, session)
+}
+
+/**
+ * Runs `call`, and while a failure may be transient or may already have committed (`shouldRetry`) calls it again with the
+ * `op` (and, for `create`, the plan id) that `mutate` returned, so the second call finds the first in the ledger and
+ * reports it instead of applying it twice. The model never sees an `op`.
+ */
+async function withRetry($: Dollar, action: Action, call: (opts: MutateOpts) => Promise<MutateResult>, base: MutateOpts): Promise<MutateResult> {
+  let r = await call(base)
+  for (let attempt = 1; !r.ok && shouldRetry(r, attempt, action.action); attempt++) {
+    await $.clock.sleep(150)
+    const again: MutateOpts = { ...base }
+    if (r.op !== null) again.op = r.op
+    if (action.action === 'create' && r.planId !== null) again.planId = r.planId
+    r = await call(again)
+  }
+  return r
+}
+
+/** Every readable plan of this project (newest 100); `unreadable` counts the plan files that could not be read. */
+async function loadPlans($: Dollar): Promise<{ plans: Plan[]; unreadable: number }> {
+  const plans: Plan[] = []
+  let unreadable = 0
+  for (const id of await listPlans($)) {
+    const r = await readPlan($, id)
+    if (r.ok) plans.push(r.plan)
+    else unreadable++
+  }
+  return { plans, unreadable }
+}
+
+const toAnswer = (r: MutateResult): ToolAnswer => (r.ok ? told(r.message) : refused(r.message))
+
+async function readAction($: Dollar, a: Extract<Action, { action: 'list' | 'status' | 'get' }>, actor: Actor): Promise<ToolAnswer> {
+  if (a.action === 'list' || (a.action === 'status' && a.plan === undefined)) {
+    const auth = authorize(null, a, actor)
+    if (!auth.ok) return refused(auth.reason)
+    const { plans, unreadable } = await loadPlans($)
+    const text = renderListing(plans, actor, a.action === 'status')
+    return told(unreadable > 0 ? `${text}\n(${unreadable} plan file${unreadable === 1 ? '' : 's'} could not be read.)` : text)
+  }
+  const planId = (a as { plan: string }).plan
+  const read = await readPlan($, planId)
+  if (!read.ok) return refused(read.message)
+  if (a.action === 'status') {
+    const s = statusFor(read.plan, actor)
+    return s.ok ? told(s.text) : refused(s.reason)
+  }
+  const auth = authorize(read.plan, a, actor)
+  if (!auth.ok) {
+    // A refused `get` is review evidence like a refused claim: the ledger records it (apply denies it the same way).
+    try {
+      await mutate($, planId, a, actor)
+    } catch {
+      // The refusal stands whether or not the line was written.
+    }
+    return refused(auth.reason)
+  }
+  return told(renderItem(read.plan, a.item))
+}
+
+/** Serves one call of the `plan` tool. Every failure is an instruction for the model; nothing here throws on bad input. */
+export async function planTool($: Dollar, e: any, attemptCap: number): Promise<ToolAnswer> {
+  let size = MAX_INPUT_CHARS + 1
+  try {
+    size = JSON.stringify(e).length
+  } catch {
+    // Not serializable: refused below.
+  }
+  if (size > MAX_INPUT_CHARS) return refused('That input is too large. Send shorter text, or split the work into smaller calls.')
+
+  const session = await sessionOf($)
+  const parsed = parseInput(e, session)
+  if ('error' in parsed) return refused(parsed.error)
+  const actor = await callerOf($, e, session)
+  const a: Action = parsed
+
+  if (a.action === 'list' || a.action === 'status' || a.action === 'get') return readAction($, a, actor)
+  const base: MutateOpts = { attemptCap }
+  if (a.action === 'verify') {
+    const args: VerifyArgs = { gen: a.gen, manual: a.manual, note: a.note, cwd: a.cwd }
+    return toAnswer(await withRetry($, a, (opts) => verifyItem($, a.plan, a.item, args, actor, opts), base))
+  }
+  const planId = a.action === 'create' ? null : (a as { plan: string }).plan
+  return toAnswer(await withRetry($, a, (opts) => mutate($, planId, a, actor, opts), base))
+}
+
+// ---------------------------------------------------------------- the /plans command
+
+const REMOVE_LOCK = 'Remove the lock'
+const KEEP_LOCK = 'Keep the lock'
+const REBUILD = 'Rebuild from the ledger'
+const KEEP_FILE = 'Keep the plan file'
+
+type Where = { paths: PlanPaths } | { error: string }
+
+async function pathsOf($: Dollar, planId: string): Promise<Where> {
+  try {
+    const st = await dirOf($)
+    return { paths: planPaths(st.home, st.key, planId) }
+  } catch {
+    return { error: 'The plan store is not available. Retry.' }
+  }
+}
+
+/** The last `n` ledger entries as text. The file is read whole (it is kept under 3 MiB) and only its parsed fields are printed. */
+async function showLog($: Dollar, planId: string, n: number): Promise<string> {
+  const where = await pathsOf($, planId)
+  if ('error' in where) return where.error
+  if (!(await $.fs.exists(where.paths.ledger))) return 'No such plan.'
+  let text: string
+  try {
+    text = (await $.fs.read(where.paths.ledger)) as string
+  } catch {
+    return 'The ledger could not be read.'
+  }
+  const parsed = parseLedger(text)
+  return renderLog(parsed.changes, n, parsed.bad, parsed.torn)
+}
+
+/**
+ * Rebuilds the plan file from the change ledger under the plan's lock. The file is kept (renamed, never deleted) when it
+ * differs; one that is ahead of its ledger is replaced only after the person confirms, since the rebuilt plan is older.
+ *
+ * TODO(manual, docs/plans/goal-ledger.md slice 8): the confirmation `$.ui.ask` for a plan file that is ahead of its ledger
+ * is unverified in a real session. A person must see the question and that "Keep the plan file" and dismissing leave it.
+ */
+async function repairPlan($: Dollar, planId: string): Promise<string> {
+  const where = await pathsOf($, planId)
+  if ('error' in where) return where.error
+  const { paths } = where
+  const locked = await withLock($, paths.lock, planId, null, async (token): Promise<string> => {
+    await removeStaleTmp($, paths, planId)
+    if (!(await $.fs.exists(paths.ledger))) return `Plan ${planId} has no change ledger, so there is nothing to rebuild it from.`
+    const rec = reconcile(null, (await $.fs.read(paths.ledger)) as string)
+    if (rec.error !== undefined) return `The ledger cannot be replayed (${rec.error.slice(0, 200)}). The plan file was left as it is.`
+    if (rec.plan === null || rec.plan.id !== planId) return 'The ledger does not hold this plan. The plan file was left as it is.'
+    const notes = [
+      rec.torn ? 'the ledger ends in a cut-off line, which the next change closes' : '',
+      rec.badLines.length > 0 ? `${rec.badLines.length} damaged ledger line${rec.badLines.length === 1 ? '' : 's'} skipped` : '',
+    ].filter((x) => x !== '')
+    const tail = notes.length === 0 ? '' : ` (${notes.join('; ')})`
+
+    const json = await readJson($, paths.json)
+    if (json.kind === 'ok' && json.plan.rev === rec.plan.rev && JSON.stringify(json.plan) === JSON.stringify(rec.plan)) {
+      return `Plan ${planId} is consistent at rev ${rec.plan.rev}; nothing to repair${tail}.`
+    }
+    if (json.kind === 'ok' && json.plan.rev > rec.plan.rev) {
+      let said: unknown
+      try {
+        said = await $.ui.ask(
+          `The plan file of ${planId} is at rev ${json.plan.rev} but its ledger only reaches rev ${rec.plan.rev}. Replace the file with the ledger's older state?`,
+          { options: [REBUILD, KEEP_FILE], header: 'Repair plan' },
+        )
+      } catch {
+        return 'The plan file is ahead of its ledger and nobody could be asked, so it was left as it is. Run /plans repair in an interactive session.'
+      }
+      if (said !== REBUILD) return 'The plan file was left as it is.'
+    }
+    const nowMs: number = await $.clock.now()
+    let kept = ''
+    if (json.kind !== 'missing') {
+      const to = `${paths.json}.corrupt-${nowMs}`
+      const moved = await $.process.run(['mv', '-n', '--', paths.json, to], { timeoutMs: IO_TIMEOUT_MS })
+      if (moved.exitCode !== 0) return 'The plan file could not be set aside, so it was left as it is. Retry.'
+      kept = ` The old file was kept as ${to.slice(to.lastIndexOf('/') + 1)}.`
+    }
+    try {
+      await publish($, paths, rec.plan, token)
+    } catch {
+      return 'The plan file could not be written. Retry /plans repair.'
+    }
+    return `Rebuilt plan ${planId} at rev ${rec.plan.rev} from its ledger${tail}.${kept}`
+  })
+  return locked.held ? locked.value : locked.fail.message
+}
+
+/**
+ * Removes a plan's lock after the person confirms, showing the holder and its age. The holder's token goes to the same
+ * compare-and-remove script `release` uses, so a lock that changed hands between the question and the removal stays.
+ *
+ * TODO(manual, docs/plans/goal-ledger.md slice 8): the confirmation `$.ui.ask` is unverified in a real session. A person
+ * must hold a lock (see the report's steps), run /plans unlock, and see the holder and age, that "Keep the lock" and
+ * dismissing leave it, and that "Remove the lock" removes it.
+ */
+async function unlockPlan($: Dollar, planId: string): Promise<string> {
+  const where = await pathsOf($, planId)
+  if ('error' in where) return where.error
+  const { lock } = where.paths
+  if (!(await $.fs.exists(lock))) return `Plan ${planId} is not locked.`
+  let ownerText = ''
+  try {
+    ownerText = (await $.fs.read(`${lock}/owner`)) as string
+  } catch {
+    // A lock whose owner file is missing or unreadable is shown as having an unreadable owner.
+  }
+  const owner = lockOwner(ownerText, await $.clock.now())
+  let said: unknown
+  try {
+    said = await $.ui.ask(unlockQuestion(planId, owner), { options: [REMOVE_LOCK, KEEP_LOCK], header: 'Unlock plan' })
+  } catch {
+    return 'Nobody could be asked, so the lock was left. Run /plans unlock in an interactive session.'
+  }
+  if (said !== REMOVE_LOCK) return 'The lock was left.'
+  const argv = owner === null ? ['rm', '-rf', '--', lock] : lockReleaseArgv(lock, owner.token)
+  const r = await $.process.run(argv, { timeoutMs: IO_TIMEOUT_MS })
+  return r.exitCode === 0 ? `Removed the lock of plan ${planId}.` : `The lock of plan ${planId} changed hands or is already gone; nothing was removed. Run /plans unlock again if it is still held.`
+}
+
+async function goalFor($: Dollar, planId: string): Promise<string> {
+  const read = await readPlan($, planId)
+  if (!read.ok) return read.message
+  const text = goalText(read.plan)
+  const c = goalCounts(read.plan)
+  const split = `${c.byCommand} verified by command, ${c.manual} manually, ${c.open} open`
+  let filled = false
+  try {
+    filled = ((await $.prompt.fill({ text, mode: 'replace' })) as { isFilled?: boolean }).isFilled === true
+  } catch {
+    filled = false
+  }
+  return filled
+    ? `Put a /goal condition for plan ${planId} in the prompt (${split}). Edit it if you like and press Enter to set it; nothing was submitted.`
+    : `The prompt could not be filled here. Copy this and enter it yourself (${split}):\n${text}`
+}
+
+/** Runs one `/plans` subcommand and returns the text the person sees. */
+export async function plansCommand($: Dollar, e: any, attemptCap: number): Promise<{ text: string }> {
+  const parsed = parseArgs(e.args)
+  if ('error' in parsed) return { text: parsed.error }
+  try {
+    switch (parsed.sub) {
+      case 'status': {
+        if (parsed.plan !== undefined) {
+          const r = await readPlan($, parsed.plan)
+          return { text: r.ok ? renderPlanStatus(r.plan) : r.message }
+        }
+        const { plans, unreadable } = await loadPlans($)
+        const text = renderListing(plans, { kind: 'main' }, true)
+        return { text: unreadable > 0 ? `${text}\n(${unreadable} plan file${unreadable === 1 ? '' : 's'} could not be read; try /plans repair <plan>.)` : text }
+      }
+      case 'show': {
+        const r = await readPlan($, parsed.plan as string)
+        return { text: r.ok ? renderShow(r.plan) : r.message }
+      }
+      case 'log':
+        return { text: await showLog($, parsed.plan as string, parsed.n as number) }
+      case 'repair':
+        return { text: await repairPlan($, parsed.plan as string) }
+      case 'unlock':
+        return { text: await unlockPlan($, parsed.plan as string) }
+      case 'goal-text':
+        return { text: await goalFor($, parsed.plan as string) }
+      case 'abandon': {
+        const plan = parsed.plan as string
+        const a: Action = { action: 'abandon', plan }
+        const r = await withRetry($, a, (opts) => mutate($, plan, a, { kind: 'main' }, opts), { attemptCap })
+        return { text: r.message }
+      }
+    }
+  } catch {
+    return { text: 'plan-ledger: that command failed. Retry, or run /plans repair <plan>.' }
+  }
+}
+
+// ---------------------------------------------------------------- registration
+
+async function registerSurface($: Dollar, withTool: boolean): Promise<void> {
+  if (withTool) {
+    try {
+      const { tool } = await $.tool.register(TOOL)
+      if (tool !== TOOL_NAME) $.ui.log(`plan-ledger: the tool registered as ${tool}, but calls are served only for ${TOOL_NAME}`, { to: 'debug' })
+    } catch (err) {
+      $.ui.log(`plan-ledger: could not register the plan tool: ${err instanceof Error ? err.message : String(err)}`, { to: 'debug' })
+    }
+  }
+  try {
+    await $.command.register({
+      name: COMMAND_NAME,
+      description: 'Plans of this project: status, show, log, repair, unlock, abandon, goal-text',
+      argumentHint: '[status|show|log|repair|unlock|abandon|goal-text] [plan]',
+    })
+  } catch (err) {
+    $.ui.log(`plan-ledger: could not register /${COMMAND_NAME}: ${err instanceof Error ? err.message : String(err)}`, { to: 'debug' })
+  }
+}
+
+/** `attemptCap` option: a whole number from 1 to 10; anything else is the default. */
+function capOption(raw: unknown): number {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 && raw <= 10 ? raw : DEFAULT_ATTEMPT_CAP
+}
+
 // ---------------------------------------------------------------- wiring
 
-export const register: Register = (on) => {
+export const register: Register = (on, options) => {
+  const withTool = options?.registerTool !== false
+  const attemptCap = capOption(options?.attemptCap)
+
+  on('session.start', async ($, e, next) => {
+    await registerSurface($, withTool)
+    return next(e)
+  })
+
   on('session.end', ($, e, next) => {
     store = null
     suppressedDenials.clear()
@@ -752,4 +1090,16 @@ export const register: Register = (on) => {
   on('tool.call', { tool: ['Write', 'Edit', 'NotebookEdit', 'Bash'] }, ($, e, next) => guardPlanDir($, e, next)).catch(
     ($, e, next) => (next.called ? next(e) : { deny: 'plan-ledger: could not check this call. Retry.' }),
   )
+
+  if (withTool) {
+    // The answer is the tool's result. A throw out of the handler (the transaction catches its own) refuses the call with
+    // an instruction rather than leaving it unanswered; a change may have been recorded, so the model is told to look first.
+    on('tool.call', { tool: 'mcp__plan-ledger__plan' }, ($, e: any) => planTool($, e, attemptCap)).catch(() => ({
+      deny: 'The plan tool failed before it answered. Check the state with status or get before repeating a change.',
+    }))
+  }
+
+  on('command.run', { command: 'plans' }, ($, e: any) => plansCommand($, e, attemptCap)).catch(() => ({
+    text: 'plan-ledger: that command failed. Retry, or run /plans repair <plan>.',
+  }))
 }

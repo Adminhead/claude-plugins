@@ -5,5 +5,21 @@
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
+  },
+  "userConfig": {
+    "registerTool": {
+      "type": "boolean",
+      "title": "Register the plan tool",
+      "description": "Off: the plan tool is not registered, so no agent can read or change a plan through it; the /plans command stays. Only an exact false turns it off. Takes effect after a reload or in a new session.",
+      "default": true
+    },
+    "attemptCap": {
+      "type": "number",
+      "title": "Attempts per item",
+      "description": "How many times an item may be claimed before it stays failed until the orchestrator reopens it. Whole number, 1 to 10.",
+      "default": 3,
+      "min": 1,
+      "max": 10
+    }
   }
 }
