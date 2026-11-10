@@ -11,6 +11,7 @@ import {
   mkdirArgv,
   newPlanId,
   planPaths,
+  projectDir,
   projectKey,
   publishArgv,
   tailArgv,
@@ -84,6 +85,13 @@ describe('ids and paths (pure)', () => {
     expect(() => planPaths('/home/u', '../evil', PLAN_ID)).toThrow()
     expect(() => planPaths('/home/u', '..', PLAN_ID)).toThrow()
     expect(() => planPaths('/home/u', 'k', '../x')).toThrow()
+  })
+
+  test('projectDir is the directory planPaths builds into and refuses an unsafe key', () => {
+    expect(projectDir('/home/u/', 'app-ab12cd34ef56')).toBe('/home/u/.claude/adminhead-plans/app-ab12cd34ef56')
+    expect(projectDir('/home/u', 'k')).toBe(planPaths('/home/u', 'k', PLAN_ID).dir)
+    expect(() => projectDir('/home/u', '../evil')).toThrow()
+    expect(() => projectDir('/home/u', '.')).toThrow()
   })
 
   test('tmpPath and lineFor', () => {

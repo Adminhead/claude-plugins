@@ -32,11 +32,16 @@ export function newPlanId(nowMs: number, rand6: string): string {
 
 export type PlanPaths = { dir: string; json: string; ledger: string; lock: string }
 
+/** `<home>/.claude/adminhead-plans/<key>`. Throws on a key that is not a path-safe name. */
+export function projectDir(home: string, key: string): string {
+  if (!KEY_CHARS.test(key) || key === '.' || key === '..') throw new Error('planPaths: bad project key')
+  return `${home.replace(/\/+$/, '')}/.claude/adminhead-plans/${key}`
+}
+
 /** `<home>/.claude/adminhead-plans/<key>/<planId>.{json,jsonl,lock}`. Throws on a key or id that is not a path-safe name. */
 export function planPaths(home: string, key: string, planId: string): PlanPaths {
-  if (!KEY_CHARS.test(key) || key === '.' || key === '..') throw new Error('planPaths: bad project key')
+  const dir = projectDir(home, key)
   if (!isPlanId(planId)) throw new Error('planPaths: bad plan id')
-  const dir = `${home.replace(/\/+$/, '')}/.claude/adminhead-plans/${key}`
   return { dir, json: `${dir}/${planId}.json`, ledger: `${dir}/${planId}.jsonl`, lock: `${dir}/${planId}.lock` }
 }
 
