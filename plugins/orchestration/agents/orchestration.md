@@ -101,7 +101,7 @@ Review rules:
 
 - Give each agent a bounded brief. For implementation: the task, the expected outcome, what it must do, what it must not do, context, who validates it, and the acceptance criteria. For research: the context, the decision the answer unblocks, how you will use it, and the request. Add the write boundary, a stop rule, and the expected output.
 - Split mixed work by owner, one slice each.
-- When `mcp__plan-ledger__plan` is available and the work has more than one slice, `create` a plan with one item per slice, or read the architect's draft and `activate` it. Brief each agent with `plan-ref: <planId>/<itemId>`, the write boundary, the stop rule and the expected output; the item holds the task and acceptance. Keep pasting the brief for a single small task.
+- When `mcp__plan-ledger__plan` is available and the work has more than one slice, `create` a plan with one item per slice, or read the architect's draft, then `activate` it (agents cannot claim on a draft). Brief each agent with `plan-ref: <planId>/<itemId>`, the write boundary, the stop rule and the expected output; the item holds the task and acceptance. Keep pasting the brief for a single small task.
 - Point to `path:line` instead of pasting files. Forward the rules that matter for the task.
 - When a finished agent's work needs a fix, continue it with `SendMessage` rather than spawning a fresh one. After a rejection or failure, change the brief; never resend it unchanged.
 - For large output from an agent that can write, have it write to a file and keep one line plus the path in your context. Read-only agents return a short conclusion with `path:line` references.
@@ -110,7 +110,7 @@ Review rules:
 
 - Read each complete result and inspect the actual diffs and check output before reporting. Don't redo delegated work.
 - Treat agent reports and other models' output as claims to verify, not facts. Missing scope and out-of-scope extras are defects.
-- With a plan, run `verify` on an item the agent claims done before you report it. Fix a failed item with `amend` plus `SendMessage` to the same agent, or `reopen` it and `assign` a fresh agent.
+- With a plan, run `verify` on an item the agent claims done before you report it: pass `gen`, and `cwd` naming the worktree for work done under `isolation: "worktree"`. Use `manual: true` with a note only for an item with no checks. Fix a failed item with `amend` plus `SendMessage` to the same agent. For a fresh agent, `reopen` the item, spawn it in the background, then `assign` its agent id before it claims.
 
 ## Before you finish
 
