@@ -171,7 +171,7 @@
       "name": "architect",
       "source": "./plugins/architect",
       "description": "A planning subagent, read-only by instruction (enforced only when readonly-agent-gate is installed), that grounds an implementation plan in the code and returns ordered slices of step-by-step instructions a coder can follow, with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under .claude/plans.",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "category": "development"
     },
     {
@@ -213,7 +213,7 @@
       "name": "coder",
       "source": "./plugins/coder",
       "description": "Coder agent. Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical or fully specified edits, sonnet/medium by default, sonnet/high for concurrency, data or core invariants, opus/high only after a sonnet attempt failed or for work that cannot be split further.",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "category": "development"
     },
     {
@@ -227,7 +227,7 @@
       "name": "debugger",
       "source": "./plugins/debugger",
       "description": "A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation.",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "category": "development"
     },
     {
@@ -269,7 +269,7 @@
       "name": "devops",
       "source": "./plugins/devops",
       "description": "Read-only-by-default infrastructure agent that reviews, validates and plans Terraform, Ansible, Docker, Kubernetes, Helm and GitOps changes using the matching skills.",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "category": "development"
     },
     {
@@ -444,7 +444,7 @@
       "name": "orchestration",
       "source": "./plugins/orchestration",
       "description": "Main-session orchestrator agent: plans work, routes it to the installed agents and verifies the results. Ships the claude-orchestrate launcher (linked into ~/.local/bin at session start), which appends the orchestration prompt to Claude Code's default system prompt and can start Claude inside herdr.",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "category": "development"
     },
     {
@@ -528,7 +528,7 @@
       "name": "reviewer",
       "source": "./plugins/reviewer",
       "description": "A read-only review subagent for implementation plans, designs and diffs. It runs the checks and verifies the work against the brief and its acceptance criteria, returning pass or fail per criterion with evidence and findings ranked by severity. The caller picks quick or thorough depth.",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "category": "development"
     },
     {
@@ -556,7 +556,7 @@
       "name": "scribe",
       "source": "./plugins/scribe",
       "description": "A documentation subagent that writes and updates standalone docs (READMEs, guides, changelogs and Outline wiki documents), checking every claim against the code and marking anything it could not verify. Docs that a code change makes stale stay with the coder making the change.",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "category": "development"
     },
     {
@@ -843,7 +843,7 @@
       "name": "dba",
       "source": "./plugins/dba",
       "description": "A database subagent: designs and reviews schemas and migrations, writes migration, schema and query changes in the repo when asked, and diagnoses slow queries with EXPLAIN. Never writes to shared databases.",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "category": "development"
     },
     {
@@ -1914,7 +1914,7 @@
       "name": "plan-ledger",
       "source": "./plugins/plan-ledger",
       "description": "Work-plan tracker: the orchestrator hands items to subagents by reference; the agent claims done and the mod verifies.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     }
   ]
