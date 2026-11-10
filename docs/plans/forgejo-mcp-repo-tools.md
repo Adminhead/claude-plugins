@@ -7,7 +7,7 @@ Status: slices 2-4 done 2026-11-10. Slice 1 deviated: no token, so `tests/tools.
 **Plugin and consumers**
 - `plugins/forgejo-mcp/.mcp.json` declares one HTTP server `forgejo` at `https://${user_config.forgejo_host}/mcp` with an `Authorization: token ...` header. The plugin ships only `.mcp.json`, `plugin.json` (0.2.0) and `README.md`. Tools surface as `mcp__plugin_forgejo-mcp_forgejo__<tool>`.
 - The server is run by the instance operator (`forgejo-mcp --transport http`, passthrough auth). `forgejo-mcp --help` (local 3.2.0) has no tool, toolset or filter flag, so the client cannot ask the server for a subset.
-- The README already has a "Suggested deny rules" block (19 destructive names) that the user pastes into their own settings. It still lists `delete_org`, `delete_package`, `delete_wiki_page`, `delete_repo_hook`, `remove_*_member` and similar; those become redundant once the groups below are hidden.
+- The README already has a "Suggested deny rules" block (19 destructive names) that the user pastes into their own settings. It still lists `delete_org`, `delete_package` (now kept, see section 7), `delete_wiki_page`, `delete_repo_hook`, `remove_*_member` and similar; those become redundant once the groups below are hidden.
 - Skills that name forgejo-mcp tools (grep of `plugins/forgejo-*`, 2026-11-10); these must survive:
   - forgejo-actions `references/failed-run.md`: `list_workflow_runs`, `get_workflow_run`, `list_action_run_jobs`, `get_action_job_logs`, and by reference dispatch/cancel/rerun ("rerun" has no tool in the upstream list; only `dispatch_workflow` and `cancel_workflow_run` exist).
   - forgejo-pr-comments: `list_repo_pull_requests`, `list_pull_reviews`, `list_pull_review_comments`, `list_issue_comments`.
@@ -28,7 +28,7 @@ Status: slices 2-4 done 2026-11-10. Slice 1 deviated: no token, so `tests/tools.
 
 ## 2. Goal and done
 
-Goal: the model sees only repo-task tools (issues, comments, PRs and reviews, releases, labels, milestones, branches and protection, files and commits, Actions runs and logs, repo settings, attachments, dependencies) from the `forgejo` server. Wiki, organization, team, package, notification, user-search, webhook, time-tracking, secrets and comment-attachment tools are gone from its context.
+Goal: the model sees only repo-task tools (issues, comments, PRs and reviews, releases, labels, milestones, branches and protection, files and commits, Actions runs and logs, repo settings, attachments, dependencies) from the `forgejo` server. Wiki, organization, team, notification, user-search, webhook and time-tracking tools are gone from its context.
 
 Done when:
 - `plugins/forgejo-mcp/README.md` has a paste-ready `permissions.deny` block that hides every drop-table tool and no keep-table tool, plus the keep table.
@@ -40,7 +40,7 @@ Done when:
 
 Recommended: settings `permissions.deny` globs, documented in the plugin README, pasted once by the user into `~/.claude/settings.json` (or an operator into managed settings for a team). It is the only persistent, session-wide mechanism that removes tools from the model's context, needs no code, and costs one paste per user. The README block replaces the old "Suggested deny rules" block and keeps the merge/destructive-write advice (`merge_pull_request`, `delete_*` of kept tools) as a second, separate block.
 
-Use explicit names for odd cases and globs only where the pattern cannot touch a kept tool (`*notification*`, `*_wiki_*`, `*_package*`, `*_repo_hook*`, `*team*`, `*stopwatch*`, `*_tracked_times`, `*_issue_time*`, `*_action_secret*`). The spec proves that property for the names known today; a new upstream name is not covered until the fixture is refreshed (section 6).
+Use explicit names for odd cases and globs only where the pattern cannot touch a kept tool (`*notification*`, `*_wiki_*`, `*_repo_hook*`, `*team*`, `*stopwatch*`, `*_tracked_times`, `*_issue_time*`). The spec proves that property for the names known today; a new upstream name is not covered until the fixture is refreshed (section 6).
 
 Alternatives compared:
 
@@ -60,7 +60,7 @@ Alternatives compared:
 
 Counts follow the goern README (163 tools). Names marked `unverified` were not found in the 3.2.0 binary or only come from the README.
 
-**Keep (about 103)**
+**Keep (113)**
 
 | Group | Tools |
 | --- | --- |
@@ -73,9 +73,11 @@ Counts follow the goern README (163 tools). Names marked `unverified` were not f
 | Pull requests and reviews | `list_repo_pull_requests`, `get_pull_request_by_index`, `create_pull_request`, `update_pull_request`, `list_pull_request_files`, `get_pull_request_diff`, `merge_pull_request`, `list_pull_reviews`, `get_pull_review`, `list_pull_review_comments`, `create_pull_review`, `submit_pull_review`, `dismiss_pull_review`, `delete_pull_review`, `create_review_requests`, `delete_review_requests` |
 | Releases | `list_releases`, `get_release_by_id`, `get_release_by_tag`, `get_latest_release`, `create_release`, `edit_release`, `delete_release`, `delete_release_by_tag`, and the six `*_release_attachment(s)` tools |
 | Issue and comment attachments | `list_issue_attachments`, `get_issue_attachment`, `download_issue_attachment`, `create_issue_attachment`, `edit_issue_attachment`, `delete_issue_attachment`, `list_comment_attachments`, `get_comment_attachment`, `download_comment_attachment`, `create_comment_attachment`, `edit_comment_attachment`, `delete_comment_attachment` |
+| Packages | `list_packages`, `get_package`, `list_package_files`, `delete_package` |
+| Action secrets | `list_repo_action_secrets`, `create_or_update_repo_action_secret`, `delete_repo_action_secret`, `list_org_action_secrets`, `create_or_update_org_action_secret`, `delete_org_action_secret` (all unverified in 3.2.0) |
 | Actions | `dispatch_workflow`, `list_workflow_runs`, `get_workflow_run`, `list_action_run_jobs`, `get_action_job_logs`, `cancel_workflow_run`, `delete_workflow_run`, `list_action_run_artifacts`, `get_action_artifact` |
 
-**Drop (about 60)**
+**Drop (50)**
 
 | Group | Tools | Deny pattern |
 | --- | --- | --- |
@@ -84,14 +86,12 @@ Counts follow the goern README (163 tools). Names marked `unverified` were not f
 | Organizations | `list_my_orgs`, `list_user_orgs`, `get_org`, `create_org`, `edit_org`, `delete_org`, `list_org_members`, `check_org_membership`, `remove_org_member` | explicit names |
 | Org label writes | `create_org_label`, `edit_org_label`, `delete_org_label` | explicit names |
 | Teams | `list_org_teams`, `search_org_teams`, `create_org_team`, `add_team_member`, `remove_team_member`, `add_team_repo`, `remove_team_repo` | `*team*` |
-| Packages | `list_packages`, `get_package`, `delete_package`, `list_package_files` | `*_package*` |
 | Webhooks | `list_repo_hooks`, `get_repo_hook`, `create_repo_hook`, `edit_repo_hook`, `delete_repo_hook`, `test_repo_hook` | `*_repo_hook*` |
 | Wiki | `list_wiki_pages`, `get_wiki_page`, `get_wiki_revisions`, `create_wiki_page`, `update_wiki_page`, `delete_wiki_page` | `*_wiki_*` |
 | Time tracking | `list_issue_tracked_times`, `list_repo_tracked_times`, `list_my_tracked_times`, `add_issue_time`, `reset_issue_time`, `delete_issue_time_entry`, `start_issue_stopwatch`, `stop_issue_stopwatch`, `cancel_issue_stopwatch`, `list_my_stopwatches` | `*_tracked_times`, `*_issue_time*`, `*stopwatch*` |
-| Action secrets | `list_repo_action_secrets`, `create_or_update_repo_action_secret`, `delete_repo_action_secret`, `list_org_action_secrets`, `create_or_update_org_action_secret`, `delete_org_action_secret` (all unverified in 3.2.0) | `*_action_secret*` |
 | Repo creation | `create_repo`, `fork_repo` | explicit names |
 
-All patterns carry the prefix `mcp__plugin_forgejo-mcp_forgejo__`. `*team*` has to be checked against kept names (none contain "team"); `*_package*` against `get_pull_request_*` (no match).
+All patterns carry the prefix `mcp__plugin_forgejo-mcp_forgejo__`. `*team*` has to be checked against kept names (none contain "team").
 
 ## 5. Slices
 
@@ -114,7 +114,7 @@ Files: `plugins/forgejo-mcp/README.md`.
 2. In it, add the JSON block `{"permissions":{"deny":[...]}}` with one string per drop pattern from section 4, each prefixed `mcp__plugin_forgejo-mcp_forgejo__`. Explain: paste into `permissions.deny` in `~/.claude/settings.json` (user scope), or managed settings for a team; plugins cannot ship permission rules; a bare-name or glob deny removes the tool from the model's context (link the permissions doc, "Tool name wildcards").
 3. Add the keep table from section 4 as a compact list so the user knows what remains, plus one sentence that names a tool's group when it is missing ("a tool you want is missing: remove its pattern from your deny list").
 4. Add a second block "Optional: block risky writes you kept" with the previous deny entries that still name kept tools: `delete_release`, `delete_release_by_tag`, `delete_release_attachment`, `delete_branch`, `delete_branch_protection`, `delete_file`, `delete_workflow_run`, `merge_pull_request`; keep the sentence about dropping `merge_pull_request` and the `ask` suggestion for `dispatch_workflow`, `cancel_workflow_run`, `dismiss_pull_review`, `delete_pull_review`.
-5. In "Token scopes", keep the organization read bullet (kept tools `list_org_labels` and `get_org_label` need it). Replace only the bullet "Organization, team, package and notification tools need their own matching scopes; leave them off unless used." with "Team, package and notification tools are hidden by the deny block above, so the token needs no scope for them."
+5. In "Token scopes", keep the organization read bullet (kept tools `list_org_labels` and `get_org_label` need it). Replace only the bullet "Organization, team, package and notification tools need their own matching scopes; leave them off unless used." with a bullet that says package and action secret tools stay visible (scopes only if used) and team and notification tools are hidden.
 6. In the intro paragraph add one sentence that the plugin cannot filter tools itself and link to the new section.
 4b. State in the section that the entries are appended to an existing `permissions.deny` array (never replace it) and that the optional block is merged the same way.
 Verify: the slice 3 spec parses and checks the block; run `bun test plugins/forgejo-mcp/tests/` after slice 3.
@@ -136,13 +136,13 @@ Files: `plugins/forgejo-mcp/.claude-plugin/plugin.json`, `.claude-plugin/marketp
 2. Run `uv run --with pyyaml python3 scripts/plugins.py check`; fix only what it reports about forgejo-mcp (the new `tests/` directory is the likely trip; if `check` rejects it, move the spec to `plugins/forgejo-mcp/scripts/tests/` as `check-bypass-guard` does).
 3. Do not run `plugins.py catalog` unless `check` says the catalog drifted; the description is unchanged, so it should not.
 4. Commit: `docs(forgejo-mcp): hide non-repo tools with a deny list` plus a spec line, staging explicit paths: the README, the spec, both version files, and this plan.
-5. User step: run the `ship-plugin` skill for `forgejo-mcp` if it should go live. Then paste the deny block into `~/.claude/settings.json`, start a new session, and ask the session (or an agent) to list every tool named `mcp__plugin_forgejo-mcp_forgejo__*` in its tool list. Agents without ToolSearch (such as the orchestrator) load MCP tools directly, so a denied tool is absent from that list; where ToolSearch exists, `select:` a denied name instead. Passing: about 103 tools, none of `get_wiki_page`, `delete_org`, `search_users`, and `list_repo_issues` present. Record the Claude Code version (`claude --version`) in the README section as the version tested.
+5. User step: run the `ship-plugin` skill for `forgejo-mcp` if it should go live. Then paste the deny block into `~/.claude/settings.json`, start a new session, and ask the session (or an agent) to list every tool named `mcp__plugin_forgejo-mcp_forgejo__*` in its tool list. Agents without ToolSearch (such as the orchestrator) load MCP tools directly, so a denied tool is absent from that list; where ToolSearch exists, `select:` a denied name instead. Passing: about 113 tools, none of `get_wiki_page`, `delete_org`, `search_users`, and `list_repo_issues` present. Record the Claude Code version (`claude --version`) in the README section as the version tested.
 Verify: `uv run --with pyyaml python3 scripts/plugins.py check` prints no error.
 
 ## 6. Risks and rollback
 
 - Upstream renames or adds tools: the deny globs miss new non-repo tools (they appear again) and explicit names go stale silently (no warning because names contain `_`). Mitigation: the README states the 3.x source and date; rerun slice 1 after a server upgrade. Rollback: delete the block from settings.
-- A glob swallows a kept tool later (a new repo tool whose name contains `team`, `_package` or `notification`). The spec knows only the names in `tools.txt`. Accepted; refresh the fixture after an upgrade.
+- A glob swallows a kept tool later (a new repo tool whose name contains `team` or `notification`). The spec knows only the names in `tools.txt`. Accepted; refresh the fixture after an upgrade.
 - The user may never paste the block, so the shrink does nothing for them. This is inherent to settings-based hiding; the README is the delivery channel.
 - The tool name prefix assumes the plugin is called `forgejo-mcp` and the server `forgejo`. Renaming either changes every entry.
 - The hosted server version may differ from 3.2.0 (action secrets, `change_files`); slice 1 settles it.
@@ -150,7 +150,7 @@ Verify: `uv run --with pyyaml python3 scripts/plugins.py check` prints no error.
 
 ## 7. Decisions and open questions
 
-Decisions (user, 2026-11-10): drop org label writes, `create_repo` and `fork_repo`; keep comment attachments; enforcement is the pasted README deny block plus the fixture spec, with no proxy or mod.
+Decisions (user, 2026-11-10): drop org label writes, `create_repo` and `fork_repo`; keep comment attachments; keep the package tools and the action secret tools (changed 2026-11-10, previously dropped); enforcement is the pasted README deny block plus the fixture spec, with no proxy or mod.
 
 Open (recommendation):
 

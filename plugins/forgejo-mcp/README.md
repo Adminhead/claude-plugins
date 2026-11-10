@@ -40,7 +40,7 @@ The server exposes a large set of read and write tools, so the token is the only
 - Read-only browsing (issues, PRs, Actions runs and logs): read access to repository, issue, organization and user.
 - Filing issues, comments and labels: add write access to issue.
 - Pushing changes through the API, editing releases, branches or files, merging: add write access to repository. Leave this off unless you want those tools usable.
-- Team, package and notification tools are hidden by the deny block in [Hide tools you do not need](#hide-tools-you-do-not-need), so the token needs no scope for them.
+- Package tools (`list_packages`, `get_package`, `list_package_files`, `delete_package`) stay visible: add package access if you use them. Action secret tools (list, create or update, delete, for a repository or an organization) stay visible too: they need write access to repository (repository secrets) or organization (organization secrets), and only if you use them. Team and notification tools are hidden by the deny block in [Hide tools you do not need](#hide-tools-you-do-not-need), so the token needs no scope for them.
 
 Forgejo's access token page offers per-category "No access / Read / Read and Write" choices. The exact scope strings (such as `read:repository`, `write:issue`) have not been verified here, so match them against your instance's token page. A tool that needs a scope the token lacks fails with 403. Prefer a repository-scoped or short-lived token where your Forgejo version offers one, and keep a separate token for this plugin so you can revoke it alone.
 
@@ -55,7 +55,7 @@ The plugin no longer runs a local `forgejo-mcp` binary, so it needs nothing on `
 
 ## Hide tools you do not need
 
-The server exposes about 163 tools and has no option to serve fewer. This plugin cannot filter them either: `.mcp.json` has no per-server tool filter and plugins cannot ship permission rules. A `permissions.deny` entry that names a tool, or a glob over tool names, removes it from the model's context (see [Tool name wildcards](https://code.claude.com/docs/en/permissions)). The block below hides the tools that are not about repository work: notifications, user search, organizations and teams (organization label writes included), packages, webhooks, wiki, time tracking, action secrets, and `create_repo` and `fork_repo`.
+The server exposes about 163 tools and has no option to serve fewer. This plugin cannot filter them either: `.mcp.json` has no per-server tool filter and plugins cannot ship permission rules. A `permissions.deny` entry that names a tool, or a glob over tool names, removes it from the model's context (see [Tool name wildcards](https://code.claude.com/docs/en/permissions)). The block below hides the tools that are not about repository work: notifications, user search, organizations and teams (organization label writes included), webhooks, wiki, time tracking, and `create_repo` and `fork_repo`. Package and action secret tools stay visible.
 
 Append these entries to the existing `permissions.deny` array in `~/.claude/settings.json` (user scope), or have an operator add them to managed settings for a team. Never replace the array.
 
@@ -78,13 +78,11 @@ Append these entries to the existing `permissions.deny` array in `~/.claude/sett
       "mcp__plugin_forgejo-mcp_forgejo__edit_org_label",
       "mcp__plugin_forgejo-mcp_forgejo__delete_org_label",
       "mcp__plugin_forgejo-mcp_forgejo__*team*",
-      "mcp__plugin_forgejo-mcp_forgejo__*_package*",
       "mcp__plugin_forgejo-mcp_forgejo__*_repo_hook*",
       "mcp__plugin_forgejo-mcp_forgejo__*_wiki_*",
       "mcp__plugin_forgejo-mcp_forgejo__*_tracked_times",
       "mcp__plugin_forgejo-mcp_forgejo__*_issue_time*",
       "mcp__plugin_forgejo-mcp_forgejo__*stopwatch*",
-      "mcp__plugin_forgejo-mcp_forgejo__*_action_secret*",
       "mcp__plugin_forgejo-mcp_forgejo__create_repo",
       "mcp__plugin_forgejo-mcp_forgejo__fork_repo"
     ]
@@ -105,6 +103,8 @@ The tool names in `tests/tools.txt` (163 tools) were read from a running forgejo
 - Pull requests and reviews: `list_repo_pull_requests`, `get_pull_request_by_index`, `create_pull_request`, `update_pull_request`, `list_pull_request_files`, `get_pull_request_diff`, `merge_pull_request`, `list_pull_reviews`, `get_pull_review`, `list_pull_review_comments`, `create_pull_review`, `submit_pull_review`, `dismiss_pull_review`, `delete_pull_review`, `create_review_requests`, `delete_review_requests`.
 - Releases: `list_releases`, `get_release_by_id`, `get_release_by_tag`, `get_latest_release`, `create_release`, `edit_release`, `delete_release`, `delete_release_by_tag`, and the list, get, download, create, edit and delete tools for release attachments.
 - Issue and comment attachments: list, get, download, create, edit and delete, for both issues and comments.
+- Packages: `list_packages`, `get_package`, `list_package_files`, `delete_package`.
+- Action secrets: `list_repo_action_secrets`, `create_or_update_repo_action_secret`, `delete_repo_action_secret`, `list_org_action_secrets`, `create_or_update_org_action_secret`, `delete_org_action_secret`.
 - Actions: `dispatch_workflow`, `list_workflow_runs`, `get_workflow_run`, `list_action_run_jobs`, `get_action_job_logs`, `cancel_workflow_run`, `delete_workflow_run`, `list_action_run_artifacts`, `get_action_artifact`.
 
 ### Optional: block risky writes you kept
@@ -122,6 +122,11 @@ Plugins can't ship permission rules and this one doesn't edit any settings. If y
       "mcp__plugin_forgejo-mcp_forgejo__delete_branch_protection",
       "mcp__plugin_forgejo-mcp_forgejo__delete_file",
       "mcp__plugin_forgejo-mcp_forgejo__delete_workflow_run",
+      "mcp__plugin_forgejo-mcp_forgejo__delete_package",
+      "mcp__plugin_forgejo-mcp_forgejo__create_or_update_repo_action_secret",
+      "mcp__plugin_forgejo-mcp_forgejo__delete_repo_action_secret",
+      "mcp__plugin_forgejo-mcp_forgejo__create_or_update_org_action_secret",
+      "mcp__plugin_forgejo-mcp_forgejo__delete_org_action_secret",
       "mcp__plugin_forgejo-mcp_forgejo__merge_pull_request"
     ]
   }
