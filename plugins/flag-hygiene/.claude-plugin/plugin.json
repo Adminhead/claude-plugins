@@ -1,0 +1,9 @@
+{
+  "name": "flag-hygiene",
+  "version": "0.1.0",
+  "description": "Audits a codebase for stale, orphaned and undocumented feature flags and builds or updates a flag registry with owners and removal dates.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

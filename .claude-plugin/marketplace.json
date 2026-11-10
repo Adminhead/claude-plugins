@@ -1543,7 +1543,7 @@
       "name": "feature-flags",
       "source": "./plugins/feature-flags",
       "description": "Adds, uses, tests and removes feature flags in application code with the repo's own flag tool or OpenFeature, with a reference of common flag platforms.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1881,6 +1881,34 @@
       "description": "Plugin set for long-running, multi-session projects, installed at project scope. Ships no components of its own.",
       "version": "0.1.1",
       "category": "meta"
+    },
+    {
+      "name": "goff-flags",
+      "source": "./plugins/goff-flags",
+      "description": "Writes and reviews GO Feature Flag flag files (YAML, JSON, TOML): variations, targeting rules and query syntax, percentage, progressive and scheduled rollouts, experimentation, metadata, and the go-feature-flag-cli lint and evaluate commands.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "goff-relay-proxy",
+      "source": "./plugins/goff-relay-proxy",
+      "description": "Configures and runs the GO Feature Flag relay proxy: config file keys, retrievers, exporters, notifiers, API keys, flagsets, admin and OFREP endpoints, Docker and Kubernetes deployment.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "goff-sdk",
+      "source": "./plugins/goff-sdk",
+      "description": "Integrates GO Feature Flag through OpenFeature providers (server, in-process, client) and the Go module: evaluation context, bucketing, tracking and testing.",
+      "version": "0.1.0",
+      "category": "development"
+    },
+    {
+      "name": "flag-hygiene",
+      "source": "./plugins/flag-hygiene",
+      "description": "Audits a codebase for stale, orphaned and undocumented feature flags and builds or updates a flag registry with owners and removal dates.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

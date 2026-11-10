@@ -1,0 +1,9 @@
+{
+  "name": "goff-relay-proxy",
+  "version": "0.1.0",
+  "description": "Configures and runs the GO Feature Flag relay proxy: config file keys, retrievers, exporters, notifiers, API keys, flagsets, admin and OFREP endpoints, Docker and Kubernetes deployment.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

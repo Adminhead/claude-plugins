@@ -1,0 +1,9 @@
+{
+  "name": "goff-sdk",
+  "version": "0.1.0",
+  "description": "Integrates GO Feature Flag through OpenFeature providers (server, in-process, client) and the Go module: evaluation context, bucketing, tracking and testing.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
