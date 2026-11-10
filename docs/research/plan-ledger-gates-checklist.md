@@ -16,7 +16,7 @@ Setup: `git init /tmp/plr-scratch && cd /tmp/plr-scratch && git commit --allow-e
    - optional: a guarded command such as `git push --force`: the dialog should appear.
 4. **A3, `/plans unlock`.** Hold a lock: `d=$(ls -d ~/.claude/adminhead-plans/*/); mkdir "$d<planId>.lock"; printf 'tok-abcdef123 %s' $(( $(date +%s) - 90 )) > "$d<planId>.lock/owner"`. Run `/plans unlock <planId>`. The question should show holder `tok-abcd` and about 90 s. "Keep the lock" and Escape leave it, "Remove the lock" removes it.
 5. **A4, `/plans repair` when the file is ahead.** Edit a plan JSON's `rev` to 99, run `/plans repair <planId>`. The question should name rev 99 against the ledger's rev. "Keep the plan file" and Escape leave it, "Rebuild from the ledger" replaces it and keeps a `.corrupt-<ts>` copy.
-6. **A5, `/plans abandon`.** Run `/plans abandon <planId>`, confirm a question appears, "Keep the plan" changes nothing, "Abandon the plan" abandons it. Also ask the model to abandon through the tool and confirm it cannot.
+6. **A5, `/plans abandon`.** Run `/plans abandon <planId>`, confirm a question appears, "Keep the plan" changes nothing, "Abandon the plan" abandons it. Asking the model to abandon through the tool is allowed by design (the orchestrator may abandon a plan with no prompt); only the `/plans abandon` command asks. Result 2026-11-10: the tool path abandoned a plan without a prompt, as designed.
 7. **A6, `/plans goal-text`.** The prompt box is filled with a `/goal ...` line naming command-verified and manual counts, and nothing is submitted.
 
 ## Part B: the gates that block slices 9 and 10
