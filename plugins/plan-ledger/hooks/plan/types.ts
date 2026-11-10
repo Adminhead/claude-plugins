@@ -71,6 +71,8 @@ export type Item = {
   checks: Check[]
   status: ItemStatus
   attempts: number
+  /** Added to the attempt cap by `reopen { extraAttempts }`; accumulates. Starts at 0. */
+  extraAttempts: number
   /** Starts at 1; incremented by `claim_done`, `amend` and `reopen`. */
   gen: number
   boundAgent: BoundAgent | null

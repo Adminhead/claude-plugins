@@ -25,6 +25,7 @@ function item(over: Partial<Item> = {}): Item {
     checks: [],
     status: 'pending',
     attempts: 0,
+    extraAttempts: 0,
     gen: 1,
     boundAgent: null,
     reservedFor: null,

@@ -1,0 +1,833 @@
+// plan-ledger: the state machine. Pure and deterministic: no clock, no randomness, no I/O; time and
+// ids come from `ctx`. Implements exactly the transition table of decision 2 in
+// docs/plans/goal-ledger.md and denies everything else. `authorize` runs first.
+//
+// Rules the table leaves implicit:
+// - `rev` is plan.rev + 1 on every non-denied result, including an idempotent repeat (a no-op) that
+//   changes nothing else, so replay sees one rev per ledger line.
+// - A denied result keeps `rev` unchanged. Read-only actions (`list`, `status`, `get`) are not
+//   transitions and are denied here; the caller serves them without `apply`.
+// - Replay: a non-denied Change rebuilds its action as `{ action, plan, item (when non-null),
+//   ...data }`. `data` holds the normalized payload (evidence and notes already truncated), plus
+//   `project` on `create` (supplied through `ctx.project`), so applying it again yields the same plan.
+//   `ifRev` is not recorded. Replay passes `ctx.actor`, `ctx.op`, `ctx.nowMs` (the line's `ts`) and
+//   `ctx.newPlanId` (the line's `plan`) from the line.
+import { authorize, normalizeAgentType } from './authorize'
+import type {
+  Action,
+  Actor,
+  BoundAgent,
+  Change,
+  CheckResult,
+  Check,
+  Claimed,
+  CommandEvidence,
+  Item,
+  ItemInput,
+  ItemStatus,
+  Plan,
+  Verification,
+} from './types'
+import { MAX_ARGV_BYTES, MAX_CHECKS, MAX_INSTRUCTIONS_BYTES, MAX_ITEMS, MAX_TAIL_BYTES, MAX_TITLE_CHARS } from './types'
+
+export type ApplyCtx = {
+  actor: Actor
+  nowMs: number
+  attemptCap: number
+  /** Id given to a plan made by `create`. */
+  newPlanId: string
+  /** Random id chosen by the mod for this call; copied into the Change. */
+  op: string
+  /** Project root recorded on a plan made by `create`. */
+  project: string
+}
+
+export type ApplyOk = { plan: Plan; change: Change; message: string }
+export type ApplyDenied = { denied: string; change: Change }
+export type ApplyResult = ApplyOk | ApplyDenied
+
+type Out =
+  | { deny: string }
+  | {
+      plan: Plan
+      item: string | null
+      from: string | null
+      to: string | null
+      data: Record<string, unknown>
+      message: string
+    }
+
+type Env<A extends Action['action']> = {
+  plan: Plan
+  action: Extract<Action, { action: A }>
+  ctx: ApplyCtx
+  now: string
+}
+
+const deny = (reason: string): { deny: string } => ({ deny: reason })
+
+const READ_ONLY: ReadonlySet<string> = new Set(['list', 'status', 'get'])
+const NO_IFREV: ReadonlySet<string> = new Set(['create', 'list', 'status', 'get'])
+
+const ITEM_FIELDS: ReadonlySet<string> = new Set([
+  'title',
+  'instructions',
+  'acceptance',
+  'files',
+  'deps',
+  'agent',
+  'model',
+  'checks',
+])
+
+// ---------------------------------------------------------------- entry point
+
+export function apply(plan: Plan | null, action: Action, ctx: ApplyCtx): ApplyResult {
+  try {
+    return run(plan, action, ctx)
+  } catch {
+    return refuse(plan, action, ctx, 'Could not apply this call, so it is refused.')
+  }
+}
+
+function run(plan: Plan | null, action: Action, ctx: ApplyCtx): ApplyResult {
+  const auth = authorize(plan, action, ctx.actor)
+  if (!auth.ok) return refuse(plan, action, ctx, auth.reason)
+
+  if (READ_ONLY.has(action.action)) {
+    return refuse(plan, action, ctx, `${action.action} reads the plan and changes nothing; it is not a transition.`)
+  }
+  if (action.action !== 'create' && plan === null) return refuse(plan, action, ctx, 'No such plan.')
+  if (action.action !== 'create' && plan !== null && plan.status === 'abandoned') {
+    return refuse(plan, action, ctx, 'This plan is abandoned. Ask the orchestrator to create a new plan.')
+  }
+
+  const ifRev = (action as { ifRev?: unknown }).ifRev
+  if (!NO_IFREV.has(action.action) && ifRev !== undefined && plan !== null && ifRev !== plan.rev) {
+    return refuse(
+      plan,
+      action,
+      ctx,
+      `The plan is at rev ${plan.rev}, not rev ${String(ifRev)}. Re-read the plan, then retry.`,
+    )
+  }
+
+  const now = iso(ctx.nowMs)
+  const out = dispatch(plan, action, ctx, now)
+  if ('deny' in out) return refuse(plan, action, ctx, out.deny)
+
+  const rev = (plan?.rev ?? 0) + 1
+  const next: Plan = { ...out.plan, rev }
+  const change: Change = {
+    v: 1,
+    rev,
+    ts: now,
+    plan: next.id,
+    item: out.item,
+    actor: ctx.actor,
+    action: action.action,
+    from: out.from,
+    to: out.to,
+    data: out.data,
+    denied: null,
+    op: ctx.op,
+  }
+  return { plan: next, change, message: out.message }
+}
+
+function dispatch(plan: Plan | null, action: Action, ctx: ApplyCtx, now: string): Out {
+  if (action.action === 'create') return create({ plan: plan as unknown as Plan, action, ctx, now })
+  if (plan === null) return deny('No such plan.')
+  switch (action.action) {
+    case 'activate':
+      return activate({ plan, action, ctx, now })
+    case 'claim':
+      return claim({ plan, action, ctx, now })
+    case 'progress':
+      return progress({ plan, action, ctx, now })
+    case 'block':
+      return block({ plan, action, ctx, now })
+    case 'fail':
+      return fail({ plan, action, ctx, now })
+    case 'claim_done':
+      return claimDone({ plan, action, ctx, now })
+    case 'verify':
+      return verify({ plan, action, ctx, now })
+    case 'amend':
+      return amend({ plan, action, ctx, now })
+    case 'assign':
+      return assign({ plan, action, ctx, now })
+    case 'reopen':
+      return reopen({ plan, action, ctx, now })
+    case 'abandon':
+      return abandon({ plan, action, ctx, now })
+    case 'bind':
+      return bind({ plan, action, ctx, now })
+    case 'reserve':
+      return reserve({ plan, action, ctx, now })
+    default:
+      return deny('Unknown action.')
+  }
+}
+
+// A denial: `rev` unchanged, `denied` holds the reason, no payload (the reason is what review needs).
+function refuse(plan: Plan | null, action: Action, ctx: ApplyCtx, reason: string): ApplyDenied {
+  const a = (action ?? {}) as { action?: unknown; plan?: unknown; item?: unknown }
+  const item = typeof a.item === 'string' ? a.item : null
+  const found = plan !== null && item !== null ? plan.items.find((i) => i.id === item) : undefined
+  const planId =
+    plan !== null
+      ? plan.id
+      : a.action === 'create'
+        ? ctx.newPlanId
+        : typeof a.plan === 'string'
+          ? a.plan
+          : ''
+  const change: Change = {
+    v: 1,
+    rev: plan?.rev ?? 0,
+    ts: safeIso(ctx.nowMs),
+    plan: planId,
+    item,
+    actor: ctx.actor,
+    action: (typeof a.action === 'string' ? a.action : 'unknown') as Change['action'],
+    from: found ? found.status : null,
+    to: null,
+    data: {},
+    denied: reason,
+    op: ctx.op,
+  }
+  return { denied: reason, change }
+}
+
+// ---------------------------------------------------------------- helpers
+
+function iso(ms: number): string {
+  return new Date(ms).toISOString()
+}
+
+function safeIso(ms: number): string {
+  try {
+    return iso(ms)
+  } catch {
+    return '1970-01-01T00:00:00.000Z'
+  }
+}
+
+function utf8Bytes(s: string): number {
+  let n = 0
+  for (const ch of s) {
+    const c = ch.codePointAt(0) as number
+    n += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4
+  }
+  return n
+}
+
+/** Cuts to at most `max` UTF-8 bytes on a character boundary. Idempotent, so replay agrees with the live run. */
+function truncBytes(s: string, max: number = MAX_TAIL_BYTES): string {
+  if (s.length * 4 <= max || utf8Bytes(s) <= max) return s
+  let n = 0
+  let out = ''
+  for (const ch of s) {
+    const c = ch.codePointAt(0) as number
+    const b = c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4
+    if (n + b > max) break
+    n += b
+    out += ch
+  }
+  return out
+}
+
+const isStr = (x: unknown): x is string => typeof x === 'string'
+const isNonEmpty = (x: unknown): x is string => typeof x === 'string' && x.trim() !== ''
+const isStrArray = (x: unknown): x is string[] => Array.isArray(x) && x.every(isStr)
+const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x)
+
+function findItem(plan: Plan, id: unknown): Item | null {
+  return isStr(id) ? (plan.items.find((i) => i.id === id) ?? null) : null
+}
+
+function withItem(plan: Plan, next: Item): Plan {
+  return { ...plan, items: plan.items.map((i) => (i.id === next.id ? next : i)) }
+}
+
+const noItem = (id: string): { deny: string } => deny(`No item ${id} in this plan. Check the item id.`)
+
+function wrongStatus(item: Item, verb: string, expected: string, hint = ''): { deny: string } {
+  return deny(`Cannot ${verb} ${item.id}: it is ${item.status}, and ${verb} needs ${expected}.${hint ? ` ${hint}` : ''}`)
+}
+
+function otherInProgress(plan: Plan, agentId: string, exceptId: string): Item | undefined {
+  return plan.items.find(
+    (i) => i.id !== exceptId && i.status === 'in_progress' && i.boundAgent !== null && i.boundAgent.agentId === agentId,
+  )
+}
+
+function isBoundTo(item: Item, agentId: string): boolean {
+  return item.boundAgent !== null && item.boundAgent.agentId === agentId
+}
+
+// ---------------------------------------------------------------- item input validation
+
+function validateChecks(raw: unknown): Check[] | string {
+  if (!Array.isArray(raw)) return 'checks must be a list.'
+  if (raw.length > MAX_CHECKS) return `At most ${MAX_CHECKS} checks per item.`
+  const labels = new Set<string>()
+  const out: Check[] = []
+  for (const c of raw) {
+    if (typeof c !== 'object' || c === null) return 'Each check needs a label, argv and expectExit.'
+    const { label, argv, expectExit } = c as Record<string, unknown>
+    if (!isNonEmpty(label)) return 'Each check needs a label.'
+    if (labels.has(label)) return `Duplicate check label "${label}".`
+    labels.add(label)
+    if (!Array.isArray(argv) || argv.length === 0 || !argv.every(isNonEmpty)) {
+      return `Check "${label}" needs a non-empty argv of non-empty strings.`
+    }
+    if (argv.reduce((n: number, a: string) => n + utf8Bytes(a), 0) > MAX_ARGV_BYTES) {
+      return `Check "${label}" argv is over ${MAX_ARGV_BYTES} bytes.`
+    }
+    if (!isInt(expectExit)) return `Check "${label}" needs an integer expectExit.`
+    out.push({ label, argv: argv.slice(), expectExit })
+  }
+  return out
+}
+
+/** Validates the fields of an item (all of them at `create`, only those present in an `amend` patch). */
+function readFields(raw: unknown, complete: boolean): Partial<ItemInput> | string {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return 'An item must be an object.'
+  const r = raw as Record<string, unknown>
+  for (const k of Object.keys(r)) {
+    if (!ITEM_FIELDS.has(k)) return `Unknown item field "${k}".`
+  }
+  const out: Partial<ItemInput> = {}
+  const need = (k: string) => complete && r[k] === undefined
+  if (r.title !== undefined || need('title')) {
+    if (!isNonEmpty(r.title)) return 'An item needs a title.'
+    if (r.title.length > MAX_TITLE_CHARS) return `An item title is at most ${MAX_TITLE_CHARS} characters.`
+    out.title = r.title
+  }
+  if (r.instructions !== undefined || need('instructions')) {
+    if (!isStr(r.instructions)) return 'An item needs instructions (a string).'
+    if (utf8Bytes(r.instructions) > MAX_INSTRUCTIONS_BYTES) {
+      return `Instructions are over ${MAX_INSTRUCTIONS_BYTES} bytes. Shorten them; nothing is truncated for you.`
+    }
+    out.instructions = r.instructions
+  }
+  for (const k of ['acceptance', 'files', 'deps'] as const) {
+    if (r[k] !== undefined || need(k)) {
+      if (!isStrArray(r[k])) return `${k} must be a list of strings.`
+      out[k] = (r[k] as string[]).slice()
+    }
+  }
+  if (r.agent !== undefined || need('agent')) {
+    if (!isNonEmpty(r.agent)) return 'An item needs an agent type.'
+    out.agent = r.agent
+  }
+  if (r.model !== undefined || need('model')) {
+    if (!isStr(r.model)) return 'An item needs a model (a string).'
+    out.model = r.model
+  }
+  if (r.checks !== undefined || need('checks')) {
+    const c = validateChecks(r.checks)
+    if (typeof c === 'string') return c
+    out.checks = c
+  }
+  return out
+}
+
+/** Unknown dependencies and cycles (depth-first search over the whole item list). */
+function checkDeps(items: { id: string; deps: string[] }[]): string | null {
+  const byId = new Map(items.map((i) => [i.id, i]))
+  for (const i of items) {
+    for (const d of i.deps) {
+      if (!byId.has(d)) return `Item ${i.id} depends on ${d}, which is not an item of this plan.`
+    }
+  }
+  const state = new Map<string, 1 | 2>() // 1 = on the stack, 2 = done
+  const stack: string[] = []
+  const visit = (id: string): string | null => {
+    const s = state.get(id)
+    if (s === 2) return null
+    if (s === 1) return `Dependency cycle: ${[...stack.slice(stack.indexOf(id)), id].join(' -> ')}.`
+    state.set(id, 1)
+    stack.push(id)
+    for (const d of (byId.get(id) as { deps: string[] }).deps) {
+      const r = visit(d)
+      if (r !== null) return r
+    }
+    stack.pop()
+    state.set(id, 2)
+    return null
+  }
+  for (const i of items) {
+    const r = visit(i.id)
+    if (r !== null) return r
+  }
+  return null
+}
+
+function validTitle(t: unknown): t is string {
+  return isNonEmpty(t) && t.length <= MAX_TITLE_CHARS
+}
+
+// ---------------------------------------------------------------- transitions
+
+function create(e: Env<'create'>): Out {
+  const { action, ctx, now } = e
+  if (!validTitle(action.title)) return deny(`A plan needs a title of at most ${MAX_TITLE_CHARS} characters.`)
+  if (!Array.isArray(action.items)) return deny('A plan needs a list of items.')
+  if (action.items.length > MAX_ITEMS) return deny(`At most ${MAX_ITEMS} items per plan. Split the work into two plans.`)
+
+  const inputs: ItemInput[] = []
+  const items: Item[] = []
+  for (let n = 0; n < action.items.length; n++) {
+    const id = `s${n + 1}`
+    const f = readFields(action.items[n], true)
+    if (typeof f === 'string') return deny(`Item ${id}: ${f}`)
+    const input = f as ItemInput
+    inputs.push(input)
+    items.push({
+      id,
+      ...input,
+      status: 'pending',
+      attempts: 0,
+      extraAttempts: 0,
+      gen: 1,
+      boundAgent: null,
+      reservedFor: null,
+      claimed: null,
+      verification: null,
+      note: null,
+      failure: null,
+    })
+  }
+  const bad = checkDeps(items)
+  if (bad !== null) return deny(bad)
+
+  const plan: Plan = {
+    v: 1,
+    id: ctx.newPlanId,
+    title: action.title,
+    rev: 0,
+    created: now,
+    project: ctx.project,
+    status: 'draft',
+    creator: ctx.actor,
+    items,
+  }
+  return {
+    plan,
+    item: null,
+    from: null,
+    to: 'draft',
+    data: { title: action.title, items: inputs, project: ctx.project },
+    message: `Created plan ${plan.id} as a draft with ${items.length} item${items.length === 1 ? '' : 's'}. The orchestrator reviews it, then activates it; nothing is claimable until then.`,
+  }
+}
+
+function activate(e: Env<'activate'>): Out {
+  const { plan } = e
+  if (plan.status !== 'draft') {
+    return deny(`Cannot activate plan ${plan.id}: it is ${plan.status}, and activate needs a draft plan.`)
+  }
+  return {
+    plan: { ...plan, status: 'active' },
+    item: null,
+    from: 'draft',
+    to: 'active',
+    data: {},
+    message: `Plan ${plan.id} is active. Items can now be claimed.`,
+  }
+}
+
+function claim(e: Env<'claim'>): Out {
+  const { plan, action, ctx, now } = e
+  const actor = ctx.actor
+  if (actor.kind !== 'agent') return deny('Only a subagent claims an item. Brief a subagent, or use assign.')
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  const done = (next: Item, message: string): Out => ({
+    plan: withItem(plan, next),
+    item: item.id,
+    from: item.status,
+    to: next.status,
+    data: {},
+    message,
+  })
+  const cap = ctx.attemptCap + item.extraAttempts
+
+  if (item.status === 'in_progress' && isBoundTo(item, actor.agentId)) {
+    return done(item, `You already hold ${item.id} (attempt ${item.attempts}). Carry on; nothing changed.`)
+  }
+  if (plan.status !== 'active') return deny('Ask the orchestrator to activate the plan first.')
+  if (item.status !== 'pending' && item.status !== 'failed') {
+    const hint =
+      item.status === 'in_progress'
+        ? 'Another agent holds it. Ask the orchestrator.'
+        : 'Ask the orchestrator to reopen or assign it.'
+    return wrongStatus(item, 'claim', 'a pending or failed item', hint)
+  }
+  if (item.status === 'pending') {
+    const unmet = item.deps.filter((d) => findItem(plan, d)?.status !== 'verified')
+    if (unmet.length > 0) {
+      return deny(
+        `${item.id} waits for ${unmet.join(', ')} to be verified. Do not start it; tell the orchestrator you are waiting.`,
+      )
+    }
+  } else if (item.attempts >= cap) {
+    return deny(
+      `${item.id} has used all ${cap} attempts. Stop and report; the orchestrator must reopen it with extraAttempts.`,
+    )
+  }
+  const busy = otherInProgress(plan, actor.agentId, item.id)
+  if (busy !== undefined) {
+    return deny(`You already have ${busy.id} in progress. Finish it (claim_done, block or fail) before claiming ${item.id}.`)
+  }
+  const boundAgent: BoundAgent =
+    item.boundAgent !== null && item.boundAgent.agentId === actor.agentId
+      ? item.boundAgent
+      : { agentId: actor.agentId, session: actor.session, at: now }
+  const next: Item = { ...item, status: 'in_progress', attempts: item.attempts + 1, boundAgent }
+  return done(next, `Claimed ${item.id} (attempt ${next.attempts} of ${cap}). Read it with get, then work.`)
+}
+
+function noteOf(note: unknown): string | null {
+  return isNonEmpty(note) ? truncBytes(note) : null
+}
+
+function progress(e: Env<'progress'>): Out {
+  const { plan, action } = e
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (item.status !== 'in_progress') return wrongStatus(item, 'report progress on', 'an in_progress item')
+  const note = noteOf(action.note)
+  if (note === null) return deny('progress needs a note saying what you did.')
+  return {
+    plan: withItem(plan, { ...item, note }),
+    item: item.id,
+    from: 'in_progress',
+    to: 'in_progress',
+    data: { note },
+    message: `Noted on ${item.id}.`,
+  }
+}
+
+function block(e: Env<'block'>): Out {
+  const { plan, action } = e
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (item.status !== 'in_progress') return wrongStatus(item, 'block', 'an in_progress item')
+  const note = noteOf(action.note)
+  if (note === null) return deny('block needs a note saying what you are waiting for.')
+  return {
+    plan: withItem(plan, { ...item, status: 'blocked', note }),
+    item: item.id,
+    from: 'in_progress',
+    to: 'blocked',
+    data: { note },
+    message: `${item.id} is blocked. Stop and tell the orchestrator what you need.`,
+  }
+}
+
+function fail(e: Env<'fail'>): Out {
+  const { plan, action, ctx } = e
+  if (ctx.actor.kind !== 'agent') {
+    return deny('Only the assigned agent fails an item. Use block, abandon or reopen instead.')
+  }
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (item.status !== 'in_progress') return wrongStatus(item, 'fail', 'an in_progress item')
+  const note = noteOf(action.note)
+  if (note === null) return deny('fail needs a note saying why it failed.')
+  return {
+    plan: withItem(plan, { ...item, status: 'failed', failure: note }),
+    item: item.id,
+    from: 'in_progress',
+    to: 'failed',
+    data: { note },
+    message: `${item.id} is failed. Stop and report; claim it again only if the orchestrator says so.`,
+  }
+}
+
+function readEvidence(a: Env<'claim_done'>['action']): { summary: string; commands: CommandEvidence[]; commits: string[]; files: string[] } | string {
+  if (!isNonEmpty(a.summary)) return 'claim_done needs a summary of what you did.'
+  if (!Array.isArray(a.commands)) return 'commands must be a list.'
+  const commands: CommandEvidence[] = []
+  for (const c of a.commands) {
+    if (typeof c !== 'object' || c === null) return 'Each command needs argv, exit and outTail.'
+    const { argv, exit, outTail } = c as Record<string, unknown>
+    if (!isStrArray(argv) || !isInt(exit) || !isStr(outTail)) return 'Each command needs argv, exit and outTail.'
+    commands.push({ argv: argv.map((x) => truncBytes(x)), exit, outTail: truncBytes(outTail) })
+  }
+  if (!isStrArray(a.commits)) return 'commits must be a list of strings.'
+  if (!isStrArray(a.files)) return 'files must be a list of strings.'
+  return {
+    summary: truncBytes(a.summary),
+    commands,
+    commits: a.commits.map((x) => truncBytes(x)),
+    files: a.files.map((x) => truncBytes(x)),
+  }
+}
+
+const evidenceKey = (c: { summary: string; commands: CommandEvidence[]; commits: string[]; files: string[] }) =>
+  JSON.stringify({ summary: c.summary, commands: c.commands, commits: c.commits, files: c.files })
+
+function claimDone(e: Env<'claim_done'>): Out {
+  const { plan, action, ctx, now } = e
+  if (ctx.actor.kind !== 'agent') return deny('Only the assigned agent claims an item done. Use verify with manual for unchecked work.')
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  const ev = readEvidence(action)
+  if (typeof ev === 'string') return deny(ev)
+
+  if (item.status === 'claimed_done') {
+    if (item.claimed !== null && evidenceKey(item.claimed) === evidenceKey(ev)) {
+      return {
+        plan,
+        item: item.id,
+        from: 'claimed_done',
+        to: 'claimed_done',
+        data: ev,
+        message: `${item.id} is already claimed done with this evidence; nothing changed. Wait for the orchestrator to verify it.`,
+      }
+    }
+    return deny(
+      `${item.id} is already claimed done with different evidence. Ask the orchestrator to reopen it if the evidence must change.`,
+    )
+  }
+  if (item.status !== 'in_progress') return wrongStatus(item, 'claim done on', 'an in_progress item')
+  const claimed: Claimed = { ...ev, at: now }
+  return {
+    plan: withItem(plan, { ...item, status: 'claimed_done', gen: item.gen + 1, claimed }),
+    item: item.id,
+    from: 'in_progress',
+    to: 'claimed_done',
+    data: ev,
+    message: `${item.id} is claimed done (self-reported). The orchestrator will verify it; stop here.`,
+  }
+}
+
+function failureTail(results: CheckResult[]): string {
+  const bad = results.filter((r) => r.exit !== r.expectExit)
+  const text = (bad.length > 0 ? bad : results)
+    .map((r) => `${r.label}: exit ${r.exit}, expected ${r.expectExit}\n${r.outTail}`)
+    .join('\n')
+  return truncBytes(text)
+}
+
+function verify(e: Env<'verify'>): Out {
+  const { plan, action, now } = e
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (item.status !== 'claimed_done') return wrongStatus(item, 'verify', 'a claimed_done item', 'Wait for the agent to claim it done.')
+  if (action.gen !== item.gen) {
+    return deny(`${item.id} is at gen ${item.gen}; you saw gen ${String(action.gen)}. It changed since you read it: re-read it, then verify again.`)
+  }
+
+  let v: Verification
+  if (action.verification !== undefined) {
+    v = action.verification
+    if (typeof v !== 'object' || v === null || typeof v.ok !== 'boolean' || !Array.isArray(v.results)) {
+      return deny('The verification is malformed, so it is refused.')
+    }
+    if (v.gen !== item.gen) return deny(`The verification is for gen ${String(v.gen)} of ${item.id}, which is at gen ${item.gen}.`)
+    if ((v.kind === 'checks') !== (item.checks.length > 0) || (v.kind !== 'checks' && v.kind !== 'manual')) {
+      return deny(`The verification kind does not match ${item.id}: items with checks are verified by running them, items without by manual.`)
+    }
+  } else if (action.manual === true) {
+    if (item.checks.length > 0) return deny(`${item.id} has checks, so it is verified by running them, not manually.`)
+    if (!isNonEmpty(action.note)) return deny('A manual verify needs a note saying what you checked by hand.')
+    v = {
+      kind: 'manual',
+      ok: true,
+      gen: item.gen,
+      cwd: isStr(action.cwd) ? action.cwd : '',
+      checksHash: '',
+      results: [],
+      before: null,
+      after: null,
+      note: truncBytes(action.note),
+      at: now,
+    }
+  } else {
+    return deny('verify runs the item checks itself, and the plan tool cannot do that here. Use the verify tool path, or manual: true with a note for an item without checks.')
+  }
+
+  const ok = v.ok
+  const data: Record<string, unknown> = { gen: item.gen, verification: v }
+  return {
+    plan: withItem(plan, {
+      ...item,
+      status: ok ? 'verified' : 'failed',
+      verification: v,
+      failure: ok ? null : failureTail(v.results),
+    }),
+    item: item.id,
+    from: 'claimed_done',
+    to: ok ? 'verified' : 'failed',
+    data,
+    message: ok
+      ? `${item.id} is verified${v.kind === 'manual' ? ' manually (no command was run)' : ' by its checks'}.`
+      : `${item.id} failed verification. The agent must claim it again (amend it first if the instructions were wrong).`,
+  }
+}
+
+function amend(e: Env<'amend'>): Out {
+  const { plan, action } = e
+  const hasPatch = action.patch !== undefined
+  const hasTitle = action.planTitle !== undefined
+  if (!hasPatch && !hasTitle) return deny('amend needs a patch for an item, a planTitle, or both.')
+  if (hasPatch && action.item === undefined) return deny('A patch needs the item it applies to.')
+  if (hasTitle && !validTitle(action.planTitle)) {
+    return deny(`The plan title must be non-empty and at most ${MAX_TITLE_CHARS} characters.`)
+  }
+
+  let next: Plan = hasTitle ? { ...plan, title: action.planTitle as string } : plan
+  const data: Record<string, unknown> = {}
+  if (hasTitle) data.planTitle = action.planTitle
+  let message = `Plan ${plan.id} amended.`
+  let from: string | null = null
+  let to: string | null = null
+
+  if (action.item !== undefined) {
+    const item = findItem(plan, action.item)
+    if (item === null) return noItem(action.item)
+    if (item.status === 'verified' || item.status === 'claimed_done') {
+      return wrongStatus(item, 'amend', 'an item that is not verified or claimed_done', 'Reopen it first.')
+    }
+    if (!hasPatch) return deny('Naming an item needs a patch for it.')
+    const f = readFields(action.patch, false)
+    if (typeof f === 'string') return deny(`Item ${item.id}: ${f}`)
+    if (Object.keys(f).length === 0) return deny('The patch is empty; nothing to amend.')
+    const edited: Item = { ...item, ...f, gen: item.gen + 1 }
+    const typeChanged =
+      f.agent !== undefined && normalizeAgentType(f.agent) !== normalizeAgentType(item.agent)
+    if (typeChanged) {
+      edited.boundAgent = null
+      edited.reservedFor = null
+    }
+    next = withItem(next, edited)
+    const bad = checkDeps(next.items)
+    if (bad !== null) return deny(bad)
+    data.patch = f
+    from = item.status
+    to = item.status
+    message = `Amended ${item.id} (now gen ${edited.gen})${typeChanged ? '; its agent type changed, so its binding was cleared' : ''}.`
+  }
+  return { plan: next, item: action.item ?? null, from, to, data, message }
+}
+
+function assign(e: Env<'assign'>): Out {
+  const { plan, action, now } = e
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (!(['pending', 'failed', 'blocked', 'in_progress'] as ItemStatus[]).includes(item.status)) {
+    return wrongStatus(item, 'assign', 'a pending, failed, blocked or in_progress item')
+  }
+  if (!isNonEmpty(action.agentId) || !isStr(action.session)) return deny('assign needs the agentId and session of the agent.')
+  if (item.status === 'in_progress') {
+    const busy = otherInProgress(plan, action.agentId, item.id)
+    if (busy !== undefined) return deny(`That agent already has ${busy.id} in progress; one in-progress item per agent.`)
+  }
+  const boundAgent: BoundAgent = { agentId: action.agentId, session: action.session, at: now }
+  return {
+    plan: withItem(plan, { ...item, boundAgent }),
+    item: item.id,
+    from: item.status,
+    to: item.status,
+    data: { agentId: action.agentId, session: action.session },
+    message: `${item.id} is assigned to agent ${action.agentId}.`,
+  }
+}
+
+function reopen(e: Env<'reopen'>): Out {
+  const { plan, action } = e
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (!(['blocked', 'failed', 'claimed_done', 'verified', 'abandoned'] as ItemStatus[]).includes(item.status)) {
+    return wrongStatus(item, 'reopen', 'a blocked, failed, claimed_done, verified or abandoned item')
+  }
+  const extra = action.extraAttempts ?? 0
+  if (!isInt(extra) || extra < 0) return deny('extraAttempts must be a whole number, zero or more.')
+  const data: Record<string, unknown> = action.extraAttempts === undefined ? {} : { extraAttempts: extra }
+  return {
+    plan: withItem(plan, { ...item, status: 'pending', gen: item.gen + 1, extraAttempts: item.extraAttempts + extra }),
+    item: item.id,
+    from: item.status,
+    to: 'pending',
+    data,
+    message: `${item.id} is pending again (now gen ${item.gen + 1}${extra > 0 ? `, ${extra} extra attempt${extra === 1 ? '' : 's'}` : ''}).`,
+  }
+}
+
+function abandon(e: Env<'abandon'>): Out {
+  const { plan, action } = e
+  if (action.item === undefined) {
+    return {
+      plan: { ...plan, status: 'abandoned' },
+      item: null,
+      from: plan.status,
+      to: 'abandoned',
+      data: {},
+      message: `Plan ${plan.id} is abandoned.`,
+    }
+  }
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (item.status === 'verified' || item.status === 'abandoned') {
+    return wrongStatus(item, 'abandon', 'an item that is not verified or abandoned')
+  }
+  return {
+    plan: withItem(plan, { ...item, status: 'abandoned' }),
+    item: item.id,
+    from: item.status,
+    to: 'abandoned',
+    data: {},
+    message: `${item.id} is abandoned. Items that depend on it stay pending.`,
+  }
+}
+
+function bind(e: Env<'bind'>): Out {
+  const { plan, action, now } = e
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (!(['pending', 'failed', 'in_progress'] as ItemStatus[]).includes(item.status)) {
+    return wrongStatus(item, 'bind', 'a pending, failed or in_progress item')
+  }
+  if (item.boundAgent !== null) return deny(`${item.id} is already bound to agent ${item.boundAgent.agentId}. Use assign to replace a binding.`)
+  if (!isNonEmpty(action.agentId) || !isStr(action.session)) return deny('bind needs the agentId and session of the agent.')
+  if (item.status === 'in_progress') {
+    const busy = otherInProgress(plan, action.agentId, item.id)
+    if (busy !== undefined) return deny(`That agent already has ${busy.id} in progress; one in-progress item per agent.`)
+  }
+  const boundAgent: BoundAgent = { agentId: action.agentId, session: action.session, at: now }
+  return {
+    plan: withItem(plan, { ...item, boundAgent }),
+    item: item.id,
+    from: item.status,
+    to: item.status,
+    data: { agentId: action.agentId, session: action.session },
+    message: `${item.id} is bound to agent ${action.agentId}.`,
+  }
+}
+
+function reserve(e: Env<'reserve'>): Out {
+  const { plan, action } = e
+  const item = findItem(plan, action.item)
+  if (item === null) return noItem(action.item)
+  if (!(['pending', 'failed', 'in_progress'] as ItemStatus[]).includes(item.status)) {
+    return wrongStatus(item, 'reserve', 'a pending, failed or in_progress item')
+  }
+  if (item.boundAgent !== null) return deny(`${item.id} is already bound to agent ${item.boundAgent.agentId}, so it cannot be reserved.`)
+  if (item.reservedFor !== null) return deny(`${item.id} is already reserved for ${item.reservedFor}.`)
+  const type = normalizeAgentType(action.agentType)
+  if (type === null) return deny('reserve needs an agent type.')
+  return {
+    plan: withItem(plan, { ...item, reservedFor: type }),
+    item: item.id,
+    from: item.status,
+    to: item.status,
+    data: { agentType: type },
+    message: `${item.id} is reserved for ${type}.`,
+  }
+}
