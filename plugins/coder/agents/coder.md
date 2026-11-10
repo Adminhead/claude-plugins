@@ -3,7 +3,7 @@ name: coder
 description: 'Implements one bounded change end to end: features, fixes, refactors and multi-file edits, with their tests and the docs the change makes stale. Callers pass `model` and `effort` on every call: haiku/medium for mechanical or fully specified edits, sonnet/medium by default, sonnet/high for concurrency, data or core invariants, opus/high only after a sonnet attempt failed or for work that cannot be split further.'
 model: sonnet
 effort: medium
-tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, ToolSearch, Monitor, TaskStop, NotebookEdit, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code
+tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, ToolSearch, Monitor, TaskStop, NotebookEdit, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__plan-ledger__plan
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding

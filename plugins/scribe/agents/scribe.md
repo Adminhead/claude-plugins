@@ -3,7 +3,7 @@ name: scribe
 description: Writes and updates standalone docs (READMEs, guides, changelogs, CLAUDE.md or AGENTS.md, Outline pages), verifying every claim against the code. Use when a doc needs writing or a doc-only refresh. Not for docs that a code change makes stale, which the coder making the change updates, or for code changes (coder). Returns the files changed and claims marked UNVERIFIED.
 model: haiku
 effort: medium
-tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, ToolSearch, Monitor, TaskStop, NotebookEdit, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__plugin_outline-mcp_outline__*
+tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, TodoWrite, ToolSearch, Monitor, TaskStop, NotebookEdit, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__plugin_outline-mcp_outline__*, mcp__plan-ledger__plan
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - codebase-memory
