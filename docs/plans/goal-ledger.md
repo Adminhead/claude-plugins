@@ -332,3 +332,16 @@ All answered by the user on 2026-11-09; every answer took the recommendation.
 7. Stop gate alongside `/goal`: deferred.
 8. Names: command `/plans`, tool `plan`, plugin `plan-ledger` (filename stays `goal-ledger.md`). Confirmed.
 9. Publish the JSON with tmp+rename on top of the lock (decision 3, slices 5 and 6). Answered: yes.
+
+## Review carry-forwards (slices 2-5)
+Found in review of the pure slices (authorize, apply, replay, checks, render, store) and not fixable inside them. Slice 6 (the mod that runs these) must handle each.
+- Confirm `$.process.run` does not trim the stdout of `tailArgv`. `needsReplay` reads a missing trailing newline as a torn tail, so a trimmed `tail` forces a full replay on every call.
+- Check that the replayed `plan.id` equals the id in the file name the ledger was read from. `replay` checks ids against each other, not against the path.
+- When `reconcile` reports `jsonAhead` (the JSON is ahead of the ledger), appending the next line would leave a gap in the ledger revs. Refuse the mutation or repair the ledger first.
+- When `reconcile` reports `torn`, write a newline before the next append, so the new line does not join the torn one.
+- Build the `tmpPath` token from a crypto-random value. `tmpPath` and `publishArgv` now accept only `[A-Za-z0-9._-]` but do not make the token unguessable.
+- The lock's `timeoutMs` (the `$.process.run` timeout around the acquire script) must exceed the 5 s acquire wait, or the engine kills the script while it is still polling.
+- `list` and `status` do not go through `apply`. Filter their output through `canView` so an agent sees only what it may.
+- Implement the check that an agent's `$.agent.list()` status is `running` before the caller builds an `Actor` with a non-null `agentType`.
+- `parseInput` must reject a `verification` field in the tool input. `verify` in `apply` now checks a supplied verification against the item, but only the mod may supply one.
+- Accepted risks, no change planned: the `evil:architect` prefix rule (a plugin prefix is stripped before the agent type is compared, so any plugin can name an agent `architect`), and the `sleep 0.1` in the acquire script (fractional `sleep` is not POSIX; it works on GNU and BSD `sleep`).
