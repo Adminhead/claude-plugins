@@ -1520,7 +1520,7 @@ describe('plan tool', () => {
     on('session.start', () => ({ cwd: '/work/repo' }))
     on('ui.log', () => ({ value: undefined }))
     on('tool.register', (_$: any, e: any) => {
-      registered.push(['tool', e.name])
+      registered.push(['tool', e.name, e.isDeferred])
       return { value: { tool: PLAN_TOOL } }
     })
     on('command.register', (_$: any, e: any) => {
@@ -1528,7 +1528,7 @@ describe('plan tool', () => {
       return { deny: 'name taken' }
     })
     await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
-    expect(registered).toEqual([['tool', 'plan'], ['command', 'plans']])
+    expect(registered).toEqual([['tool', 'plan', false], ['command', 'plans']])
   })
 
   test('registerTool: false serves no tool calls and registers no tool', async ($: any, on: any) => {

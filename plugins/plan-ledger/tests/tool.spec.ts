@@ -148,6 +148,17 @@ describe('the tool spec', () => {
     expect(TOOL.name).toBe('plan')
   })
 
+  test('the schema stays in the prompt\'s tool list, not behind ToolSearch', () => {
+    expect(TOOL.isDeferred).toBe(false)
+  })
+
+  test('every field an action takes is in the schema, and the schema stays small enough to carry on every request', () => {
+    expect(Object.keys(TOOL.inputSchema.properties).sort()).toEqual(
+      ['action', 'plan', 'item', 'title', 'items', 'note', 'summary', 'commands', 'commits', 'files', 'gen', 'manual', 'cwd', 'patch', 'planTitle', 'assignee', 'extraAttempts', 'ifRev'].sort(),
+    )
+    expect(JSON.stringify(TOOL).length).toBeLessThan(3000)
+  })
+
   test('no property is named like an engine key', () => {
     for (const k of ['tool', 'tool_use_id', 'agentId', 'requestMeta', 'consent']) expect(Object.keys(TOOL.inputSchema.properties)).not.toContain(k)
   })

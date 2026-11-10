@@ -60,9 +60,15 @@ const ITEM_PROPS = {
   },
 }
 
-/** What `$.tool.register` takes. The description is what the model reads: it stays under 400 characters. */
+/**
+ * What `$.tool.register` takes. The description is what the model reads: it stays under 400 characters. `isDeferred: false`
+ * keeps the schema in the prompt's tool list (`ToolDeferral`, the 2.1.302 d.ts) instead of behind ToolSearch, so a subagent
+ * that lists the tool can call it at once; the cost is the schema's size on every request of an agent that lists it (decision 9
+ * scopes who does), which is why `patch` names the item fields in words rather than repeating their schema.
+ */
 export const TOOL = {
   name: 'plan',
+  isDeferred: false,
   description:
     'Work-plan ledger shared with subagents. Orchestrator: create a plan of items, activate it, assign/amend/reopen items, verify claimed items, abandon. Subagent: get your item (plan-ref p-id/sN), then claim, progress, block, fail or claim_done with evidence. list and status show plans. Only the orchestrator can verify; you cannot set verified yourself.',
   inputSchema: {
@@ -97,7 +103,7 @@ export const TOOL = {
       gen: { type: 'integer', description: 'verify: the gen of the item you read' },
       manual: { type: 'boolean', description: 'verify an item with no checks by hand; needs note' },
       cwd: { type: 'string', description: 'verify: absolute directory to run the checks in' },
-      patch: { type: 'object', description: 'amend: item fields to change', properties: ITEM_PROPS },
+      patch: { type: 'object', description: 'amend: the item fields to change, among title, instructions, acceptance, files, deps, agent, model, checks' },
       planTitle: { type: 'string', description: 'amend: new plan title' },
       assignee: { type: 'string', description: 'assign: the agent id to bind the item to' },
       extraAttempts: { type: 'integer', description: 'reopen: attempts to add' },
