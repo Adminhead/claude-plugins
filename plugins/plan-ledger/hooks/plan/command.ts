@@ -141,5 +141,5 @@ export function lockOwner(text: string, nowMs: number): { token: string; ageSec:
 /** The question before a lock is removed: who holds it and for how long, ending in a question mark. */
 export function unlockQuestion(planId: string, owner: { token: string; ageSec: number } | null): string {
   const who = owner === null ? 'an unreadable owner' : `holder ${owner.token.slice(0, 8)}, held for ${owner.ageSec} s`
-  return `Remove the lock of plan ${planId} (${who})? Only do this when nothing is changing the plan: a live holder would then write at the same time as the next caller.`
+  return `Remove the lock of plan ${planId} (${who}) although a live holder would then write at the same time as the next caller?`
 }

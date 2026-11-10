@@ -936,6 +936,7 @@ describe('verification', () => {
       expect(w.asked).toHaveLength(1)
       expect(w.asked[0].question).toContain(JSON.stringify(unit.argv))
       expect(w.asked[0].question).toContain('"/work/repo"')
+      expect(w.asked[0].question.endsWith('?')).toBe(true)
       expect(w.asked[0].options).toMatchObject({ options: ['Run it', 'Refuse'] })
       expect(w.checkRuns).toHaveLength(1)
 
@@ -1620,6 +1621,7 @@ describe('/plans', () => {
       }
       expect(w.asked).toHaveLength(3)
       expect(w.asked[0].question).toContain('rev 9')
+      for (const a of w.asked) expect(a.question.endsWith('?')).toBe(true)
       expect(jsonOf(w).rev).toBe(2)
     })
 
@@ -1666,6 +1668,7 @@ describe('/plans', () => {
       expect(w.locks.has(lock)).toBe(false)
       expect(w.asked[0].question).toContain('tok-1234')
       expect(w.asked[0].question).toMatch(/held for 12[5-9] s/)
+      expect(w.asked[0].question.endsWith('?')).toBe(true)
     })
 
     test('a lock with no readable owner is removed only while it still has none', async ($: any, on: any) => {

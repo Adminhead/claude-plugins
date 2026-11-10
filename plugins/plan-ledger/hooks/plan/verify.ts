@@ -2,6 +2,7 @@
 // The mod runs the item's recorded check argv itself (`verifyItem` in register.tsx); this file builds the git argv for the
 // tree fingerprint, judges the results the mod collected, and words the answer. Nothing here takes a result from a caller.
 import { checksHash, hash53, shellQuote } from './checks'
+import { one } from './render'
 import type { Check, CheckResult, Item, Tree, Verification } from './types'
 import { MAX_CHECK_TAIL_CHARS } from './types'
 
@@ -46,12 +47,14 @@ export function verdictOf(v: unknown): 'allow' | 'ask' | 'deny' {
   return d === 'allow' || d === 'deny' ? d : 'ask'
 }
 
-/** The question the person answers before a check runs: the exact argv and directory, JSON-escaped so nothing is hidden. */
+/**
+ * The question the person answers before a check runs, one line ending in a question mark: the instruction first, then the
+ * exact argv and directory, JSON-escaped so nothing is hidden. The label is a stored caller string, so it goes through `one`.
+ */
 export function gateQuestion(check: Check, cwd: string): string {
   return (
-    `Run the plan check "${check.label.slice(0, 60)}"? ` +
-    `argv: ${JSON.stringify(check.argv)} in directory: ${JSON.stringify(cwd)}. ` +
-    'The plan tool runs it directly, so installed command guards do not see it.'
+    `Run the plan check "${one(check.label).slice(0, 60)}" as argv ${JSON.stringify(check.argv)} in directory ${JSON.stringify(cwd)}, ` +
+    'which the plan tool starts directly so installed command guards do not see it?'
   )
 }
 

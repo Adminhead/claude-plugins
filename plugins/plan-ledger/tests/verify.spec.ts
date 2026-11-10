@@ -202,6 +202,15 @@ describe('words and verdicts', () => {
     expect(q).not.toContain('\n')
   })
 
+  test('the gate question ends in a question mark, and a label cannot add lines or hide the end of it', () => {
+    for (const label of ['unit', 'a\nb\u001b[2Jc', 'x'.repeat(500)]) {
+      const q = gateQuestion({ label, argv: ['bun', 'test'], expectExit: 0 }, '/w')
+      expect(q.endsWith('?')).toBe(true)
+      expect(q).not.toMatch(/[\u0000-\u001f]/)
+      expect(q.length).toBeLessThan(400)
+    }
+  })
+
   test('commandFor quotes every word', () => {
     expect(commandFor(['echo', "a'b"])).toBe(`'echo' 'a'\\''b'`)
   })
