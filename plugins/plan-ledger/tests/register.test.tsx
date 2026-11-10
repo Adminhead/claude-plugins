@@ -1127,6 +1127,48 @@ describe('verification', () => {
     }
   })
 
+  describe('ifRev', () => {
+    test('a stale ifRev refuses before anything is asked or run, and the refusal is logged', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.verdict = () => ({ decision: 'ask' })
+      const rev = jsonOf(w).rev
+      const r = await verify(w, id, { ifRev: rev - 1 })
+      expect(r).toMatchObject({ ok: false, code: 'denied' })
+      expect((r as any).message).toContain('rev')
+      ranNothing(w)
+      expect((await itemOf(w, id)).status).toBe('claimed_done')
+      expect(ledgerOf(w).changes.at(-1)).toMatchObject({ action: 'verify', denied: expect.stringContaining('rev') })
+    })
+
+    test('a matching ifRev runs the checks, and the plan moving during the run does not block the commit', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      w.checkImpl = async () => {
+        await mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'Renamed meanwhile' }, MAIN)
+        return { exit: 0 }
+      }
+      expect(await verify(w, id, { ifRev: jsonOf(w).rev })).toMatchObject({ ok: true, code: 'applied' })
+      expect(w.checkRuns).toHaveLength(1)
+    })
+
+    test('a manual verify with a stale ifRev is refused too', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, [])
+      expect(await verify(w, id, { manual: true, note: 'read it', ifRev: 1 })).toMatchObject({ ok: false, code: 'denied' })
+      expect((await itemOf(w, id)).status).toBe('claimed_done')
+    })
+
+    test('the tool passes ifRev through to verify', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const gen = (await itemOf(w, id)).gen
+      const r = await planTool(w.$, { tool: 'mcp__plan-ledger__plan', tool_use_id: 'tu', action: 'verify', plan: id, item: 's1', gen, ifRev: 1 }, 3)
+      expect((r as any).deny).toContain('rev')
+      ranNothing(w)
+    })
+  })
+
   describe('manual', () => {
     test('an item with no checks is verified by hand with a note, running nothing, counted as manual', async ($: any, on: any) => {
       const w = world(on)

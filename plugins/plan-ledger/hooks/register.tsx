@@ -546,6 +546,8 @@ export type VerifyArgs = {
   note?: string
   /** Absolute directory to run the checks in (default: the session's). Recorded, canonicalized, shown before any run. */
   cwd?: string
+  /** The plan `rev` the caller last read. A mismatch refuses before anything is asked or run; see `verifyItem`. */
+  ifRev?: number
 }
 
 /**
@@ -690,6 +692,12 @@ export async function verifyItem(
     ...(args.manual === true ? { manual: true } : {}),
     ...(typeof args.note === 'string' ? { note: args.note } : {}),
     ...(typeof args.cwd === 'string' ? { cwd: args.cwd } : {}),
+    ...(typeof args.ifRev === 'number' ? { ifRev: args.ifRev } : {}),
+  }
+  // The commit of a run is not conditioned on the plan `rev` (other items move it meanwhile); `ifRev` was checked up front.
+  const unguarded = (): Action => {
+    const { ifRev: _ignored, ...rest } = base as Action & { ifRev?: number }
+    return rest as Action
   }
   const commit = async (action: Action, mine: Verification | null): Promise<MutateResult> => {
     const done = await mutate($, planId, action, actor, opts)
@@ -712,7 +720,7 @@ export async function verifyItem(
     if (!seen.ok) return failure('error', 'The plan ledger could not be read. Retry.', planId, opts.op)
     if (seen.change !== null) return commit(base, null)
   }
-  if (memo.verification !== undefined) return commit({ ...base, verification: memo.verification }, memo.verification)
+  if (memo.verification !== undefined) return commit({ ...unguarded(), verification: memo.verification }, memo.verification)
 
   const read = await readPlan($, planId)
   if (!read.ok) return failure('error', read.message, planId, null)
@@ -720,8 +728,10 @@ export async function verifyItem(
   const item = plan.items.find((i) => i.id === itemId)
 
   const auth = authorize(plan, base, actor)
-  if (!auth.ok || item === undefined || item.status !== 'claimed_done' || item.gen !== args.gen) {
-    // Denied by the same pure rules, under the lock, and logged. Without `verification` or `manual` apply can only deny.
+  const staleRev = typeof args.ifRev === 'number' && args.ifRev !== plan.rev
+  if (!auth.ok || staleRev || item === undefined || item.status !== 'claimed_done' || item.gen !== args.gen) {
+    // Denied by the same pure rules (the ifRev guard included), under the lock, and logged. Without `verification` or
+    // `manual` apply can only deny.
     return mutate($, planId, base, actor, opts)
   }
   if (args.manual === true) return mutate($, planId, base, actor, opts)
@@ -766,7 +776,7 @@ export async function verifyItem(
   const judged = judge({ ...item, checks }, memo.results, memo.before, after, { cwd, at, ranHash })
   if (!judged.ok) return refusal(`${judged.why} ${item.id} stays claimed_done.`, planId)
   memo.verification = judged.verification
-  return commit({ ...base, verification: judged.verification }, judged.verification)
+  return commit({ ...unguarded(), verification: judged.verification }, judged.verification)
 }
 
 // ---------------------------------------------------------------- the directory guard
@@ -933,7 +943,7 @@ export async function planTool($: Dollar, e: any, attemptCap: number): Promise<T
   if (a.action === 'list' || a.action === 'status' || a.action === 'get') return readAction($, a, actor)
   const base: MutateOpts = { attemptCap }
   if (a.action === 'verify') {
-    const args: VerifyArgs = { gen: a.gen, manual: a.manual, note: a.note, cwd: a.cwd }
+    const args: VerifyArgs = { gen: a.gen, manual: a.manual, note: a.note, cwd: a.cwd, ifRev: a.ifRev }
     const memo: VerifyMemo = {}
     return toAnswer(await withRetry($, a, (opts) => verifyItem($, a.plan, a.item, args, actor, { ...opts, memo }), base))
   }
