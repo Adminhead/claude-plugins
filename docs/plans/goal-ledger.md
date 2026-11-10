@@ -345,3 +345,9 @@ Found in review of the pure slices (authorize, apply, replay, checks, render, st
 - Implement the check that an agent's `$.agent.list()` status is `running` before the caller builds an `Actor` with a non-null `agentType`.
 - `parseInput` must reject a `verification` field in the tool input. `verify` in `apply` now checks a supplied verification against the item, but only the mod may supply one.
 - Accepted risks, no change planned: the `evil:architect` prefix rule (a plugin prefix is stripped before the agent type is compared, so any plugin can name an agent `architect`), and the `sleep 0.1` in the acquire script (fractional `sleep` is not POSIX; it works on GNU and BSD `sleep`).
+
+## Review carry-forwards (slices 6-8)
+
+- Teammates run in separate tmux processes and may see their own loop with `agentId` absent. The tool handler would then treat them as `main` with the orchestrator's full rights. This is unverified until G4, and must be settled before slice 10 relies on teammates.
+- The interactive prompts have never been run in a real session: the verify gate (G3), `/plans unlock`, `/plans repair` (the plan file ahead of its ledger) and `/plans abandon`. Headless runs and tests show only that a rejected `$.ui.ask` refuses.
+- The `status` of an idle teammate fails closed: `buildActor` trusts only `running`, so an idle teammate that calls the tool is an unlisted agent and is denied.
