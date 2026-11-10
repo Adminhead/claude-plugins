@@ -70,3 +70,17 @@ Re-read the GitHub `mods/types/claude-code.d.ts` (saved to `/tmp/claude-code.d.t
 ## Correction to the slice 8 API re-check (2026-11-10)
 
 The first bullet of "Slice 8 API re-check" is wrong: `ToolSpec` does have `isDeferred`. The 2.1.302 copy (`plugins/agent-router/.claude-plugin/types/claude-code/index.d.ts`) types `ToolSpec` as `{ name, description, inputSchema?, isDeferred?: ToolDeferral }` with `ToolDeferral = boolean`: `false` puts the schema in the prompt's tool list, `true` behind ToolSearch, and left out the engine places it behind ToolSearch like an MCP server's tool (a `tool.describe` answer is read first). The installed 2.1.322 binary's `$.tool.register` error text says the same (`{ name, description, inputSchema?, isDeferred? }`). The earlier note read the older GitHub copy, which lacks the field, and the headless run that showed no deferral only showed the default of that run. The plugin now passes `isDeferred: false` (decision 9). Measured size of the registered spec after trimming `patch`: 2925 characters (351 of description, 2508 of input schema), roughly 730 to 975 tokens at 3 to 4 characters per token, against the plan's estimate of 300; the figure is an estimate, not a `$.session.usage` reading.
+
+## Interactive gate results (2026-11-10, claude 2.1.322, restored slice 1 probe)
+
+| Gate | Result | Notes |
+| :- | :- | :- |
+| G1 / item 8: injected context after `/clear` and `/compact` | pass | `PROBE` from `classic.SessionStart` was visible after both; decision 8's re-injection holds. |
+| G2 / item 9: agent id across a hot reload | pass | A background agent kept the same id and status after `register.tsx` was touched. |
+| G3 / A3: real `verify` dialog | pass | Run, Refuse, Escape and a deny rule all behaved as designed (Part A, items 3 to 7). |
+| G4 / item 10: teammate identity | pass, in-process only | An in-process team teammate got its own `agentId`, appeared in `$.agent.list()` as `probe-with`, status `running`. A separate tmux-pane teammate was not tested, so it stays unverified whether a tmux teammate sees `agentId`. |
+| G5 / item 11: plugin-prefixed type | pass (headless) | `$.agent.list()` returns the full prefixed type, e.g. `pp:probe-p`; the authorize prefix rule must map `coder:coder` to `coder`. |
+| G6 / item 12: hook context on a resumed child | pass | The resumed child quoted `PROBE`, so `SubagentStart` context reaches it. The spawn hook's `PROBE-REWRITE` prompt line also reached children. |
+| A6: tool-path `abandon` | as designed | The orchestrator may abandon a plan through the tool with no prompt; `/plans abandon` asks. |
+
+Plan effects: slice 9 may rely on re-injection after `/clear` and `/compact`, on the spawn hook's prompt rewrite reaching a fresh child, and on `SubagentStart` context reaching a resumed one. Slice 10 must keep treating a tmux-pane teammate with no `agentId` as unverified.
