@@ -19,7 +19,7 @@ const STATUSES: ItemStatus[] = ['pending', 'in_progress', 'blocked', 'claimed_do
  * single space. Everything stored by a caller goes through this before it is placed in a line, so a title
  * or note cannot start a new line and forge an item line or a plan header (`renderDelta` reads those).
  */
-function one(s: unknown): string {
+export function one(s: unknown): string {
   return String(s ?? '')
     .replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, ' ')
     .trim()
@@ -34,7 +34,7 @@ function cut(s: string, n: number): string {
 }
 
 /** Output never exceeds `max` characters; `marker` replaces the tail when something was cut. */
-function clamp(s: string, max: number, marker = '...'): string {
+export function clamp(s: string, max: number, marker = '...'): string {
   if (s.length <= max) return s
   if (max <= marker.length) return cut(s, max)
   return cut(s, max - marker.length) + marker
