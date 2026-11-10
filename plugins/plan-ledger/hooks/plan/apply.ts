@@ -97,6 +97,12 @@ const ITEM_FIELDS: ReadonlySet<string> = new Set([
 
 // ---------------------------------------------------------------- entry point
 
+/** True when the action carries an `ifRev` that is not the rev of `plan`: `apply` refuses it. */
+export function staleRev(plan: Plan | null, action: Action): boolean {
+  const ifRev = (action as { ifRev?: unknown }).ifRev
+  return !NO_IFREV.has(action.action) && ifRev !== undefined && plan !== null && ifRev !== plan.rev
+}
+
 export function apply(plan: Plan | null, action: Action, ctx: ApplyCtx): ApplyResult {
   try {
     return run(plan, action, ctx)
@@ -117,14 +123,9 @@ function run(plan: Plan | null, action: Action, ctx: ApplyCtx): ApplyResult {
     return refuse(plan, action, ctx, 'This plan is abandoned. Ask the orchestrator to create a new plan.')
   }
 
-  const ifRev = (action as { ifRev?: unknown }).ifRev
-  if (!NO_IFREV.has(action.action) && ifRev !== undefined && plan !== null && ifRev !== plan.rev) {
-    return refuse(
-      plan,
-      action,
-      ctx,
-      `The plan is at rev ${plan.rev}, not rev ${String(ifRev)}. Re-read the plan, then retry.`,
-    )
+  if (staleRev(plan, action) && plan !== null) {
+    const ifRev = (action as { ifRev?: unknown }).ifRev
+    return refuse(plan, action, ctx, `The plan is at rev ${plan.rev}, not rev ${String(ifRev)}. Re-read the plan, then retry.`)
   }
 
   const now = iso(ctx.nowMs)

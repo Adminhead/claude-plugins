@@ -4,7 +4,7 @@
 // `claude plugin validate` fails on "$ is passed to X, which is not a function declared at the top of this file", so every
 // helper that takes `$` is a top-level function declaration below and `register` only wires hooks to them.
 import type { Register } from 'claude-code'
-import { apply } from './plan/apply'
+import { apply, staleRev } from './plan/apply'
 import { authorize } from './plan/authorize'
 import { checksHash } from './plan/checks'
 import {
@@ -97,6 +97,12 @@ export type MutateFail = {
   op: string | null
   /** True when the change reached the ledger before the failure; a retry with the same `op` reports it as applied. */
   recorded?: boolean
+  /**
+   * Set on a denial judged after the plan file was found behind its change ledger (an earlier change was recorded but its
+   * file update failed): `rev` is the plan's real rev, `healed` whether the file now matches it. A caller's earlier read
+   * of the file was then stale.
+   */
+  behind?: { rev: number; healed: boolean }
 }
 
 export type MutateResult = MutateOk | MutateFail
@@ -314,14 +320,27 @@ async function publish($: Dollar, paths: PlanPaths, plan: Plan, token: string): 
   await publishText($, paths.json, JSON.stringify(plan), token)
 }
 
-/** Brings the JSON up to a replayed plan after a call that applied nothing. Failure is ignored: the next mutation heals it. */
-async function healJson($: Dollar, paths: PlanPaths, rec: Reconciled, token: string): Promise<void> {
-  if (rec.source !== 'ledger' || rec.plan === null) return
+/**
+ * Brings the JSON up to a replayed plan after a call that applied nothing; true when the JSON now matches the plan (it
+ * already did, or was rewritten). Failure is ignored: the next mutation heals it.
+ */
+async function healJson($: Dollar, paths: PlanPaths, rec: Reconciled, token: string): Promise<boolean> {
+  if (rec.source !== 'ledger' || rec.plan === null) return true
   try {
     await publish($, paths, rec.plan, token)
+    return true
   } catch {
     // Reconcile redoes this at the start of the next mutation.
+    return false
   }
+}
+
+/** Tells the model why a refusal came from a stale read, and whether the plan file is whole again. */
+export function behindNote(planId: string, rev: number, healed: boolean): string {
+  const cause = `The plan file of ${planId} had fallen behind its change ledger (an earlier change was recorded but its file update failed), so what you read was out of date: the plan is at rev ${rev}.`
+  return healed
+    ? `${cause} The file is repaired now. Re-read the plan, then retry.`
+    : `${cause} The file could not be repaired yet. Retry in a moment; if status still shows an older rev, ask the person to run /plans repair ${planId}.`
 }
 
 type Reconcile = { rec: Reconciled; ledgerSize: number; loaded: boolean; text: string } | MutateFail
@@ -486,7 +505,13 @@ async function transact($: Dollar, tx: Tx, token: string): Promise<MutateResult>
         suppressedDenials.delete(planId)
       }
     }
-    await healJson($, paths, rec, token)
+    const healed = await healJson($, paths, rec, token)
+    if (rec.source === 'ledger' && rec.plan !== null) {
+      // The caller read the plan file before it was repaired. A refusal for a rev it could not have known says why.
+      const behind = { rev: rec.plan.rev, healed }
+      const message = staleRev(rec.plan, action) ? `${out.denied} ${behindNote(planId, behind.rev, healed)}` : out.denied
+      return { ...failure('denied', message, planId, op), behind }
+    }
     return failure('denied', out.denied, planId, op)
   }
 
@@ -778,8 +803,13 @@ export async function verifyItem(
   const staleRev = typeof args.ifRev === 'number' && args.ifRev !== plan.rev
   if (!auth.ok || staleRev || item === undefined || item.status !== 'claimed_done' || item.gen !== args.gen) {
     // Denied by the same pure rules (the ifRev guard included), under the lock, and logged. Without `verification` or
-    // `manual` apply can only deny.
-    return mutate($, planId, base, actor, opts)
+    // `manual` apply can only deny. The read above is of the plan file, which a failed publish can leave behind the
+    // ledger; then the preconditions were judged on a stale read, and the denial says so instead of apply's own words.
+    const done = await mutate($, planId, base, actor, opts)
+    if (!done.ok && done.code === 'denied' && done.behind !== undefined && !done.message.includes('change ledger')) {
+      return { ...done, message: behindNote(planId, done.behind.rev, done.behind.healed) }
+    }
+    return done
   }
   if (args.manual === true) return mutate($, planId, base, actor, opts)
   if (item.checks.length === 0) {

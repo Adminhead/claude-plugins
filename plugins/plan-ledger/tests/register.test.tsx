@@ -1261,6 +1261,52 @@ describe('verification', () => {
       expect((await itemOf(w, id)).status).toBe('claimed_done')
     })
 
+    describe('after a change was recorded but its file update failed', () => {
+      /** The ledger is one rev ahead of the plan file, as a failed publish leaves it. */
+      async function behind(w: World & { $: any }) {
+        const id = await claimed(w)
+        w.failMv = true
+        expect(await mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'Renamed' }, MAIN)).toMatchObject({ ok: false, recorded: true })
+        expect(ledgerOf(w).changes.at(-1)?.rev).toBe(jsonOf(w).rev + 1)
+        return id
+      }
+
+      test('a verify whose ifRev is the true rev is still refused, runs nothing, and says the file was behind', async ($: any, on: any) => {
+        const w = world(on)
+        const id = await behind(w)
+        w.failMv = false
+        w.verdict = () => ({ decision: 'ask' })
+        const gen = (await itemOf(w, id)).gen
+        const trueRev = ledgerOf(w).changes.at(-1)?.rev as number
+        const r = await verify(w, id, { gen, ifRev: trueRev })
+        expect(r).toMatchObject({ ok: false, code: 'denied' })
+        expect((r as any).message).toContain('change ledger')
+        expect((r as any).message).not.toContain('verify runs the item checks itself')
+        ranNothing(w)
+        expect((await itemOf(w, id)).status).toBe('claimed_done')
+        // The refusal repaired the file, so the same call now goes through.
+        expect(jsonOf(w).rev).toBe(trueRev)
+        expect(await verify(w, id, { gen, ifRev: trueRev })).toMatchObject({ ok: true, code: 'applied' })
+      })
+
+      test('an ifRev from the stale file is refused with the real rev and the cause; a repair that failed is said so', async ($: any, on: any) => {
+        for (const healed of [true, false]) {
+          const w = world(on)
+          const id = await behind(w)
+          const staleRev = jsonOf(w).rev
+          w.failMv = !healed
+          const r = await mutate(w.$, id, { action: 'abandon', plan: id, item: 's1', ifRev: staleRev }, MAIN)
+          expect(r).toMatchObject({ ok: false, code: 'denied' })
+          const message = (r as any).message as string
+          expect(message).toContain(`rev ${staleRev + 1}`)
+          expect(message).toContain('change ledger')
+          expect(message.includes('/plans repair')).toBe(!healed)
+          expect(jsonOf(w).rev).toBe(healed ? staleRev + 1 : staleRev)
+          expect((await itemOf(w, id)).status).toBe('claimed_done') // refused: nothing was abandoned
+        }
+      })
+    })
+
     test('the tool passes ifRev through to verify', async ($: any, on: any) => {
       const w = world(on)
       const id = await claimed(w)
