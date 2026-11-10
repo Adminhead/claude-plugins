@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -88,6 +88,7 @@ describe('ids and paths (pure)', () => {
 
   test('tmpPath and lineFor', () => {
     expect(tmpPath('/d/p.json', 'tok')).toBe('/d/p.json.tmp.tok')
+    expect(tmpPath('/d/p.json', 'A-b_c.9')).toBe('/d/p.json.tmp.A-b_c.9')
     const change: Change = {
       v: 1, rev: 1, ts: '2026-11-09T00:00:00.000Z', plan: PLAN_ID, item: null, actor: { kind: 'main' },
       action: 'create', from: null, to: 'draft', data: { note: 'multi\nline' }, denied: null, op: 'op1',
@@ -96,6 +97,22 @@ describe('ids and paths (pure)', () => {
     expect(line.endsWith('\n')).toBe(true)
     expect(line.slice(0, -1)).not.toContain('\n')
     expect(JSON.parse(line)).toEqual(change)
+  })
+})
+
+describe('the tmp token is a plain name', () => {
+  test('tmpPath refuses a token outside [A-Za-z0-9._-]', () => {
+    for (const bad of ['', 'a b', 'a/b', '../x', 'a\nb', "a'b", '$(x)', 'a;b', 'é']) {
+      expect(() => tmpPath('/d/p.json', bad)).toThrow()
+    }
+  })
+
+  test('publishArgv takes only tmpPath(json, token) of a valid token', () => {
+    const json = '/d/p.json'
+    expect(publishArgv(tmpPath(json, 'tok-1'), json).slice(4)).toEqual([`${json}.tmp.tok-1`, json])
+    for (const bad of [`${json}.tmp.a b`, `${json}.tmp.a/b`, `${json}.tmp.`, `${json}.tmp.$(x)`, `${json}.tmp.a\nb`, '/elsewhere/x', json]) {
+      expect(() => publishArgv(bad, json)).toThrow()
+    }
   })
 })
 
@@ -108,7 +125,7 @@ describe('argv builders keep scripts constant', () => {
       lockReleaseArgv(hostile, hostile),
       appendArgv(hostile),
       tailArgv(hostile),
-      publishArgv(hostile, hostile),
+      publishArgv(tmpPath(hostile, 'tok'), hostile),
     ]) {
       expect(argv.slice(0, 2)).toEqual(['sh', '-c'])
       expect(argv[2]).not.toContain('PWNED')
@@ -203,6 +220,54 @@ describe('lock (real shell)', () => {
     expect(Date.now() - t0).toBeLessThan(2000)
   })
 
+  test('a holder that releases between our mkdir and our test is a retry, not an error', async () => {
+    // Deterministic form of the race: the first `mkdir` reports "exists" while leaving no directory behind, which
+    // is what a holder releasing in the gap looks like. The old script tested the lock directory and exited 1.
+    const shim = join(tmp, 'shim')
+    mkdirSync(shim)
+    const marker = join(tmp, 'seen')
+    writeFileSync(
+      join(shim, 'mkdir'),
+      `#!/bin/sh\nif [ ! -e '${marker}' ]; then : > '${marker}'; exit 1; fi\nexec /bin/mkdir "$@"\n`,
+      { mode: 0o755 },
+    )
+    const lock = join(tmp, 'p.lock')
+    const p = Bun.spawn(lockAcquireArgv(lock, 'tok', 5), {
+      cwd: tmp,
+      env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
+      stdout: 'ignore',
+      stderr: 'ignore',
+    })
+    expect(await p.exited).toBe(0)
+    expect(existsSync(marker)).toBe(true)
+    expect(readFileSync(join(lock, 'owner'), 'utf8').startsWith('tok ')).toBe(true)
+  })
+
+  test('contended acquire and release cycles never exit with an error: only 0 (held) or 75 (busy)', async () => {
+    const lock = join(tmp, 'p.lock')
+    const codes: Record<number, number> = {}
+    let inside = 0
+    let maxInside = 0
+    await Promise.all(
+      Array.from({ length: 8 }, async (_, w) => {
+        for (let k = 0; k < 15; k++) {
+          const token = `w${w}-${k}`
+          const got = await acquire(lock, token, 1)
+          codes[got.code] = (codes[got.code] ?? 0) + 1
+          if (got.code !== 0) continue
+          inside++
+          maxInside = Math.max(maxInside, inside)
+          await Bun.sleep(1)
+          inside--
+          expect((await release(lock, token)).code).toBe(0)
+        }
+      }),
+    )
+    expect(Object.keys(codes).every((c) => c === '0' || c === '75')).toBe(true)
+    expect(maxInside).toBe(1)
+    expect(existsSync(lock)).toBe(false)
+  }, 120_000)
+
   test('mkdirArgv creates a nested directory private to the user, idempotently', async () => {
     const dir = join(tmp, 'a', 'b')
     expect((await run(mkdirArgv(dir))).code).toBe(0)
@@ -221,7 +286,7 @@ describe('hostile values reach the shell as plain data', () => {
     const token = hostile('token')
     const file = join(dir, hostile('ledger'))
     const json = join(dir, hostile('json'))
-    const tmpFile = tmpPath(json, token)
+    const tmpFile = tmpPath(json, 'tok.1') // a tmp token is restricted to [A-Za-z0-9._-]; paths and lock tokens are not
 
     expect((await run(mkdirArgv(dir))).code).toBe(0)
     expect(statSync(dir).isDirectory()).toBe(true)

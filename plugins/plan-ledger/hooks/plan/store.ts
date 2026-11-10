@@ -45,8 +45,11 @@ export const mkdirArgv = (dir: string): string[] => ['sh', '-c', 'umask 077; mkd
 
 // Acquire: `mkdir` is the atomic primitive. On success the owner is recorded as `<token> <epoch>` (no trailing newline)
 // and the script exits 0. While the directory exists it polls every 0.1 s, and after `$3 * 10` polls exits 75 (busy)
-// without touching the lock: a lock is never stolen, however old. Any other `mkdir` failure (the parent is missing,
-// no permission) exits 1 at once instead of waiting out the timeout.
+// without touching the lock: a lock is never stolen, however old. A `mkdir` that fails while the parent directory is
+// missing exits 1 at once instead of waiting out the timeout. When the parent exists the failure is a held lock, or a
+// holder that released between our `mkdir` and our test: both retry (so the lock directory itself is never the test, or
+// a release in that gap would read as an error). A failure with an existing parent and no lock, such as no permission,
+// ends in 75 after the timeout.
 const ACQUIRE = [
   'umask 077',
   'i=0; max=$(($3 * 10))',
@@ -55,7 +58,7 @@ const ACQUIRE = [
   '    printf "%s %s" "$2" "$(date +%s)" > "$1/owner" || { rm -rf -- "$1"; exit 1; }',
   '    exit 0',
   '  fi',
-  '  [ -d "$1" ] || exit 1',
+  '  [ -d "${1%/*}" ] || exit 1',
   '  [ "$i" -ge "$max" ] && exit 75',
   '  i=$((i + 1)); sleep 0.1',
   'done',
@@ -85,10 +88,19 @@ export const appendArgv = (file: string): string[] => ['sh', '-c', 'umask 077; c
 export const tailArgv = (file: string): string[] => ['sh', '-c', 'tail -n 1 -- "$1"', 'sh', file]
 
 /** Renames the tmp file over the JSON. Same directory, so the rename is atomic: readers see the old file or the new one. */
-export const publishArgv = (tmp: string, json: string): string[] => ['sh', '-c', 'mv -f -- "$1" "$2"', 'sh', tmp, json]
+export function publishArgv(tmp: string, json: string): string[] {
+  const prefix = `${json}.tmp.`
+  if (!tmp.startsWith(prefix) || !KEY_CHARS.test(tmp.slice(prefix.length))) {
+    throw new Error('publishArgv: tmp must be tmpPath(json, token) with a token of [A-Za-z0-9._-]')
+  }
+  return ['sh', '-c', 'mv -f -- "$1" "$2"', 'sh', tmp, json]
+}
 
-/** The tmp name for a publish; it carries the lock token so only the lock holder can have written it. */
-export const tmpPath = (json: string, token: string): string => `${json}.tmp.${token}`
+/** The tmp name for a publish; it carries the lock token so only the lock holder can have written it. Throws on a token outside `[A-Za-z0-9._-]`. */
+export function tmpPath(json: string, token: string): string {
+  if (!KEY_CHARS.test(token)) throw new Error('tmpPath: token must be [A-Za-z0-9._-]')
+  return `${json}.tmp.${token}`
+}
 
 /** One ledger line: the change as JSON, newline-terminated. */
 export const lineFor = (change: Change): string => `${JSON.stringify(change)}\n`
