@@ -1,0 +1,316 @@
+# plan-ledger: a work-plan tracker the orchestrator hands to subagents by reference
+
+Status: draft v2, 2026-11-09 (v1, a per-repo goal ledger in `.git/`, was replaced at the user's direction). Nothing is built. The file keeps its old name; the plugin is `plan-ledger`. Decision this unblocks: whether and how to build the mod. Recommendation: build it, mod only (no classic hook scripts), a live probe plus nine slices after it.
+
+Sources: the mods d.ts at `anthropics/claude-code/mods/types/claude-code.d.ts` (fetched raw this session; every `$.*` call and event below was checked in it); `plugins/usage-log`, `plugins/bash-rules`, `plugins/consult` for house style; `plugins/architect/agents/architect.md` for the slice shape; `plugins/orchestration/agents/orchestration.md`. Research on oh-my-claudecode ultragoal, `ralph-loop`, beads and native Tasks came from a helper agent and is cited as claims, not re-verified.
+
+## Purpose
+The orchestrator creates a plan of ordered work items. Each item carries what the architect's slices carry: id, title, full instructions, acceptance criteria, owner agent type, model, status, dependencies. The orchestrator then briefs a subagent by reference ("plan p-x, item s2") instead of pasting the slice into the prompt. The subagent reads its item through the tool, reports progress and claims done with structured evidence; the orchestrator, or the mod re-running plan-time checks itself, marks the item verified. Every mutation is also written to an append-only change ledger for later review.
+
+## Done when
+- `plugins/plan-ledger/` exists: one mod (`hooks/register.tsx` plus `$`-free side files), one `plan` tool, a `/plans` command, README, marketplace entry, catalog regenerated.
+- An orchestrator creates a three-item plan, spawns a coder with only a reference, the coder reads its item and claims done, and `verify` re-runs the item's check and sets `verified`; the same plan is visible after `/clear`, `/compact`, restart and from another worktree of the repo.
+- A subagent cannot mutate an item not assigned to it, cannot set `verified`, and cannot edit checks; the change ledger shows each attempt with its `agentId`.
+- `bun test plugins/plan-ledger/tests/*.spec.ts`, `claude plugin test plugins/plan-ledger`, `claude plugin validate plugins/plan-ledger --strict` and `python3 scripts/plugins.py check` pass.
+
+## Nothing in the marketplace does this
+Grepped `plugins/` and `.claude-plugin/marketplace.json` for ledger, goal, plan and handoff. `handoff` writes a one-shot summary document with no state. `planning/references/long-running-work.md` is concepts only. The optimize-and-measure loop plugin (marketplace.json:901) keeps its own per-branch results log. `architect` returns plans as text. None tracks items, assignment or evidence.
+
+## Findings from the code (verified in the d.ts and the repo)
+- `$.fs` has `read`, `write` (whole file), `list`, `exists`, `stat`, `ancestors`; paths absolute or relative to the working directory; no append, rename or lock; 4 MiB per read/write. `usage-log` appends through `$.process.run(['sh','-c','... cat >> "$d/$1"', 'sh', file], { stdin })` (`scripts/shared/log/usagelog.ts:84`).
+- `$.env.get("HOME")` works with a string literal name (d.ts around line 3044); `$.process.run(argv, { cwd, env, stdin, timeoutMs })` resolves `{ exitCode, stdout, stderr }`, no shell. `CLAUDE_PLUGIN_DATA` is not in a mod's env, and the plugin-data directory is found only through a classic SessionStart hook that writes a `plugin-root` file (CLAUDE.md "Mods").
+- `tool.call` carries `agentId` (`AgentLoop`, d.ts lines 158-175): the loop that made the call, present for a subagent or teammate, absent on the main loop. It is pinned and engine-set: a hook rewrite of it is refused (`tool_use_id` and `agentId` are reserved, around line 10091), so a model cannot forge it. For a subagent or teammate it equals the `id` in `$.agent.list()` (entries `{ id, description, type, ... }`), which gives the agent type. A workflow's agents and the engine's own forks carry ids no list names, so an unlisted id must be treated as untrusted. Not yet confirmed: that teammates and background agents behave identically for a mod-registered tool (probe).
+- `agent.spawn` input has `prompt` and `description` (a rewrite is what the subagent runs with), `subagentType`, `model`, `parentAgentId` (pinned), `tool_use_id`; `next(e)` resolves to the started subagent's `{ model, agentId }` or `{ deny }`. So a spawn hook can read a plan reference from the prompt and bind the item to the resulting `agentId`.
+- `classic.SubagentStart` can return `additionalContext` (fallback delivery if a prompt rewrite is not allowed). `classic.SessionStart`, `UserPromptSubmit` can return `additionalContext`; `session.start` cannot inject (its result is `{ cwd }`).
+- `$.command.register` and `$.tool.register` run in `session.start`; the served name is `mcp__<plugin>__<tool>` (`plugins/consult/hooks/consult/consult.ts:8`: `mcp__consult__consult`). Agent files list it in `tools:` (architect, reviewer and security-auditor already list `mcp__consult__consult`). `orchestration.md` has no `tools:` line, so it inherits every tool.
+- `$.tool.check({ tool, input })` returns the user's permission verdict (`consult` uses it before acting).
+- The test harness cannot fire `classic.*` events (`docs/plans/guard-improvements.md`); classic handlers stay thin wrappers over tested pure functions.
+- `$.session.repo()` returns `{ root, remote, ... }` where `root` is the main working tree's root even from a linked worktree, or null outside git.
+- Nothing in the d.ts lets a mod set or read native `/goal`.
+
+## Decisions
+
+### 1. Where state lives and how a mod finds it
+Recommendation: `$HOME/.claude/adminhead-plans/<projectKey>/`, with `$HOME` from `$.env.get("HOME")` (string literal, as the skill requires). Per plan, three siblings: `<planId>.json` (managed state), `<planId>.jsonl` (change ledger), `<planId>.lock/` (transient lock directory). Plan ids are `p-<ms base36 padded to 9>-<6 random base36>` (time-ordered, collision-free).
+
+`projectKey` = `<sanitized basename of root>-<first 12 hex of sha256(root)>` where `root` is `$.session.repo()?.root` (main working tree, so every worktree of a repo gets the same key with no git subprocess) or `$.session.cwd()` when not in git; sha256 via `crypto.subtle.digest`, which the sandbox provides. Alternatives: hash of the git common dir (needs a `git rev-parse` call, same result for worktrees; rejected as extra work, and equal in effect); the remote URL (shared across clones, wrong: two clones are two workspaces); cwd (splits worktrees and subdirectories, rejected).
+
+Why not the plugin-data directory: a mod cannot see `CLAUDE_PLUGIN_DATA`; finding it needs a classic SessionStart hook writing a pointer file, which is the second runtime this design avoids. A fixed directory under `~/.claude/` is reachable with `$HOME` alone. Cost: it is outside `plugins/data/`, so `claude plugin uninstall` will not remove it (a README note says how to clear it), and it sits in a user directory the person owns; it is created with `umask 077`. Not committed anywhere. Worktrees need no handling because the key is the main tree. Not shared between machines.
+
+Probe item: `$.fs.read`, `$.fs.list` and `$.process.run` reach `$HOME/.claude/adminhead-plans/` without a permission prompt in a session whose cwd is elsewhere.
+
+### 2. Data model: JSON state plus change ledger
+Recommendation: the JSON file is the only thing the tool reads and mutates; the JSONL is a write-ahead audit log that can rebuild it. JSONL-only state is rejected (every read replays everything and the file outgrows the 4 MiB read cap); JSON-only is rejected (no review trail).
+
+`<planId>.json`:
+```
+{ "v":1, "id":"p-...", "title":"...", "rev":7, "created":"ISO", "project":"<root>",
+  "items":[ { "id":"s1", "title":"...", "instructions":"markdown, up to 8000 bytes",
+              "acceptance":["..."], "files":["path"], "deps":[], "agent":"coder", "model":"sonnet",
+              "checks":[{ "label":"unit", "argv":["bun","test","x"], "expectExit":0 }],
+              "status":"pending", "attempts":0, "boundAgent":null, "claimed":null, "verification":null } ] }
+```
+- Slice mapping from `plugins/architect/agents/architect.md`: goal becomes `title`; files owned become `files`; depends on becomes `deps`; numbered steps become `instructions`; acceptance criteria become `acceptance` (prose) and, when mechanical, `checks` (the exact verification command as argv); "agent and model it suits" become `agent` and `model`.
+- Plan status: `draft` (created, nothing claimable), `active`, `abandoned`, derived `done` when every item is `verified` or `abandoned`.
+- Item statuses: `pending` (derived `ready` when every dep is `verified`), `in_progress`, `blocked`, `claimed_done`, `verified`, `failed`, `abandoned`. Each item also has `gen` (starts at 1, incremented by `claim_done`, `amend` and `reopen`), `boundAgent` (`{ agentId, session, at }` or null) and `reservedFor` (agent type or null).
+- Transition table (the whole state machine; `apply` implements exactly this, anything else is denied):
+
+| Action | Actor | From | To | Notes |
+| --- | --- | --- | --- | --- |
+| `create` | main, or agent type `architect` | none | plan `draft`, items `pending` | rejects dependency cycles, unknown deps, over-limit fields |
+| `activate` | main | plan `draft` | plan `active` | the orchestrator's review point |
+| `claim` | eligible agent (decision 5) | `pending` with deps verified, or `failed` with attempts below the cap | `in_progress` | `attempts + 1`; binds the caller if unbound; a repeat by the bound agent while `in_progress` is a no-op |
+| `progress` | bound agent, main | `in_progress` | `in_progress` | note only |
+| `block` | bound agent, main | `in_progress` | `blocked` | note required |
+| `fail` | bound agent | `in_progress` | `failed` | closes the attempt cycle |
+| `claim_done` | bound agent | `in_progress` | `claimed_done` | `gen + 1`; self-reported evidence stored |
+| `verify` | main | `claimed_done` | `verified` or `failed` | needs the item `gen` it saw; a failure closes the cycle (the agent must `claim` again) |
+| `amend` | main | any item not `verified`, not `claimed_done` | same status | edits fields, `gen + 1`; binding kept unless `agent` type changes; plan fields too |
+| `assign` | main | `pending`, `failed`, `blocked`, `in_progress` | same status | replaces `boundAgent` (a re-spawned or continued agent) |
+| `reopen` | main | `blocked`, `failed`, `claimed_done`, `verified`, `abandoned` | `pending` | `gen + 1`; optional `extraAttempts`; dependents keep their status (v0), the block shows them |
+| `abandon` | main (or the person via `/plans`) | any item not `verified`, or the plan | `abandoned` | an abandoned dep keeps dependents `pending`; the block shows "blocked by abandoned s2" |
+| `bind`, `reserve` | main (internal, from the spawn hook) | `pending`, `failed`, `in_progress` | same | rejects replacing an existing binding |
+
+- `attempts` counts `claim` actions; the cap is 3 (option `attemptCap`); the third attempt can still succeed; at the cap the item stays `failed` until `reopen` with `extraAttempts`. A bound agent may own several items one after another but at most one `in_progress` at a time.
+- `rev` is kept: incremented under the lock on every successful write; ledger ordering key; `ifRev` optional on mutating actions (mismatch returns the new state and refuses). With a lock it is the lost-read detector, not the concurrency mechanism. Every mutating call also carries an `op` id (random, chosen by the mod) written into the ledger line so a retry after an ambiguous failure can see the operation already committed.
+
+`<planId>.jsonl`, one line per mutation attempt, written under the lock before the JSON:
+```
+{ "v":1, "rev":7, "ts":"ISO", "plan":"p-...", "item":"s2",
+  "actor":{ "kind":"agent", "agentId":"...", "agentType":"coder" } | { "kind":"main" },
+  "action":"claim_done", "from":"in_progress", "to":"claimed_done",
+  "data":{ "summary":"...", "commands":[...], "commits":["sha"] }, "denied":null }
+```
+Denied attempts are logged too (`denied` holds the reason, `rev` unchanged), so review sees a subagent reaching for another item. `create` and `amend` entries carry the full item text so the ledger can replay state; other entries carry patches and evidence tails (at most 2000 bytes each). Replay (`replay(changes)`) rebuilds the JSON. It runs on `/plans repair`, when the JSON fails to parse or is missing (a bad file is renamed `<planId>.json.corrupt-<ts>`, never deleted), and before every mutation when the ledger's last `rev` is ahead of the JSON's (see decision 3). An unterminated final ledger line is a torn append and is ignored. Size policy: the mod checks the projected ledger size before appending and refuses any non-terminal mutation once the ledger would pass 3 MiB (the `$.fs.read` cap is 4 MiB, so recovery stays possible, and terminal `verify`/`abandon` still fit); denied attempts are logged only for the first 50 per plan, then counted in the next entry. Rotation into segments is out of scope for v0 (plans are expected to hold tens of items).
+
+### 3. Concurrency and publication: a lock directory plus tmp+rename
+Recommendation: `mkdir` as the atomic primitive, run through `$.process.run` with a constant script and values as argv. `flock` was rejected because each `$.process.run` is a separate process, so a held descriptor cannot span the read, compute and write steps; `mkdir` persists between calls. The lock serializes writers; a tmp file renamed over the JSON protects the last good snapshot from a crash mid-write. They solve different problems and are used together (user decision on open question 9).
+
+Acquire (one `sh -c`; argv: lock path, timeout 5, token): loop `mkdir "$d"`; on success write `<token> <epoch>` to `$d/owner` and exit 0; otherwise `sleep 0.1`; after 5 s exit 75, reported to the model as "plan busy, retry". The project directory is created first with `mkdir -p` (a separate call before any lock), and plan ids from tool input are validated against `^p-[0-9a-z]{9}-[0-9a-z]{6}$` before any path is built.
+No automatic stale-lock stealing (critique 2): elapsed time does not prove the holder is dead, a paused holder could resume and write concurrently, and a steal races both a fresh lock and a release. Recovery is explicit: `/plans unlock <plan>` (the person) prints the owner token and age from `$d/owner` and removes the directory only after the person confirms with `$.ui.ask`. A crash inside the critical section (milliseconds) is the only way to need it, and the lock is never held during `verify`'s long checks.
+Release: `[ "$(cat "$d/owner" | cut -d' ' -f1)" = "$token" ] && rm -rf "$d"`, always in a `finally`.
+
+Critical section, in order: acquire; `$.fs.read` the JSON; reconcile (run `tail -n 1` on the ledger through `$.process.run`; if its `rev` is ahead of the JSON's, or the JSON is missing or corrupt, replay the ledger into a new JSON first); check `op` against the last ledger entries when retrying; apply the pure mutation; append the ledger line (write-ahead, `appendArgv`); write the JSON to a temp file in the same directory and publish it with `mv` (below); release. Reconcile-before-mutate means a crash after the append and before the JSON write cannot yield two different entries with one `rev` (critique 1). Publication: `$.fs.write` the new JSON to `<planId>.json.tmp.<token>` in the same directory (so the rename stays on one filesystem), then `$.process.run(publishArgv(tmp, json))`, a constant `mv -f "$1" "$2"`; the temp name carries the lock token so it can only belong to the holder. Readers do not lock and now never see a torn JSON; a parse failure is still retried once after 100 ms, then read under the lock. Recovery (reconcile, `/plans repair`) deletes any `<planId>.json.tmp.*` it finds while holding the lock, since the lock proves no writer is mid-publish.
+`verify` runs its checks outside the lock: it authorizes first, reads the plan (`rev`, item `gen`), runs the checks, then takes the lock and commits only if the item is still `claimed_done` at the same `gen`.
+Rejected: tmp+rename as the only mechanism (does not serialize writers; adopted here as a complement to the lock); lock-free optimistic writes on `rev` (no compare-and-set on `$.fs.write`); one subprocess holding an OS lock around the whole transaction (the read-modify-write logic lives in TypeScript, so a second language would own the transaction).
+
+### 4. Done gate: claimed, then verified
+Two states, two actors:
+- `claim_done` (the bound subagent only): `{ summary, commands:[{argv, exit, outTail}], commits:[sha], files:[path] }`, stored as `claimed` and labelled self-reported. A repeat is idempotent.
+- `verified` is set only by the main loop through `verify`, authorized and state-checked before any permission prompt or subprocess (critique 6: the pure `authorize(plan, action, actor)` runs first; an unauthorized `verify` executes zero checks, and the tool's public input has no field through which a caller can supply results). Two kinds, recorded as `verification.kind`:
+  (a) `checks`: the mod runs each check argv itself with `$.process.run(argv, { cwd, timeoutMs })`, no shell, in the `cwd` the orchestrator names in the `verify` call (absolute, must exist, default the session cwd; recorded). Per check it records label, exit, `expectExit`, last 400 chars of output; overall it records `checksHash`, the item `gen`, `cwd`, `HEAD` before and after and a `tree` fingerprint before and after (a hash of `git diff HEAD` plus `git status --porcelain`, so a same-HEAD content change is detected for tracked files and untracked names). Any mismatch, or a changed HEAD or fingerprint during the run, makes the item `failed` (the cycle closes; the tail goes to the model). One result per check, none missing or duplicated, and `checksHash` equal to the item's current checks.
+  (b) `manual`: for an item with no checks, `verify { manual: true, note }`, recorded as `verifiedBy: orchestrator, unchecked`. Status blocks and `goal-text` count it separately ("2 verified by command, 1 manually") so a goal worded as "every item verified" cannot be satisfied by prose alone (critique 13).
+- What `verified` means: these checks passed in this directory at this commit and tracked-file state at that moment; it is evidence about a mutable working tree, not an immutable snapshot. `reopen` or `amend` bumps `gen`, which invalidates earlier evidence for display; v0 does not re-verify dependents.
+- Checks are written only at `create`/`amend` (main, or the architect on a `draft` plan), so the claimant cannot weaken them. The v1 person-accept step is dropped: the author of checks is not the claimant, and execution is gated per call.
+- Execution gate, stated honestly: `$.process.run` is not a Bash tool call, so installed Bash hooks and guards (for example `bash-rules`) do not see it. `$.tool.check({ tool: 'Bash', input: { command: shellQuote(argv) } })` reports only the user's permission-rule verdict and carries no `cwd`. So: `deny` refuses; `allow` runs; `ask`, or any unavailable verdict, falls to `$.ui.ask` showing the exact argv and canonical `cwd` (a rejection, including `-p`, is a refusal). Probe (e) in slice 1 measures what `tool.check` actually returns for allow, deny and ask commands in different directories and under an installed guard; if it does not track the rules, `verify` always asks, which is the recommended fallback.
+- Not claimed: a check proves only what its command tests; weakened tests or scripts between plan and verify are not detected in v0 (open question 4). The directory guard is an accident guard, and disk files are unauthenticated.
+
+### 5. Interface and access control
+Recommendation: one tool, `mcp__plan-ledger__plan`, with an `action` enum (one schema rather than twelve tools), plus a `/plans` command for the person (zero model tokens): `status` (default), `show <plan>`, `log <plan> [n]`, `repair <plan>`, `unlock <plan>`, `abandon <plan>`, `goal-text <plan>`. Registered in `session.start` with `$.tool.register` / `$.command.register`, tolerating a taken name (copy `plugins/consult/hooks/register.tsx:113-120`).
+
+Actor and eligibility rules, evaluated in the `tool.call` hook from `e.agentId` (absent means main loop) and, for agents, the type from `$.agent.list()` (a plugin prefix is tolerated: `coder:coder` matches `coder`):
+- Main loop: every action in the transition table.
+- Agent type `architect`: `create` (plan `draft` only), `list`, `status`, `get` on plans it created in this session. Nothing else.
+- Any other listed agent: `list`/`status` (names and statuses only). `get` and `claim` on an item that is bound to it, or unbound with `item.agent` equal to its type (and, when the item is `reservedFor` a type, only that type). `claim` also requires the plan `active`. `progress`, `block`, `fail`, `claim_done` only on its bound item in the right status. First `claim` binds the caller; replacement happens only by main `assign`. A binding from an earlier session may be taken over by a matching agent's `claim` only when the item is `failed` or `blocked`.
+- Unlisted agent ids (workflow agents, engine forks, teammates until probe (b) says otherwise): every mutation and `get` denied. Denials are logged (first 50 per plan) and the reason is an instruction to the model ("This item is bound to another agent. Ask the orchestrator to assign it.").
+
+Input bounds: `title` 120 chars, `instructions` 8000 bytes, at most 20 items per plan, 8 checks per item, argv under 600 bytes per check; oversized structured input is rejected, never truncated; notes and output tails are truncated.
+
+### 6. How the orchestrator and subagents use it
+Orchestrator (`plugins/orchestration/agents/orchestration.md`, "Briefs" section at line 100): for work with more than one slice, call `plan create` with the slices as items, then brief each agent with only `plan-ref: <planId>/<itemId>`, the write boundary, the stop rule and the expected output; the item holds the task, expected outcome, must/must-not, acceptance criteria and who validates. Pasting stays right for a one-shot small task with no plan. After an agent returns, the Results section changes from reading the diff alone to: run `verify`, then inspect. A failed item is fixed with `amend` plus `SendMessage` to the same agent (it keeps its `agentId`), then the agent `claim`s again; when a fresh or stronger-model agent is unavoidable (`orchestration.md:31`), the orchestrator `reopen`s the item if needed and `assign`s the new agent.
+
+Subagent: its brief names the reference; its first action is `plan get`; it calls `claim`, `progress` at each natural checkpoint, `claim_done` with evidence (commands it actually ran, commit shas), or `block`/`fail` with a note. It never edits the plan files.
+
+Architect (`plugins/architect/agents/architect.md`): recommendation: as well as, not instead of, and through a `draft` plan so the trust boundary holds (critique 4). When the brief says the plan will be executed and the tool exists, the architect calls `create` (allowed for agent type `architect`, plan status `draft`, one item per slice per the mapping in decision 2, checks as argv where the acceptance is a command) and returns the plan id plus a short summary instead of repeating every slice; the orchestrator reads it, may `amend`, then `activate`s. The `docs/plans/<name>.md` file stays the human-reviewable, git-tracked record, written whenever the brief asks to save a plan, and links the plan id. Reason: the file is what the user reviews and commits and what survives losing `~/.claude`; the tool is what executors read. The architect cannot activate, claim or verify. Risk: two copies drift; the file is canonical for intent, the tool for status.
+
+### 7. `agent.spawn` hook: reserve, then confirm
+Recommendation: yes, narrowly, and never as the only binding path. The d.ts says `next(e)` resolves with the started subagent's `{ model, agentId }`, but not whether that happens before the child's first tool call, so binding only after `next` could lose the race (critique 5). Protocol: (1) before `next`, an `agent.spawn` hook (only when `e.parentAgentId` is absent, so only the orchestrator's spawns count) bounds `e.prompt` to 8192 chars, parses `plan-ref: p-<id>/<item>`, and writes `reservedFor = e.subagentType` on that item under the lock, rejecting an item already bound or reserved; (2) it appends one fixed line to the prompt if the reference is present and the instruction is not: "Read your task with plan get (plan-ref above) before starting."; (3) after `next` resolves, if `agentId` is present and the item is still unbound it binds that id, and if the child already claimed (bound itself) it leaves it. The child's first `claim` binds it when the hook is absent or late, so the child never has to wait; a `get` before binding is allowed because the item names its type. Concurrent spawns naming the same item: the second reservation is rejected and the hook leaves that prompt unchanged and logs once. Binding replacement only by main `assign`. The hook never pastes item text into the prompt. If the probe shows a prompt rewrite is not honored, use `classic.SubagentStart` `additionalContext` for the reminder.
+
+### 8. Re-injection and token cost
+Recommendation: the orchestrator only (main loop). Subagents get their task by reading the item, not by injection.
+
+| Hook | When | Output |
+| --- | --- | --- |
+| `classic.SessionStart` `{ source: ['startup','resume','clear','compact'] }` | start, after `/clear`, after compaction | compact status of this project's non-terminal plans, at most `injectMaxChars` (default 800, about 200 tokens), skipped when an agent type is present (a subagent session) |
+| `classic.UserPromptSubmit` | each prompt | nothing unless the project's plan state changed since the last block in this session (a subagent finished, another terminal edited); then a one-line delta built by diffing the previous compact summary kept in `$.state` |
+| `session.compact` | compaction | no hook: SessionStart(compact) re-injects the authoritative block; asking the summarizer to keep it was not shown to help |
+
+Block shape:
+```
+[plan-ledger] p-0m3k9x1a2 "Add retry to uploader" rev 7: 1/3 verified
+  s1 verified  s2 claimed_done (coder, awaiting verify)  s3 pending (needs s2)
+```
+Cost: injected text stays in every later request of the session, so an active plan costs about 200 tokens per request until compaction or `/clear`; a delta is one line; no plan means nothing. The tool schema (estimated 300 tokens) is a standing cost on every agent that lists the tool, so the allowlist scoping in decision 9 matters; slice 6 measures it with `$.session.usage({ breakdown: 'summary' })` and records the figure in the README.
+
+### 9. Which agent files list the tool
+`tools:` allowlists exist in every agent file except `orchestration.md` (it inherits all). Add `mcp__plan-ledger__plan` to the executors and planner that take or author items: `plugins/coder/agents/coder.md`, `plugins/dba/agents/dba.md`, `plugins/devops/agents/devops.md`, `plugins/debugger/agents/debugger.md`, `plugins/scribe/agents/scribe.md`, `plugins/architect/agents/architect.md`, and `plugins/reviewer/agents/reviewer.md` (reads its item to know the acceptance criteria and reports through `claim_done`). Leave the read-only auditors (`security-auditor`, `ui-critic`, `web-perf-auditor`, `browser-tester`, `open-source-release-audit`, `plugin-vetter`) and the shippers (`shipper`, `forgejo-shipper`) out: they return text, so their tool schema would be pure cost. Scoping by type is enforced a second time by the mod (the `agent` field must match), so an agent listing the tool cannot take an item meant for another type. Each changed agent plugin gets a version bump (as in commit `a9b603c`). Whether the allowlist accepts a mod-registered tool name at all is a probe item.
+
+### 10. Composing with native `/goal`
+Complement, do not wrap. `/goal` is a session-scoped prompt-based Stop hook whose evaluator reads the transcript and cannot run commands; it is lost on `/clear`. The ledger supplies durable state, and command-backed lines in the transcript: the `verify` result (`s2 verified: unit exit 0 at <sha>`) and the injected block put facts the mod produced into the transcript, so `/goal` can be worded "every item of plan p-... shows verified" and its evaluator can judge from text the mod wrote rather than the model's claim. `/plans goal-text <plan>` prefills that condition with `$.prompt.fill({ text, mode: 'replace' })`; the mod never submits it (no setter API is known). After `/clear` the person re-issues it; the plan survives.
+
+### 11. Classic hook-side scripts
+None. The mod reaches everything it needs: state under `$HOME`, locks and appends through `$.process.run`, git through `$.process.run`, injection through `classic.*` returns. A hook-side script would add the plugin-data discovery step for no capability. A Stop gate (blocking Stop until checks pass) is deferred and listed as an open question.
+
+## Slices
+Common: plugin at `plugins/plan-ledger/`, tests in `plugins/plan-ledger/tests/`. Pure files live in `hooks/plan/` and never touch `$`. Pure specs are `*.spec.ts`, run with `bun test <explicit paths>` (never a bare `bun test`: it would also load `register.test.tsx` and fail on `claude-code/testing`); mod tests are `register.test.tsx`, run with `claude plugin test plugins/plan-ledger`. Agent: sonnet unless a slice says haiku. Slices 2 to 5 are independent of the probe outcome except where noted.
+
+### Slice 1: scaffold and live probe
+Owns: `.claude-plugin/plugin.json`, `hooks/hooks.json`, `hooks/register.tsx` (probe, replaced in slice 6), `README.md` (API notes, rewritten in slice 10), `tests/register.test.tsx` (smoke), marketplace entry. Depends on: none.
+1. Run `python3 scripts/plugins.py new --help`, then scaffold `plan-ledger` as a mod plugin laid out like `plugins/usage-log` (`hooks/hooks.json` is `{"modules": ["./register.tsx"]}`). Description: "Work-plan tracker: the orchestrator hands items to subagents by reference; the agent claims done and the mod verifies."
+2. Write a probe `hooks/register.tsx`: in `session.start` register a tool `plan` (schema `{ action: string }`) and a command `plans` (shape of `plugins/consult/hooks/register.tsx:113-120`); serve `tool.call` for `mcp__plan-ledger__plan` returning `{ result: JSON.stringify({ agentId: e.agentId ?? null, list: await $.agent.list() }) }`; in `agent.spawn` log `subagentType`, `parentAgentId` and, after `await next(e)`, the resolved `agentId` plus a timestamp, and in the tool handler log a timestamp so the order of the two is visible; return `additionalContext: ['PROBE']` from `classic.SessionStart` and `classic.SubagentStart`.
+3. Create a scratch agent file `/tmp/probe-agent/probe.md` listing `mcp__plan-ledger__plan` in `tools:`, and a second without it; load both with `claude --plugin-dir plugins/plan-ledger --agents` (or a project `.claude/agents/` copy the person deletes afterwards). Do not edit the real agent files here.
+4. The person runs the probe and records answers in the README API notes: (a) does a subagent whose `tools:` lists the name receive the tool, and one that does not list it lose it; (b) the `agentId` a subagent call carries versus the main loop, whether it equals the `$.agent.list()` id and type, and the same for a `SendMessage` continuation, a background agent and a teammate, tested separately; (c) does `next(e)` in `agent.spawn` resolve before or after the child's first tool call (foreground and background), does it carry `agentId`, and is a rewritten `prompt` honored; (d) is `PROBE` seen after startup, `/clear`, `/compact`, and in a subagent via `SubagentStart`; (e) what `$.tool.check({ tool: 'Bash', input: { command } })` returns for a harmless allowed, denied and asked command, the same argv in two directories, and a command denied by an installed guard; (f) `$.env.get("HOME")`, then `$.fs.write`, `$.fs.read`, `$.fs.list` and `mkdir` through `$.process.run` on `$HOME/.claude/adminhead-plans/probe/` from a session whose cwd is another directory; (g) the `source` values of `classic.SessionStart` and whether it carries an agent type for a subagent; (h) `claude --plugin-dir` hot reload keeps `$.agent.list()` ids stable.
+5. Run `claude plugin validate plugins/plan-ledger` so the engine writes its d.ts to `.claude-plugin/types/claude-code/index.d.ts`; read it for `ToolSpec` extras (`grep -n Deferral`), `$.ui.notice`, `$.prompt.fill`, `$.ui.ask` signatures and the command output call; add them to the notes.
+6. Edit this plan where an answer contradicts a decision: (a) or (b) failing means subagents cannot use a mod tool, and the design falls back to the orchestrator-only variant (open question 6); (c) showing the child can run before `next` returns confirms claim-time binding as primary; (e) not tracking permission rules makes `verify` always ask.
+7. Run `python3 scripts/plugins.py catalog`.
+Accept: `claude plugin validate plugins/plan-ledger --strict`, `claude plugin test plugins/plan-ledger` and `uv run --with pyyaml python3 scripts/plugins.py check` pass, and the notes answer (a) to (h). Slice 6 and later do not start before they do.
+
+### Slice 2: types and authorization (pure)
+Owns: `hooks/plan/types.ts`, `hooks/plan/authorize.ts`, `tests/authorize.spec.ts`. Depends on: 1.
+1. In `types.ts` export `Plan`, `Item`, `Check`, `ItemStatus`, `PlanStatus`, `Actor` (`{ kind:'main' } | { kind:'agent', agentId: string, agentType: string | null, session: string }`), `Change` (the ledger line of decision 2, including `op`), `Action` (a discriminated union by `action`: `create`, `activate`, `claim`, `progress`, `block`, `fail`, `claim_done`, `verify`, `amend`, `assign`, `reopen`, `abandon`, `bind`, `reserve`, `list`, `status`, `get`) and the limit constants of decision 5.
+2. In `authorize.ts` export `authorize(plan: Plan | null, action: Action, actor: Actor): { ok: true } | { ok: false, reason: string }` implementing exactly the actor and eligibility rules of decision 5 (main, `architect`, other listed agent, unlisted id with `agentType: null`), the tolerated plugin prefix on the type, and the rule that `claim` needs an `active` plan. It does not check statuses (that is `apply`).
+3. Write `tests/authorize.spec.ts` with one case per row of the decision 5 rules: main allowed everything; `architect` may `create` only and only as `draft`; a bound agent may `get`/`claim`/`claim_done` its item and is refused another's; an unbound matching type may `claim`; a different type may not; `reservedFor` excludes other types; an agent may never `verify`, `amend`, `assign`, `activate`; an unlisted id is refused all mutations and `get`; `coder:coder` matches `coder`.
+Accept: `bun test plugins/plan-ledger/tests/authorize.spec.ts` passes.
+
+### Slice 3: transitions (pure)
+Owns: `hooks/plan/apply.ts`, `tests/apply.spec.ts`. Depends on: 2.
+1. In `apply.ts` export `apply(plan: Plan | null, action: Action, ctx: { actor: Actor, nowMs: number, attemptCap: number, newPlanId: string, op: string }): { plan: Plan, change: Change, message: string } | { denied: string, change: Change }`. First call `authorize`; a failure returns `denied` with a `Change` whose `denied` field holds the reason and whose `rev` is unchanged.
+2. Implement each row of the transition table in decision 2 and nothing else, including: item ids `s1`, `s2`, ... by array order at `create`; dependency cycle and unknown-dep rejection at `create` and `amend` (depth-first search); the field limits; `gen` increments; `attempts` and the cap; the one-`in_progress`-per-agent rule; idempotent `claim` and `claim_done`; `ifRev` mismatch returns `denied` with the current rev; `rev + 1` on every non-denied result.
+3. Messages returned to the model are instructions (for example "Ask the orchestrator to activate the plan first.").
+4. Write `tests/apply.spec.ts`: one case per transition row and one illegal source status per action; third attempt can succeed and the fourth `claim` is denied until `reopen` with `extraAttempts`; `verify` with a stale `gen` is denied; `amend` of a `claimed_done` item is denied; `amend` that changes `agent` type clears the binding while a plain edit keeps it; a cycle is rejected; replacing a binding by `bind` is denied; an abandoned dep keeps the dependent `pending`.
+Accept: `bun test plugins/plan-ledger/tests/apply.spec.ts` passes.
+
+### Slice 4: replay, checks, render (pure)
+Owns: `hooks/plan/replay.ts`, `hooks/plan/checks.ts`, `hooks/plan/render.ts`, `tests/replay.spec.ts`, `tests/checks.spec.ts`, `tests/render.spec.ts`. Depends on: 3.
+1. In `replay.ts` export `parseLedger(text: string): { changes: Change[], torn: boolean, bad: number }` (drops an unterminated final line and sets `torn`; skips unparsable lines and counts them) and `replay(changes: Change[]): { plan: Plan | null, error?: string }` that rebuilds state by calling `apply` for each non-denied change in `rev` order with the recorded actor and `op`, and errors on a `rev` gap.
+2. In `checks.ts` export `validateChecks(raw: unknown): Check[] | { error: string }` (non-empty string argv, argv at most 600 bytes, at most 8 checks, `expectExit` integer default 0, unique labels), `checksHash(checks: Check[]): string` (stable stringify then a plain 53-bit JS string hash; no `crypto`), and `shellQuote(argv: string[]): string` (single-quote each argument, escape embedded quotes).
+3. In `render.ts` export `renderItem(plan: Plan, itemId: string, maxChars = 8000): string` (title, instructions, acceptance, files, deps with statuses, attempts, last failure tail), `renderBlock(plans: Plan[], maxChars: number): string` in the shape of decision 8 (non-terminal plans only, active first, the verified-by-command and manual counts apart, `blocked by abandoned sN` notes, ending `... +N more` when truncated) and `renderDelta(prev: string, next: string): string` (one line naming the changed items, at most 200 chars).
+4. Tests: `replay.spec.ts` replays a scripted sequence of `apply` results and expects a plan deep-equal to the live one, a gap errors, a torn tail is dropped and flagged; `checks.spec.ts` covers empty argv, non-string args, 9 checks, duplicate labels, quoting `a'b`, hash stability across key order; `render.spec.ts` asserts the block never exceeds `maxChars`, is empty for no plans, distinguishes manual from command verification, and `renderItem` includes the acceptance criteria.
+Accept: `bun test plugins/plan-ledger/tests/replay.spec.ts plugins/plan-ledger/tests/checks.spec.ts plugins/plan-ledger/tests/render.spec.ts` passes.
+
+### Slice 5: store paths and lock script (pure builders, real-shell test)
+Owns: `hooks/plan/store.ts`, `tests/store.spec.ts`. Depends on: 4.
+1. Export `projectKey(root: string, sha256hex: string): string` (basename sanitized to `[A-Za-z0-9._-]`, at most 40 chars, then `-` and the first 12 hex of the hash; the caller computes the hash), `isPlanId(s: string): boolean` (`^p-[0-9a-z]{9}-[0-9a-z]{6}$`), `newPlanId(nowMs: number, rand6: string): string`, and `planPaths(home: string, key: string, planId: string): { dir, json, ledger, lock }` where `dir = <home>/.claude/adminhead-plans/<key>`.
+2. Export argv builders with constant script strings and values as argv: `mkdirArgv(dir)` (`umask 077; mkdir -p "$1"`), `lockAcquireArgv(lock, token, timeoutSec = 5)` and `lockReleaseArgv(lock, token)` exactly as in decision 3 (no stealing), `appendArgv(file)` (copy `scripts/shared/log/usagelog.ts:84`, with `umask 077`), `tailArgv(file)` (`tail -n 1 "$1"`), `publishArgv(tmp, json)` (`mv -f "$1" "$2"`), `tmpPath(json: string, token: string): string` (`<json>.tmp.<token>`), `lineFor(change: Change): string` (JSON plus `\n`).
+3. Tests in `store.spec.ts`: a worktree path and its main tree map to the same key only because the caller passes the same root (assert the function is pure on its inputs); `isPlanId` accepts valid and rejects `../x`; then through `Bun.spawn` against a temp directory: 8 concurrent acquirers, each incrementing a counter file only inside the lock, end at 8 with no lost update; a held lock makes a second acquirer exit 75 after its timeout (use 1 s); release with a wrong token leaves the lock; release with the right token removes it; `publishArgv` replaces an existing file atomically and a reader looping during 200 publishes never sees a partial JSON; `appendArgv` run 8 times concurrently with 3000-byte lines under the lock leaves every line parseable.
+Accept: `bun test plugins/plan-ledger/tests/store.spec.ts` passes (needs `sh`, `mkdir`, `sleep`, `tail`).
+
+### Slice 6: transaction, reconcile, reads and directory guard in `register.tsx`
+Owns: `hooks/register.tsx` (replaces the probe), `tests/register.test.tsx`. Depends on: 5 and the slice 1 answers (f).
+1. Add `dirOf($)`: `$.env.get("HOME")`, root from `$.session.repo()?.root ?? await $.session.cwd()`, sha256 via `crypto.subtle.digest` to hex, `projectKey`, then `mkdirArgv` through `$.process.run`; cache in a module variable reset in `session.end`.
+2. Add `withLock($, paths, fn)`: token from `crypto.randomUUID()`, `lockAcquireArgv` (exit 75 returns the error "plan busy, retry; if it stays busy ask the person to run /plans unlock"), `fn` in `try`, `lockReleaseArgv` in `finally`.
+3. Add `mutate($, planId | null, action, actor)`: `withLock`; read the JSON with `$.fs.read` (none for `create`); reconcile: run `tailArgv`, parse the last line, and if its `rev` is greater than the JSON's, or the JSON is missing or unparsable (rename the bad file with `mv` to `<planId>.json.corrupt-<ts>`), read the ledger with `$.fs.read`, `parseLedger`, `replay`, and use the result; if a ledger line already carries this call's `op`, return that result instead of applying again; check the projected ledger size against 3 MiB for non-terminal actions; call `apply`; append `lineFor(change)` (5 s timeout; a non-zero exit aborts and writes no JSON); `$.fs.write` the JSON to `tmpPath(json, token)`, then run `publishArgv` (a failed write or `mv` leaves the previous JSON untouched and returns an error); at the start of reconcile also delete any `<planId>.json.tmp.*` (list with `$.fs.list`, remove with `rm -f` through `$.process.run` argv) since the lock proves no publisher is active; report success only after the ledger append and the publish.
+4. Add `readPlan($, planId)` (validate with `isPlanId`; on a parse failure wait 100 ms with `$.clock.sleep`, retry once, then read under the lock) and `listPlans($)` (`$.fs.list` of the project directory, `*.json` only, newest 100 names).
+5. Add the directory guard as a `tool.call` hook: deny Write, Edit, NotebookEdit whose `$.fs.stat(path, { resolve: true }).realPath` or spelling is under `<home>/.claude/adminhead-plans`, and Bash commands naming the directory (commands over 8192 chars naming it are denied too), with `.catch(($, e, next) => next.called ? next(e) : { deny: 'plan-ledger: could not check this call. Retry.' })` and the reason "The plan files are changed only through the plan tool."
+6. Tests in `register.test.tsx` through `$` with stubbed `process.run` and `fs`: the whole store absent then `create` succeeds (directory made before the lock); the ledger line is appended before the JSON is written; append failure writes no JSON; append success then tmp-write or `mv` failure (the old JSON stays intact), followed immediately by another `mutate`, reconciles from the ledger and yields consecutive revs with no duplicate (critique 1); a retry with the same `op` is not applied twice; lock exit 75 returns the busy error; a corrupt JSON is renamed and rebuilt; a stale `.json.tmp.*` left by a crash is removed on the next mutation; the guard denies a Write inside the directory and a Bash command naming it, and passes unrelated calls.
+Accept: `claude plugin test plugins/plan-ledger` passes; `claude plugin validate plugins/plan-ledger --strict` shows `gating hook with .catch`.
+
+### Slice 7: verification
+Owns: `hooks/plan/verify.ts` (pure result checks and argv builders), `tests/verify.spec.ts`, edits to `hooks/register.tsx`, `tests/register.test.tsx`. Depends on: 6.
+1. In `verify.ts` export `treeArgvs(): { head: string[], diff: string[], status: string[] }` (`git rev-parse HEAD`, `git diff HEAD`, `git status --porcelain`), `fingerprint(diff: string, status: string): string` (the plain string hash of `checks.ts`), and `judge(item: Item, results: CheckResult[], before: Tree, after: Tree): { ok: true, verification: Verification } | { ok: false, why: string }` enforcing one result per check, `expectExit`, `checksHash` equality, and equal `HEAD` and fingerprint before and after.
+2. In `register.tsx` add `verifyItem($, planId, itemId, args, actor)`: (i) call `authorize` and require `claimed_done` before anything else, returning a denial with zero subprocesses; (ii) read the plan, remember `rev` and the item `gen`; (iii) for each check run the execution gate of decision 4 (`$.tool.check`, `$.ui.ask` showing argv and `cwd` on `ask` or unavailable, refusal on `deny` or a rejected ask), then `$.process.run(argv, { cwd, timeoutMs: 600000 })`, with the tree commands before the first and after the last check; (iv) call `judge`; (v) `mutate` with a `verify` action carrying the verification built by the mod (the tool's public input has no results field); a `manual` verify skips the runs; (vi) if `mutate` finds the item no longer `claimed_done` at the same `gen`, return that.
+3. Tests: `verify.spec.ts` for `judge` (missing, duplicate and mismatched results; changed HEAD; changed fingerprint; hash mismatch); `register.test.tsx` through `$`: an agent actor calling `verify` executes zero checks (assert the `process.run` stub is never called for a check); a passing stub sets `verified`; a failing stub sets `failed`; `tool.check` `deny` refuses without running; `ask` with a rejected `$.ui.ask` refuses; an item amended during the run is not marked verified.
+Accept: `bun test plugins/plan-ledger/tests/verify.spec.ts` and `claude plugin test plugins/plan-ledger` pass.
+
+### Slice 8: tool and `/plans` command
+Owns: `hooks/plan/tool.ts`, `tests/tool.spec.ts`, edits to `hooks/register.tsx`, `tests/register.test.tsx`. Depends on: 7.
+1. In `tool.ts` export `TOOL` (`ToolSpec` with an `action` enum and the fields of decision 5; description under 400 characters) and `parseInput(e): Action | { error: string }` (type checks, `isPlanId`, item id pattern `^s[0-9]{1,2}$`, the size limits, `validateChecks` on checks, no results field accepted for `verify`).
+2. In `session.start` register the tool (skipped when option `registerTool` is false) and the `/plans` command, tolerating a taken name; serve `on('tool.call', { tool: 'mcp__plan-ledger__plan' }, ...)`: build the `Actor` from `e.agentId` (absent is main; otherwise look up the type in `$.agent.list()`; an id not listed is `agentType: null`) and the session id from `$.session.id()`, parse, then `readPlan`/`mutate`/`verifyItem`, returning the message; `get` returns `renderItem`; `list`/`status` return names and statuses.
+3. Serve `command.run` for `plans`: `status`, `show`, `log` (last n ledger lines), `repair` (replay under the lock), `unlock` (print owner and age, `$.ui.ask`, then remove), `abandon`, `goal-text` (prefill via `$.prompt.fill`, naming command-verified versus manual counts). Use the output call named in the slice 1 notes.
+4. Tests: `tool.spec.ts` for `parseInput` (valid, unknown action, bad ids, oversized instructions, `verify` with a results field); `register.test.tsx` through `$`: a main-loop `create`, `activate`; an agent call with `e.agentId` set and a stubbed `$.agent.list` to `get`/`claim`/`claim_done` on its item appends entries with its id; the same agent on another item is denied and the denial is in the ledger; an `architect` `create` yields a `draft` plan that no agent can `claim` until `activate`.
+Accept: `bun test plugins/plan-ledger/tests/tool.spec.ts` and `claude plugin test plugins/plan-ledger` pass.
+Manual (the person): in a scratch repo run `claude --plugin-dir plugins/plan-ledger`, ask for a two-item plan, confirm `~/.claude/adminhead-plans/<key>/<planId>.json` and `.jsonl` exist, from a second worktree run `/plans status` and confirm the same plan appears.
+
+### Slice 9: spawn hook and re-injection
+Owns: `hooks/plan/spawn.ts`, `tests/spawn.spec.ts`, edits to `hooks/register.tsx`, `tests/register.test.tsx`, `plugin.json` (`types` entry) and `types/index.d.ts` (the `$.state` atom). Depends on: 8.
+1. In `spawn.ts` export `parsePlanRef(prompt: string): { plan: string, item: string } | null` (first 8192 chars only; per line the anchored regex `^plan-ref:\s*(p-[0-9a-z]{9}-[0-9a-z]{6})\/(s[0-9]{1,2})\s*$`) and `reminderLine(prompt: string): string | null` (the fixed instruction of decision 7, null when present).
+2. In `register.tsx` add `on('agent.spawn', ...)` per decision 7: only when `e.parentAgentId` is absent; reserve before `next`, append the reminder, `await next({ ...e, prompt })`, then bind `out.agentId` if present and still unbound; on any error log once to `$.ui.log(..., { to: 'debug' })` and return the `next` result unchanged.
+3. Add `on('classic.SessionStart', { source: ['startup','resume','clear','compact'] }, ...)` returning `{ additionalContext: [renderBlock(...)] }` (empty when no plan, and skipped when the input carries an agent type), storing the compact summary in the `$.state` atom, and `on('classic.UserPromptSubmit', ...)` returning `renderDelta` only on change. Use the `source` values recorded in the slice 1 notes.
+4. Measure: with the tool listed and one active plan, record `$.session.usage({ breakdown: 'summary' })` before and after, and write both figures in the README.
+5. Tests: `spawn.spec.ts` (valid, malformed, over-length, two-line prompts, reminder idempotence); `register.test.tsx` fires `agent.spawn` through `$` with a stub resolving `{ agentId: 'a1', model: 'x' }`: the item is reserved before `next` and bound to `a1` after; a spawn with `parentAgentId` set reserves nothing; a second spawn naming a reserved item is left unchanged. Classic handlers cannot be fired by the harness, so `renderBlock`/`renderDelta` carry their tests.
+Accept: `bun test plugins/plan-ledger/tests/*.spec.ts` and `claude plugin test plugins/plan-ledger` pass.
+Live (the person): spawn a coder with `plan-ref:` in its brief, confirm it reads and claims its item; `/clear` and confirm the block returns in the first answer; `/compact` likewise.
+
+### Slice 10: agent allowlists, orchestration, architect, docs, ship
+Owns: the agent files of decision 9, `plugins/orchestration/agents/orchestration.md`, `plugins/architect/agents/architect.md`, `plugins/plan-ledger/README.md`, the changed plugins' `plugin.json` versions. Depends on: 9.
+1. (haiku) In the agent files `plugins/coder/agents/coder.md`, `plugins/dba/agents/dba.md`, `plugins/devops/agents/devops.md`, `plugins/debugger/agents/debugger.md`, `plugins/scribe/agents/scribe.md`, `plugins/architect/agents/architect.md`, `plugins/reviewer/agents/reviewer.md`, append `mcp__plan-ledger__plan` to the frontmatter `tools:` line and bump the version in that plugin's `.claude-plugin/plugin.json` (follow `git show a9b603c`). If probe (a) showed the allowlist does not accept the name, skip this step and apply open question 6.
+2. In `plugins/orchestration/agents/orchestration.md` "## Briefs" (line 100) add a bullet: when `mcp__plan-ledger__plan` is available and the work has more than one slice, `create` a plan (or read the architect's draft and `activate` it) and brief each agent with `plan-ref: <planId>/<itemId>`, the write boundary, the stop rule and the expected output; keep pasting for a single small task. In "## Results" add: run `verify` on an item the agent claims done before reporting, and fix a failed item with `amend` plus `SendMessage` to the same agent, or `reopen` and `assign` for a fresh one. Bump the orchestration version.
+3. In `plugins/architect/agents/architect.md`, after the step that drafts slices, add: when the brief says the plan will be executed and the tool exists, call `create` (a `draft` plan, one item per slice, checks as argv where the acceptance is a command) and return the plan id with a short summary; still write `docs/plans/<name>.md` when the brief asks, linking the plan id.
+4. Rewrite `plugins/plan-ledger/README.md` in the style of `plugins/usage-log/README.md`: install, the data model and transition table, where state lives and how to clear it (`rm -rf ~/.claude/adminhead-plans`), the permission rules, the done gate, options (`attemptCap`, `injectMaxChars`, `registerTool`), pairing with `/goal`, the tamper note, measured token cost; delete the API notes.
+5. Run `python3 scripts/plugins.py catalog`, then `uv run --with pyyaml python3 scripts/plugins.py check`, then `uv run --with pytest --with pyyaml pytest scripts/test_plugins.py`.
+6. Load the `ship-plugin` skill for plan-ledger, orchestration, architect and each other agent plugin changed.
+Accept: all three commands of step 5 pass; every changed plugin shipped.
+
+## Critique log
+`second opinion:` v1, codex gpt-6.1-sol, medium, plan mode, one pass over the old design (15 points). Outcome carried to v2:
+1. Goal id collision: adopted in v1; no longer applies (plan ids carry the full time and random part, item ids are per-plan ordinals).
+2. Earliest-id claims are not exclusive: replaced; claims are now enforced by `agentId` binding under a lock.
+3. `cat >>` atomicity not proven by `PIPE_BUF`: no longer applies; every append and JSON write is under the lock, with a concurrent-acquirer test in slice 3.
+4. Plans and evidence can exceed the line cap: adopted; the line cap is dropped because writes are serialized, and structured fields are bounded and rejected, never truncated.
+5. Replay did not prove every check passed: adopted; `verify` requires one result per check and a matching `checksHash`.
+6. Permission context differs from execution: adopted; verdict bound to the exact argv and `cwd`, probe item (e).
+7. Forged done via Bash: adopted as wording; the directory guard is an accident guard, and the agent matrix is enforced from the engine-set `agentId`.
+8. Locked argv does not lock meaning: adopted as wording and open question 4.
+9. Worktree validity of done: adopted; evidence has `cwd`, HEAD before and after, `dirty`; changed HEAD refuses.
+10. `/clear` identity: no longer applies to state (keyed by project, not session); probe (d) checks injection after `/clear`.
+11. Attempt accounting: adopted, simplified to `claim` count with a final permitted attempt.
+12. Quarantine loops: adopted for a corrupt JSON (renamed, never deleted, then replay).
+13. Persistence failures treated as telemetry: adopted; success only after ledger append and JSON write.
+14. Token cost understated: adopted; per-request cost stated, tool schema scoped by allowlist, measured in slice 6.
+15. Foundations deferred: adopted; probe first, then pure slices, then wiring.
+`second opinion:` v2, codex gpt-6.1-sol, medium, plan mode, one pass over the home-directory design (14 points):
+1. Crash between ledger append and JSON write can yield two entries with one `rev`: adopted; reconcile from the ledger tail before every mutation, `op` ids for retries, a named test (decision 3, slice 6).
+2. Stale-lock stealing breaks mutual exclusion: adopted; no automatic stealing, explicit `/plans unlock` with owner age and confirmation.
+3. Rejecting tmp+rename was a false alternative: adopted as a complement to the lock (user decision on open question 9): the JSON is written to a same-directory tmp file and published with `mv` inside the critical section; stale tmp cleanup, missing-snapshot and torn-tail recovery were added.
+4. Architect cannot `create` under a main-only matrix: adopted; `create` allowed for agent type `architect` as a `draft` plan, the orchestrator `amend`s and `activate`s.
+5. Spawn binding startup race and failure protocol: adopted; reserve before `next`, claim-time binding as the primary path, rejected replacement, concurrent reservation rule, probe (c) for ordering.
+6. `verify` side effects before authorization: adopted; `authorize` first, zero check executions when unauthorized (tested), no results field in the public input.
+7. Verification not bound to a worktree or item version: adopted; `gen`, recorded `cwd`, tree fingerprint before and after; stated as evidence about a mutable tree.
+8. Permission probe cannot establish the execution boundary: adopted as honesty; `process.run` is not Bash, `tool.check` carries no cwd, always ask with argv and cwd when unsure, probe (e) widened.
+9. Failed verification allowed unlimited retries: adopted; a failure closes the cycle (`failed`), the agent must `claim` again.
+10. Binding lifecycle for persistence and continuations: adopted in part; bindings record session and time, takeover only for `failed`/`blocked`, one `in_progress` per agent, `amend` keeps the binding unless the type changes, teammates and continuations probed separately; session-qualified expiry beyond that is not added.
+11. First creation fails before the directory exists: adopted; `mkdir -p` before any lock, plan id validation on tool input, test with an absent store.
+12. Ledger size policy strands work: adopted in part; projected-size check, 3 MiB threshold below the 4 MiB read cap, denial logging capped at 50, torn tail handled; rotation deferred.
+13. Manual acceptance can satisfy "every item verified": adopted; counted separately in blocks and `goal-text`.
+14. Slices leave design to the coder: adopted; the full transition table is in decision 2, authorization, transitions, replay and storage are separate slices with deterministic failure tests, and verification is its own slice.
+My own additions: unlisted agent ids (workflow agents, forks) are denied everything; a spawn-hook spoof by a subagent is refused because only `parentAgentId` absent reserves; subagents may not receive mod tools at all (probe a with fallback).
+
+## Risks and rollback
+- Mod tools may not reach subagents (probe a, b). Fallback: orchestrator-only ledger with item text delivered by `classic.SubagentStart` context, no `claim_done` from agents (orchestrator records it).
+- `$HOME/.claude/adminhead-plans/` is outside the plugin-data convention, so uninstall leaves it; documented. It grows without bound until pruned; v0 has no prune (open question 5).
+- Checks are arbitrary exec: contained by `$.tool.check` per call and `$.ui.ask`; keep refusal on `-p` by default.
+- Classic handlers are untestable in the harness; thin wrappers over tested pure functions plus the live checks.
+- Two copies of a plan (architect file and tool) can drift; file is canonical for intent, tool for status.
+- A standing tool schema cost on every agent that lists the tool; scoped by allowlist; `registerTool: false` removes it.
+- The 4 MiB `$.fs.read` cap bounds a ledger's replayability; evidence tails are capped at 2000 bytes.
+- Lock recovery is manual (`/plans unlock`): a crash inside a millisecond critical section is rare, but a stuck lock blocks that plan until the person acts.
+- Rollback: the plugin is additive. Revert the allowlist and prompt edits (one commit per plugin), uninstall the mod, and `rm -rf ~/.claude/adminhead-plans`.
+
+## Rejected alternatives
+- Per-repo ledger in the git common dir (v1): worktrees would share it, but the user chose a home-directory store keyed by project, which needs no git subprocess and no worktree handling.
+- tmp+rename as the only mechanism: does not serialize read-modify-write, so concurrent writers still lose updates; adopted as a complement to the lock, not a replacement.
+- `flock`: cannot span several `$.process.run` calls.
+- JSONL-only state: every read replays the whole file and it outgrows the 4 MiB read cap; kept as the audit log and rebuild source only.
+- JSON-only state: no review trail and no recovery from a torn write.
+- Native Task tools: lose state on `/clear`, delete completed tasks, leak across worktrees (issues cited by the helper agent, unverified here), and have no owner-type or evidence model.
+- A person accept step per plan: dropped for this design, since the author of checks is not the claimant.
+- Pasting the item into the subagent prompt from the spawn hook: defeats handing off by reference.
+- Wrap or replace native `/goal`: no API.
+- Fork oh-my-claudecode ultragoal or ralph-loop: self-reported gates, no lock on a mutable plan, gameable completion promise, deletes state on corruption (helper claims); neither is a mod.
+- Beads (Dolt): too heavy.
+- Classic hook scripts: no capability gain.
+
+## Reuse analysis
+Reviewed: `plugins/usage-log` (append via `$.process.run`, once-until-success error logger), `plugins/consult` (tool registration, `$.tool.check` before acting, allowlisted tool name in agent files), `plugins/bash-rules` (guard with `.catch`), `plugins/orchestration` and `plugins/architect` (prompt integration, slice shape), `scripts/shared/log/usagelog.ts`. Chosen: reuse patterns, new code for the plan store. `appendArgv` is copied, not extracted: the shared one is keyed to the usage-log directory and prune list, and `sync-shared` would couple the plugins. Duplication risk: low (one short argv builder). If a third plugin needs a lock or append helper, extract to `scripts/shared/` then.
+
+## Open questions for the user
+All answered by the user on 2026-11-09; every answer took the recommendation.
+1. Architect: create plans in the tool as `draft` as well as writing `docs/plans/`. Answered: both.
+2. Binding: a `plan-ref:` line at spawn, with claim-time binding as the fallback. Answered: yes.
+3. Allowlists: coder, dba, devops, debugger, scribe, architect, reviewer; no shippers. Answered: yes.
+4. Weakened-check detection between plan and verify: not in v0.
+5. Pruning finished plans and rotating ledgers: none in v0.
+6. If the probe shows subagents cannot use mod tools: accept the orchestrator-only fallback.
+7. Stop gate alongside `/goal`: deferred.
+8. Names: command `/plans`, tool `plan`, plugin `plan-ledger` (filename stays `goal-ledger.md`). Confirmed.
+9. Publish the JSON with tmp+rename on top of the lock (decision 3, slices 5 and 6). Answered: yes.
