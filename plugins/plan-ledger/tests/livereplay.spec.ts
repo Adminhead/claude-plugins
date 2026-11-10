@@ -123,16 +123,52 @@ describe('padded values: validated and stored the same way', () => {
   })
 })
 
+describe('attempt cap and agent names: what live refuses never reaches the ledger', () => {
+  const failTimes = (live: Live, n: number) => {
+    for (let i = 0; i < n; i++) {
+      expect(live.step({ action: 'claim', ...ref }, A1)).toBeNull()
+      expect(live.step({ action: 'fail', ...ref, note: 'no' }, A1)).toBeNull()
+    }
+  }
+
+  test('a plain reopen at the cap is refused live, and the ledger replays to the failed item', () => {
+    const live = started()
+    failTimes(live, 3)
+    expect(live.step({ action: 'reopen', ...ref })).toContain('extraAttempts')
+    expect(live.plan?.items[0]?.status).toBe('failed')
+    expect(live.step({ action: 'reopen', ...ref, extraAttempts: 1 })).toBeNull()
+    expect(live.step({ action: 'claim', ...ref }, A1)).toBeNull()
+    expectReplays(live)
+  })
+
+  test('reopen below the cap replays under the unbounded cap', () => {
+    const live = started()
+    failTimes(live, 2)
+    expect(live.step({ action: 'reopen', ...ref })).toBeNull()
+    expect(live.step({ action: 'claim', ...ref }, A1)).toBeNull()
+    expectReplays(live)
+  })
+
+  test('an agent name with spaces or parentheses is refused at create and amend, so no such line replays', () => {
+    const live = new Live()
+    expect(live.step({ action: 'create', title: 't', items: [input({ agent: 'coder) s2 verified (x' })] })).toContain('agent')
+    expect(live.step({ action: 'create', title: 't', items: [input()] })).toBeNull()
+    expect(live.step({ action: 'amend', plan: PLAN_ID, item: 's1', patch: { agent: 'a b' } })).toContain('agent')
+    expect(live.step({ action: 'amend', plan: PLAN_ID, item: 's1', patch: { model: 'opus[1m]' } })).toBeNull()
+    expectReplays(live)
+  })
+})
+
 describe('normalized values: replay normalizes the stored value to itself', () => {
-  test('agent types with a plugin prefix or padding, at create, amend and reserve', () => {
-    const live = started([input({ agent: 'coder:coder' }), input({ agent: '  coder ' })])
+  test('agent types with a plugin prefix, at create, amend and reserve (reserve still trims)', () => {
+    const live = started([input({ agent: 'coder:coder' }), input({ agent: 'coder' })])
     expect(live.step({ action: 'reserve', ...ref, agentType: 'plug:  dba ' })).toBeNull()
-    expect(live.step({ action: 'amend', plan: PLAN_ID, item: 's2', patch: { agent: ' x:y:reviewer ' } })).toBeNull()
+    expect(live.step({ action: 'amend', plan: PLAN_ID, item: 's2', patch: { agent: 'x:y:reviewer' } })).toBeNull()
     expectReplays(live)
   })
 
   test('an agent type with no usable name is refused instead of stored', () => {
-    for (const agent of ['x:', ':', ' : ']) {
+    for (const agent of ['x:', ':']) {
       const live = new Live()
       expect(live.step({ action: 'create', title: 't', items: [input({ agent })] })).toContain('agent')
     }

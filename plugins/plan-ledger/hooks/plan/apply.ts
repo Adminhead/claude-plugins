@@ -262,6 +262,12 @@ function wrongStatus(item: Item, verb: string, expected: string, hint = ''): { d
   return deny(`Cannot ${verb} ${item.id}: it is ${item.status}, and ${verb} needs ${expected}.${hint ? ` ${hint}` : ''}`)
 }
 
+// `agent` and `model` are rendered inside parentheses on one line of the injected block, so they take no spaces,
+// parentheses or other text that could pass for an item status. A model may carry a context suffix such as
+// `sonnet[1m]`, and an empty model means unset.
+const AGENT_RE = /^[A-Za-z0-9._:-]{1,60}$/
+const MODEL_RE = /^[A-Za-z0-9._:[\]-]{0,60}$/
+
 function otherInProgress(plan: Plan, agentId: string, exceptId: string): Item | undefined {
   return plan.items.find(
     (i) => i.id !== exceptId && i.status === 'in_progress' && i.boundAgent !== null && i.boundAgent.agentId === agentId,
@@ -316,13 +322,13 @@ function readFields(raw: unknown, complete: boolean): Partial<ItemInput> | strin
   if (r.agent !== undefined || need('agent')) {
     if (!isNonEmpty(r.agent) || normalizeAgentType(r.agent) === null) return 'An item needs an agent type.'
     if (r.agent.length > MAX_AGENT_CHARS) return `An agent type is at most ${MAX_AGENT_CHARS} characters.`
-    if (hasControl(r.agent)) return 'An agent type must not contain control characters.'
+    if (!AGENT_RE.test(r.agent)) return 'An agent type may only use letters, digits and . _ : -.'
     out.agent = r.agent
   }
   if (r.model !== undefined || need('model')) {
     if (!isStr(r.model)) return 'An item needs a model (a string).'
     if (r.model.length > MAX_MODEL_CHARS) return `A model is at most ${MAX_MODEL_CHARS} characters.`
-    if (hasControl(r.model)) return 'A model must not contain control characters.'
+    if (!MODEL_RE.test(r.model)) return 'A model may only use letters, digits and . _ : - [ ] (or be empty for unset).'
     out.model = r.model
   }
   if (r.checks !== undefined || need('checks')) {
@@ -783,6 +789,12 @@ function reopen(e: Env<'reopen'>): Out {
   }
   const extra = action.extraAttempts ?? 0
   if (!isInt(extra) || extra < 0) return deny('extraAttempts must be a whole number, zero or more.')
+  // Past the cap a pending item cannot be claimed and reopen refuses a pending item, so it would be stuck.
+  if (extra === 0 && item.attempts >= e.ctx.attemptCap + item.extraAttempts) {
+    return deny(
+      `${item.id} has used all ${e.ctx.attemptCap + item.extraAttempts} attempts and stays ${item.status}. Reopen it with extraAttempts (at least 1) to allow more.`,
+    )
+  }
   const data: Record<string, unknown> = action.extraAttempts === undefined ? {} : { extraAttempts: extra }
   return {
     plan: withItem(plan, { ...item, status: 'pending', gen: item.gen + 1, extraAttempts: item.extraAttempts + extra }),

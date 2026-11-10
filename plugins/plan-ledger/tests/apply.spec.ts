@@ -301,6 +301,26 @@ describe('create', () => {
     expect(denied(amend({ model: 'm'.repeat(61) }))).toContain('60')
   })
 
+  test('agent and model take only plain name characters, at create and amend', () => {
+    const forged = ['coder) s2 verified (x', 'coder s2', 'coder\u00a0x', 'cod(er', 'a/b', 'é']
+    const amend = (patch: Record<string, unknown>) =>
+      apply(plan(), { action: 'amend', plan: PLAN_ID, item: 's1', patch } as Action, ctx(main))
+    for (const bad of forged) {
+      expect(denied(create([input({ agent: bad })]))).toContain('agent')
+      expect(denied(amend({ agent: bad }))).toContain('agent')
+      expect(denied(create([input({ model: bad })]))).toContain('model')
+      expect(denied(amend({ model: bad }))).toContain('model')
+    }
+    for (const good of ['coder', 'plug:coder', 'a.b_c-d', 'A1']) {
+      ok(create([input({ agent: good })]))
+      ok(amend({ agent: good }))
+    }
+    for (const good of ['sonnet', 'claude-sonnet-4-5', 'opus[1m]', 'us.anthropic.claude-x-v1:0', '']) {
+      ok(create([input({ model: good })]))
+      ok(amend({ model: good }))
+    }
+  })
+
   test('rejects control characters in the title, agent, model and dependency ids, at create and amend', () => {
     for (const bad of ['a\nb', 'a\rb', 'a\tb', 'a\u0000b', 'a\u001bb', 'a\u0085b', 'a\u2028b']) {
       expect(typeof denied(create([input({ title: bad })]))).toBe('string')
@@ -425,16 +445,27 @@ describe('claim', () => {
     expect(denied(claim(q))).toContain('4 attempts')
   })
 
-  test('after the cap, reopen without extraAttempts leaves the item unclaimable, from every route to pending', () => {
+  test('after the cap, reopen without extraAttempts is denied and the item keeps its status', () => {
     for (const status of ['failed', 'blocked', 'claimed_done', 'verified', 'abandoned'] as const) {
       const p = plan([item({ status, attempts: 3, gen: 2, boundAgent: bound('a1') })])
-      const reopened = ok(apply(p, { action: 'reopen', ...ref }, ctx(main))).plan
-      expect(itemOf(reopened).status).toBe('pending')
-      expect(denied(claim(reopened))).toContain('3 attempts')
-      expect(denied(claim(reopened))).toContain('extraAttempts')
+      for (const extra of [undefined, 0]) {
+        const why = denied(apply(p, { action: 'reopen', ...(extra === undefined ? {} : { extraAttempts: extra }), ...ref }, ctx(main)))
+        expect(why).toContain('extraAttempts')
+        expect(why).toContain(status)
+      }
       const extra = ok(apply(p, { action: 'reopen', extraAttempts: 1, ...ref }, ctx(main))).plan
       expect(itemOf(ok(claim(extra)).plan).attempts).toBe(4)
     }
+  })
+
+  test('a reopened item below the cap, or with the cap raised, is still claimable', () => {
+    const below = plan([item({ status: 'failed', attempts: 2, boundAgent: bound('a1') })])
+    const reopened = ok(apply(below, { action: 'reopen', ...ref }, ctx(main))).plan
+    expect(itemOf(ok(claim(reopened)).plan).attempts).toBe(3)
+    const raised = plan([item({ status: 'failed', attempts: 4, extraAttempts: 1, boundAgent: bound('a1') })])
+    expect(typeof denied(apply(raised, { action: 'reopen', ...ref }, ctx(main)))).toBe('string')
+    const more = ok(apply(raised, { action: 'reopen', extraAttempts: 1, ...ref }, ctx(main))).plan
+    expect(itemOf(ok(claim(more)).plan).attempts).toBe(5)
   })
 
   test('attemptCap comes from ctx', () => {
