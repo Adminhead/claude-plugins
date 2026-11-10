@@ -2085,6 +2085,33 @@ describe('spawn hook', () => {
     expect(itemNow(w)).toMatchObject({ reservedFor: 'coder', boundAgent: { agentId: 'a1' } })
   })
 
+  test('a spawn of another agent type than the item is for leaves it unreserved and unbound, and the real coder can still claim', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const logs = logsOf(w)
+    const input = spawnInput(refFor(id), { subagentType: 'reviewer' })
+    const { out, calls } = await spawn(w, input, { model: 'x', agentId: 'rev1' })
+    expect(out).toEqual({ model: 'x', agentId: 'rev1' })
+    expect(calls[0].e).toBe(input) // prompt unchanged, no reminder
+    expect(calls[0].e.prompt).not.toContain(REMINDER_TEXT)
+    expect(itemNow(w)).toMatchObject({ agent: 'coder', reservedFor: null, boundAgent: null })
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toContain('reserve')
+    // the reviewer was not bound, so it is refused, and the coder is not "bound to another agent"
+    expect((await mutate(w.$, id, { action: 'claim', plan: id, item: 's1' }, A1('reviewer'))).ok).toBe(false)
+    expect(await mutate(w.$, id, { action: 'claim', plan: id, item: 's1' }, { ...A1(), agentId: 'c1' })).toMatchObject({ ok: true })
+    expect(itemNow(w)).toMatchObject({ status: 'in_progress', boundAgent: { agentId: 'c1' } })
+  })
+
+  test('an amend of the item\'s agent type while the agent starts means the child is not bound', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    await spawn(w, spawnInput(refFor(id)), { model: 'x', agentId: 'a1' }, async () => {
+      expect((await mutate(w.$, id, { action: 'amend', plan: id, item: 's1', patch: { agent: 'dba' } }, MAIN)).ok).toBe(true)
+    })
+    expect(itemNow(w)).toMatchObject({ agent: 'dba', reservedFor: null, boundAgent: null })
+  })
+
   test('a mutation of the plan during the spawn is not lost to the bind', async ($: any, on: any) => {
     const w = world(on)
     const id = await activePlan(w)

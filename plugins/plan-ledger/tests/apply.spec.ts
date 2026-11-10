@@ -965,6 +965,21 @@ describe('bind and reserve', () => {
     }
   })
 
+  test('reserve is for the item\'s own agent type only, so a reviewer spawn cannot reserve a coder item', () => {
+    const p = plan([item({ agent: 'coder' })])
+    expect(denied(reserve(p, 'reviewer'))).toContain('coder')
+    expect(denied(reserve(p, 'x:reviewer'))).toContain('reviewer')
+    // the type matches through the plugin prefix on either side
+    expect(itemOf(ok(reserve(plan([item({ agent: 'pp:coder' })]), 'coder')).plan).reservedFor).toBe('coder')
+    expect(itemOf(ok(reserve(p, 'pp:coder')).plan).reservedFor).toBe('coder')
+  })
+
+  test('an item with no usable agent matches no type, so it is never reserved', () => {
+    for (const agent of [undefined, null, '', ':'] as unknown[]) {
+      expect(typeof denied(reserve(plan([item({ agent: agent as string })])))).toBe('string')
+    }
+  })
+
   test('reserve refuses a bound or already reserved item', () => {
     expect(typeof denied(reserve(plan([item({ boundAgent: bound('a1') })])))).toBe('string')
     expect(denied(reserve(plan([item({ reservedFor: 'dba' })])))).toContain('dba')

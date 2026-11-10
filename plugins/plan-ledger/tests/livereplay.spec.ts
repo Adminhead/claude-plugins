@@ -162,8 +162,16 @@ describe('attempt cap and agent names: what live refuses never reaches the ledge
 describe('normalized values: replay normalizes the stored value to itself', () => {
   test('agent types with a plugin prefix, at create, amend and reserve (reserve still trims)', () => {
     const live = started([input({ agent: 'coder:coder' }), input({ agent: 'coder' })])
-    expect(live.step({ action: 'reserve', ...ref, agentType: 'plug:  dba ' })).toBeNull()
+    expect(live.step({ action: 'reserve', ...ref, agentType: 'plug:  coder ' })).toBeNull()
     expect(live.step({ action: 'amend', plan: PLAN_ID, item: 's2', patch: { agent: 'x:y:reviewer' } })).toBeNull()
+    expectReplays(live)
+  })
+
+  test('a reserve for another agent type is denied live, and the log replays to the same plan', () => {
+    const live = started([input({ agent: 'coder' })])
+    expect(live.step({ action: 'reserve', ...ref, agentType: 'reviewer' })).toContain('coder')
+    expect(live.step({ action: 'reserve', ...ref, agentType: 'x:coder' })).toBeNull()
+    expect(live.plan!.items[0].reservedFor).toBe('coder')
     expectReplays(live)
   })
 

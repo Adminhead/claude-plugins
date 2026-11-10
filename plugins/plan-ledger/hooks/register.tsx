@@ -6,7 +6,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 import { apply, staleRev } from './plan/apply'
-import { authorize } from './plan/authorize'
+import { authorize, normalizeAgentType } from './plan/authorize'
 import { checksHash } from './plan/checks'
 import {
   COMMAND_NAME,
@@ -1299,7 +1299,9 @@ export async function spawnHook($: Dollar, e: any, next: (e: unknown) => Promise
   try {
     const now = await readPlan($, ref.plan)
     const it = now.ok ? now.plan.items.find((i) => i.id === ref.item) : undefined
-    if (it !== undefined && it.boundAgent === null) {
+    // Bind only the reservation this spawn made: an amend of the agent type mid-spawn clears it, and then this child is not
+    // the one the item is for.
+    if (it !== undefined && it.boundAgent === null && it.reservedFor === normalizeAgentType(e.subagentType)) {
       const bind: Action = { action: 'bind', plan: ref.plan, item: ref.item, agentId, session: await sessionOf($) }
       const r = await mutate($, ref.plan, bind, { kind: 'main' })
       if (!r.ok && !r.recorded) reportOnce($, `bind ${where}`, r.message)

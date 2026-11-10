@@ -869,6 +869,11 @@ function reserve(e: Env<'reserve'>): Out {
   if (item.reservedFor !== null) return deny(`${item.id} is already reserved for ${item.reservedFor}.`)
   const type = normalizeAgentType(action.agentType)
   if (type === null) return deny('reserve needs an agent type.')
+  // Only the item's own agent type may be reserved for. An item whose `agent` is not a usable name (the schema forbids it,
+  // so only a hand-edited ledger has one) matches no type, as in `authorize`.
+  if (normalizeAgentType(item.agent) !== type) {
+    return deny(`${item.id} is for agent type ${String(item.agent)}, so it cannot be reserved for ${type}.`)
+  }
   return {
     plan: withItem(plan, { ...item, reservedFor: type }),
     item: item.id,
