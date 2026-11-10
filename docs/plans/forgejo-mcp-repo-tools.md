@@ -1,6 +1,6 @@
 # Plan: shrink the forgejo-mcp tool list to repo-task tools
 
-Status: slices 2-4 done 2026-11-10. Slice 1 deviated: no token, so `tests/tools.txt` is derived from section 4, not observed; the live probe is still open.
+Status: slices 2-4 done 2026-11-10. Slice 1 deviated: no token, so `tests/tools.txt` is derived from section 4, not observed; the list was then confirmed against a running 3.3.0 server (163 tools, identical to the derived set).
 
 ## 1. Verified facts
 

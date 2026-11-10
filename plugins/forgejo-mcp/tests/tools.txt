@@ -1,4 +1,4 @@
-# derived from docs/plans/forgejo-mcp-repo-tools.md section 4, NOT observed on a server; replace with the output of the slice 1 probe
+# observed 2026-11-10, forgejo-mcp 3.3.0 (matches the names derived from docs/plans/forgejo-mcp-repo-tools.md section 4)
 add_issue_dependency
 add_issue_labels
 add_issue_time

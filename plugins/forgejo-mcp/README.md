@@ -92,14 +92,14 @@ Append these entries to the existing `permissions.deny` array in `~/.claude/sett
 }
 ```
 
-The tool names come from the goern/forgejo-mcp 3.x tool list (163 tools) and the 3.2.0 binary, not from the hosted server: the list in `tests/tools.txt` is unverified against the server you use. If a tool you want is missing, remove the pattern of its group from your deny list. A rule that matches nothing only warns at startup and names containing `_` or `*` are exempt, so a renamed upstream tool goes stale silently. Tested with Claude Code: not yet recorded.
+The tool names in `tests/tools.txt` (163 tools) were read from a running forgejo-mcp 3.3.0 server on 2026-11-10; refresh the file after a server upgrade. If a tool you want is missing, remove the pattern of its group from your deny list. A rule that matches nothing only warns at startup and names containing `_` or `*` are exempt, so a renamed upstream tool goes stale silently. Tested with Claude Code: not yet recorded.
 
 ### What stays
 
 - Server and self: `get_my_user_info`, `get_forgejo_mcp_server_version`.
 - Repos and settings: `list_my_repos`, `get_repo`, `edit_repo`, `search_repos`, topic tools (`list_repo_topics`, `set_repo_topics`, `add_repo_topic`, `delete_repo_topic`).
 - Branches and protection: `list_branches`, `create_branch`, `delete_branch`, and the `*_branch_protection(s)` tools.
-- Files and commits: `get_file_content`, `list_repo_contents`, `get_repo_tree`, `create_file`, `update_file`, `delete_file`, `change_files` (unverified), `list_repo_commits`, `get_commit_statuses`.
+- Files and commits: `get_file_content`, `list_repo_contents`, `get_repo_tree`, `create_file`, `update_file`, `delete_file`, `change_files`, `list_repo_commits`, `get_commit_statuses`.
 - Issues, labels, milestones: `list_repo_issues`, `search_issues`, `get_issue_by_index`, `create_issue`, `update_issue`, `issue_state_change`, `add_issue_labels`, `remove_issue_labels`, dependency tools (`list_issue_dependencies`, `list_issue_dependents`, `add_issue_dependency`, `remove_issue_dependency`), `list_repo_milestones`, repo label tools (`list_repo_labels`, `get_repo_label`, `create_repo_label`, `edit_repo_label`, `delete_repo_label`), and read-only organization labels (`list_org_labels`, `get_org_label`).
 - Comments: `list_issue_comments`, `get_issue_comment`, `create_issue_comment`, `edit_issue_comment`, `delete_issue_comment`.
 - Pull requests and reviews: `list_repo_pull_requests`, `get_pull_request_by_index`, `create_pull_request`, `update_pull_request`, `list_pull_request_files`, `get_pull_request_diff`, `merge_pull_request`, `list_pull_reviews`, `get_pull_review`, `list_pull_review_comments`, `create_pull_review`, `submit_pull_review`, `dismiss_pull_review`, `delete_pull_review`, `create_review_requests`, `delete_review_requests`.
