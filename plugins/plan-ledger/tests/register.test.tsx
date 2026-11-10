@@ -2097,3 +2097,143 @@ describe('spawn hook', () => {
   })
 })
 
+// ---------------------------------------------------------------- re-injection (slice 9)
+
+describe('re-injection', () => {
+  const SOURCES = ['startup', 'resume', 'clear', 'compact', 'fork'] as const
+  const contextOf = (out: any): string[] => out?.additionalContext ?? []
+  /** Nothing else answers a classic event beneath the mod, as in a session with no settings hooks. */
+  const bare = (on: any) => {
+    for (const name of ['classic.SessionStart', 'classic.UserPromptSubmit', 'classic.SubagentStart']) on(name, () => ({}))
+  }
+
+  test('every start source hands the open plans to the model, at most injectMaxChars', async ($: any, on: any) => {
+    const w = world(on)
+    bare(on)
+    const id = await activePlan(w)
+    for (const source of SOURCES) {
+      const out = await $.classic.SessionStart({ source })
+      const ctx = contextOf(out)
+      expect([source, ctx.length]).toEqual([source, 1])
+      expect(ctx[0]).toContain(id)
+      expect(ctx[0].length).toBeLessThanOrEqual(800)
+    }
+  })
+
+  test('no plan, or only finished ones, hands over nothing', async ($: any, on: any) => {
+    const w = world(on)
+    bare(on)
+    expect(contextOf(await $.classic.SessionStart({ source: 'startup' }))).toEqual([])
+    const id = await activePlan(w)
+    expect((await callTool(w, { action: 'abandon', plan: id })).result).toContain('abandon')
+    expect(contextOf(await $.classic.SessionStart({ source: 'clear' }))).toEqual([])
+  })
+
+  test('a subagent never gets the orchestrator block', async ($: any, on: any) => {
+    const w = world(on)
+    bare(on)
+    await activePlan(w)
+    expect(contextOf(await $.classic.SessionStart({ source: 'startup', agent_id: 'a1', agent_type: 'coder' }))).toEqual([])
+    expect(contextOf(await $.classic.UserPromptSubmit({ prompt: 'hi', agent_id: 'a1', agent_type: 'coder' }))).toEqual([])
+  })
+
+  test('a failing store is one debug line, once, and the session starts as if the hook were absent', async ($: any, on: any) => {
+    const w = world(on)
+    bare(on)
+    await activePlan(w)
+    w.home = 'not-absolute' // the plan store cannot be found
+    for (let i = 0; i < 2; i++) expect(contextOf(await $.classic.SessionStart({ source: 'startup' }))).toEqual([])
+    expect(w.uiLogs.filter((l) => l.includes('session context'))).toHaveLength(1)
+  })
+
+  describe('after the start', () => {
+    const A1 = { kind: 'agent', agentId: 'a1', agentType: 'coder', session: 'sess-1' } as const
+
+    test('a prompt gets nothing while the plans are as they were', async ($: any, on: any) => {
+      const w = world(on)
+      bare(on)
+      await activePlan(w)
+      expect(contextOf(await $.classic.SessionStart({ source: 'startup' }))).toHaveLength(1)
+      for (let i = 0; i < 2; i++) expect(contextOf(await $.classic.UserPromptSubmit({ prompt: 'go' }))).toEqual([])
+    })
+
+    test('a changed item is one short line, once; a rev bump or a new title alone is nothing', async ($: any, on: any) => {
+      const w = world(on)
+      bare(on)
+      const id = await activePlan(w)
+      await $.classic.SessionStart({ source: 'startup' })
+      expect((await mutate(w.$, id, { action: 'claim', plan: id, item: 's1' }, A1)).ok).toBe(true)
+      const first = contextOf(await $.classic.UserPromptSubmit({ prompt: 'go' }))
+      expect(first).toHaveLength(1)
+      expect(first[0]).toContain(`${id} s1 in_progress`)
+      expect(first[0].length).toBeLessThanOrEqual(200)
+      expect(first[0].includes('\n')).toBe(false)
+      expect(contextOf(await $.classic.UserPromptSubmit({ prompt: 'again' }))).toEqual([])
+      expect((await mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'Renamed' }, MAIN)).ok).toBe(true)
+      expect(contextOf(await $.classic.UserPromptSubmit({ prompt: 'again' }))).toEqual([])
+    })
+
+    test('a session that was given no block yet gets the block on its first prompt, then only changes', async ($: any, on: any) => {
+      const w = world(on)
+      bare(on)
+      const id = await activePlan(w)
+      const first = contextOf(await $.classic.UserPromptSubmit({ prompt: 'go' }))
+      expect(first).toHaveLength(1)
+      expect(first[0]).toContain(id)
+      expect(contextOf(await $.classic.UserPromptSubmit({ prompt: 'go' }))).toEqual([])
+    })
+
+    test('a plan that ends leaves the block with one line, and an empty store is silent', async ($: any, on: any) => {
+      const w = world(on)
+      bare(on)
+      expect(contextOf(await $.classic.UserPromptSubmit({ prompt: 'go' }))).toEqual([])
+      const id = await activePlan(w)
+      await $.classic.SessionStart({ source: 'startup' })
+      expect((await callTool(w, { action: 'abandon', plan: id })).result).toContain('abandon')
+      const gone = contextOf(await $.classic.UserPromptSubmit({ prompt: 'go' }))
+      expect(gone).toHaveLength(1)
+      expect(gone[0]).toContain(id)
+    })
+
+    test('a failing store is one debug line and the prompt goes on', async ($: any, on: any) => {
+      const w = world(on)
+      bare(on)
+      await activePlan(w)
+      w.home = 'not-absolute'
+      for (let i = 0; i < 3; i++) expect(contextOf(await $.classic.UserPromptSubmit({ prompt: 'go' }))).toEqual([])
+      expect(w.uiLogs.filter((l) => l.includes('prompt context'))).toHaveLength(1)
+    })
+  })
+
+  describe('a subagent that starts or resumes', () => {
+    test('is told its item once the spawn hook bound it, and nothing before that', async ($: any, on: any) => {
+      const w = world(on)
+      bare(on)
+      const id = await activePlan(w)
+      const start = (agent_id: string) => $.classic.SubagentStart({ agent_id, agent_type: 'coder' })
+      // A fresh spawn: the engine raises SubagentStart inside `next`, before the id is bound, and the prompt carries the reference.
+      let during: string[] = []
+      on('agent.spawn', async () => {
+        during = contextOf(await start('a1'))
+        return { model: 'x', agentId: 'a1' }
+      })
+      await $.agent.spawn({ prompt: `plan-ref: ${id}/s1`, subagentType: 'coder' })
+      expect(during).toEqual([])
+      // A resume: the binding stands, and the prompt rewrite would be ignored, so this line is the reminder.
+      const resumed = contextOf(await start('a1'))
+      expect(resumed).toHaveLength(1)
+      expect(resumed[0]).toContain(`plan-ref: ${id}/s1`)
+      expect(resumed[0]).not.toContain('Do the first thing')
+      expect(contextOf(await start('a2'))).toEqual([])
+    })
+
+    test('a failing store is one debug line and the agent starts', async ($: any, on: any) => {
+      const w = world(on)
+      bare(on)
+      await activePlan(w)
+      w.home = 'not-absolute'
+      for (let i = 0; i < 2; i++) expect(contextOf(await $.classic.SubagentStart({ agent_id: 'a1', agent_type: 'coder' }))).toEqual([])
+      expect(w.uiLogs.filter((l) => l.includes('subagent context'))).toHaveLength(1)
+    })
+  })
+})

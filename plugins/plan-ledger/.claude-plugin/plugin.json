@@ -6,6 +6,7 @@
     "name": "AdminHead",
     "email": "support@adminhead.com"
   },
+  "types": "./types/index.d.ts",
   "userConfig": {
     "registerTool": {
       "type": "boolean",
@@ -20,6 +21,14 @@
       "default": 3,
       "min": 1,
       "max": 10
+    },
+    "injectMaxChars": {
+      "type": "number",
+      "title": "Plan status size",
+      "description": "Most characters of plan status handed to the orchestrator at session start, after /clear and after /compact (about 4 characters per token). Whole number, 100 to 4000.",
+      "default": 800,
+      "min": 100,
+      "max": 4000
     }
   }
 }

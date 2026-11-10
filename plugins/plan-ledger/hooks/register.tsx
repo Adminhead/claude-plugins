@@ -1,8 +1,9 @@
 // plan-ledger: the transaction around the pure plan modules (decision 3 in docs/plans/goal-ledger.md), the plan reads,
-// `verifyItem`, the directory guard, the `plan` tool and the `/plans` command, and the spawn hook.
+// `verifyItem`, the directory guard, the `plan` tool and the `/plans` command, the spawn hook and the re-injection hooks.
 //
 // `claude plugin validate` fails on "$ is passed to X, which is not a function declared at the top of this file", so every
 // helper that takes `$` is a top-level function declaration below and `register` only wires hooks to them.
+import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 import { apply, staleRev } from './plan/apply'
 import { authorize } from './plan/authorize'
@@ -36,8 +37,8 @@ import {
   tmpPath,
   type PlanPaths,
 } from './plan/store'
-import { renderItem } from './plan/render'
-import { isOrchestratorSpawn, parsePlanRef, withReminder } from './plan/spawn'
+import { DEFAULT_BLOCK_CHARS, renderBlock, renderDelta, renderItem } from './plan/render'
+import { boundItemReminder, isOrchestratorSpawn, parsePlanRef, withReminder } from './plan/spawn'
 import { hasControl, utf8Bytes } from './plan/shared'
 import { MAX_INPUT_CHARS, TOOL, TOOL_NAME, buildActor, parseInput, renderListing, renderPlanStatus, shouldRetry, statusFor } from './plan/tool'
 import type { Action, Actor, Change, Check, CheckResult, Plan, Tree, Verification } from './plan/types'
@@ -137,6 +138,8 @@ const suppressedDenials = new Map<string, number>()
 // Debug lines already written, so a hook that fails the same way on every prompt says so once. Reset in session.end.
 const reported = new Set<string>()
 
+/** The block last given to the model in this session (`seen` false: none yet). `$.state`, so `/clear` resets it. */
+const injected = atom({ plugin: 'plan-ledger', key: 'injected' } as const, { seen: false, block: '' })
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
@@ -1307,6 +1310,73 @@ export async function spawnHook($: Dollar, e: any, next: (e: unknown) => Promise
   return out
 }
 
+// ---------------------------------------------------------------- re-injection (decision 8)
+
+type WithContext = { additionalContext?: string[] } | undefined
+
+const addContext = (out: WithContext, line: string): { additionalContext: string[] } => ({
+  ...out,
+  additionalContext: [...(out?.additionalContext ?? []), line],
+})
+
+/**
+ * `classic.SessionStart`: the compact status of this project's open plans, at most `max` characters, after the hooks beneath
+ * (startup, resume, fork, `/clear` and `/compact` all fire it). Main loop only: a hook fired inside a subagent carries an
+ * `agent_id` and gets nothing. The block is kept in `$.state` for the prompt hook to diff against.
+ */
+export async function sessionContext($: Dollar, e: any, next: (e: unknown) => Promise<any>, max: number): Promise<any> {
+  const out = await next(e)
+  if (e?.agent_id !== undefined) return out
+  try {
+    const { plans } = await loadPlans($)
+    const block = renderBlock(plans, max)
+    await update($, injected, () => ({ seen: true, block }))
+    return block === '' ? out : addContext(out, block)
+  } catch (err) {
+    reportOnce($, 'session context', err)
+    return out
+  }
+}
+
+/**
+ * `classic.UserPromptSubmit`: nothing unless the open plans changed since the last block this session handed over; then one
+ * line saying what changed (`renderDelta`). A session that has been given no block yet (the plugin was added mid-session, or
+ * the start hook failed) gets the block itself.
+ */
+export async function promptContext($: Dollar, e: any, next: (e: unknown) => Promise<any>, max: number): Promise<any> {
+  const out = await next(e)
+  if (e?.agent_id !== undefined) return out
+  try {
+    const { plans } = await loadPlans($)
+    const block = renderBlock(plans, max)
+    const prev = await read($, injected)
+    if (prev.seen && prev.block === block) return out
+    await update($, injected, () => ({ seen: true, block }))
+    const line = prev.seen ? renderDelta(prev.block, block) : block
+    return line === '' ? out : addContext(out, line)
+  } catch (err) {
+    reportOnce($, 'prompt context', err)
+    return out
+  }
+}
+
+/**
+ * `classic.SubagentStart`: a started or resumed subagent that has an open item bound to it gets one line naming it (a
+ * resume cannot carry the prompt rewrite). A fresh spawn is not bound yet when this fires, so it gets nothing.
+ */
+export async function subagentContext($: Dollar, e: any, next: (e: unknown) => Promise<any>): Promise<any> {
+  const out = await next(e)
+  try {
+    if (typeof e?.agent_id !== 'string' || e.agent_id === '') return out
+    const { plans } = await loadPlans($)
+    const line = boundItemReminder(plans, e.agent_id)
+    return line === null ? out : addContext(out, line)
+  } catch (err) {
+    reportOnce($, 'subagent context', err)
+    return out
+  }
+}
+
 // ---------------------------------------------------------------- registration
 
 async function registerSurface($: Dollar, withTool: boolean): Promise<void> {
@@ -1334,11 +1404,17 @@ function capOption(raw: unknown): number {
   return typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 && raw <= 10 ? raw : DEFAULT_ATTEMPT_CAP
 }
 
+/** `injectMaxChars` option: a whole number from 100 to 4000; anything else is the default (800, about 200 tokens). */
+function injectOption(raw: unknown): number {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 100 && raw <= 4000 ? raw : DEFAULT_BLOCK_CHARS
+}
+
 // ---------------------------------------------------------------- wiring
 
 export const register: Register = (on, options) => {
   const withTool = options?.registerTool !== false
   const attemptCap = capOption(options?.attemptCap)
+  const injectMax = injectOption(options?.injectMaxChars)
 
   on('session.start', async ($, e, next) => {
     await registerSurface($, withTool)
@@ -1352,10 +1428,15 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // Never refuses a spawn: a hook that throws or times out is passed over, and the spawn goes on as if the hook were absent
-  // (the opposite of the guards below, which fail closed).
+  // These never refuse anything: a hook that throws or times out is passed over, and the spawn or the prompt goes on as if
+  // the hook were absent (the opposite of the guards below, which fail closed).
   on('agent.spawn', ($, e, next) => spawnHook($, e, next)).catch(($, e, next) => next(e))
 
+  on('classic.SessionStart', { source: ['startup', 'resume', 'clear', 'compact', 'fork'] }, ($, e, next) =>
+    sessionContext($, e, next, injectMax),
+  ).catch(($, e, next) => next(e))
+  on('classic.UserPromptSubmit', ($, e, next) => promptContext($, e, next, injectMax)).catch(($, e, next) => next(e))
+  on('classic.SubagentStart', ($, e, next) => subagentContext($, e, next)).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: ['Write', 'Edit', 'NotebookEdit', 'Bash'] }, ($, e, next) => guardPlanDir($, e, next)).catch(
     ($, e, next) => (next.called ? next(e) : { deny: 'plan-ledger: could not check this call. Retry.' }),

@@ -28,7 +28,7 @@ export function parsePlanRef(prompt: string): PlanRef | null {
   }
   for (const line of head.split(/\r\n|\r|\n/)) {
     const m = PLAN_REF.exec(line)
-    if (m !== null) return { plan: m[1], item: m[2] }
+    if (m !== null) return { plan: m[1] as string, item: m[2] as string }
   }
   return null
 }
