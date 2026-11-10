@@ -1,0 +1,9 @@
+{
+  "name": "plan-ledger",
+  "version": "0.1.0",
+  "description": "Work-plan tracker: the orchestrator hands items to subagents by reference; the agent claims done and the mod verifies.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

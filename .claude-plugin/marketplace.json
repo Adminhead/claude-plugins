@@ -1909,6 +1909,13 @@
       "description": "Audits a codebase for stale, orphaned and undocumented feature flags and builds or updates a flag registry with owners and removal dates.",
       "version": "0.1.0",
       "category": "development"
+    },
+    {
+      "name": "plan-ledger",
+      "source": "./plugins/plan-ledger",
+      "description": "Work-plan tracker: the orchestrator hands items to subagents by reference; the agent claims done and the mod verifies.",
+      "version": "0.1.0",
+      "category": "development"
     }
   ]
 }

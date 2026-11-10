@@ -357,6 +357,7 @@ Restart Claude Code or run `/reload-plugins` to apply an install or update.
 | [`goff-relay-proxy`](plugins/goff-relay-proxy) | skill | Configures and runs the GO Feature Flag relay proxy: config file keys, retrievers, exporters, notifiers, API keys, flagsets, admin and OFREP endpoints, Docker and Kubernetes deployment. | - |
 | [`goff-sdk`](plugins/goff-sdk) | skill | Integrates GO Feature Flag through OpenFeature providers (server, in-process, client) and the Go module: evaluation context, bucketing, tracking and testing. | - |
 | [`flag-hygiene`](plugins/flag-hygiene) | skill | Audits a codebase for stale, orphaned and undocumented feature flags and builds or updates a flag registry with owners and removal dates. | - |
+| [`plan-ledger`](plugins/plan-ledger) | hook | Work-plan tracker: the orchestrator hands items to subagents by reference; the agent claims done and the mod verifies. | - |
 
 ### Agents
 
