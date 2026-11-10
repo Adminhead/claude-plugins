@@ -1546,7 +1546,7 @@ describe('plan tool', () => {
 
 // ---------------------------------------------------------------- /plans (slice 8)
 
-const plans = (w: World & { $: any }, args: string) => plansCommand(w.$, { command: 'plans', args }, 3)
+const plans = (w: World & { $: any }, args: string, origin: unknown = { kind: 'composer' }) => plansCommand(w.$, { command: 'plans', args, origin }, 3)
 
 describe('/plans', () => {
   test('status through the engine lists open plans, and says so when there are none', async ($: any, on: any) => {
@@ -1748,13 +1748,40 @@ describe('/plans', () => {
   })
 
   describe('abandon', () => {
-    test('abandons the plan as the main actor and records it', async ($: any, on: any) => {
+    test('the person is asked first, and only "Abandon the plan" abandons it as the main actor', async ($: any, on: any) => {
       const w = world(on)
       const id = await activePlan(w)
+      for (const reply of ['Keep the plan', 'reject', '', 'abandon the plan']) {
+        w.answer = reply
+        const text = (await plans(w, `abandon ${id}`)).text
+        expect([reply, text.includes('abandoned')]).toEqual([reply, false])
+        expect(jsonOf(w).status).toBe('active')
+      }
+      expect(w.asked).toHaveLength(4)
+      for (const a of w.asked) {
+        expect(a.question.endsWith('?')).toBe(true)
+        expect(a.question).toContain(id)
+      }
+      w.answer = 'Abandon the plan'
       expect((await plans(w, `abandon ${id}`)).text).toContain('abandoned')
       expect(jsonOf(w).status).toBe('abandoned')
       expect(entries(w).at(-1)).toMatchObject({ action: 'abandon', actor: { kind: 'main' } })
-      expect((await plans(w, `abandon ${id}`)).text).toContain('abandoned') // a second one is refused with the reason
+      expect((await plans(w, `abandon ${id}`)).text).toContain('already abandoned')
+      expect(w.asked).toHaveLength(5)
+    })
+
+    test('a run that is not the person\'s own Enter is refused before anything is asked', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      for (const origin of [{ kind: 'bridge' }, { kind: 'sdk' }, { kind: 'plugin', name: 'x' }, { kind: 'unclassified' }, null, 'composer']) {
+        const text = (await plans(w, `abandon ${id}`, origin)).text
+        expect([JSON.stringify(origin), text]).toEqual([JSON.stringify(origin), expect.stringContaining('for the person')])
+      }
+      // through the engine, a plugin's own command run carries origin kind plugin
+      expect((await $.command.run({ command: 'plans', args: `abandon ${id}` })).text).toContain('for the person')
+      expect(w.asked).toEqual([])
+      expect(jsonOf(w).status).toBe('active')
+      expect(entries(w).some((c) => c.action === 'abandon')).toBe(false)
     })
   })
 

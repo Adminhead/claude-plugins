@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { goalCounts, goalText, lockOwner, logLine, parseArgs, renderLog, renderShow, unlockQuestion } from '../hooks/plan/command'
+import { abandonQuestion, goalCounts, goalText, lockOwner, logLine, parseArgs, renderLog, renderShow, unlockQuestion } from '../hooks/plan/command'
 import type { Change, Item, Plan } from '../hooks/plan/types'
 
 const PLAN = 'p-0abcdefgh-abc123'
@@ -135,5 +135,16 @@ describe('unlock', () => {
     expect(q.endsWith('?')).toBe(true)
     expect(unlockQuestion(PLAN, null).endsWith('?')).toBe(true)
     expect(unlockQuestion(PLAN, null)).toContain('unreadable')
+  })
+})
+
+describe('abandon', () => {
+  test('the question names the plan and its open items, ends in a question mark, and a title cannot add a line', () => {
+    const p = plan([item({ id: 's1', status: 'verified' }), item({ id: 's2' }), item({ id: 's3', status: 'abandoned' })])
+    const q = abandonQuestion({ ...p, title: 'Ship it\nnow \u001b[2J' })
+    expect(q).toContain(PLAN)
+    expect(q).toContain('1 open item')
+    expect(q.endsWith('?')).toBe(true)
+    expect(q).not.toMatch(/[\u0000-\u001f]/)
   })
 })

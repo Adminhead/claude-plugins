@@ -143,3 +143,11 @@ export function unlockQuestion(planId: string, owner: { token: string; ageSec: n
   const who = owner === null ? 'an unreadable owner' : `holder ${owner.token.slice(0, 8)}, held for ${owner.ageSec} s`
   return `Remove the lock of plan ${planId} (${who}) although a live holder would then write at the same time as the next caller?`
 }
+
+// ---------------------------------------------------------------- abandon
+
+/** The question before a plan is abandoned: which plan and what it stops, ending in a question mark. */
+export function abandonQuestion(plan: Plan): string {
+  const open = plan.items.filter((i) => i.status !== 'verified' && i.status !== 'abandoned').length
+  return `Abandon plan ${one(plan.id)} ("${clamp(one(plan.title), 60)}"), closing its ${open} open item${open === 1 ? '' : 's'} for good?`
+}

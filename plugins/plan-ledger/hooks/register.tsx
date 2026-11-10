@@ -9,6 +9,7 @@ import { authorize } from './plan/authorize'
 import { checksHash } from './plan/checks'
 import {
   COMMAND_NAME,
+  abandonQuestion,
   goalCounts,
   goalText,
   lockOwner,
@@ -1000,6 +1001,8 @@ const REMOVE_LOCK = 'Remove the lock'
 const KEEP_LOCK = 'Keep the lock'
 const REBUILD = 'Rebuild from the ledger'
 const KEEP_FILE = 'Keep the plan file'
+const ABANDON_IT = 'Abandon the plan'
+const KEEP_PLAN = 'Keep the plan'
 
 type Where = { paths: PlanPaths } | { error: string }
 
@@ -1125,6 +1128,33 @@ async function unlockPlan($: Dollar, planId: string): Promise<string> {
   return r.exitCode === 0 ? `Removed the lock of plan ${planId}.` : changed
 }
 
+/**
+ * Abandons a plan for the person. Only the person's own Enter at the prompt (`origin.kind` `composer`) may: a run from the
+ * model, the bridge, the SDK or another plugin is refused before anything is asked. The person confirms with `$.ui.ask`
+ * first; a dismissed or unanswerable question (`-p`) leaves the plan.
+ *
+ * TODO(manual, docs/plans/goal-ledger.md slice 8): the confirmation `$.ui.ask` is unverified in a real session. A person
+ * must type /plans abandon, see the plan and its open item count, and see that "Keep the plan" and dismissing leave it.
+ */
+async function abandonPlan($: Dollar, e: any, planId: string, attemptCap: number): Promise<string> {
+  if (e?.origin?.kind !== 'composer') {
+    return 'Abandoning a plan is for the person to do: ask them to type /plans abandon <plan> at the prompt themselves.'
+  }
+  const read = await readPlan($, planId)
+  if (!read.ok) return read.message
+  if (read.plan.status === 'abandoned') return `Plan ${planId} is already abandoned.`
+  let said: unknown
+  try {
+    said = await $.ui.ask(abandonQuestion(read.plan), { options: [ABANDON_IT, KEEP_PLAN], header: 'Abandon plan' })
+  } catch {
+    return 'Nobody could be asked, so the plan was left. Run /plans abandon in an interactive session.'
+  }
+  if (said !== ABANDON_IT) return 'The plan was left.'
+  const a: Action = { action: 'abandon', plan: planId }
+  const r = await withRetry($, a, (opts) => mutate($, planId, a, { kind: 'main' }, opts), { attemptCap })
+  return r.message
+}
+
 async function goalFor($: Dollar, planId: string): Promise<string> {
   const read = await readPlan($, planId)
   if (!read.ok) return read.message
@@ -1169,12 +1199,8 @@ export async function plansCommand($: Dollar, e: any, attemptCap: number): Promi
         return { text: await unlockPlan($, parsed.plan as string) }
       case 'goal-text':
         return { text: await goalFor($, parsed.plan as string) }
-      case 'abandon': {
-        const plan = parsed.plan as string
-        const a: Action = { action: 'abandon', plan }
-        const r = await withRetry($, a, (opts) => mutate($, plan, a, { kind: 'main' }, opts), { attemptCap })
-        return { text: r.message }
-      }
+      case 'abandon':
+        return { text: await abandonPlan($, e, parsed.plan as string, attemptCap) }
     }
   } catch {
     return { text: 'plan-ledger: that command failed. Retry, or run /plans repair <plan>.' }
