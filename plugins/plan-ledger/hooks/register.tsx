@@ -1,5 +1,5 @@
 // plan-ledger: the transaction around the pure plan modules (decision 3 in docs/plans/goal-ledger.md), the plan reads,
-// `verifyItem`, the directory guard, and (slice 8) the `plan` tool and the `/plans` command. Slice 9 adds the spawn hook.
+// `verifyItem`, the directory guard, the `plan` tool and the `/plans` command, and the spawn hook.
 //
 // `claude plugin validate` fails on "$ is passed to X, which is not a function declared at the top of this file", so every
 // helper that takes `$` is a top-level function declaration below and `register` only wires hooks to them.
@@ -37,6 +37,7 @@ import {
   type PlanPaths,
 } from './plan/store'
 import { renderItem } from './plan/render'
+import { isOrchestratorSpawn, parsePlanRef, withReminder } from './plan/spawn'
 import { hasControl, utf8Bytes } from './plan/shared'
 import { MAX_INPUT_CHARS, TOOL, TOOL_NAME, buildActor, parseInput, renderListing, renderPlanStatus, shouldRetry, statusFor } from './plan/tool'
 import type { Action, Actor, Change, Check, CheckResult, Plan, Tree, Verification } from './plan/types'
@@ -133,6 +134,9 @@ type Store = { home: string; root: string; key: string; dir: string }
 let store: Store | null = null
 // Denials not written to a ledger since its last entry (only the first MAX_DENIED_LOGGED per plan are logged). Memory only.
 const suppressedDenials = new Map<string, number>()
+// Debug lines already written, so a hook that fails the same way on every prompt says so once. Reset in session.end.
+const reported = new Set<string>()
+
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
@@ -1242,6 +1246,67 @@ export async function plansCommand($: Dollar, e: any, attemptCap: number): Promi
   }
 }
 
+// ---------------------------------------------------------------- the spawn hook
+
+/** One debug line per distinct `key` per session; never throws. */
+function reportOnce($: Dollar, key: string, why: unknown): void {
+  if (reported.has(key)) return
+  reported.add(key)
+  try {
+    const text = why instanceof Error ? why.message : String(why)
+    $.ui.log(`plan-ledger: ${key.slice(0, 60)}: ${text.slice(0, 200)}`, { to: 'debug' })
+  } catch {
+    // A log line is not worth failing a spawn for.
+  }
+}
+
+/**
+ * `agent.spawn` (decision 7). Only the orchestrator's fresh spawns: a spawn from a subagent, a resume (the engine ignores a
+ * rewrite of a resumed run, and its binding stands) and a workflow agent pass through untouched. For a prompt carrying
+ * `plan-ref: <plan>/<item>`: reserve the item for the spawned agent type under the plan's lock BEFORE `next`; append the
+ * one fixed reminder line (never item text) and start the agent; then bind the id it started with, if the item is still
+ * unbound (a child that already claimed bound itself). A reservation that cannot be made (no such item, already bound or
+ * reserved, busy) leaves the prompt as it was, and the claim-time binding stays the guaranteed path. Any failure here is
+ * one debug line, and the spawn proceeds as if the hook were absent.
+ */
+export async function spawnHook($: Dollar, e: any, next: (e: unknown) => Promise<any>): Promise<any> {
+  if (!isOrchestratorSpawn(e)) return next(e)
+  const ref = parsePlanRef(e.prompt)
+  if (ref === null) return next(e)
+  const where = `${ref.plan}/${ref.item}`
+
+  let rewritten: unknown = e
+  try {
+    const action: Action = { action: 'reserve', plan: ref.plan, item: ref.item, agentType: e.subagentType }
+    const r = await mutate($, ref.plan, action, { kind: 'main' })
+    if (!r.ok && !r.recorded) {
+      reportOnce($, `reserve ${where}`, r.message)
+      return next(e)
+    }
+    const prompt = withReminder(e.prompt)
+    if (prompt !== e.prompt) rewritten = { ...e, prompt }
+  } catch (err) {
+    reportOnce($, `reserve ${where}`, err)
+    return next(e)
+  }
+
+  const out = await next(rewritten)
+  const agentId: unknown = out?.agentId
+  if (typeof agentId !== 'string' || agentId === '') return out
+  try {
+    const now = await readPlan($, ref.plan)
+    const it = now.ok ? now.plan.items.find((i) => i.id === ref.item) : undefined
+    if (it !== undefined && it.boundAgent === null) {
+      const bind: Action = { action: 'bind', plan: ref.plan, item: ref.item, agentId, session: await sessionOf($) }
+      const r = await mutate($, ref.plan, bind, { kind: 'main' })
+      if (!r.ok && !r.recorded) reportOnce($, `bind ${where}`, r.message)
+    }
+  } catch (err) {
+    reportOnce($, `bind ${where}`, err)
+  }
+  return out
+}
+
 // ---------------------------------------------------------------- registration
 
 async function registerSurface($: Dollar, withTool: boolean): Promise<void> {
@@ -1283,8 +1348,14 @@ export const register: Register = (on, options) => {
   on('session.end', ($, e, next) => {
     store = null
     suppressedDenials.clear()
+    reported.clear()
     return next(e)
   })
+
+  // Never refuses a spawn: a hook that throws or times out is passed over, and the spawn goes on as if the hook were absent
+  // (the opposite of the guards below, which fail closed).
+  on('agent.spawn', ($, e, next) => spawnHook($, e, next)).catch(($, e, next) => next(e))
+
 
   on('tool.call', { tool: ['Write', 'Edit', 'NotebookEdit', 'Bash'] }, ($, e, next) => guardPlanDir($, e, next)).catch(
     ($, e, next) => (next.called ? next(e) : { deny: 'plan-ledger: could not check this call. Retry.' }),

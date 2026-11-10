@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dirOf, listPlans, mutate, planTool, plansCommand, readPlan, register, verifyItem, type VerifyMemo } from '../hooks/register'
+import { dirOf, listPlans, mutate, planTool, plansCommand, readPlan, register, spawnHook, verifyItem, type VerifyMemo } from '../hooks/register'
 import { parseLedger } from '../hooks/plan/replay'
 import { appendArgv, lockAcquireArgv, lockReleaseArgv, mkdirArgv, publishArgv, tailArgv } from '../hooks/plan/store'
 import { MAX_LEDGER_BYTES } from '../hooks/plan/types'
@@ -64,6 +64,8 @@ type World = {
   onAsk: (() => void) | null
   /** How many seconds old a held lock's owner file says it is. */
   lockAge: number
+  /** Every `$.ui.log` line, from the hook under test or a helper. */
+  uiLogs: string[]
 }
 
 let homes = 0
@@ -111,6 +113,7 @@ function world(on: any): World & { $: any } {
     onSleep: null,
     onAsk: null,
     lockAge: 0,
+    uiLogs: [],
   }
   const h: Record<string, (e: any) => any> = {
     'env.get': () => w.home,
@@ -130,7 +133,9 @@ function world(on: any): World & { $: any } {
       w.filled.push(e.text)
       return { isFilled: w.fillOk, text: e.text, cursor: e.text.length }
     },
-    'ui.log': () => undefined,
+    'ui.log': (e) => {
+      w.uiLogs.push(e.text)
+    },
     'fs.exists': (e) => w.files.has(e.path) || w.dirs.has(e.path) || w.locks.has(e.path),
     'fs.read': (e) => {
       if (w.failRead?.(e.path)) throw new Error('EIO')
@@ -1887,3 +1892,208 @@ describe('/plans', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------- the spawn hook (slice 9)
+
+describe('spawn hook', () => {
+  const A1 = (type = 'coder') => ({ kind: 'agent', agentId: 'a1', agentType: type, session: 'sess-1' }) as const
+  const itemNow = (w: World, n = 0) => jsonOf(w).items[n]
+  const refFor = (id: string, item = 's1') => `Do the work.\nplan-ref: ${id}/${item}\nStop when done.`
+  const REMINDER_TEXT = 'Read your task with plan get (plan-ref above) before starting.'
+  /** The orchestrator's spawn input, less what the engine fills in. */
+  const spawnInput = (prompt: string, extra: Record<string, unknown> = {}) => ({
+    tool_use_id: 'tu', prompt, description: 'd', subagentType: 'coder', provider: { plugin: 'engine', tier: 'core' }, parentModel: 'm', background: false, fork: false, ...extra,
+  })
+  /** Runs the hook on the fake `$` with a stand-in for the engine beneath it; records what it was called with. */
+  async function spawn(w: World & { $: any }, input: any, started: unknown = { model: 'x', agentId: 'a1' }, during?: (e: any) => Promise<void>) {
+    const calls: any[] = []
+    const out = await spawnHook(w.$, input, async (e: any) => {
+      calls.push({ e, item: JSON.parse(JSON.stringify(itemNow(w))) })
+      await during?.(e)
+      return started
+    })
+    return { out, calls }
+  }
+  const logsOf = (w: World) => w.uiLogs
+
+  test('through the engine: the item is reserved before the agent starts, the reminder is appended, the started id is bound after', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const seen: any[] = []
+    on('agent.spawn', (_$: any, e: any) => {
+      seen.push({ prompt: e.prompt, item: JSON.parse(JSON.stringify(itemNow(w))) })
+      return { model: 'x', agentId: 'a1' }
+    })
+    const out = await $.agent.spawn({ prompt: refFor(id), subagentType: 'coder' })
+    expect(out).toMatchObject({ agentId: 'a1' })
+    expect(seen).toHaveLength(1)
+    expect(seen[0].item).toMatchObject({ reservedFor: 'coder', boundAgent: null })
+    expect(seen[0].prompt).toBe(`${refFor(id)}\n${REMINDER_TEXT}`)
+    expect(itemNow(w)).toMatchObject({ reservedFor: 'coder', boundAgent: { agentId: 'a1', session: 'sess-1' } })
+    expect(entries(w).map((c) => c.action)).toEqual(['create', 'activate', 'reserve', 'bind'])
+    expect(w.locks.size).toBe(0)
+  })
+
+  test('the reminder is one fixed line and carries no item text', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const { calls } = await spawn(w, spawnInput(refFor(id)))
+    const added = calls[0].e.prompt.slice(refFor(id).length)
+    expect(added).toBe(`\n${REMINDER_TEXT}`)
+    expect(added).not.toContain('Do the first thing')
+    expect(added).not.toContain('First')
+  })
+
+  test('a plugin-prefixed agent type reserves the bare type, and the bound agent can then claim', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const { out } = await spawn(w, spawnInput(refFor(id), { subagentType: 'pp:coder' }))
+    expect(out).toMatchObject({ agentId: 'a1' })
+    expect(itemNow(w)).toMatchObject({ reservedFor: 'coder', boundAgent: { agentId: 'a1' } })
+    expect(await mutate(w.$, id, { action: 'claim', plan: id, item: 's1' }, A1('pp:coder'))).toMatchObject({ ok: true })
+    expect(itemNow(w)).toMatchObject({ status: 'in_progress', attempts: 1 })
+  })
+
+  test('a spawn from a subagent reserves nothing and is passed on as it came', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const before = entries(w).length
+    const input = spawnInput(refFor(id), { parentAgentId: 'a9' })
+    const { out, calls } = await spawn(w, input)
+    expect(out).toEqual({ model: 'x', agentId: 'a1' })
+    expect(calls).toHaveLength(1)
+    expect(calls[0].e).toBe(input)
+    expect(entries(w)).toHaveLength(before)
+    expect(itemNow(w)).toMatchObject({ reservedFor: null, boundAgent: null })
+  })
+
+  test('a spawn input with resume neither reserves nor rewrites, and the binding stands', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    expect((await mutate(w.$, id, { action: 'assign', plan: id, item: 's1', agentId: 'a1', session: 'sess-1' }, MAIN)).ok).toBe(true)
+    const before = entries(w).length
+    const input = spawnInput(refFor(id), { resume: { agentId: 'a1' } })
+    const { out, calls } = await spawn(w, input, { model: 'x', agentId: 'a1' })
+    expect(out).toEqual({ model: 'x', agentId: 'a1' })
+    expect(calls[0].e).toBe(input)
+    expect(calls[0].e.prompt).not.toContain(REMINDER_TEXT)
+    expect(entries(w)).toHaveLength(before)
+    expect(itemNow(w)).toMatchObject({ reservedFor: null, boundAgent: { agentId: 'a1' } })
+  })
+
+  test('a prompt with no reference, a workflow agent and a malformed input pass through untouched', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const before = entries(w).length
+    for (const input of [spawnInput('just do it'), spawnInput(refFor(id), { workflow: { runId: 'wf_1', agentIndex: 1 } }), { prompt: 3 }, spawnInput(`see plan-ref: ${id}/s1 in the notes`)]) {
+      const { calls } = await spawn(w, input)
+      expect(calls[0].e).toBe(input)
+    }
+    expect(entries(w)).toHaveLength(before)
+  })
+
+  test('a second spawn naming a reserved item is left unchanged, binds nothing, and is logged once', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const logs = logsOf(w)
+    expect((await spawn(w, spawnInput(refFor(id)))).out).toMatchObject({ agentId: 'a1' })
+    for (let i = 0; i < 2; i++) {
+      const input = spawnInput(refFor(id))
+      const { out, calls } = await spawn(w, input, { model: 'x', agentId: 'a2' })
+      expect(out).toEqual({ model: 'x', agentId: 'a2' })
+      expect(calls[0].e).toBe(input) // same object: not rewritten
+    }
+    expect(itemNow(w)).toMatchObject({ reservedFor: 'coder', boundAgent: { agentId: 'a1' } })
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toContain('reserve')
+  })
+
+  test('an item reserved but not yet bound is not taken by a second spawn that arrives while the first starts', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    let nested: Awaited<ReturnType<typeof spawn>> | null = null
+    const first = await spawn(w, spawnInput(refFor(id)), { model: 'x', agentId: 'a1' }, async () => {
+      nested = await spawn(w, spawnInput(refFor(id)), { model: 'x', agentId: 'a2' })
+    })
+    expect(first.calls[0].e.prompt).toContain(REMINDER_TEXT)
+    expect(nested!.calls[0].e.prompt).not.toContain(REMINDER_TEXT)
+    expect(itemNow(w)).toMatchObject({ reservedFor: 'coder', boundAgent: { agentId: 'a1' } })
+  })
+
+  test('an unknown plan, a busy lock and an unreadable store leave the spawn as it was, with one debug line', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const logs = logsOf(w)
+    const unknown = spawnInput(refFor('p-0zzzzzzzz-zzzzzz'))
+    expect((await spawn(w, unknown)).calls[0].e).toBe(unknown)
+    w.stuck = true
+    const busy = spawnInput(refFor(id))
+    const r = await spawn(w, busy)
+    expect(r.calls[0].e).toBe(busy)
+    expect(r.out).toEqual({ model: 'x', agentId: 'a1' })
+    w.stuck = false
+    w.failRead = () => true
+    const unreadable = spawnInput(refFor(id, 's2'))
+    expect((await spawn(w, unreadable)).calls[0].e).toBe(unreadable)
+    expect(logs.length).toBeGreaterThanOrEqual(2)
+    expect(logs.length).toBeLessThanOrEqual(3)
+    expect(itemNow(w)).toMatchObject({ reservedFor: null, boundAgent: null })
+  })
+
+  test('a hook that throws on its own does not stop the spawn', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    w.cwdThrows = true
+    w.agentListThrows = true
+    w.$.session.repo = async () => {
+      throw new Error('boom')
+    }
+    const input = spawnInput(refFor(id))
+    const { out, calls } = await spawn(w, input)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].e).toBe(input)
+    expect(out).toEqual({ model: 'x', agentId: 'a1' })
+  })
+
+  test('a spawn the engine refuses binds nothing', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const { out } = await spawn(w, spawnInput(refFor(id)), { deny: 'no' })
+    expect(out).toEqual({ deny: 'no' })
+    expect(itemNow(w).boundAgent).toBeNull()
+  })
+
+  test('a child that claimed before the hook got the id back keeps its binding, and nothing is refused or logged', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const logs = logsOf(w)
+    const { out } = await spawn(w, spawnInput(refFor(id)), { model: 'x', agentId: 'a1' }, async () => {
+      expect((await mutate(w.$, id, { action: 'claim', plan: id, item: 's1' }, A1())).ok).toBe(true)
+    })
+    expect(out).toMatchObject({ agentId: 'a1' })
+    expect(itemNow(w)).toMatchObject({ status: 'in_progress', boundAgent: { agentId: 'a1' } })
+    expect(entries(w).filter((c) => c.denied !== null)).toEqual([])
+    expect(logs).toEqual([])
+  })
+
+  test('a prompt that already carries the reminder is not changed again', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    const input = spawnInput(`${refFor(id)}\n${REMINDER_TEXT}`)
+    const { calls } = await spawn(w, input)
+    expect(calls[0].e).toBe(input)
+    expect(itemNow(w)).toMatchObject({ reservedFor: 'coder', boundAgent: { agentId: 'a1' } })
+  })
+
+  test('a mutation of the plan during the spawn is not lost to the bind', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await activePlan(w)
+    await spawn(w, spawnInput(refFor(id)), { model: 'x', agentId: 'a1' }, async () => {
+      expect((await mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'Renamed' }, MAIN)).ok).toBe(true)
+    })
+    expect(jsonOf(w)).toMatchObject({ title: 'Renamed' })
+    expect(itemNow(w).boundAgent).toMatchObject({ agentId: 'a1' })
+    expect(entries(w).map((c) => c.rev)).toEqual([1, 2, 3, 4, 5])
+  })
+})
+
