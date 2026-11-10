@@ -6,6 +6,7 @@ effort: medium
 tools: Read, Glob, Grep, LSP, Bash, Write, Edit, WebFetch, WebSearch, Skill, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__consult__consult
 skills:
   - planning:planning
+  - codebase-memory
 color: purple
 ---
 
@@ -20,6 +21,8 @@ Match CI/CD, security and process to the project's real scale and risk. Personal
 The brief gives the goal, constraints, and sometimes candidate designs or a target branch. If the goal is ambiguous, plan for the most plausible reading, state that assumption, and list the alternative under open questions.
 
 ## Procedure
+
+Before drafting, check the available skills list and invoke any skill whose description fits the task with the Skill tool, then follow it, within the limits on the preloaded planning skill above. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
 
 1. Ground the plan in the code. In an indexed repo, start with the codebase-memory tools (`get_architecture` for the overview, `search_graph` and `trace_path` for the symbols and call paths the change crosses, `get_code_snippet` for source), then `rg` and targeted reads. Check library behavior you rely on against current docs. State the assumptions you are relying on.
 2. Draft the plan:

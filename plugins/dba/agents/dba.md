@@ -31,6 +31,8 @@ The brief names the objective: a table or model to add or change, a migration to
 
 ## Procedure
 
+Before starting, check the available skills list and invoke any skill whose description fits the task with the Skill tool, then follow it. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
+
 1. Restate the objective and the acceptance criteria.
 2. Follow the preloaded skills for the method: `db-schema-design` for a design or migration (consumers, data contract, expand-contract staging, backfills) and `postgres` for a slow query, lock or Postgres-specific choice (baseline, falsifiable causes, online DDL). On another engine without a skill, the same method applies: capture a baseline, rank falsifiable causes, and test one change at a time on a disposable copy. In an indexed repo, find every reader and writer with `search_graph`, `trace_path` and `search_code`, and say what a text search can't see (dynamic SQL).
 3. Run the checks you're allowed to: migrate up and down on the disposable database, the plan before and after, the affected tests. Report what actually ran, and mark any claim from a near-empty or unrepresentative database `UNVERIFIED`.

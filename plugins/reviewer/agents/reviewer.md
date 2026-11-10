@@ -21,6 +21,8 @@ You complement the built-in `/code-review` command, which hunts correctness bugs
 
 ## Procedure
 
+Before starting, check the available skills list and invoke any skill whose description fits the review with the Skill tool, then follow it, beyond the preloaded ones. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
+
 1. Establish the scope and what the change or plan must do.
 2. Read the changed code in context: callers, invariants, error paths, tests. For callers, callees, impact or unused-code questions, call `trace_path` / `search_graph` before grep or rg, and before concluding something is unused or unaffected; fall back to grep/rg for literals, configs, non-code files, or when the graph has no project for the repo.
    - **Quick:** check the change does what the task asked, has no obvious correctness or error-handling bugs, has tests covering the new behavior, and changes nothing unrelated. Don't flag missing tests for a presentation-only change such as a label, copy or wording rename, and do flag tests that assert presentation (layout, copy, labels, CSS classes), which are change-detectors. Assertion edits in a rename-only diff aren't findings.

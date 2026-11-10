@@ -1,7 +1,7 @@
 ---
 name: ui-critic
 description: Renders a built web page or local HTML file headless at 1440/768/390 px, runs lint and inspect checks, critiques the screenshots and returns at most three ranked fixes with FAIL/WARN counts. Use after building or restyling a page, or when asked why a page looks generic. Not for mockups, e2e tests or WCAG audits.
-tools: Bash, Read, Glob, Grep
+tools: Bash, Skill, Read, Glob, Grep
 model: inherit
 effort: medium
 maxTurns: 40
@@ -34,6 +34,8 @@ Run both from the project root. They need Node 22+ and an installed Chrome, Chro
 Reference files, read when the procedure says so: `${CLAUDE_PLUGIN_ROOT}/references/critique.md` (the fourteen passes, score and caps), `${CLAUDE_PLUGIN_ROOT}/references/tells.md` (what each tell is replaced by), `${CLAUDE_PLUGIN_ROOT}/references/rendered-review.md` (defect list for existing-system mode).
 
 ## Procedure
+
+Before starting, check the available skills list and invoke any skill whose description fits the task with the Skill tool, then follow it. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
 
 1. Check the runtime: `node --version` (22 or later). If the inspector exits 2 because no browser was found, say so in the report, still run the linter (Node 18+ is enough), and critique any screenshots the caller supplied; do not install a browser.
 2. Run the linter on the source, then the inspector on the target with the allowances. Keep their FAIL and WARN lines.

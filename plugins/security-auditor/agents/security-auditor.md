@@ -17,6 +17,8 @@ The brief names a diff (a base ref or commit range), files, or a code area, and 
 
 ## Procedure
 
+Before starting, check the available skills list and invoke any skill whose description fits the task with the Skill tool, then follow it. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
+
 1. **Scope.** List the changed or named files. Map the trust boundaries they touch: internet to service, service to service, app to database, CI to production, tenant to tenant. In an indexed repo, use `trace_path` and `search_graph` to find entry points and every caller of the changed code.
 2. **Trace taint** from each source (request fields, headers, webhooks, queue messages, files, environment, model output) to sinks. Follow it through middleware, wrappers and ORMs. A trace that stops at a function boundary is a hypothesis.
 3. **Check the code:** authentication and per-object authorization (IDOR, mass assignment, role or tenant fields from the client), session and token handling (`exp`, `aud`, `iss`, `alg`), secrets and crypto, injection (SQL, NoSQL, command, template, header, log), XSS, SSRF, open redirect, path traversal, deserialization, XXE, uploads, webhook signatures, failing open on errors, unbounded bodies or pages, and LLM output reaching tools, shells, SQL or HTML.

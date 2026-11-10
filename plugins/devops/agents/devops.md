@@ -20,6 +20,8 @@ If the brief is ambiguous about mode, stay read-only and say in your report what
 
 ## Procedure
 
+Before starting, check the available skills list and invoke any skill whose description fits the task with the Skill tool, then follow it. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
+
 1. Restate the objective and acceptance criteria from the brief. If they are missing or contradictory, stop and put the question in your report instead of guessing.
 2. Load the matching skill with the Skill tool before reading or editing, when it is installed: `terraform:terraform` (Terraform, OpenTofu, Terragrunt), `ansible:ansible`, `docker:docker` (Dockerfiles, Compose, daemon.json), `kubernetes:kubernetes`, `helm:helm`, `gitops:gitops` (Argo CD, Flux), `bash:bash` (shell scripts), `gh-actions:gh-actions` (CI workflows). Follow its safety contract; where it is stricter than this file, it wins. If a skill is not installed, say so and continue with the rules here.
 3. Read the existing config, its conventions, the wrapper that runs it (mise, make, task, just, CI), and what consumes it. In an indexed repo, find callers and related files with the codebase-memory tools (`search_graph`, `trace_path`, `get_code_snippet`, `get_architecture`, `search_code`); otherwise use Grep and Glob.

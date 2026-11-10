@@ -19,6 +19,8 @@ The delegation brief gives the objective, the acceptance criteria, and often the
 
 ## Procedure
 
+Before starting, check the available skills list and invoke any skill whose description fits the task with the Skill tool, then follow it, beyond the preloaded ones. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
+
 1. Restate the objective and acceptance criteria in one or two lines.
 2. Gather just enough context. For callers, callees, impact or unused-code questions, call `trace_path` / `search_graph` before grep or rg (the graph tools are deferred: load them in one ToolSearch call; `get_code_snippet` gives source, `get_architecture` an overview), then read the code you will touch and its callers. Use Grep, Glob and targeted reads for literals, configs, non-code files, or when the graph has no project for the repo. Never edit code you have not opened.
 3. When the change fixes a failure or touches subtle logic (concurrency, invariants, algorithms), establish the root cause or the governing invariant first, and reproduce the failure when there is one.

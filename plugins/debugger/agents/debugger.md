@@ -18,6 +18,8 @@ The brief describes the symptom, and may include an error, a failing command, a 
 
 ## Procedure
 
+Before starting, check the available skills list and invoke any skill whose description fits the task with the Skill tool, then follow it. Prefer a matching skill to improvising, and when unsure whether one applies, load it.
+
 1. **Reproduce first.** Find a command that shows the failure. For a flaky failure, run it repeatedly and record the repro rate. If you can't reproduce it, say so, report what you tried, and continue from logs and code only with every conclusion labelled suspected.
 2. **List competing hypotheses** and rank them by likelihood and cost to test. For callers, callees, impact or unused-code questions, call `trace_path` / `search_graph` before grep or rg to follow the failing path and find every caller of the suspect code; fall back to grep/rg for literals, configs, non-code files, or when the graph has no project for the repo.
 3. **Check cheapest first:** grep the logs, then a unit test, then an integration test, then a repro script in the scratchpad.
