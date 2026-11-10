@@ -38,7 +38,7 @@ import {
 import { renderItem } from './plan/render'
 import { hasControl, utf8Bytes } from './plan/shared'
 import { MAX_INPUT_CHARS, TOOL, TOOL_NAME, buildActor, parseInput, renderListing, renderPlanStatus, shouldRetry, statusFor } from './plan/tool'
-import type { Action, Actor, Change, Check, CheckResult, Plan, Tree } from './plan/types'
+import type { Action, Actor, Change, Check, CheckResult, Plan, Tree, Verification } from './plan/types'
 import { DEFAULT_ATTEMPT_CAP, MAX_DENIED_LOGGED, MAX_LEDGER_BYTES } from './plan/types'
 import {
   CRASH_EXIT,
@@ -548,6 +548,21 @@ export type VerifyArgs = {
   cwd?: string
 }
 
+/**
+ * What one `verify` call keeps between its own attempts, so a retry never repeats what already happened: the approval
+ * the person gave, the tree before, the results of the run, and the judged verification awaiting its commit. The caller
+ * makes one per tool call. `key` names the checks and directory they belong to; a changed key starts over.
+ */
+export type VerifyMemo = {
+  key?: string
+  gated?: boolean
+  before?: Tree
+  results?: CheckResult[]
+  verification?: Verification
+}
+
+export type VerifyOpts = MutateOpts & { memo?: VerifyMemo }
+
 const refusal = (message: string, planId: string, op: string | null = null): MutateFail =>
   failure('denied', message, planId, op)
 
@@ -624,14 +639,39 @@ async function runCheck($: Dollar, check: Check, cwd: string): Promise<CheckResu
   }
 }
 
+/** The ledger entry that carries `op`, or null. A read without the lock: the caller's own attempt has finished by now. */
+async function recordedOp($: Dollar, planId: string, op: string): Promise<{ ok: true; change: Change | null } | { ok: false }> {
+  try {
+    const st = await dirOf($)
+    const paths = planPaths(st.home, st.key, planId)
+    if (!(await $.fs.exists(paths.ledger))) return { ok: true, change: null }
+    const parsed = parseLedger((await $.fs.read(paths.ledger)) as string)
+    return { ok: true, change: findOp(parsed.changes.filter((c) => c.denied === null), op) }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/** What the ledger holds for a `verify` that ran checks, worded for the model; empty for anything else. */
+function recordedSummary(itemId: string, change: Change | null): string {
+  if (change === null || change.action !== 'verify') return ''
+  const v = (change.data as { verification?: Verification }).verification
+  return v !== undefined && v !== null && v.kind === 'checks' && Array.isArray(v.results) ? `${summarize(itemId, v)} ` : ''
+}
+
 /**
- * `verify` for one item. Order matters: (1) read the plan and run `authorize` and the `claimed_done` and `gen`
- * preconditions, and when any fails hand the plain action to `mutate`, which denies it and logs it, with no prompt and no
- * subprocess for a check; (2) a `manual` verify runs nothing; (3) gate every check before any runs; (4) HEAD and tree
- * fingerprint, the checks (the argv recorded at plan time, in the canonical cwd, outside the lock), the tree again;
- * (5) `judge`; (6) `mutate` records the verification built here (the public input has no field for one), and `apply`
- * refuses it if the item is no longer `claimed_done` at the same `gen` or its checks changed during the run.
- * Other items changing meanwhile does not matter, so the plan `rev` is not part of the commit condition.
+ * `verify` for one item. Order matters: (0) a retry (`opts.op`) first looks its op up in the ledger and, when the change is
+ * there, runs and asks nothing and reports what the ledger holds; (1) read the plan and run `authorize` and the
+ * `claimed_done` and `gen` preconditions, and when any fails hand the plain action to `mutate`, which denies it and logs
+ * it, with no prompt and no subprocess for a check; (2) a `manual` verify runs nothing; (3) gate every check before any
+ * runs; (4) HEAD and tree fingerprint, the checks (the argv recorded at plan time, in the canonical cwd, outside the
+ * lock), the tree again; (5) `judge`; (6) `mutate` records the verification built here (the public input has no field for
+ * one), and `apply` refuses it if the item is no longer `claimed_done` at the same `gen` or its checks changed during
+ * the run. Other items changing meanwhile does not matter, so the plan `rev` is not part of the commit condition.
+ *
+ * `opts.memo` carries the steps already done across the attempts of one call: a retry skips the prompt, the checks and the
+ * judging that finished, and repeats only the step that failed (a tree read, the commit). The answer's summary is always
+ * of what the ledger holds: of this run's verification when this call applied it, of the recorded one on a duplicate.
  */
 export async function verifyItem(
   $: Dollar,
@@ -639,13 +679,9 @@ export async function verifyItem(
   itemId: string,
   args: VerifyArgs,
   actor: Actor,
-  opts: MutateOpts = {},
+  opts: VerifyOpts = {},
 ): Promise<MutateResult> {
-  const read = await readPlan($, planId)
-  if (!read.ok) return failure('error', read.message, planId, null)
-  const plan = read.plan
-  const item = plan.items.find((i) => i.id === itemId)
-
+  const memo: VerifyMemo = opts.memo ?? {}
   const base: Action = {
     action: 'verify',
     plan: planId,
@@ -655,6 +691,34 @@ export async function verifyItem(
     ...(typeof args.note === 'string' ? { note: args.note } : {}),
     ...(typeof args.cwd === 'string' ? { cwd: args.cwd } : {}),
   }
+  const commit = async (action: Action, mine: Verification | null): Promise<MutateResult> => {
+    const done = await mutate($, planId, action, actor, opts)
+    if (!done.ok) {
+      return done.code === 'denied' && mine !== null
+        ? { ...done, message: `The checks ran, but the result was not recorded: ${done.message}` }
+        : done
+    }
+    let summary = ''
+    if (done.code === 'applied' && mine !== null && mine.kind === 'checks') summary = `${summarize(itemId, mine)} `
+    if (done.code === 'duplicate') {
+      const seen = await recordedOp($, planId, done.op)
+      if (seen.ok) summary = recordedSummary(itemId, seen.change)
+    }
+    return { ...done, message: `${summary}${done.message}` }
+  }
+
+  if (opts.op !== undefined) {
+    const seen = await recordedOp($, planId, opts.op)
+    if (!seen.ok) return failure('error', 'The plan ledger could not be read. Retry.', planId, opts.op)
+    if (seen.change !== null) return commit(base, null)
+  }
+  if (memo.verification !== undefined) return commit({ ...base, verification: memo.verification }, memo.verification)
+
+  const read = await readPlan($, planId)
+  if (!read.ok) return failure('error', read.message, planId, null)
+  const plan = read.plan
+  const item = plan.items.find((i) => i.id === itemId)
+
   const auth = authorize(plan, base, actor)
   if (!auth.ok || item === undefined || item.status !== 'claimed_done' || item.gen !== args.gen) {
     // Denied by the same pure rules, under the lock, and logged. Without `verification` or `manual` apply can only deny.
@@ -670,28 +734,39 @@ export async function verifyItem(
   const { cwd } = where
 
   const checks: Check[] = item.checks.map((c) => ({ label: c.label, argv: c.argv.slice(), expectExit: c.expectExit }))
-  for (const check of checks) {
-    const why = await gateCheck($, check, cwd)
-    if (why !== null) return refusal(why, planId)
+  const ranHash = checksHash(checks)
+  const key = `${ranHash}\u0000${cwd}`
+  if (memo.key !== key) {
+    // A changed set of checks or directory (an amend between attempts) invalidates everything kept.
+    for (const k of Object.keys(memo)) delete (memo as Record<string, unknown>)[k]
+    memo.key = key
+  }
+  if (memo.gated !== true) {
+    for (const check of checks) {
+      const why = await gateCheck($, check, cwd)
+      if (why !== null) return refusal(why, planId)
+    }
+    memo.gated = true
   }
 
-  const before = await captureTree($, cwd)
-  if (before === null) return failure('error', 'Could not read the working tree state with git, so nothing was run. Retry.', planId, null)
-  const results: CheckResult[] = []
-  for (const check of checks) results.push(await runCheck($, check, cwd))
+  if (memo.before === undefined) {
+    const before = await captureTree($, cwd)
+    if (before === null) return failure('error', 'Could not read the working tree state with git, so nothing was run. Retry.', planId, null)
+    memo.before = before
+  }
+  if (memo.results === undefined) {
+    const results: CheckResult[] = []
+    for (const check of checks) results.push(await runCheck($, check, cwd))
+    memo.results = results
+  }
   const after = await captureTree($, cwd)
+  if (after === null) return failure('error', 'Could not read the working tree state after the checks, so nothing is recorded. Retry; the checks are not run again.', planId, null)
 
   const at = new Date(await $.clock.now()).toISOString()
-  const judged = judge({ ...item, checks }, results, before, after, { cwd, at, ranHash: checksHash(checks) })
+  const judged = judge({ ...item, checks }, memo.results, memo.before, after, { cwd, at, ranHash })
   if (!judged.ok) return refusal(`${judged.why} ${item.id} stays claimed_done.`, planId)
-
-  const done = await mutate($, planId, { ...base, verification: judged.verification }, actor, opts)
-  if (!done.ok) {
-    return done.code === 'denied'
-      ? { ...done, message: `The checks ran, but the result was not recorded: ${done.message}` }
-      : done
-  }
-  return { ...done, message: `${summarize(item.id, judged.verification)} ${done.message}` }
+  memo.verification = judged.verification
+  return commit({ ...base, verification: judged.verification }, judged.verification)
 }
 
 // ---------------------------------------------------------------- the directory guard
@@ -859,7 +934,8 @@ export async function planTool($: Dollar, e: any, attemptCap: number): Promise<T
   const base: MutateOpts = { attemptCap }
   if (a.action === 'verify') {
     const args: VerifyArgs = { gen: a.gen, manual: a.manual, note: a.note, cwd: a.cwd }
-    return toAnswer(await withRetry($, a, (opts) => verifyItem($, a.plan, a.item, args, actor, opts), base))
+    const memo: VerifyMemo = {}
+    return toAnswer(await withRetry($, a, (opts) => verifyItem($, a.plan, a.item, args, actor, { ...opts, memo }), base))
   }
   const planId = a.action === 'create' ? null : (a as { plan: string }).plan
   return toAnswer(await withRetry($, a, (opts) => mutate($, planId, a, actor, opts), base))

@@ -366,7 +366,7 @@ export function buildActor(agentId: unknown, agents: unknown, session: string): 
 /** The slice of a `mutate` failure the policy reads. */
 export type Failure = { code: 'denied' | 'busy' | 'repair' | 'error'; recorded?: boolean }
 
-/** Attempts per call, the first included: a verify reruns its checks on a retry, so it gets one retry only. */
+/** Attempts per call, the first included. A verify retry repeats only the step that failed (its memo keeps the rest), and gets one. */
 export function maxAttempts(action: string): number {
   return action === 'verify' ? 2 : 3
 }

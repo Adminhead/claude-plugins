@@ -1060,6 +1060,73 @@ describe('verification', () => {
     })
   })
 
+  describe('a retried verify tells the model what is persisted and never repeats the prompt or the checks', () => {
+    const viaTool = (w: World & { $: any }, id: string, gen: number) =>
+      planTool(w.$, { tool: 'mcp__plan-ledger__plan', tool_use_id: 'tu', action: 'verify', plan: id, item: 's1', gen }, 3) as Promise<any>
+
+    test('the ledger has a failing verification but the publish failed: the retry reports that one, runs nothing, asks nothing', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const gen = (await itemOf(w, id)).gen
+      w.verdict = () => ({ decision: 'ask' })
+      let runs = 0
+      w.checkImpl = () => ({ exit: ++runs === 1 ? 1 : 0, out: runs === 1 ? 'first run fails' : 'second run passes' })
+      w.failMv = true
+      w.onSleep = () => {
+        w.failMv = false
+      }
+      const r = await viaTool(w, id, gen)
+      expect(r.result).toContain('s1 failed by command: unit exit 1 (expected 0): first run fails')
+      expect(r.result).toContain('already applied')
+      expect(r.result).not.toContain('verified')
+      expect(runs).toBe(1)
+      expect(w.asked).toHaveLength(1)
+      expect(await itemOf(w, id)).toMatchObject({ status: 'failed', verification: { ok: false } })
+      expect(ledgerOf(w).changes.filter((c) => c.action === 'verify' && c.denied === null)).toHaveLength(1)
+    })
+
+    test('the commit finds the lock busy: the retry commits the same judged result without a second prompt or run', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const gen = (await itemOf(w, id)).gen
+      w.verdict = () => ({ decision: 'ask' })
+      w.checkImpl = () => {
+        w.stuck = true // the lock is held from the moment the checks finish until the retry's sleep
+        return { exit: 0, out: 'pass' }
+      }
+      w.onSleep = () => {
+        w.stuck = false
+      }
+      const r = await viaTool(w, id, gen)
+      expect(r.result).toContain('s1 verified by command: unit exit 0')
+      expect(w.checkRuns).toHaveLength(1)
+      expect(w.asked).toHaveLength(1)
+      expect(w.gitCalls).toHaveLength(6)
+      expect((await itemOf(w, id)).status).toBe('verified')
+      expect(ledgerOf(w).changes.filter((c) => c.action === 'verify' && c.denied === null)).toHaveLength(1)
+    })
+
+    for (const [name, failing] of [['before the checks', 0], ['after the checks', 3]] as const) {
+      test(`git cannot be read ${name}: the retry re-reads the tree only, not the prompt or the checks`, async ($: any, on: any) => {
+        const w = world(on)
+        const id = await claimed(w)
+        const gen = (await itemOf(w, id)).gen
+        w.verdict = () => ({ decision: 'ask' })
+        const run = w.$.process.run
+        let gitSeen = 0
+        w.$.process.run = async (argv: string[], init?: any) => {
+          if (argv[0] === 'git' && gitSeen++ === failing) throw new Error('git is not available')
+          return run(argv, init)
+        }
+        const r = await viaTool(w, id, gen)
+        expect(r.result).toContain('s1 verified by command')
+        expect(w.checkRuns).toHaveLength(1)
+        expect(w.asked).toHaveLength(1)
+        expect((await itemOf(w, id)).status).toBe('verified')
+      })
+    }
+  })
+
   describe('manual', () => {
     test('an item with no checks is verified by hand with a note, running nothing, counted as manual', async ($: any, on: any) => {
       const w = world(on)
