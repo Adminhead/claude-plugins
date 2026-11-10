@@ -475,18 +475,56 @@ describe('transaction', () => {
     expect(w.files.get(ledgerPath)).toBe(`${lines[1]}\n`)
   })
 
-  test('a torn ledger tail gets a newline before the next line, so the new line stands alone', async ($: any, on: any) => {
+  test('a cut-off ledger tail is set aside, not closed into a line of its own', async ($: any, on: any) => {
     const w = world(on)
     const id = await created(w.$)
     const ledgerPath = fileEnding(w, '.jsonl')
-    w.files.set(ledgerPath, `${w.files.get(ledgerPath)}{"v":1,"rev":2,"ts":"2026`)
+    const before = w.files.get(ledgerPath) as string
+    const fragment = '{"v":1,"rev":2,"ts":"2026'
+    w.files.set(ledgerPath, `${before}${fragment}`)
     const r = await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)
     expect(r).toMatchObject({ ok: true })
     const parsed = ledgerOf(w)
     expect(parsed.torn).toBe(false)
-    expect(parsed.bad).toBe(1) // the torn fragment, now a line of its own
+    expect(parsed.bad).toBe(0)
     expect(parsed.changes.map((c) => c.rev)).toEqual([1, 2])
     expect(jsonOf(w).rev).toBe(2)
+    const aside = [...w.files.keys()].filter((k) => k.includes('.jsonl.torn-'))
+    expect(aside).toHaveLength(1)
+    expect(w.files.get(aside[0])).toBe(fragment)
+    expect(w.files.get(ledgerPath)?.startsWith(before)).toBe(true)
+  })
+
+  test('a cut-off tail that cannot be set aside stops the mutation and appends nothing', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await created(w.$)
+    const ledgerPath = fileEnding(w, '.jsonl')
+    const torn = `${w.files.get(ledgerPath)}{"v":1,"rev":2`
+    w.files.set(ledgerPath, torn)
+    w.failMv = true
+    const r = await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)
+    expect(r).toMatchObject({ ok: false, code: 'error' })
+    expect(w.files.get(ledgerPath)).toBe(torn)
+    expect(w.locks.size).toBe(0)
+  })
+
+  test('a complete last line that only lost its newline counts as applied: the next change is the next rev, not a second copy of it', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await created(w.$)
+    await mutate(w.$, id, { action: 'activate', plan: id }, MAIN) // rev 2
+    const ledgerPath = fileEnding(w, '.jsonl')
+    const jsonPath = fileEnding(w, '.json')
+    w.files.set(ledgerPath, (w.files.get(ledgerPath) as string).slice(0, -1)) // the append lost its newline
+    w.files.set(jsonPath, (w.files.get(jsonPath) as string).replace('"rev":2', '"rev":1').replace('"status":"active"', '"status":"draft"'))
+    const r = await mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'After' }, MAIN)
+    expect(r).toMatchObject({ ok: true, code: 'applied' })
+    expect(revsOf(w)).toEqual([1, 2, 3])
+    const parsed = ledgerOf(w)
+    expect(parsed.torn).toBe(false)
+    expect(parsed.bad).toBe(0)
+    expect(jsonOf(w)).toMatchObject({ rev: 3, status: 'active', title: 'After' })
+    expect((await plans(w, `repair ${id}`)).text).toContain('nothing to repair')
+    expect([...w.files.keys()].filter((k) => k.includes('.torn-'))).toEqual([])
   })
 
   test('a tail whose newline the engine trimmed still reconciles correctly', async ($: any, on: any) => {

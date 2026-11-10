@@ -149,13 +149,17 @@ describe('parseLedger', () => {
     expect(parsed.bad).toBe(0)
   })
 
-  test('a complete JSON line missing only its newline is still torn', () => {
+  test('a complete JSON line missing only its newline is an applied change that still needs its newline', () => {
     const live = scripted()
     const text = live.text().slice(0, -1)
     const parsed = parseLedger(text)
     expect(parsed.torn).toBe(true)
-    expect(parsed.changes).toHaveLength(live.changes.length - 1)
-    expect(JSON.parse(parsed.tornText as string).rev).toBe(live.changes[live.changes.length - 1].rev)
+    expect(parsed.tornText).toBeNull()
+    expect(parsed.changes).toHaveLength(live.changes.length)
+    expect(parsed.bad).toBe(0)
+    const r = reconcile(null, text)
+    expect(r.error).toBeUndefined()
+    expect(r.plan).toStrictEqual(live.plan)
   })
 
   test('corrupt and misshapen complete lines are skipped, counted and returned with their text', () => {

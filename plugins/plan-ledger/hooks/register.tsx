@@ -278,7 +278,7 @@ function tailRev(tail: string): number | null {
 
 async function removeStaleTmp($: Dollar, paths: PlanPaths, planId: string): Promise<void> {
   // The lock proves no publisher is mid-write, so every `<planId>.json.tmp.*` is a crash's leftover. Best effort.
-  const stale = new RegExp(`^${planId}\\.json\\.tmp\\.[A-Za-z0-9._-]+$`)
+  const stale = new RegExp(`^${planId}\\.jsonl?\\.tmp\\.[A-Za-z0-9._-]+$`)
   try {
     const entries: { name: string }[] = await $.fs.list(paths.dir)
     for (const f of entries) {
@@ -289,12 +289,12 @@ async function removeStaleTmp($: Dollar, paths: PlanPaths, planId: string): Prom
   }
 }
 
-/** Writes `plan` to a tmp file in the plan directory and renames it over the JSON. Throws on any failure, leaving the old JSON. */
-async function publish($: Dollar, paths: PlanPaths, plan: Plan, token: string): Promise<void> {
-  const tmp = tmpPath(paths.json, token)
+/** Writes `text` to a tmp file beside `to` and renames it over `to`. Throws on any failure, leaving `to` as it was. */
+async function publishText($: Dollar, to: string, text: string, token: string): Promise<void> {
+  const tmp = tmpPath(to, token)
   try {
-    await $.fs.write(tmp, JSON.stringify(plan))
-    const moved = await $.process.run(publishArgv(tmp, paths.json), { timeoutMs: IO_TIMEOUT_MS })
+    await $.fs.write(tmp, text)
+    const moved = await $.process.run(publishArgv(tmp, to), { timeoutMs: IO_TIMEOUT_MS })
     if (moved.exitCode !== 0) throw new Error('mv failed')
   } catch (err) {
     try {
@@ -304,6 +304,11 @@ async function publish($: Dollar, paths: PlanPaths, plan: Plan, token: string): 
     }
     throw err
   }
+}
+
+/** Writes `plan` over the JSON through a tmp file. Throws on any failure, leaving the old JSON. */
+async function publish($: Dollar, paths: PlanPaths, plan: Plan, token: string): Promise<void> {
+  await publishText($, paths.json, JSON.stringify(plan), token)
 }
 
 /** Brings the JSON up to a replayed plan after a call that applied nothing. Failure is ignored: the next mutation heals it. */
@@ -316,7 +321,7 @@ async function healJson($: Dollar, paths: PlanPaths, rec: Reconciled, token: str
   }
 }
 
-type Reconcile = { rec: Reconciled; ledgerSize: number; loaded: boolean } | MutateFail
+type Reconcile = { rec: Reconciled; ledgerSize: number; loaded: boolean; text: string } | MutateFail
 
 /**
  * The state a mutation starts from. Reads the JSON (quarantining it when it is unreadable as a plan), asks `tail` for the
@@ -360,7 +365,7 @@ async function reconcileStore(
   const fast = !needAll && json !== null && !needsReplay(json, tail) && tail !== null && tailRev(tail) === json.rev
   if (fast) {
     const rec: Reconciled = { plan: json, source: 'json', changes: [], torn: false, tornText: null, badLines: [], jsonAhead: false }
-    return { rec, ledgerSize, loaded: false }
+    return { rec, ledgerSize, loaded: false, text: '' }
   }
   const text = ledgerExists ? ((await $.fs.read(paths.ledger)) as string) : ''
   const rec = reconcile(json, text)
@@ -373,7 +378,7 @@ async function reconcileStore(
   if (rec.plan !== null && rec.plan.id !== planId) {
     return failure('repair', `The change ledger belongs to another plan. ${REPAIR_HINT}`, planId, op)
   }
-  return { rec, ledgerSize, loaded: true }
+  return { rec, ledgerSize, loaded: true, text }
 }
 
 async function appendLine($: Dollar, paths: PlanPaths, text: string): Promise<boolean> {
@@ -383,6 +388,32 @@ async function appendLine($: Dollar, paths: PlanPaths, text: string): Promise<bo
   } catch {
     return false
   }
+}
+
+/**
+ * What goes before the next ledger line, and the ledger's size once it is there. A last line that is a whole change missing
+ * only its newline is closed with one (it counts as applied). A cut-off fragment is set aside rather than closed: a copy
+ * goes to `<ledger>.torn-<ms>` and the ledger is rewritten without it, atomically, so it never becomes a line of the
+ * ledger. Null when that could not be done; nothing is appended then.
+ */
+async function settleTail(
+  $: Dollar,
+  paths: PlanPaths,
+  r: { rec: Reconciled; ledgerSize: number; text: string },
+  token: string,
+  nowMs: number,
+): Promise<{ prefix: string; size: number } | null> {
+  const { rec } = r
+  if (!rec.torn) return { prefix: '', size: r.ledgerSize }
+  if (rec.tornText === null) return { prefix: '\n', size: r.ledgerSize }
+  if (!r.text.endsWith(rec.tornText)) return null
+  try {
+    await $.fs.write(`${paths.ledger}.torn-${nowMs}`, rec.tornText)
+    await publishText($, paths.ledger, r.text.slice(0, r.text.length - rec.tornText.length), token)
+  } catch {
+    return null
+  }
+  return { prefix: '', size: Math.max(0, r.ledgerSize - utf8Bytes(rec.tornText)) }
 }
 
 type Tx = {
@@ -404,7 +435,7 @@ async function transact($: Dollar, tx: Tx, token: string): Promise<MutateResult>
 
   const r = await reconcileStore($, paths, planId, nowMs, tx.retry, op)
   if ('ok' in r) return r
-  const { rec, ledgerSize } = r
+  const { rec } = r
 
   if (tx.retry) {
     const hit = findOp(
@@ -420,6 +451,12 @@ async function transact($: Dollar, tx: Tx, token: string): Promise<MutateResult>
   if (action.action === 'create' && rec.plan !== null) {
     return failure('error', 'A plan with this id already exists. Retry to get a new id.', planId, op)
   }
+
+  const tail = await settleTail($, paths, r, token, nowMs)
+  if (tail === null) {
+    return failure('error', 'The cut-off end of the change ledger could not be set aside, so nothing was changed. Retry.', planId, op)
+  }
+  const { prefix, size: ledgerSize } = tail
 
   const out = apply(rec.plan, action, {
     actor,
@@ -437,7 +474,7 @@ async function transact($: Dollar, tx: Tx, token: string): Promise<MutateResult>
       const changes = r.loaded ? rec.changes : parseLedger(await $.fs.read(paths.ledger)).changes
       const logged = changes.filter((c) => c.denied !== null).length
       const change: Change = { ...out.change, ...suppressedField(planId) }
-      const text = (rec.torn ? '\n' : '') + lineFor(change)
+      const text = prefix + lineFor(change)
       if (logged >= MAX_DENIED_LOGGED || ledgerSize + utf8Bytes(text) > MAX_LEDGER_BYTES) {
         suppressedDenials.set(planId, (suppressedDenials.get(planId) ?? 0) + 1)
       } else if (await appendLine($, paths, text)) {
@@ -450,7 +487,7 @@ async function transact($: Dollar, tx: Tx, token: string): Promise<MutateResult>
 
   // Write-ahead: the ledger line first, then the JSON. A crash between the two is repaired by the next call's reconcile.
   const change: Change = { ...out.change, ...suppressedField(planId) }
-  const text = (rec.torn ? '\n' : '') + lineFor(change)
+  const text = prefix + lineFor(change)
   if (!TERMINAL_ACTIONS.has(action.action) && ledgerSize + utf8Bytes(text) > MAX_LEDGER_BYTES) {
     return failure(
       'error',
@@ -981,7 +1018,7 @@ async function showLog($: Dollar, planId: string, n: number): Promise<string> {
     return 'The ledger could not be read.'
   }
   const parsed = parseLedger(text)
-  return renderLog(parsed.changes, n, parsed.bad, parsed.torn)
+  return renderLog(parsed.changes, n, parsed.bad, parsed.tornText !== null)
 }
 
 /**
@@ -1002,7 +1039,7 @@ async function repairPlan($: Dollar, planId: string): Promise<string> {
     if (rec.error !== undefined) return `The ledger cannot be replayed (${rec.error.slice(0, 200)}). The plan file was left as it is.`
     if (rec.plan === null || rec.plan.id !== planId) return 'The ledger does not hold this plan. The plan file was left as it is.'
     const notes = [
-      rec.torn ? 'the ledger ends in a cut-off line, which the next change closes' : '',
+      rec.tornText !== null ? 'the ledger ends in a cut-off line, which the next change sets aside' : '',
       rec.badLines.length > 0 ? `${rec.badLines.length} damaged ledger line${rec.badLines.length === 1 ? '' : 's'} skipped` : '',
     ].filter((x) => x !== '')
     const tail = notes.length === 0 ? '' : ` (${notes.join('; ')})`

@@ -39,11 +39,14 @@ export type BadLine = { line: number; text: string; reason: string }
 export type ParsedLedger = {
   /** Every valid line in file order, denied ones included (review output needs them). */
   changes: Change[]
-  /** The text ended without a newline: the last append never finished. */
+  /** The text ended without a newline: the next append must write one first. */
   torn: boolean
   /** Number of complete but invalid lines; `badLines.length`. */
   bad: number
-  /** The unterminated final line, unmodified, or null. The caller quarantines it. */
+  /**
+   * The unterminated final line, unmodified, when it is not a complete Change (a cut-off append), else null. A final line
+   * that is a whole Change missing only its newline is in `changes` and `torn` only says to add the newline.
+   */
   tornText: string | null
   badLines: BadLine[]
 }
@@ -76,19 +79,27 @@ function changeProblem(x: unknown): string | null {
 }
 
 /**
- * Splits ledger text into lines. An unterminated final line is a torn append: it is not returned as a
- * change (the mutation it belonged to never reported success) but is handed back in `tornText`. A
- * complete line that is not valid JSON or not a Change is skipped, counted and handed back in
- * `badLines`. Blank lines carry no data and are ignored.
+ * Splits ledger text into lines. An unterminated final line that is a whole, valid Change (the append lost only its
+ * newline) is an applied change: it is returned in `changes`, and `torn` tells the writer to close it before the next
+ * line, so two lines never share a rev. Any other unterminated final line is a cut-off append: it is not a change but is
+ * handed back in `tornText` for the caller to set aside. A complete line that is not valid JSON or not a Change is
+ * skipped, counted and handed back in `badLines`. Blank lines carry no data and are ignored.
  */
 export function parseLedger(text: string): ParsedLedger {
   const out: ParsedLedger = { changes: [], torn: false, bad: 0, tornText: null, badLines: [] }
   if (text === '') return out
   const parts = text.split('\n')
   const last = parts.pop() as string // '' when the text ends with a newline
+  let whole: Change | null = null
   if (last !== '') {
     out.torn = true
-    out.tornText = last
+    try {
+      const value: unknown = JSON.parse(last.endsWith('\r') ? last.slice(0, -1) : last)
+      if (changeProblem(value) === null) whole = value as Change
+    } catch {
+      // Not JSON: a cut-off append.
+    }
+    if (whole === null) out.tornText = last
   }
   parts.forEach((raw, i) => {
     const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw
@@ -107,6 +118,7 @@ export function parseLedger(text: string): ParsedLedger {
     }
     out.changes.push(value as Change)
   })
+  if (whole !== null) out.changes.push(whole)
   out.bad = out.badLines.length
   return out
 }
