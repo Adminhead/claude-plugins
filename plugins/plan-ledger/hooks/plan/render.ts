@@ -14,6 +14,17 @@ const STATUSES: ItemStatus[] = ['pending', 'in_progress', 'blocked', 'claimed_do
 
 // ---------------------------------------------------------------- helpers
 
+/**
+ * Free text on one line: every run of whitespace and control characters (newlines included) becomes a
+ * single space. Everything stored by a caller goes through this before it is placed in a line, so a title
+ * or note cannot start a new line and forge an item line or a plan header (`renderDelta` reads those).
+ */
+function one(s: unknown): string {
+  return String(s ?? '')
+    .replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, ' ')
+    .trim()
+}
+
 /** `s.slice(0, n)` that does not end in half a surrogate pair. */
 function cut(s: string, n: number): string {
   if (n <= 0) return ''
@@ -49,39 +60,60 @@ const isManual = (i: Item): boolean => i.status === 'verified' && (i.verificatio
 /**
  * What the assigned agent reads: the task, the acceptance criteria, the checks, files, dependencies
  * with their statuses, attempts and the last failure. When the text would pass `maxChars`, the
- * instructions are cut (with a marker) so that the criteria stay; the result never passes `maxChars`.
+ * instructions are cut first (with a marker). Only when even that is not enough are the other
+ * parts dropped, last the acceptance criteria and checks (lowest value first: failure, note, files,
+ * dependencies). The result never passes `maxChars`.
  */
 export function renderItem(plan: Plan, itemId: string, maxChars = 8000): string {
   const item = itemOf(plan, itemId)
-  if (item === undefined) return clamp(`No item ${itemId} in plan ${plan.id}. Check the item id.`, maxChars)
+  if (item === undefined) return clamp(`No item ${one(itemId)} in plan ${one(plan.id)}. Check the item id.`, maxChars)
 
-  const head = `plan ${plan.id} "${plan.title}" (${plan.status}), item ${item.id} "${item.title}": ${item.status}, gen ${item.gen}, attempts ${item.attempts}.`
-  const rest: string[] = [`Agent: ${item.agent} (model ${item.model || 'unset'})`]
-  if (item.acceptance.length > 0) rest.push(`Acceptance:\n${item.acceptance.map((a) => `- ${a}`).join('\n')}`)
+  const head = `plan ${one(plan.id)} "${one(plan.title)}" (${one(plan.status)}), item ${one(item.id)} "${one(item.title)}": ${one(item.status)}, gen ${item.gen}, attempts ${item.attempts}.`
+  // Display order; `rank` is the order they survive a cut (1 survives longest).
+  const parts: { rank: number; text: string }[] = [
+    { rank: 0, text: `Agent: ${one(item.agent)} (model ${one(item.model) || 'unset'})` },
+  ]
+  if (item.acceptance.length > 0) parts.push({ rank: 1, text: `Acceptance:\n${item.acceptance.map((a) => `- ${one(a)}`).join('\n')}` })
   if (item.checks.length > 0) {
-    rest.push(
-      `Checks (the orchestrator runs these at verify):\n${item.checks
-        .map((c) => `- ${c.label}: ${shellQuote(c.argv)} (expect exit ${c.expectExit})`)
+    parts.push({
+      rank: 2,
+      text: `Checks (the orchestrator runs these at verify):\n${item.checks
+        .map((c) => `- ${one(c.label)}: ${shellQuote(c.argv)} (expect exit ${c.expectExit})`)
         .join('\n')}`,
-    )
+    })
   }
-  if (item.files.length > 0) rest.push(`Files: ${item.files.join(', ')}`)
+  if (item.files.length > 0) parts.push({ rank: 4, text: `Files: ${item.files.map(one).join(', ')}` })
   if (item.deps.length > 0) {
-    rest.push(`Depends on: ${item.deps.map((d) => `${d} (${itemOf(plan, d)?.status ?? 'missing'})`).join(', ')}`)
+    parts.push({ rank: 3, text: `Depends on: ${item.deps.map((d) => `${one(d)} (${one(itemOf(plan, d)?.status ?? 'missing')})`).join(', ')}` })
   }
-  if (item.note !== null) rest.push(`Latest note: ${item.note}`)
-  if (item.failure !== null) rest.push(`Last failure:\n${item.failure}`)
+  if (item.note !== null) parts.push({ rank: 5, text: `Latest note: ${one(item.note)}` })
+  if (item.failure !== null) parts.push({ rank: 6, text: `Last failure:\n${item.failure}` })
 
+  const join = (ps: { text: string }[]) => (ps.length > 0 ? `\n\n${ps.map((p) => p.text).join('\n\n')}` : '')
   const before = `${head}\n\nInstructions:\n`
-  const after = rest.length > 0 ? `\n\n${rest.join('\n\n')}` : ''
+  const after = join(parts)
   const whole = before + item.instructions + after
   if (whole.length <= maxChars) return whole
 
   const marker = '\n[instructions cut here: ask the orchestrator for the rest]'
   const room = maxChars - before.length - after.length - marker.length
   if (room > 0) return before + cut(item.instructions, room) + marker + after
-  // The fixed parts alone are over budget: keep the head and the criteria, drop the instructions.
-  return clamp(before + marker.trimStart() + after, maxChars, '\n[cut]')
+
+  // The fixed parts alone are over budget: drop the instructions, then keep parts in rank order while they fit.
+  let used = before.length + marker.trimStart().length
+  const kept = new Map<{ rank: number; text: string }, string>()
+  for (const part of [...parts].sort((x, y) => x.rank - y.rank)) {
+    const left = maxChars - used - 2
+    if (left >= part.text.length) {
+      kept.set(part, part.text)
+      used += 2 + part.text.length
+    } else {
+      if (left >= 30) kept.set(part, clamp(part.text, left))
+      break
+    }
+  }
+  const shown = parts.filter((p) => kept.has(p)).map((p) => ({ text: kept.get(p) as string }))
+  return clamp(before + marker.trimStart() + join(shown), maxChars, '\n[cut]')
 }
 
 // ---------------------------------------------------------------- renderBlock
@@ -91,18 +123,18 @@ type Token = { text: string; verified: boolean }
 function itemToken(plan: Plan, item: Item): Token {
   let note = ''
   if (item.status === 'verified' && isManual(item)) note = ' (manual)'
-  else if (item.status === 'in_progress') note = ` (${item.agent})`
-  else if (item.status === 'claimed_done') note = ` (${item.agent}, awaiting verify)`
+  else if (item.status === 'in_progress') note = ` (${one(item.agent)})`
+  else if (item.status === 'claimed_done') note = ` (${one(item.agent)}, awaiting verify)`
   else if (item.status === 'pending') {
     const unmet = item.deps.filter((d) => itemOf(plan, d)?.status !== 'verified')
     const abandoned = unmet.filter((d) => itemOf(plan, d)?.status === 'abandoned')
     const waiting = unmet.filter((d) => !abandoned.includes(d))
     const parts: string[] = []
-    if (waiting.length > 0) parts.push(`needs ${waiting.join(', ')}`)
-    if (abandoned.length > 0) parts.push(`blocked by abandoned ${abandoned.join(', ')}`)
+    if (waiting.length > 0) parts.push(`needs ${waiting.map(one).join(', ')}`)
+    if (abandoned.length > 0) parts.push(`blocked by abandoned ${abandoned.map(one).join(', ')}`)
     if (parts.length > 0) note = ` (${parts.join('; ')})`
   }
-  return { text: `${item.id} ${item.status}${note}`, verified: item.status === 'verified' }
+  return { text: `${one(item.id)} ${one(item.status)}${note}`, verified: item.status === 'verified' }
 }
 
 function headerOf(plan: Plan, first: boolean, titleMax: number): string {
@@ -116,8 +148,8 @@ function headerOf(plan: Plan, first: boolean, titleMax: number): string {
     how = ` (${parts.join(', ')})`
   }
   const state = plan.status === 'active' ? '' : ` ${plan.status}`
-  const title = clamp(plan.title, titleMax)
-  return `${first ? PREFIX : ''}${plan.id} "${title}" rev ${plan.rev}${state}: ${verified.length}/${plan.items.length} verified${how}`
+  const title = clamp(one(plan.title), titleMax)
+  return `${first ? PREFIX : ''}${one(plan.id)} "${title}" rev ${plan.rev}${state}: ${verified.length}/${plan.items.length} verified${how}`
 }
 
 // One plan as a header plus, when it fits, a line of items. Null when not even a header fits.
