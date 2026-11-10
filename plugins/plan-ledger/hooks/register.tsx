@@ -1081,7 +1081,9 @@ async function repairPlan($: Dollar, planId: string): Promise<string> {
     if (rec.error !== undefined) return `The ledger cannot be replayed (${rec.error.slice(0, 200)}). The plan file was left as it is.`
     if (rec.plan === null || rec.plan.id !== planId) return 'The ledger does not hold this plan. The plan file was left as it is.'
     const notes = [
-      rec.tornText !== null ? 'the ledger ends in a cut-off line, which the next change sets aside' : '',
+      rec.tornText !== null
+        ? 'the ledger ends in a cut-off line; this repair leaves it, and the next change copies it to <plan>.jsonl.torn-<time> and rewrites the ledger without it'
+        : '',
       rec.badLines.length > 0 ? `${rec.badLines.length} damaged ledger line${rec.badLines.length === 1 ? '' : 's'} skipped` : '',
     ].filter((x) => x !== '')
     const tail = notes.length === 0 ? '' : ` (${notes.join('; ')})`

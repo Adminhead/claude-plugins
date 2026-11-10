@@ -1684,6 +1684,20 @@ describe('/plans', () => {
       expect(w.locks.size).toBe(0)
     })
 
+    test('a cut-off ledger tail is reported with where the next change will keep it, and repair itself leaves the ledger alone', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const ledgerPath = fileEnding(w, '.jsonl')
+      const torn = `${w.files.get(ledgerPath)}{"v":1,"rev":3,"ts":"2026`
+      w.files.set(ledgerPath, torn)
+      const text = (await plans(w, `repair ${id}`)).text
+      expect(text).toContain('.torn-')
+      expect(w.files.get(ledgerPath)).toBe(torn)
+      expect([...w.files.keys()].some((k) => k.includes('.jsonl.torn-'))).toBe(false)
+      expect(await mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'After' }, MAIN)).toMatchObject({ ok: true })
+      expect([...w.files.keys()].filter((k) => k.includes('.jsonl.torn-'))).toHaveLength(1)
+    })
+
     test('a damaged plan file is set aside and rebuilt from the ledger, under the lock', async ($: any, on: any) => {
       const w = world(on)
       const id = await activePlan(w)
