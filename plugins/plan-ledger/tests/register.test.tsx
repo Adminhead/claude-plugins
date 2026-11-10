@@ -31,6 +31,8 @@ type World = {
   failAppend: boolean
   failMv: boolean
   failWrite: ((path: string) => boolean) | null
+  /** `$.fs.read` throws for these paths (EIO, EMFILE). */
+  failRead: ((path: string) => boolean) | null
   trimTail: boolean
   /** Pretend the ledger file has this size. */
   ledgerSize: number | null
@@ -88,6 +90,7 @@ function world(on: any): World & { $: any } {
     failAppend: false,
     failMv: false,
     failWrite: null,
+    failRead: null,
     trimTail: false,
     ledgerSize: null,
     links: new Map(),
@@ -130,6 +133,7 @@ function world(on: any): World & { $: any } {
     'ui.log': () => undefined,
     'fs.exists': (e) => w.files.has(e.path) || w.dirs.has(e.path) || w.locks.has(e.path),
     'fs.read': (e) => {
+      if (w.failRead?.(e.path)) throw new Error('EIO')
       if (e.path.endsWith('/owner') && w.locks.get(e.path.slice(0, -'/owner'.length)) === '') throw new Error(`ENOENT ${e.path}`)
       if (e.path.endsWith('/owner') && w.locks.has(e.path.slice(0, -'/owner'.length))) {
         return `${w.locks.get(e.path.slice(0, -'/owner'.length))} ${Math.floor(w.now / 1000) - w.lockAge}`
@@ -419,6 +423,23 @@ describe('transaction', () => {
     expect(revsOf(w)).toEqual([1, 2])
   })
 
+  test('a plan file that cannot be read (EIO) is an error, not damage: nothing is set aside or rewritten', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await created(w.$)
+    const jsonPath = fileEnding(w, '.json')
+    const json = w.files.get(jsonPath)
+    const ledger = w.files.get(fileEnding(w, '.jsonl'))
+    w.failRead = (p) => p === jsonPath
+    const r = await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)
+    expect(r).toMatchObject({ ok: false, code: 'error' })
+    expect(w.files.get(jsonPath)).toBe(json)
+    expect(w.files.get(fileEnding(w, '.jsonl'))).toBe(ledger)
+    expect([...w.files.keys()].some((k) => k.includes('.corrupt-'))).toBe(false)
+    expect(w.locks.size).toBe(0)
+    w.failRead = null
+    expect(await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)).toMatchObject({ ok: true })
+  })
+
   test('a missing plan file is rebuilt from the ledger', async ($: any, on: any) => {
     const w = world(on)
     const id = await created(w.$)
@@ -657,6 +678,16 @@ describe('reads', () => {
     expect(r.ok && r.plan.id).toBe(id)
     expect(w.files.get(jsonPath)).toBe('not json')
     expect(w.log.filter((l) => l === 'write-tmp').length).toBe(writesBefore)
+    expect(w.locks.size).toBe(0)
+  })
+
+  test('readPlan on a plan file that cannot be read reports an error and never rebuilds it', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await created(w.$)
+    const jsonPath = fileEnding(w, '.json')
+    w.failRead = (p) => p === jsonPath
+    expect(await readPlan(w.$, id)).toMatchObject({ ok: false, code: 'error' })
+    expect([...w.files.keys()].some((k) => k.includes('.corrupt-'))).toBe(false)
     expect(w.locks.size).toBe(0)
   })
 
@@ -1623,6 +1654,17 @@ describe('/plans', () => {
       expect(w.asked[0].question).toContain('rev 9')
       for (const a of w.asked) expect(a.question.endsWith('?')).toBe(true)
       expect(jsonOf(w).rev).toBe(2)
+    })
+
+    test('a plan file that cannot be read is left alone, not set aside', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await activePlan(w)
+      const json = fileEnding(w, '.json')
+      const before = w.files.get(json)
+      w.failRead = (p) => p === json
+      expect((await plans(w, `repair ${id}`)).text).toContain('could not be read')
+      expect(w.files.get(json)).toBe(before)
+      expect([...w.files.keys()].some((k) => k.includes('.corrupt-'))).toBe(false)
     })
 
     test('a ledger that cannot be replayed leaves the plan file alone', async ($: any, on: any) => {

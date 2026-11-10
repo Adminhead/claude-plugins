@@ -199,7 +199,8 @@ async function release($: Dollar, lock: string, token: string): Promise<void> {
 
 // ---------------------------------------------------------------- reading the files
 
-type JsonRead = { kind: 'missing' } | { kind: 'bad' } | { kind: 'ok'; plan: Plan }
+/** `bad`: read fine but not a plan (damaged). `error`: the read itself failed (EIO, EMFILE): the file may be fine. */
+type JsonRead = { kind: 'missing' } | { kind: 'bad' } | { kind: 'error' } | { kind: 'ok'; plan: Plan }
 
 async function readJson($: Dollar, path: string): Promise<JsonRead> {
   if (!(await $.fs.exists(path))) return { kind: 'missing' }
@@ -207,7 +208,7 @@ async function readJson($: Dollar, path: string): Promise<JsonRead> {
   try {
     text = await $.fs.read(path)
   } catch {
-    return { kind: 'bad' }
+    return { kind: 'error' }
   }
   const plan = parsePlanJson(text)
   return plan === null ? { kind: 'bad' } : { kind: 'ok', plan }
@@ -250,6 +251,7 @@ export async function readPlan($: Dollar, planId: string): Promise<ReadResult> {
     const locked = await withLock($, paths.lock, planId, null, async (): Promise<ReadResult> => {
       const again = await readJson($, paths.json)
       if (again.kind === 'ok' && again.plan.id === planId) return { ok: true, plan: again.plan }
+      if (again.kind === 'error') return { ok: false, code: 'error', message: 'The plan file could not be read. Retry.' }
       const hasLedger: boolean = await $.fs.exists(paths.ledger)
       if (again.kind === 'missing' && !hasLedger) return { ok: false, code: 'missing', message: 'No such plan.' }
       const text = hasLedger ? ((await $.fs.read(paths.ledger)) as string) : ''
@@ -340,6 +342,8 @@ async function reconcileStore(
   const read = await readJson($, paths.json)
   if (read.kind === 'ok') {
     json = read.plan
+  } else if (read.kind === 'error') {
+    return failure('error', 'The plan file could not be read, so nothing was changed. Retry.', planId, op)
   } else if (read.kind === 'bad') {
     const moved = await $.process.run(['mv', '-n', '--', paths.json, `${paths.json}.corrupt-${nowMs}`], {
       timeoutMs: IO_TIMEOUT_MS,
@@ -1045,6 +1049,7 @@ async function repairPlan($: Dollar, planId: string): Promise<string> {
     const tail = notes.length === 0 ? '' : ` (${notes.join('; ')})`
 
     const json = await readJson($, paths.json)
+    if (json.kind === 'error') return 'The plan file could not be read, so it was left as it is. Retry.'
     if (json.kind === 'ok' && json.plan.rev === rec.plan.rev && JSON.stringify(json.plan) === JSON.stringify(rec.plan)) {
       return `Plan ${planId} is consistent at rev ${rec.plan.rev}; nothing to repair${tail}.`
     }
