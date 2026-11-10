@@ -28,13 +28,13 @@ Item statuses: `pending`, `in_progress`, `blocked`, `claimed_done`, `verified`, 
 | `fail` | bound agent | `in_progress` | `failed` (note required) |
 | `claim_done` | bound agent | `in_progress` | `claimed_done` (summary, commands, commit shas, files) |
 | `verify` | orchestrator | `claimed_done` | `verified`, or `failed` |
-| `amend` | orchestrator | any item that is not `verified` or `claimed_done` | same status, `gen` + 1 |
+| `amend` | orchestrator | any item that is not `verified` or `claimed_done` | same status; an item edit bumps `gen`, a plan-title-only edit does not |
 | `assign` | orchestrator | `pending`, `failed`, `blocked`, `in_progress` | same status, binds a named agent id |
 | `reopen` | orchestrator | `blocked`, `failed`, `claimed_done`, `verified`, `abandoned` | `pending`, `gen` + 1 |
-| `abandon` | orchestrator | any item that is not `verified`, or the plan | `abandoned` |
+| `abandon` | orchestrator | any item that is not `verified` or `abandoned`, or the plan (an abandoned plan accepts no action) | `abandoned` |
 | `list`, `status`, `get` | anyone allowed to see the plan | | read only |
 
-Anything not in the table is refused. An item allows 3 claims by default (`attemptCap`); at the cap it stays `failed` until the orchestrator `reopen`s it, optionally with `extraAttempts`. A dependent stays `pending` until every dep is `verified`; the status block shows `needs s2`, or `blocked by abandoned s2`. `create` rejects dependency cycles and unknown deps, and oversized input is refused, never truncated.
+Anything not in the table is refused. An item allows 3 claims by default (`attemptCap`); at the cap it stays `failed` until the orchestrator `reopen`s it with `extraAttempts` of at least 1. A dependent stays `pending` until every dep is `verified`; the status block shows `needs s2`, or `blocked by abandoned s2`. `create` rejects dependency cycles and unknown deps, and oversized input is refused, never truncated.
 
 ## Where state lives
 
@@ -61,7 +61,7 @@ Remove a single `<repo>-<hash>` folder to clear one project. There is no pruning
 
 The caller is identified by the engine-set `agentId` on the call, not by anything the model writes.
 
-- **Orchestrator (the main loop):** every action in the table except `claim` (only a subagent claims). It may `abandon` a plan or an item through the tool, with no prompt.
+- **Orchestrator (the main loop):** every action in the table except `claim`, `fail` and `claim_done`, which only a bound subagent can do. It may `abandon` a plan or an item through the tool, with no prompt.
 - **Subagents:** `list` and `status` show plans and their statuses. Everything else touches only their own item: `get` and `claim` on an item bound to them, or unbound and meant for their agent type (and, when the spawn hook reserved it for a type, only that type); `progress`, `block`, `fail` and `claim_done` on the item bound to them. `claim` also needs the plan `active`. The first `claim` binds the caller, and only the orchestrator's `assign` replaces a binding.
 - **`architect`:** `create` (always a `draft` plan), and `list`, `status` and `get` on plans it created in this session. It cannot activate, claim or verify.
 - **Anyone else:** an agent id that `$.agent.list()` does not name (a workflow agent, an engine fork), or one whose status is not `running`, is refused every action.
@@ -78,7 +78,7 @@ An agent's `claim_done` is a claim, stored as self-reported. Only the orchestrat
 1. It authorizes the call and checks the item is `claimed_done` before it runs anything.
 2. For each recorded check, it asks the person's permission rules about the command (`$.tool.check`, as a Bash call). `allow` runs it without a prompt, `deny` refuses, and `ask` or no answer shows the exact argv and directory and asks the person. A refusal, a dismissal or a `-p` run leaves the item unverified.
 3. It records `HEAD` and a fingerprint of the working tree (a hash of `git diff HEAD` and `git status --porcelain`), runs each check argv itself with no shell, in the directory the orchestrator named (absolute, default the session directory), and reads `HEAD` and the fingerprint again. Each check has a 10 minute timeout.
-4. The item becomes `verified` only if every check exited with its expected code and `HEAD` and the fingerprint did not change during the run. Otherwise it is `failed`, with the tails of the output, and the agent must `claim` again.
+4. The item becomes `verified` if every check exited with its expected code. A wrong exit code, or a check that could not run, makes it `failed` with the output tails, and the agent must `claim` again. If `HEAD` or the fingerprint changed during the run, nothing is recorded: the item stays `claimed_done` and the orchestrator runs `verify` again on a quiet tree.
 
 The record keeps the item `gen`, directory, `HEAD` and fingerprint before and after, and per check the exit code and the last 400 characters of output. `verified` means these checks passed in that directory at that commit and tracked-file state at that moment. It is evidence about a changing working tree, not a snapshot. A check proves only what its command tests, and the mod does not detect tests weakened between plan and verify.
 
@@ -113,7 +113,7 @@ Claude Code's native `/goal` keeps a session going until a condition holds, and 
 
 ## Token cost
 
-Measured in a headless run on haiku:
+Measured by the slice 9 coder in a headless haiku run; the figures are not recorded elsewhere:
 
 | Setup | Tokens |
 | --- | --- |
@@ -121,7 +121,7 @@ Measured in a headless run on haiku:
 | Tool registered, no plan | 54,708 |
 | Tool registered, 3 open plans | 54,872 |
 
-- **Tool schema:** about 1,230 tokens per session for every agent that lists the tool. This is why only the agents that take or author items list it; the read-only auditors and shippers do not.
+- **Tool schema:** about 1,230 tokens, added to every request of an agent that lists the tool (the main-loop difference, 54,708 minus 53,479). This is why only the agents that take or author items list it; the read-only auditors and shippers do not.
 - **Status block:** about 160 tokens for 3 open plans. It stays in the context of the orchestrator's session until compaction or `/clear`. With no open plan nothing is injected.
 
 These are headless numbers. The figure interactive `/context` shows is still to be measured.
@@ -135,5 +135,7 @@ Plan files are plain files under `~/.claude`. Anything that can write there can 
 - **Teammates in tmux panes are untested.** An in-process teammate gets its own listed `agentId` and works like a subagent; a separate tmux-pane teammate may show up with no `agentId`, and the tool would then treat it as the orchestrator. For this reason no teammate definition lists the tool.
 - **Reservation leak.** The spawn hook reserves an item before the agent starts. If that spawn is then denied or fails, the reservation stays and a retry of the spawn finds the item reserved. The effect is a lost reminder and a lost early bind; the agent's own `claim` still binds it.
 - **100-plan read cap.** The newest 100 plan files of a project are read on every prompt and subagent start, and nothing prunes finished plans or rotates ledgers in v0.
-- **Interactive prompts unrun in some paths.** `/clear` and `/compact` re-injection in a real session, and the reminder of a resumed agent, are still for a person to check.
+- **Live checks.** The person ran the `/plans unlock`, `repair` and `abandon` dialogs in a real session on 2026-11-10. The record for `repair` and `unlock` says only that the rest worked, so treat those two as not proven in detail. `/clear`, `/compact` and resume reminders have not been run live beyond the headless probe.
+- **Ledger cap.** Once a ledger would pass 3 MiB, non-terminal changes are refused; `verify` and `abandon` still fit.
+- **Idle teammates are refused.** Only agents whose status is `running` are trusted.
 - **No stop gate.** Nothing blocks the session from ending while items are open; `/goal` is the way to keep it going.
