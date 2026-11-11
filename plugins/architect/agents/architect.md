@@ -7,6 +7,7 @@ tools: Read, Glob, Grep, LSP, Bash, Write, Edit, WebFetch, WebSearch, Skill, Too
 skills:
   - planning:planning
   - codebase-memory
+  - plan-ledger-usage:plan-ledger
 color: purple
 ---
 

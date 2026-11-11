@@ -8,6 +8,7 @@ disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - coding:coding
   - codebase-memory
+  - plan-ledger-usage:plan-ledger
 color: blue
 ---
 

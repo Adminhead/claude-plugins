@@ -7,6 +7,7 @@ tools: Read, Glob, Grep, LSP, Bash, WebFetch, WebSearch, Skill, ToolSearch, mcp_
 skills:
   - problem-solving:problem-solving
   - codebase-memory
+  - plan-ledger-usage:plan-ledger
 color: red
 ---
 

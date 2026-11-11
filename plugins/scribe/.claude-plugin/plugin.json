@@ -1,6 +1,6 @@
 {
   "name": "scribe",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "A documentation subagent that writes and updates standalone docs (READMEs, guides, changelogs and Outline wiki documents), checking every claim against the code and marking anything it could not verify. Docs that a code change makes stale stay with the coder making the change.",
   "author": {
     "name": "AdminHead",

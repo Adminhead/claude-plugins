@@ -7,6 +7,7 @@ tools: Read, Glob, Grep, Bash, Edit, Write, Skill, WebFetch, WebSearch, ToolSear
 skills:
   - db-schema-design:db-schema-design
   - postgres:postgres
+  - plan-ledger-usage:plan-ledger
 color: pink
 ---
 

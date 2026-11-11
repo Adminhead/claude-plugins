@@ -7,6 +7,7 @@ tools: Read, Edit, Write, Bash, Grep, Glob, LSP, Skill, WebFetch, WebSearch, Tod
 disallowedTools: Agent, Workflow, mcp__claude-in-chrome
 skills:
   - codebase-memory
+  - plan-ledger-usage:plan-ledger
 color: cyan
 ---
 

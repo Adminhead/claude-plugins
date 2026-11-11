@@ -6,6 +6,7 @@ effort: high
 tools: Read, Glob, Grep, LSP, Bash, Skill, ToolSearch, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__search_code, mcp__consult__consult, mcp__plan-ledger__plan
 skills:
   - codebase-memory
+  - plan-ledger-usage:plan-ledger
 color: orange
 ---
 

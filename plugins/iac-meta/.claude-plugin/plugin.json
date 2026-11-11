@@ -1,6 +1,6 @@
 {
   "name": "iac-meta",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Plugin set for infrastructure-as-code projects, installed at project scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -12,6 +12,7 @@
     "docker",
     "bash",
     "devops",
+    "plan-ledger-usage",
     {
       "name": "bash-language-server",
       "marketplace": "claude-code-lsps"
