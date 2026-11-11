@@ -3,14 +3,17 @@ import { apply } from '../hooks/plan/apply'
 import { checksHash } from '../hooks/plan/checks'
 import {
   CRASH_EXIT,
+  approveQuestion,
   commandFor,
   fingerprint,
   gateQuestion,
   judge,
   outTail,
+  skippedNote,
   summarize,
   treeArgvs,
   verdictOf,
+  verifyModeOption,
 } from '../hooks/plan/verify'
 import type { Actor, Check, CheckResult, Item, Tree } from '../hooks/plan/types'
 
@@ -242,5 +245,26 @@ describe('words and verdicts', () => {
     expect(s).toContain('lint exit 2 (expected 0): out')
     expect(s).toContain('abcdef123456')
     expect(s).toContain('in /w')
+  })
+})
+
+describe('verifyChecks option', () => {
+  test('only ask and off are taken as written; anything else, a typo included, is auto', () => {
+    expect(verifyModeOption('ask')).toBe('ask')
+    expect(verifyModeOption('off')).toBe('off')
+    for (const raw of ['auto', 'ASK', 'Off', '', 'on', undefined, null, false, 0, ['off']]) expect(verifyModeOption(raw)).toBe('auto')
+  })
+
+  test('the approval question carries every argv and the directory exactly, and the skipped note says what was not run', () => {
+    const q = approveQuestion('s1', [{ label: 'a\nb', argv: ['x', '"y"'], expectExit: 0 }, { label: 'c', argv: ['z'], expectExit: 1 }], '/w r')
+    expect(q).toContain('["x","\\"y\\""]')
+    expect(q).toContain('"/w r"')
+    expect(q).not.toContain('\n')
+    const bare = skippedNote(3, undefined)
+    expect(bare).toContain('3')
+    expect(bare).toContain('verifyChecks')
+    const note = skippedNote(3, 'read\nit')
+    expect(note).toContain('read it') // the caller's words are kept, on one line
+    expect(note).not.toContain('\n')
   })
 })

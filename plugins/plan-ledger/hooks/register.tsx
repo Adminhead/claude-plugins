@@ -41,19 +41,22 @@ import { DEFAULT_BLOCK_CHARS, renderBlock, renderDelta, renderItem } from './pla
 import { boundItemReminder, isOrchestratorSpawn, parsePlanRef, withReminder } from './plan/spawn'
 import { hasControl, utf8Bytes } from './plan/shared'
 import { MAX_INPUT_CHARS, TOOL, TOOL_NAME, buildActor, parseInput, renderListing, renderPlanStatus, shouldRetry, statusFor } from './plan/tool'
-import type { Action, Actor, Change, Check, CheckResult, Plan, Tree, Verification } from './plan/types'
+import type { Action, Actor, Change, Check, CheckResult, Plan, Tree, Verification, VerifyMode } from './plan/types'
 import { DEFAULT_ATTEMPT_CAP, MAX_DENIED_LOGGED, MAX_LEDGER_BYTES } from './plan/types'
 import {
   CRASH_EXIT,
   NO_HEAD,
+  approveQuestion,
   commandFor,
   fingerprint,
   gateQuestion,
   judge,
   outTail,
+  skippedNote,
   summarize,
   treeArgvs,
   verdictOf,
+  verifyModeOption,
 } from './plan/verify'
 
 // `$` is the engine's interface; the d.ts for it is written by the engine at load, so helpers take it untyped.
@@ -637,7 +640,8 @@ export type VerifyMemo = {
   verification?: Verification
 }
 
-export type VerifyOpts = MutateOpts & { memo?: VerifyMemo }
+/** `mode` is the `verifyChecks` option: absent means `auto`. */
+export type VerifyOpts = MutateOpts & { memo?: VerifyMemo; mode?: VerifyMode }
 
 const refusal = (message: string, planId: string, op: string | null = null): MutateFail =>
   failure('denied', message, planId, op)
@@ -668,16 +672,20 @@ async function resolveCwd($: Dollar, given: unknown): Promise<{ ok: true; cwd: s
  * tests only show that a rejection (`-p`) refuses. A person must confirm in an interactive session that the dialog shows
  * the exact argv and cwd, that "Run it" runs the check, and that "Refuse" and dismissing it refuse.
  */
-async function gateCheck($: Dollar, check: Check, cwd: string): Promise<string | null> {
-  let decision: 'allow' | 'ask' | 'deny'
+async function ruleDecision($: Dollar, check: Check): Promise<'allow' | 'ask' | 'deny'> {
   try {
-    decision = verdictOf(await $.tool.check({ tool: 'Bash', input: { command: commandFor(check.argv) } }))
+    return verdictOf(await $.tool.check({ tool: 'Bash', input: { command: commandFor(check.argv) } }))
   } catch {
-    decision = 'ask'
+    return 'ask'
   }
-  if (decision === 'deny') {
-    return `Check "${check.label}" is denied by the user's permission rules, so nothing was run and the item is not verified. Tell the person.`
-  }
+}
+
+const deniedByRules = (check: Check): string =>
+  `Check "${check.label}" is denied by the user's permission rules, so nothing was run and the item is not verified. Tell the person.`
+
+async function gateCheck($: Dollar, check: Check, cwd: string): Promise<string | null> {
+  const decision = await ruleDecision($, check)
+  if (decision === 'deny') return deniedByRules(check)
   if (decision === 'allow') return null
   let answer: unknown
   try {
@@ -686,6 +694,24 @@ async function gateCheck($: Dollar, check: Check, cwd: string): Promise<string |
     return `Check "${check.label}" needs the person's approval and could not be asked, so nothing was run and the item is not verified. Tell the person to verify in an interactive session.`
   }
   return answer === RUN_IT ? null : `The person refused check "${check.label}", so nothing was run and the item is not verified.`
+}
+
+/**
+ * The gate for `verifyChecks: ask`: the person approves the whole run once, whatever their rules say. A check the user's own
+ * rules deny still refuses first, without asking. The dialog lists every argv and the directory, so it replaces the per-check
+ * questions. A refused, dismissed or unanswerable question (`-p`) refuses, as in `gateCheck`.
+ */
+async function approveRun($: Dollar, itemId: string, checks: Check[], cwd: string): Promise<string | null> {
+  for (const check of checks) {
+    if ((await ruleDecision($, check)) === 'deny') return deniedByRules(check)
+  }
+  let answer: unknown
+  try {
+    answer = await $.ui.ask(approveQuestion(itemId, checks, cwd), { options: [RUN_IT, REFUSE_IT], header: 'Run checks' })
+  } catch {
+    return `Running the checks of ${itemId} needs the person's approval (verifyChecks is ask) and could not be asked, so nothing was run and the item is not verified. Tell the person to verify in an interactive session.`
+  }
+  return answer === RUN_IT ? null : `The person refused to run the checks of ${itemId}, so nothing was run and the item is not verified.`
 }
 
 /** HEAD and a fingerprint of the tree in `cwd`; null when git could not be run at all. */
@@ -818,6 +844,27 @@ export async function verifyItem(
     }
     return done
   }
+  const mode: VerifyMode = opts.mode ?? 'auto'
+  if (mode === 'off' && item.checks.length > 0) {
+    // verifyChecks is off: nothing runs and no one is asked. The orchestrator's verify is recorded as a manual verification
+    // (unchecked, counted apart from command-verified items) that names the skipped checks and the mode.
+    const at = new Date(await $.clock.now()).toISOString()
+    const skipped: Verification = {
+      kind: 'manual',
+      mode: 'off',
+      ok: true,
+      gen: item.gen,
+      cwd: '',
+      checksHash: '',
+      results: [],
+      before: null,
+      after: null,
+      note: skippedNote(item.checks.length, args.note),
+      at,
+    }
+    memo.verification = skipped
+    return commit({ ...unguarded(), verification: skipped }, skipped)
+  }
   if (args.manual === true) return mutate($, planId, base, actor, opts)
   if (item.checks.length === 0) {
     return refusal(`${item.id} has no checks, so there is nothing to run. If you checked it by hand, verify it with manual: true and a note.`, planId)
@@ -836,9 +883,14 @@ export async function verifyItem(
     memo.key = key
   }
   if (memo.gated !== true) {
-    for (const check of checks) {
-      const why = await gateCheck($, check, cwd)
+    if (mode === 'ask') {
+      const why = await approveRun($, item.id, checks, cwd)
       if (why !== null) return refusal(why, planId)
+    } else {
+      for (const check of checks) {
+        const why = await gateCheck($, check, cwd)
+        if (why !== null) return refusal(why, planId)
+      }
     }
     memo.gated = true
   }
@@ -857,7 +909,7 @@ export async function verifyItem(
   if (after === null) return failure('error', 'Could not read the working tree state after the checks, so nothing is recorded. Retry; the checks are not run again.', planId, null)
 
   const at = new Date(await $.clock.now()).toISOString()
-  const judged = judge({ ...item, checks }, memo.results, memo.before, after, { cwd, at, ranHash })
+  const judged = judge({ ...item, checks }, memo.results, memo.before, after, { cwd, at, ranHash, mode })
   if (!judged.ok) return refusal(`${judged.why} ${item.id} stays claimed_done.`, planId)
   memo.verification = judged.verification
   return commit({ ...unguarded(), verification: judged.verification }, judged.verification)
@@ -1009,7 +1061,7 @@ async function readAction($: Dollar, a: Extract<Action, { action: 'list' | 'stat
 }
 
 /** Serves one call of the `plan` tool. Every failure is an instruction for the model; nothing here throws on bad input. */
-export async function planTool($: Dollar, e: any, attemptCap: number): Promise<ToolAnswer> {
+export async function planTool($: Dollar, e: any, attemptCap: number, verifyMode: VerifyMode = 'auto'): Promise<ToolAnswer> {
   let size = MAX_INPUT_CHARS + 1
   try {
     size = JSON.stringify(e).length
@@ -1029,7 +1081,7 @@ export async function planTool($: Dollar, e: any, attemptCap: number): Promise<T
   if (a.action === 'verify') {
     const args: VerifyArgs = { gen: a.gen, manual: a.manual, note: a.note, cwd: a.cwd, ifRev: a.ifRev }
     const memo: VerifyMemo = {}
-    return toAnswer(await withRetry($, a, (opts) => verifyItem($, a.plan, a.item, args, actor, { ...opts, memo }), base))
+    return toAnswer(await withRetry($, a, (opts) => verifyItem($, a.plan, a.item, args, actor, { ...opts, memo, mode: verifyMode }), base))
   }
   const planId = a.action === 'create' ? null : (a as { plan: string }).plan
   return toAnswer(await withRetry($, a, (opts) => mutate($, planId, a, actor, opts), base))
@@ -1417,6 +1469,7 @@ export const register: Register = (on, options) => {
   const withTool = options?.registerTool !== false
   const attemptCap = capOption(options?.attemptCap)
   const injectMax = injectOption(options?.injectMaxChars)
+  const verifyMode = verifyModeOption(options?.verifyChecks)
 
   on('session.start', async ($, e, next) => {
     await registerSurface($, withTool)
@@ -1447,7 +1500,7 @@ export const register: Register = (on, options) => {
   if (withTool) {
     // The answer is the tool's result. A throw out of the handler (the transaction catches its own) refuses the call with
     // an instruction rather than leaving it unanswered; a change may have been recorded, so the model is told to look first.
-    on('tool.call', { tool: 'mcp__plan-ledger__plan' }, ($, e: any) => planTool($, e, attemptCap)).catch(() => ({
+    on('tool.call', { tool: 'mcp__plan-ledger__plan' }, ($, e: any) => planTool($, e, attemptCap, verifyMode)).catch(() => ({
       deny: 'The plan tool failed before it answered. Check the state with status or get before repeating a change.',
     }))
   }

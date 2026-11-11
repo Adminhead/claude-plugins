@@ -1,6 +1,6 @@
 # plan-ledger
 
-A mod that keeps a work plan outside the conversation. The orchestrator writes a plan of items and briefs each subagent with a reference (`plan-ref: <planId>/<itemId>`) instead of pasting the task. A subagent reads its own item, does the work, and reports `claim_done`. Only the orchestrator can mark an item `verified`, and the mod runs the item's recorded check commands itself to decide.
+A mod that keeps a work plan outside the conversation. The orchestrator writes a plan of items and briefs each subagent with a reference (`plan-ref: <planId>/<itemId>`) instead of pasting the task. A subagent reads its own item, does the work, and reports `claim_done`. Only the orchestrator can mark an item `verified`, and by default the mod runs the item's recorded check commands itself to decide (the `verifyChecks` option changes that).
 
 ## Install
 
@@ -10,13 +10,27 @@ claude plugin install plan-ledger@adminhead --scope user
 
 This registers the `plan` tool (`mcp__plan-ledger__plan`) and the `/plans` command. A subagent sees the tool only when its `tools:` allowlist lists `mcp__plan-ledger__plan`. The `coder`, `dba`, `devops`, `debugger`, `scribe`, `architect` and `reviewer` agents do; the orchestration agent inherits every tool. A plugin-provided agent's type reaches the mod prefixed (`coder:coder`), and the mod strips the prefix before it compares types. Teammates and workflow definitions do not list the tool.
 
+The `plan-ledger-usage` plugin ships a skill (`plan-ledger-usage:plan-ledger`) that teaches an agent the call sequences below; those agents preload it, and `orchestration-meta` installs it.
+
 ## Data model
 
 A plan has a title, a status and up to 20 items. A plan is `draft` (created, nothing claimable), `active`, `abandoned`, or `done` (derived: every item is `verified` or `abandoned`).
 
-An item holds a title, instructions (up to 8000 bytes), acceptance lines, the files it owns, the item ids it needs (`deps`), the agent type that does it, a model, and `checks`: up to 8 commands, each an argv list with a label and an expected exit code (0 by default). Items are numbered `s1`, `s2`, and so on. Each also tracks its status, `attempts`, a `gen` counter (bumped by `claim_done`, `amend` and `reopen`), the agent it is bound to, and the evidence the agent reported.
+An item holds a title, instructions (up to 8000 bytes), acceptance lines, the files it owns, the item ids it needs (`deps`), the agent type that does it, a model, `parallelSafe` (see below), and `checks`: up to 8 commands, each an argv list with a label and an expected exit code (0 by default). Items are numbered `s1`, `s2`, and so on. Each also tracks its status, `attempts`, a `gen` counter (bumped by `claim_done`, `amend` and `reopen`), the agent it is bound to, and the evidence the agent reported.
 
 Item statuses: `pending`, `in_progress`, `blocked`, `claimed_done`, `verified`, `failed`, `abandoned`. A `pending` item is ready when every dep is `verified`.
+
+### Parallel items
+
+`parallelSafe` (boolean, set at `create` or with `amend`; absent means `false`) is the author's declaration that the item may run at the same time as other ready items: it owns disjoint `files` and shares no state with them. It is advice for the orchestrator and changes no claim rule: any ready item can be claimed whether or not it is flagged, and plans written before the field existed read as `false`.
+
+- `status <plan>` (and `/plans status <plan>`) ends with a `Ready:` line that splits the ready items of an `active` plan into `parallel-safe (launch together)` and `alone or in sequence`, and names ready parallel-safe items whose files overlap. `get` and `/plans show` show the flag, and the injected block marks a ready parallel item `s2 pending (parallel)`.
+- `create` and `amend` never refuse for it, but their answer carries a `Warning:` when two live parallel-safe items list the same file, one inside the other's directory, or a glob and a file under its directory. The check is on the spelling of the paths, so a symlink or a generated file escapes it.
+- Launch the parallel-safe items in one batch, one `Agent` call each with its own `plan-ref`. The orchestrator verifies after the batch settles: `verify` refuses to record a result when the working tree changed while its checks ran, and a running sibling edits the tree.
+
+### Concurrent writers
+
+Several agents may `claim`, `progress` and `claim_done` on different items of one plan at once, from this session or from another terminal. Every change goes through the plan's lock: `mkdir` of `<planId>.lock` is the atomic acquire (a caller waits up to 5 seconds, and a tool call that stays busy is retried twice), the plan is re-read after the lock is held, the ledger line is appended, and the plan file is published by rename, all before the lock is released. A read takes no lock and sees the old file or the new one. Checks at `verify` run outside the lock, so a slow check does not hold up the other agents, and the result is committed under the lock only if the item is unchanged. So two writers cannot lose each other's change, and two claims of one item end with one binding and one refusal. `tests/register.test.tsx` runs six agents through claim, progress and `claim_done` plus an orchestrator edit concurrently and checks that the ledger has every change once, in order, and replays to the plan file; `tests/store.spec.ts` covers the lock script with real processes. The cost is serialization: each change holds the lock for a few file operations.
 
 | Action | Who | From | To |
 | --- | --- | --- | --- |
@@ -76,13 +90,13 @@ A refusal comes back to the model as an instruction ("This item is bound to anot
 An agent's `claim_done` is a claim, stored as self-reported. Only the orchestrator's `verify` sets `verified`, and the tool takes no result data: a `verify` call carries a plan, an item and the `gen` it read, and the mod does the rest.
 
 1. It authorizes the call and checks the item is `claimed_done` before it runs anything.
-2. For each recorded check, it asks the person's permission rules about the command (`$.tool.check`, as a Bash call). `allow` runs it without a prompt, `deny` refuses, and `ask` or no answer shows the exact argv and directory and asks the person. A refusal, a dismissal or a `-p` run leaves the item unverified.
+2. What happens next depends on `verifyChecks` (see Options). `off` skips everything below: nothing runs and nobody is asked, and the item is recorded as manually verified. `ask` shows one question that lists every check's exact argv and the directory, and runs them only if the person approves; a check the person's rules deny is refused first, without asking. `auto`, the default, does the following for each recorded check: it asks the person's permission rules about the command (`$.tool.check`, as a Bash call). `allow` runs it without a prompt, `deny` refuses, and `ask` or no answer shows the exact argv and directory and asks the person. A refusal, a dismissal or a `-p` run leaves the item unverified.
 3. It records `HEAD` and a fingerprint of the working tree (a hash of `git diff HEAD` and `git status --porcelain`), runs each check argv itself with no shell, in the directory the orchestrator named (absolute, default the session directory), and reads `HEAD` and the fingerprint again. Each check has a 10 minute timeout.
 4. The item becomes `verified` if every check exited with its expected code. A wrong exit code, or a check that could not run, makes it `failed` with the output tails, and the agent must `claim` again. If `HEAD` or the fingerprint changed during the run, nothing is recorded: the item stays `claimed_done` and the orchestrator runs `verify` again on a quiet tree.
 
 The record keeps the item `gen`, directory, `HEAD` and fingerprint before and after, and per check the exit code and the last 400 characters of output. `verified` means these checks passed in that directory at that commit and tracked-file state at that moment. It is evidence about a changing working tree, not a snapshot. A check proves only what its command tests, and the mod does not detect tests weakened between plan and verify.
 
-An item with no checks can be verified by hand (`verify` with `manual: true` and a note). That is recorded as unchecked and counted apart from command-verified items.
+An item with no checks can be verified by hand (`verify` with `manual: true` and a note). That is recorded as unchecked and counted apart from command-verified items. With `verifyChecks: off`, a plain `verify` of an item that has checks is recorded the same way (kind `manual`, mode `off`, a note saying how many checks were not run, plus the caller's `note` if given). The model never supplies the mode: it is the setting's, written by the mod, and the verification record keeps it (`auto`, `ask` or `off`; absent on one recorded before the setting existed, which ran as `auto`).
 
 The installed Bash guards never see these runs, since the mod starts the processes itself. A command a guard would hold shows up only as `ask`, so the prompt is the safeguard for those.
 
@@ -94,6 +108,7 @@ Set with `/config` or `pluginConfigs["plan-ledger"].options`:
 | --- | --- | --- |
 | `attemptCap` | `3` | Claims allowed per item before it stays `failed` until reopened. Whole number, 1 to 10. |
 | `injectMaxChars` | `800` | Most characters of plan status handed to the orchestrator at session start, after `/clear` and after `/compact` (about 4 characters per token). Whole number, 100 to 4000. |
+| `verifyChecks` | `auto` | How `verify` treats an item's recorded checks. `auto`: the mod runs them, asking the person only where their permission rules say `ask`. `ask`: the person approves each run, once for all of an item's checks, whatever their rules allow (a denied check still refuses). `off`: the mod runs nothing and a `verify` is accepted as an unchecked manual verification. Any other value is `auto`. |
 | `registerTool` | `true` | Off: no `plan` tool is registered, so no agent can read or change a plan; `/plans` stays. Only an exact `false` turns it off. Takes effect after a reload or in a new session. |
 
 ## Status in the conversation
@@ -135,6 +150,7 @@ Plan files are plain files under `~/.claude`. Anything that can write there can 
 - **Teammates in tmux panes are untested.** An in-process teammate gets its own listed `agentId` and works like a subagent; a separate tmux-pane teammate may show up with no `agentId`, and the tool would then treat it as the orchestrator. For this reason no teammate definition lists the tool.
 - **Reservation leak.** The spawn hook reserves an item before the agent starts. If that spawn is then denied or fails, the reservation stays and a retry of the spawn finds the item reserved. The effect is a lost reminder and a lost early bind; the agent's own `claim` still binds it.
 - **100-plan read cap.** The newest 100 plan files of a project are read on every prompt and subagent start, and nothing prunes finished plans or rotates ledgers in v0.
+- **`verifyChecks: ask` is tested with a faked `$.ui.ask`.** It uses the same dialog call as the per-check question and the `/plans` confirmations, which no one has yet confirmed live for this tool path. A dismissed or unanswerable question (`-p`) refuses.
 - **Live checks.** The person ran the `/plans unlock`, `repair` and `abandon` dialogs in a real session on 2026-11-10. The record for `repair` and `unlock` says only that the rest worked, so treat those two as not proven in detail. `/clear`, `/compact` and resume reminders have not been run live beyond the headless probe.
 - **Ledger cap.** Once a ledger would pass 3 MiB, non-terminal changes are refused; `verify` and `abandon` still fit.
 - **Idle teammates are refused.** Only agents whose status is `running` are trusted.

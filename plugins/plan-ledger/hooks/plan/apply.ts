@@ -14,6 +14,7 @@
 //   `ctx.newPlanId` (the line's `plan`) from the line.
 import { authorize, normalizeAgentType } from './authorize'
 import { checksHash, validateChecks } from './checks'
+import { overlapWarnings } from './parallel'
 import { hasControl, isNonEmpty, isObject, utf8Bytes } from './shared'
 import type {
   Action,
@@ -93,6 +94,7 @@ const ITEM_FIELDS: ReadonlySet<string> = new Set([
   'agent',
   'model',
   'checks',
+  'parallelSafe',
 ])
 
 // ---------------------------------------------------------------- entry point
@@ -337,6 +339,10 @@ function readFields(raw: unknown, complete: boolean): Partial<ItemInput> | strin
     if (!Array.isArray(c)) return c.error
     out.checks = c
   }
+  if (r.parallelSafe !== undefined) {
+    if (typeof r.parallelSafe !== 'boolean') return 'parallelSafe must be true or false.'
+    out.parallelSafe = r.parallelSafe
+  }
   return out
 }
 
@@ -428,9 +434,12 @@ function create(e: Env<'create'>): Out {
     from: null,
     to: 'draft',
     data: { title: action.title, items: inputs, project: ctx.project },
-    message: `Created plan ${plan.id} as a draft with ${items.length} item${items.length === 1 ? '' : 's'}. The orchestrator reviews it, then activates it; nothing is claimable until then.`,
+    message: `Created plan ${plan.id} as a draft with ${items.length} item${items.length === 1 ? '' : 's'}. The orchestrator reviews it, then activates it; nothing is claimable until then.${warned(overlapWarnings(items))}`,
   }
 }
+
+/** Overlap warnings as a suffix for an answer: advice, never a refusal. */
+const warned = (lines: string[]): string => (lines.length === 0 ? '' : ` Warning: ${lines.join(' ')}`)
 
 function activate(e: Env<'activate'>): Out {
   const { plan } = e
@@ -640,7 +649,11 @@ function failureTail(results: CheckResult[]): string {
 function verificationProblem(item: Item, v: Verification): string | null {
   if (!isObject(v) || typeof v.ok !== 'boolean' || !Array.isArray(v.results)) return 'The verification is malformed, so it is refused.'
   if (v.gen !== item.gen) return `The verification is for gen ${String(v.gen)} of ${item.id}, which is at gen ${item.gen}.`
-  if ((v.kind === 'checks') !== (item.checks.length > 0) || (v.kind !== 'checks' && v.kind !== 'manual')) {
+  if (v.mode !== undefined && v.mode !== 'auto' && v.mode !== 'ask' && v.mode !== 'off') return 'The verification names an unknown verifyChecks mode.'
+  // Checks skipped on purpose (`off`) are the one case where an item that has checks is verified as manual.
+  const skipped = v.kind === 'manual' && v.mode === 'off'
+  if (v.kind !== 'checks' && v.kind !== 'manual') return 'The verification is malformed, so it is refused.'
+  if (skipped ? item.checks.length === 0 : (v.kind === 'checks') !== (item.checks.length > 0)) {
     return `The verification kind does not match ${item.id}: items with checks are verified by running them, items without by manual.`
   }
   if (v.kind === 'checks') {
@@ -710,7 +723,13 @@ function verify(e: Env<'verify'>): Out {
     to: ok ? 'verified' : 'failed',
     data,
     message: ok
-      ? `${item.id} is verified${v.kind === 'manual' ? ' manually (no command was run)' : ' by its checks'}.`
+      ? `${item.id} is verified${
+          v.kind === 'manual'
+            ? v.mode === 'off'
+              ? ` manually: verifyChecks is off, so its ${item.checks.length} check${item.checks.length === 1 ? ' was' : 's were'} not run`
+              : ' manually (no command was run)'
+            : ' by its checks'
+        }.`
       : `${item.id} failed verification. The agent must claim it again (amend it first if the instructions were wrong).`,
   }
 }
@@ -753,7 +772,8 @@ function amend(e: Env<'amend'>): Out {
     data.patch = f
     from = item.status
     to = item.status
-    message = `Amended ${item.id} (now gen ${edited.gen})${typeChanged ? '; its agent type changed, so its binding was cleared' : ''}.`
+    const clash = overlapWarnings(next.items).filter((w) => w.startsWith(`${item.id} `) || w.includes(` and ${item.id} `))
+    message = `Amended ${item.id} (now gen ${edited.gen})${typeChanged ? '; its agent type changed, so its binding was cleared' : ''}.${warned(clash)}`
   }
   return { plan: next, item: action.item ?? null, from, to, data, message }
 }

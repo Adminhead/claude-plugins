@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 import { dirOf, listPlans, mutate, planTool, plansCommand, readPlan, register, spawnHook, verifyItem, type VerifyMemo } from '../hooks/register'
-import { parseLedger } from '../hooks/plan/replay'
+import { parseLedger, replay } from '../hooks/plan/replay'
 import { appendArgv, lockAcquireArgv, lockReleaseArgv, mkdirArgv, publishArgv, tailArgv } from '../hooks/plan/store'
 import { MAX_LEDGER_BYTES } from '../hooks/plan/types'
 
@@ -66,6 +66,10 @@ type World = {
   lockAge: number
   /** Every `$.ui.log` line, from the hook under test or a helper. */
   uiLogs: string[]
+  /** Acquire waits for a held lock like the real script does (microtask polls) instead of answering busy at once. */
+  waitLock: boolean
+  /** The most callers seen waiting for a lock at one time. */
+  maxWaiting: number
 }
 
 let homes = 0
@@ -114,7 +118,10 @@ function world(on: any): World & { $: any } {
     onAsk: null,
     lockAge: 0,
     uiLogs: [],
+    waitLock: false,
+    maxWaiting: 0,
   }
+  let waiting = 0
   const h: Record<string, (e: any) => any> = {
     'env.get': () => w.home,
     'session.repo': () => ({ root: '/work/repo', remote: null, internal: false, name: null }),
@@ -220,7 +227,18 @@ function world(on: any): World & { $: any } {
           w.inits.push({ kind: 'acquire', ...e.init })
           const [lock, token] = a
           if (!w.dirs.has(dirname(lock))) return res(1)
-          if (w.stuck || w.locks.has(lock)) return res(75)
+          if (w.stuck) return res(75)
+          if (w.locks.has(lock) && w.waitLock) {
+            return (async () => {
+              w.maxWaiting = Math.max(w.maxWaiting, ++waiting)
+              for (let i = 0; i < 100_000 && w.locks.has(lock); i++) await Promise.resolve()
+              waiting--
+              if (w.locks.has(lock)) return res(75)
+              w.locks.set(lock, token)
+              return res(0)
+            })()
+          }
+          if (w.locks.has(lock)) return res(75)
           w.locks.set(lock, token)
           return res(0)
         }
@@ -651,6 +669,69 @@ describe('transaction', () => {
     w.files.delete(fileEnding(w, '.json'))
     const rebuilt = await readPlan(w.$, id)
     expect(rebuilt.ok && rebuilt.plan).toEqual(live.ok && live.plan)
+  })
+})
+
+describe('parallel agents', () => {
+  const agent = (n: number) => ({ kind: 'agent', agentId: `a${n}`, agentType: 'coder', session: 's1' }) as const
+  const N = 6
+  const items = Array.from({ length: N }, (_, n) => ({ ...item, title: `item ${n + 1}`, files: [`src/f${n + 1}.ts`], parallelSafe: true }))
+
+  test('agents working different items of one plan at once lose no write: every change is in the ledger, in order, and the plan file matches it', async ($: any, on: any) => {
+    const w = world(on)
+    w.waitLock = true
+    const made = await mutate(w.$, null, { action: 'create', title: 'Plan', items } as any, MAIN)
+    expect(made.ok).toBe(true)
+    const id = made.planId as string
+    expect((await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)).ok).toBe(true)
+
+    // Each agent runs its own chain; the chains and an orchestrator edit interleave at every await.
+    const chain = async (n: number) => {
+      const who = agent(n)
+      const item = `s${n}`
+      const steps: any[] = [
+        { action: 'claim', plan: id, item },
+        { action: 'progress', plan: id, item, note: `working on ${n}` },
+        { action: 'claim_done', plan: id, item, summary: `done ${n}`, commands: [], commits: [], files: [`src/f${n}.ts`] },
+      ]
+      for (const step of steps) {
+        const r = await mutate(w.$, id, step, who)
+        expect(r).toMatchObject({ ok: true })
+      }
+    }
+    const orchestrator = mutate(w.$, id, { action: 'amend', plan: id, planTitle: 'Plan, renamed' }, MAIN)
+    const results = await Promise.all([orchestrator, ...Array.from({ length: N }, (_, n) => chain(n + 1))])
+    expect(results[0]).toMatchObject({ ok: true })
+
+    expect(w.maxWaiting).toBeGreaterThan(1) // the callers really did queue on the lock
+    expect(w.locks.size).toBe(0)
+    const plan = jsonOf(w)
+    expect(plan.title).toBe('Plan, renamed')
+    for (let n = 1; n <= N; n++) {
+      expect(plan.items[n - 1]).toMatchObject({ status: 'claimed_done', attempts: 1, boundAgent: { agentId: `a${n}` }, claimed: { summary: `done ${n}` }, note: `working on ${n}` })
+    }
+    // 1 create + 1 activate + 1 amend + 3 steps per agent, each rev used once
+    const total = 3 + 3 * N
+    expect(revsOf(w)).toEqual(Array.from({ length: total }, (_, i) => i + 1))
+    expect(plan.rev).toBe(total)
+    expect(replay(ledgerOf(w).changes).plan).toEqual(plan)
+    expect(w.files.size).toBe(2) // no tmp file left
+  })
+
+  test('two agents racing for the same item: one binds it, the other is refused, and both outcomes are in the ledger', async ($: any, on: any) => {
+    const w = world(on)
+    w.waitLock = true
+    const made = await mutate(w.$, null, { action: 'create', title: 'Plan', items: [item] } as any, MAIN)
+    const id = made.planId as string
+    await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)
+    const claim = (n: number) => mutate(w.$, id, { action: 'claim', plan: id, item: 's1' }, agent(n))
+    const out = await Promise.all([claim(1), claim(2), claim(3)])
+    expect(out.filter((r) => r.ok)).toHaveLength(1)
+    expect(out.filter((r) => !r.ok && r.code === 'denied')).toHaveLength(2)
+    const plan = jsonOf(w)
+    expect(plan.items[0]).toMatchObject({ status: 'in_progress', attempts: 1 })
+    expect(ledgerOf(w).changes.filter((c) => c.action === 'claim' && c.denied !== null)).toHaveLength(2)
+    expect(revsOf(w)).toEqual([1, 2, 3])
   })
 })
 
@@ -1232,6 +1313,126 @@ describe('verification', () => {
         expect((await itemOf(w, id)).status).toBe('verified')
       })
     }
+  })
+
+  describe('verifyChecks', () => {
+    const twoChecks = [unit, { label: 'types', argv: ['bun', 'tsc'], expectExit: 0 }]
+    const run = (w: World & { $: any }, id: string, mode: 'auto' | 'ask' | 'off', args: Record<string, unknown> = {}, actor: any = MAIN) =>
+      itemOf(w, id).then((it) => verifyItem(w.$, id, 's1', { gen: it.gen, ...args }, actor, { mode }))
+    const verifiedOps = (w: World) => ledgerOf(w).changes.filter((c) => c.action === 'verify' && c.denied === null)
+
+    test('auto is the default: the checks run under the person\'s rules, and the mode is recorded', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      expect(await verifyItem(w.$, id, 's1', { gen: (await itemOf(w, id)).gen }, MAIN)).toMatchObject({ ok: true })
+      expect(w.checkRuns).toHaveLength(1)
+      expect((await itemOf(w, id)).verification).toMatchObject({ kind: 'checks', ok: true, mode: 'auto' })
+    })
+
+    test('off: the orchestrator\'s verify runs nothing, asks nothing, and is recorded as an unchecked manual verification', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, twoChecks)
+      const r = await run(w, id, 'off', { note: 'reviewed the diff' })
+      expect(r).toMatchObject({ ok: true, code: 'applied' })
+      ranNothing(w)
+      const it = await itemOf(w, id)
+      expect(it.status).toBe('verified')
+      expect(it.checks).toHaveLength(2)
+      expect(it.verification).toMatchObject({ kind: 'manual', mode: 'off', ok: true, results: [], before: null, after: null })
+      expect(it.verification?.note).toContain('2 recorded checks were not run')
+      expect(it.verification?.note).toContain('reviewed the diff')
+      expect((verifiedOps(w)[0].data as any).verification).toMatchObject({ kind: 'manual', mode: 'off' })
+    })
+
+    test('off: manual true works the same, and a replay of the ledger rebuilds the verified item', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      expect(await run(w, id, 'off', { manual: true })).toMatchObject({ ok: true })
+      ranNothing(w)
+      expect(replay(ledgerOf(w).changes).plan).toEqual(jsonOf(w))
+    })
+
+    test('off changes nothing for the caller\'s rights: an agent, a stale gen and an item that is not claimed_done are still refused', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      expect(await run(w, id, 'off', {}, A1)).toMatchObject({ ok: false, code: 'denied' })
+      const it = await itemOf(w, id)
+      expect(await verifyItem(w.$, id, 's1', { gen: it.gen - 1 }, MAIN, { mode: 'off' })).toMatchObject({ ok: false, code: 'denied' })
+      expect((await itemOf(w, id)).status).toBe('claimed_done')
+      expect(await run(w, id, 'off')).toMatchObject({ ok: true })
+      expect(await run(w, id, 'off')).toMatchObject({ ok: false, code: 'denied' })
+      ranNothing(w)
+    })
+
+    test('off: an item with no checks still needs manual true and a note', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, [])
+      expect(await run(w, id, 'off')).toMatchObject({ ok: false, code: 'denied' })
+      expect(await run(w, id, 'off', { manual: true, note: 'by hand' })).toMatchObject({ ok: true })
+      expect((await itemOf(w, id)).verification).toMatchObject({ kind: 'manual', note: 'by hand' })
+      expect((await itemOf(w, id)).verification?.mode).toBeUndefined()
+    })
+
+    test('auto and ask still refuse manual for an item that has checks', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      for (const mode of ['auto', 'ask'] as const) {
+        expect(await run(w, id, mode, { manual: true, note: 'trust me' })).toMatchObject({ ok: false, code: 'denied' })
+      }
+      ranNothing(w)
+    })
+
+    test('ask: one question lists every check and the directory; approval runs them all and is recorded', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, twoChecks)
+      w.verdict = () => ({ decision: 'allow' }) // the person's rules allow it, and ask still asks
+      expect(await run(w, id, 'ask')).toMatchObject({ ok: true, code: 'applied' })
+      expect(w.asked).toHaveLength(1)
+      expect(w.asked[0].question).toContain('["bun","test","x"]')
+      expect(w.asked[0].question).toContain('["bun","tsc"]')
+      expect(w.asked[0].question).toContain('"/work/repo"')
+      expect(w.checkRuns).toHaveLength(2)
+      expect(w.log.indexOf('ask')).toBeLessThan(w.log.indexOf('check'))
+      expect((await itemOf(w, id)).verification).toMatchObject({ kind: 'checks', ok: true, mode: 'ask' })
+    })
+
+    test('ask: Refuse, any other answer and a dismissed question run nothing and leave the item claimed_done', async ($: any, on: any) => {
+      for (const answer of ['Refuse', 'something typed under Other', 'reject']) {
+        const w = world(on)
+        const id = await claimed(w)
+        w.answer = answer
+        const r = await run(w, id, 'ask')
+        expect(r).toMatchObject({ ok: false, code: 'denied' })
+        expect(w.checkRuns).toEqual([])
+        expect(w.gitCalls).toEqual([])
+        expect((await itemOf(w, id)).status).toBe('claimed_done')
+        expect(verifiedOps(w)).toHaveLength(0)
+      }
+    })
+
+    test('ask: a check the person\'s rules deny is refused without a question', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w, twoChecks)
+      w.verdict = (command) => (command.includes('tsc') ? { decision: 'deny' } : { decision: 'allow' })
+      expect(await run(w, id, 'ask')).toMatchObject({ ok: false, code: 'denied' })
+      expect(w.asked).toEqual([])
+      expect(w.checkRuns).toEqual([])
+    })
+
+    test('the plan tool passes the setting to verify, and the model can supply neither a mode nor a verification', async ($: any, on: any) => {
+      const w = world(on)
+      const id = await claimed(w)
+      const gen = (await itemOf(w, id)).gen
+      const call = (extra: Record<string, unknown>, mode: 'auto' | 'ask' | 'off') =>
+        planTool(w.$, { tool: 'mcp__plan-ledger__plan', tool_use_id: 'tu', action: 'verify', plan: id, item: 's1', gen, ...extra }, 3, mode) as Promise<any>
+      expect(await call({ mode: 'off' }, 'auto')).toHaveProperty('deny')
+      expect(await call({ verification: { kind: 'manual', mode: 'off' } }, 'auto')).toHaveProperty('deny')
+      ranNothing(w)
+      const r = await call({}, 'off')
+      expect(r.result).toContain('verifyChecks is off')
+      ranNothing(w)
+      expect((await itemOf(w, id)).status).toBe('verified')
+    })
   })
 
   describe('ifRev', () => {

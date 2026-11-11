@@ -1013,3 +1013,35 @@ describe('ledger payload', () => {
     expect(itemOf(p).status).toBe('verified')
   })
 })
+
+describe('apply: a verification built with verifyChecks off', () => {
+  const claimedWith = (checks: Item['checks']) => plan([item({ status: 'claimed_done', gen: 2, boundAgent: bound('a1'), checks })])
+  const skipped = (over: Partial<Verification> = {}): Verification => ({
+    kind: 'manual',
+    mode: 'off',
+    ok: true,
+    gen: 2,
+    cwd: '',
+    checksHash: '',
+    results: [],
+    before: null,
+    after: null,
+    note: 'not run',
+    at: '2026-11-09T12:00:00.000Z',
+    ...over,
+  })
+  const verify = (p: Plan, v: Verification) => apply(p, { action: 'verify', ...ref, gen: 2, verification: v }, ctx(main))
+
+  test('is accepted for an item that has checks, and leaves it verified with a manual verification', () => {
+    const out = ok(verify(claimedWith([unit]), skipped()))
+    expect(itemOf(out.plan)).toMatchObject({ status: 'verified', verification: { kind: 'manual', mode: 'off' } })
+    expect(out.message).toContain('verifyChecks is off')
+  })
+
+  test('is refused for an item without checks, for an unknown mode, and without the off mode for an item that has checks', () => {
+    expect(denied(verify(claimedWith([]), skipped()))).toContain('kind does not match')
+    expect(denied(verify(claimedWith([unit]), skipped({ mode: 'sometimes' as any })))).toContain('unknown verifyChecks mode')
+    expect(denied(verify(claimedWith([unit]), skipped({ mode: undefined })))).toContain('kind does not match')
+    expect(denied(verify(claimedWith([unit]), skipped({ results: [{ label: 'unit', exit: 0, expectExit: 0, outTail: '' }] })))).toContain('no check results')
+  })
+})

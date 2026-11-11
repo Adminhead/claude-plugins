@@ -6,6 +6,7 @@ import { authorize, canView } from './authorize'
 import { validateChecks } from './checks'
 import { clamp, one, renderBlock } from './render'
 import { isNonEmpty, isObject, utf8Bytes } from './shared'
+import { readyLine } from './parallel'
 import { isPlanId } from './store'
 import type { Action, Actor, ItemInput, Plan } from './types'
 import { MAX_INSTRUCTIONS_BYTES, MAX_ITEMS, MAX_TITLE_CHARS } from './types'
@@ -58,6 +59,7 @@ const ITEM_PROPS = {
       required: ['label', 'argv'],
     },
   },
+  parallelSafe: { type: 'boolean', description: 'may run beside other ready items; default false' },
 }
 
 /**
@@ -103,7 +105,7 @@ export const TOOL = {
       gen: { type: 'integer', description: 'verify: the gen of the item you read' },
       manual: { type: 'boolean', description: 'verify an item with no checks by hand; needs note' },
       cwd: { type: 'string', description: 'verify: absolute directory to run the checks in' },
-      patch: { type: 'object', description: 'amend: the item fields to change, among title, instructions, acceptance, files, deps, agent, model, checks' },
+      patch: { type: 'object', description: 'amend: the item fields to change, named as in items' },
       planTitle: { type: 'string', description: 'amend: new plan title' },
       assignee: { type: 'string', description: 'assign: the agent id to bind the item to' },
       extraAttempts: { type: 'integer', description: 'reopen: attempts to add' },
@@ -143,7 +145,7 @@ const ENGINE_KEYS: Fields = keys('tool', 'tool_use_id', 'agentId', 'requestMeta'
 /** Fields that would carry a verification result; named in the refusal so the model stops looking for them. */
 const RESULT_KEYS: Fields = keys('verification', 'results', 'result', 'verified', 'checksHash', 'outcome')
 
-const ITEM_KEYS: Fields = keys('title', 'instructions', 'acceptance', 'files', 'deps', 'agent', 'model', 'checks')
+const ITEM_KEYS: Fields = keys('title', 'instructions', 'acceptance', 'files', 'deps', 'agent', 'model', 'checks', 'parallelSafe')
 
 export type ParseError = { error: string }
 const bad = (error: string): ParseError => ({ error })
@@ -195,6 +197,10 @@ function itemFields(raw: unknown, complete: boolean, where: string): Partial<Ite
     const c = validateChecks(raw.checks === undefined ? [] : raw.checks)
     if (!Array.isArray(c)) return bad(`${where}: ${c.error}`)
     out.checks = c
+  }
+  if (raw.parallelSafe !== undefined) {
+    if (typeof raw.parallelSafe !== 'boolean') return bad(`${where}: parallelSafe must be true or false.`)
+    out.parallelSafe = raw.parallelSafe
   }
   return out
 }
@@ -412,9 +418,12 @@ export function renderListing(plans: Plan[], actor: Actor, open: boolean): strin
 export function renderPlanStatus(plan: Plan, maxChars = 3000): string {
   const lines = plan.items.map((i) => {
     const who = i.boundAgent !== null ? `, bound to ${one(i.agent)}` : ''
-    return `${one(i.id)} ${one(i.status)} (${one(i.agent)}${who}, gen ${i.gen}): ${clamp(one(i.title), 70)}`
+    const par = i.parallelSafe === true ? ', parallel-safe' : ''
+    return `${one(i.id)} ${one(i.status)} (${one(i.agent)}${who}${par}, gen ${i.gen}): ${clamp(one(i.title), 70)}`
   })
-  return clamp([planLine(plan), ...lines].join('\n'), maxChars)
+  const ready = readyLine(plan)
+  // The ready line goes before the items so a long plan's clamp cuts item lines, not the launch advice.
+  return clamp([planLine(plan), ...(ready === null ? [] : [ready]), ...lines].join('\n'), maxChars)
 }
 
 /** What a `status` call with a plan returns for `actor`: the plan's items, or the refusal. */

@@ -71,7 +71,7 @@ export function renderItem(plan: Plan, itemId: string, maxChars = 8000): string 
   const head = `plan ${one(plan.id)} "${one(plan.title)}" (${one(plan.status)}), item ${one(item.id)} "${one(item.title)}": ${one(item.status)}, gen ${item.gen}, attempts ${item.attempts}.`
   // Display order; `rank` is the order they survive a cut (1 survives longest).
   const parts: { rank: number; text: string }[] = [
-    { rank: 0, text: `Agent: ${one(item.agent)} (model ${one(item.model) || 'unset'})` },
+    { rank: 0, text: `Agent: ${one(item.agent)} (model ${one(item.model) || 'unset'})${item.parallelSafe === true ? ', parallel-safe' : ''}` },
   ]
   if (item.acceptance.length > 0) parts.push({ rank: 1, text: `Acceptance:\n${item.acceptance.map((a) => `- ${one(a)}`).join('\n')}` })
   if (item.checks.length > 0) {
@@ -133,6 +133,7 @@ function itemToken(plan: Plan, item: Item): Token {
     if (waiting.length > 0) parts.push(`needs ${waiting.map(one).join(', ')}`)
     if (abandoned.length > 0) parts.push(`blocked by abandoned ${abandoned.map(one).join(', ')}`)
     if (parts.length > 0) note = ` (${parts.join('; ')})`
+    else if (item.parallelSafe === true && plan.status === 'active') note = ' (parallel)'
   }
   return { text: `${one(item.id)} ${one(item.status)}${note}`, verified: item.status === 'verified' }
 }

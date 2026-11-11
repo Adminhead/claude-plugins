@@ -3,7 +3,7 @@
 // tree fingerprint, judges the results the mod collected, and words the answer. Nothing here takes a result from a caller.
 import { checksHash, hash53, shellQuote } from './checks'
 import { one } from './render'
-import type { Check, CheckResult, Item, Tree, Verification } from './types'
+import type { Check, CheckResult, Item, Tree, Verification, VerifyMode } from './types'
 import { MAX_CHECK_TAIL_CHARS } from './types'
 
 /** What a check's `exit` reads when the process could not run to completion (timeout, no such program). A real exit is never negative. */
@@ -64,6 +64,30 @@ export function gateQuestion(check: Check, cwd: string): string {
   )
 }
 
+/**
+ * The question for `verifyChecks: ask`: one approval for the whole run, listing every check's exact argv and the directory,
+ * JSON-escaped so nothing is hidden. Labels are stored caller strings, so they go through `one`.
+ */
+export function approveQuestion(itemId: string, checks: Check[], cwd: string): string {
+  const list = checks.map((c) => `"${one(c.label).slice(0, 60)}" ${JSON.stringify(c.argv)}`).join('; ')
+  return (
+    `Run the ${checks.length} recorded check${checks.length === 1 ? '' : 's'} of plan item ${one(itemId).slice(0, 10)} in directory ${JSON.stringify(cwd)}: ${list}. ` +
+    'The plan tool starts them directly, so installed command guards do not see them. Run them?'
+  )
+}
+
+/** The `verifyChecks` option: `auto`, `ask` or `off`; anything else is `auto`. */
+export function verifyModeOption(raw: unknown): VerifyMode {
+  return raw === 'ask' || raw === 'off' ? raw : 'auto'
+}
+
+/** The note stored when checks are skipped, with the caller's own words after it. */
+export function skippedNote(count: number, note: unknown): string {
+  const why = `verifyChecks is off: ${count} recorded check${count === 1 ? ' was' : 's were'} not run.`
+  const extra = typeof note === 'string' ? one(note).slice(0, 500) : ''
+  return extra === '' ? why : `${why} ${extra}`
+}
+
 const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x)
 
 const sameTree = (a: Tree, b: Tree): boolean => a.head === b.head && a.fingerprint === b.fingerprint
@@ -74,6 +98,8 @@ export type JudgeMeta = {
   at?: string
   /** `checksHash` of the checks the mod actually executed; when given it must equal the item's. */
   ranHash?: string
+  /** The `verifyChecks` mode the run happened under, recorded on the verification. */
+  mode?: VerifyMode
 }
 
 export type Judged = { ok: true; verification: Verification } | { ok: false; why: string }
@@ -125,6 +151,7 @@ export function judge(item: Item, results: CheckResult[], before: Tree | null, a
     ok: true,
     verification: {
       kind: 'checks',
+      ...(meta.mode === undefined ? {} : { mode: meta.mode }),
       ok,
       gen: item.gen,
       cwd: meta.cwd ?? '',

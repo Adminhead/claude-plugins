@@ -44,9 +44,17 @@ export type CheckResult = { label: string; exit: number; expectExit: number; out
 /** A working-tree fingerprint taken by the mod: `git rev-parse HEAD` plus a hash of diff and status. */
 export type Tree = { head: string; fingerprint: string }
 
-/** Built by the mod, never supplied by a caller. `kind: 'manual'` means no command was run. */
+/** The `verifyChecks` option: `auto` the mod runs the checks, `ask` the person approves the run first, `off` the mod runs nothing. */
+export type VerifyMode = 'auto' | 'ask' | 'off'
+
+/**
+ * Built by the mod, never supplied by a caller. `kind: 'manual'` means no command was run. `mode` is the `verifyChecks`
+ * setting in force; absent on a verification recorded before the setting existed (it ran as `auto`). `manual` with mode
+ * `off` is an item that has checks which were skipped on purpose.
+ */
 export type Verification = {
   kind: 'checks' | 'manual'
+  mode?: VerifyMode
   ok: boolean
   gen: number
   cwd: string
@@ -69,6 +77,8 @@ export type Item = {
   agent: string
   model: string
   checks: Check[]
+  /** Declared safe to run beside other ready items (disjoint files, no shared state). Absent means false. */
+  parallelSafe?: boolean
   status: ItemStatus
   attempts: number
   /** Added to the attempt cap by `reopen { extraAttempts }`; accumulates. Starts at 0. */
@@ -109,6 +119,8 @@ export type ItemInput = {
   agent: string
   model: string
   checks: Check[]
+  /** Stored only when the author supplied it; absent means false. */
+  parallelSafe?: boolean
 }
 
 type PlanRef = { plan: string }

@@ -50,6 +50,7 @@ function itemLine(i: Item): string {
   const facts = [`agent ${one(i.agent)}`, one(i.model) === '' ? '' : `model ${one(i.model)}`, `gen ${i.gen}`, `attempts ${i.attempts}`]
   if (i.boundAgent !== null) facts.push(`bound ${clamp(one(i.boundAgent.agentId), 20)}`)
   if (i.deps.length > 0) facts.push(`needs ${i.deps.map(one).join(',')}`)
+  if (i.parallelSafe === true) facts.push('parallel-safe')
   if (i.checks.length > 0) facts.push(`${i.checks.length} check${i.checks.length === 1 ? '' : 's'}`)
   parts.push(`  ${facts.filter((f) => f !== '').join(', ')}`)
   if (i.claimed !== null) parts.push(`  claimed (self-reported): ${clamp(one(i.claimed.summary), 140)}`)
