@@ -1914,7 +1914,7 @@
       "name": "plan-ledger",
       "source": "./plugins/plan-ledger",
       "description": "Work-plan tracker: the orchestrator hands items to subagents by reference; the agent claims done and the mod verifies.",
-      "version": "0.2.0",
+      "version": "0.2.2",
       "category": "development"
     },
     {

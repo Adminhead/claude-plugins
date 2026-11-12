@@ -70,9 +70,13 @@ type World = {
   waitLock: boolean
   /** The most callers seen waiting for a lock at one time. */
   maxWaiting: number
+  /** The next acquire rejects with this (spawn failure, missing cwd, timeout) / exits with this code and stderr. */
+  acquireThrows: string | null
+  acquireFails: { exitCode: number; stderr: string } | null
 }
 
 let homes = 0
+const PLUGIN_ROOT = '/plugins/plan-ledger'
 const bytes = (s: string) => new TextEncoder().encode(s).length
 const dirname = (p: string) => p.slice(0, p.lastIndexOf('/'))
 const res = (exitCode: number, stdout = '') => ({ exitCode, stdout, stderr: '' })
@@ -120,6 +124,8 @@ function world(on: any): World & { $: any } {
     uiLogs: [],
     waitLock: false,
     maxWaiting: 0,
+    acquireThrows: null,
+    acquireFails: null,
   }
   let waiting = 0
   const h: Record<string, (e: any) => any> = {
@@ -203,6 +209,7 @@ function world(on: any): World & { $: any } {
       if (a0 === 'rm' && e.argv[1] === '-rf') {
         w.log.push('rm-rf')
         w.locks.delete(e.argv[3])
+        w.files.delete(e.argv[3])
         return res(0)
       }
       if (a0 === 'rm') {
@@ -225,6 +232,8 @@ function world(on: any): World & { $: any } {
         case SCRIPT.acquire: {
           w.log.push('acquire')
           w.inits.push({ kind: 'acquire', ...e.init })
+          if (w.acquireThrows !== null) throw new Error(w.acquireThrows)
+          if (w.acquireFails !== null) return { exitCode: w.acquireFails.exitCode, stdout: '', stderr: w.acquireFails.stderr }
           const [lock, token] = a
           if (!w.dirs.has(dirname(lock))) return res(1)
           if (w.stuck) return res(75)
@@ -281,6 +290,7 @@ function world(on: any): World & { $: any } {
 
   const $ = {
     env: { get: async (name: string) => h['env.get']({ name }) },
+    plugin: { root: PLUGIN_ROOT },
     session: { repo: async () => h['session.repo']({}), cwd: async () => h['session.cwd']({}), id: async () => h['session.id']({}) },
     agent: { list: async () => h['agent.list']({}) },
     prompt: { fill: async (input: { text: string }) => h['prompt.fill'](input) },
@@ -352,6 +362,44 @@ describe('transaction', () => {
     expect((r as any).message).toContain('/plans unlock')
     expect([...w.files.keys()]).toEqual([])
     expect(w.log).not.toContain('append')
+  })
+
+  test('an acquire that cannot run is refused with its cause, writes nothing, and is logged', async ($: any, on: any) => {
+    const w = world(on)
+    w.acquireThrows = 'spawn /bin/sh ENOENT: no such directory'
+    const r = await mutate(w.$, null, createAction(), MAIN)
+    expect(r).toMatchObject({ ok: false, code: 'error' })
+    expect((r as any).message).toContain('Could not take the plan lock')
+    expect((r as any).message).toContain('could not run the lock script')
+    expect((r as any).message).toContain('no such directory')
+    expect((r as any).message).not.toContain('exit ')
+    expect(w.uiLogs.some((l) => l.includes('no such directory'))).toBe(true)
+    expect([...w.files.keys()]).toEqual([])
+    expect(w.locks.size).toBe(0)
+    expect(w.log).not.toContain('append')
+  })
+
+  test('an acquire that exits with neither 0 nor 75 is refused with the exit code and a bounded stderr tail', async ($: any, on: any) => {
+    const w = world(on)
+    w.acquireFails = { exitCode: 126, stderr: `${'x'.repeat(2000)}\nsh: cannot open the lock directory` }
+    const r = await mutate(w.$, null, createAction(), MAIN)
+    expect(r).toMatchObject({ ok: false, code: 'error' })
+    const message = (r as any).message as string
+    expect(message).toContain('Could not take the plan lock')
+    expect(message).toContain('exit 126')
+    expect(message).toContain('cannot open the lock directory')
+    expect(message.length).toBeLessThan(500)
+    expect(message).not.toContain('\n')
+    expect(w.uiLogs.some((l) => l.includes('exit 126'))).toBe(true)
+    expect([...w.files.keys()]).toEqual([])
+    expect(w.locks.size).toBe(0)
+    expect(w.log).not.toContain('append')
+  })
+
+  test('the lock scripts run in the plugin root, not the session cwd, so a removed agent worktree cannot fail the spawn', async ($: any, on: any) => {
+    const w = world(on)
+    await created(w.$)
+    expect(w.inits.filter((i) => i.kind === 'acquire').every((i) => i.cwd === PLUGIN_ROOT)).toBe(true)
   })
 
   test('a failed append writes no JSON and leaves the old plan', async ($: any, on: any) => {
@@ -482,6 +530,18 @@ describe('transaction', () => {
     await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)
     expect(w.files.has(stale)).toBe(false)
     expect(w.files.has(other)).toBe(true)
+  })
+
+  test('a lock recovery left behind by a crash is removed on the next mutation, and nothing else of the lock', async ($: any, on: any) => {
+    const w = world(on)
+    const id = await created(w.$)
+    const base = fileEnding(w, '.json').slice(0, -'.json'.length)
+    const leftovers = [`${base}.lock.stale.4242`, `${base}.lock.reap`]
+    const kept = [`${base}.lock.stale.x`, `${base}.lock.reaped`, `${base}.lockish.reap`]
+    for (const p of [...leftovers, ...kept]) w.files.set(p, '')
+    await mutate(w.$, id, { action: 'activate', plan: id }, MAIN)
+    for (const p of leftovers) expect(w.files.has(p)).toBe(false)
+    for (const p of kept) expect(w.files.has(p)).toBe(true)
   })
 
   test('a plan file ahead of its ledger refuses the mutation and appends nothing', async ($: any, on: any) => {

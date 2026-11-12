@@ -23,9 +23,11 @@ import { GUARD_REASON, isUnder, normalizePath, commandNamesPlans, plansRoot, wri
 import { findOp, needsReplay, parseLedger, parsePlanJson, reconcile, type Reconciled } from './plan/replay'
 import {
   appendArgv,
+  isLockLeftover,
   isPlanId,
   lineFor,
   lockAcquireArgv,
+  lockFailureMessage,
   lockReleaseArgv,
   mkdirArgv,
   newPlanId,
@@ -33,6 +35,7 @@ import {
   projectDir,
   projectKey,
   publishArgv,
+  STALE_LOCK_SEC,
   tailArgv,
   tmpPath,
   type PlanPaths,
@@ -75,7 +78,7 @@ const REFUSE_IT = 'Refuse'
 const TERMINAL_ACTIONS: ReadonlySet<string> = new Set(['verify', 'abandon'])
 
 const REPAIR_HINT = 'Ask the person to run /plans repair for this plan, then retry.'
-const BUSY_MESSAGE = 'Plan busy, retry. If it stays busy, ask the person to run /plans unlock for this plan.'
+const BUSY_MESSAGE = `Plan busy, retry. A lock left by a holder that crashed clears by itself ${STALE_LOCK_SEC} seconds after it was taken; if it stays busy longer, ask the person to run /plans unlock for this plan.`
 
 // ---------------------------------------------------------------- results
 
@@ -178,8 +181,11 @@ type Locked<T> = { held: true; value: T } | { held: false; fail: MutateFail }
 
 /**
  * Runs `fn` while holding the plan's lock directory. Exit 75 from the acquire script (busy for LOCK_WAIT_SEC) is the busy
- * message; any other failure is an error. The lock is released in `finally`, and also after an acquire that threw (a
- * timed-out acquire may still have won the directory; release removes it only when the token is ours).
+ * message; any other failure is an error whose message names the cause (a rejected run, or the exit code and stderr tail)
+ * and is also written to the debug log. The lock scripts run with the plugin root as their cwd, which always exists: the
+ * session's default would be an agent's own working directory, and a removed one makes the spawn fail. The lock is
+ * released in `finally`, and also after an acquire that threw (a timed-out acquire may still have won the directory;
+ * release removes it only when the token is ours).
  */
 async function withLock<T>(
   $: Dollar,
@@ -190,15 +196,23 @@ async function withLock<T>(
 ): Promise<Locked<T>> {
   const token: string = crypto.randomUUID()
   let exit: number
+  let stderr: unknown
   try {
-    const r = await $.process.run(lockAcquireArgv(lock, token, LOCK_WAIT_SEC), { timeoutMs: LOCK_PROCESS_TIMEOUT_MS })
+    const r = await $.process.run(lockAcquireArgv(lock, token, LOCK_WAIT_SEC), { timeoutMs: LOCK_PROCESS_TIMEOUT_MS, cwd: $.plugin.root })
     exit = r.exitCode
-  } catch {
+    stderr = r.stderr
+  } catch (err) {
     await release($, lock, token)
-    return { held: false, fail: failure('error', 'Could not take the plan lock. Retry.', planId, op) }
+    const message = lockFailureMessage({ ran: false, error: err })
+    $.ui.log(`plan-ledger: ${message}`, { to: 'debug' })
+    return { held: false, fail: failure('error', message, planId, op) }
   }
   if (exit === 75) return { held: false, fail: failure('busy', BUSY_MESSAGE, planId, op) }
-  if (exit !== 0) return { held: false, fail: failure('error', 'Could not take the plan lock. Retry.', planId, op) }
+  if (exit !== 0) {
+    const message = lockFailureMessage({ ran: true, exitCode: exit, stderr })
+    $.ui.log(`plan-ledger: ${message}`, { to: 'debug' })
+    return { held: false, fail: failure('error', message, planId, op) }
+  }
   try {
     return { held: true, value: await fn(token) }
   } finally {
@@ -208,7 +222,7 @@ async function withLock<T>(
 
 async function release($: Dollar, lock: string, token: string): Promise<void> {
   try {
-    await $.process.run(lockReleaseArgv(lock, token), { timeoutMs: IO_TIMEOUT_MS })
+    await $.process.run(lockReleaseArgv(lock, token), { timeoutMs: IO_TIMEOUT_MS, cwd: $.plugin.root })
   } catch {
     // Nothing more to do: a lock this call still owns after a failed release is the person's to clear with /plans unlock.
   }
@@ -296,12 +310,16 @@ function tailRev(tail: string): number | null {
 }
 
 async function removeStaleTmp($: Dollar, paths: PlanPaths, planId: string): Promise<void> {
-  // The lock proves no publisher is mid-write, so every `<planId>.json.tmp.*` is a crash's leftover. Best effort.
+  // The lock proves no publisher is mid-write, so every `<planId>.json.tmp.*` is a crash's leftover, and no lock recovery
+  // is in progress, so a `<planId>.lock.stale.*` or `<planId>.lock.reap` is one too (see isLockLeftover). Best effort.
   const stale = new RegExp(`^${planId}\\.jsonl?\\.tmp\\.[A-Za-z0-9._-]+$`)
   try {
     const entries: { name: string }[] = await $.fs.list(paths.dir)
     for (const f of entries) {
       if (stale.test(f.name)) await $.process.run(['rm', '-f', '--', `${paths.dir}/${f.name}`], { timeoutMs: IO_TIMEOUT_MS })
+      else if (isLockLeftover(planId, f.name)) {
+        await $.process.run(['rm', '-rf', '--', `${paths.dir}/${f.name}`], { timeoutMs: IO_TIMEOUT_MS })
+      }
     }
   } catch {
     // A leftover tmp file is harmless; the next mutation tries again.

@@ -4,16 +4,21 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   appendArgv,
+  isLockLeftover,
   isPlanId,
   lineFor,
   lockAcquireArgv,
   lockReleaseArgv,
   mkdirArgv,
   newPlanId,
+  OWNERLESS_LOCK_SEC,
   planPaths,
   projectDir,
   projectKey,
   publishArgv,
+  REAP_SUFFIX,
+  STALE_LOCK_SEC,
+  STALE_SUFFIX,
   tailArgv,
   tmpPath,
 } from '../hooks/plan/store'
@@ -92,6 +97,23 @@ describe('ids and paths (pure)', () => {
     expect(projectDir('/home/u', 'k')).toBe(planPaths('/home/u', 'k', PLAN_ID).dir)
     expect(() => projectDir('/home/u', '../evil')).toThrow()
     expect(() => projectDir('/home/u', '.')).toThrow()
+  })
+
+  test('isLockLeftover names only a recovery leftover of this plan', () => {
+    expect(isLockLeftover(PLAN_ID, `${PLAN_ID}.lock${REAP_SUFFIX}`)).toBe(true)
+    expect(isLockLeftover(PLAN_ID, `${PLAN_ID}.lock${STALE_SUFFIX}12345`)).toBe(true)
+    for (const name of [
+      `${PLAN_ID}.lock`,
+      `${PLAN_ID}.lock${STALE_SUFFIX}`,
+      `${PLAN_ID}.lock${STALE_SUFFIX}12x`,
+      `${PLAN_ID}.lock${STALE_SUFFIX}1/..`,
+      `${PLAN_ID}.lock${REAP_SUFFIX}x`,
+      `${PLAN_ID}.json`,
+      `p-000000000-000000.lock${REAP_SUFFIX}`,
+    ]) {
+      expect(isLockLeftover(PLAN_ID, name)).toBe(false)
+    }
+    expect(isLockLeftover('../x', `../x.lock${REAP_SUFFIX}`)).toBe(false)
   })
 
   test('tmpPath and lineFor', () => {
@@ -192,19 +214,130 @@ describe('lock (real shell)', () => {
     expect((await acquire(lock, 'b', 0)).code).toBe(75)
   })
 
-  test('a stale lock is never taken automatically', async () => {
+  const nowSec = () => Math.floor(Date.now() / 1000)
+  /** A lock directory as a holder left it: owner `<token> <epoch>`, mtimes `ageSec` in the past. */
+  const plant = (lock: string, token: string, ageSec: number) => {
+    mkdirSync(lock)
+    writeFileSync(join(lock, 'owner'), `${token} ${nowSec() - ageSec}`)
+    const when = new Date((nowSec() - ageSec) * 1000)
+    utimesSync(join(lock, 'owner'), when, when)
+    utimesSync(lock, when, when)
+  }
+  /** A lock directory whose holder died before writing the owner. */
+  const plantOwnerless = (lock: string, ageSec: number) => {
+    mkdirSync(lock)
+    const when = new Date((nowSec() - ageSec) * 1000)
+    utimesSync(lock, when, when)
+  }
+  const leftovers = () => readdirSync(tmp).filter((n) => n.includes(STALE_SUFFIX) || n.endsWith(REAP_SUFFIX))
+  /** A recovery mutex beside `lock`, as a reaper left it `ageSec` ago: empty, or holding its pid entry. */
+  const plantReap = (lock: string, ageSec: number, holderPid?: number) => {
+    mkdirSync(`${lock}${REAP_SUFFIX}`)
+    if (holderPid !== undefined) writeFileSync(join(`${lock}${REAP_SUFFIX}`, String(holderPid)), '')
+    const when = new Date((nowSec() - ageSec) * 1000)
+    utimesSync(`${lock}${REAP_SUFFIX}`, when, when)
+  }
+
+  test('a lock whose owner is older than the stale threshold is taken over, and the aside directory is removed', async () => {
     const lock = join(tmp, 'p.lock')
-    expect((await acquire(lock, 'crashed')).code).toBe(0)
-    writeFileSync(join(lock, 'owner'), 'crashed 1')
-    const old = new Date(1_000_000)
-    utimesSync(join(lock, 'owner'), old, old)
-    utimesSync(lock, old, old)
-    expect((await acquire(lock, 'newcomer', 1)).code).toBe(75)
-    expect(readFileSync(join(lock, 'owner'), 'utf8')).toBe('crashed 1')
-    // Only the explicit release by the owner clears it.
-    expect((await release(lock, 'newcomer')).code).toBe(1)
-    expect((await release(lock, 'crashed')).code).toBe(0)
+    plant(lock, 'crashed', STALE_LOCK_SEC + 5)
     expect((await acquire(lock, 'newcomer', 1)).code).toBe(0)
+    expect(readFileSync(join(lock, 'owner'), 'utf8')).toMatch(/^newcomer \d+$/)
+    expect(leftovers()).toEqual([])
+    // The crashed holder's late release no longer matches; the newcomer's does.
+    expect((await release(lock, 'crashed')).code).toBe(1)
+    expect((await release(lock, 'newcomer')).code).toBe(0)
+  })
+
+  test('a fresh lock is not stolen, and neither is one just under the threshold', async () => {
+    const lock = join(tmp, 'p.lock')
+    plant(lock, 'holder', STALE_LOCK_SEC - 30)
+    expect((await acquire(lock, 'other', 1)).code).toBe(75)
+    expect(readFileSync(join(lock, 'owner'), 'utf8')).toMatch(/^holder \d+$/)
+    expect(leftovers()).toEqual([])
+  })
+
+  test('an ownerless lock directory is recovered once old enough, and left alone while fresh', async () => {
+    const fresh = join(tmp, 'fresh.lock')
+    plantOwnerless(fresh, 2)
+    expect((await acquire(fresh, 'a', 0)).code).toBe(75)
+    expect(readdirSync(fresh)).toEqual([])
+    const old = join(tmp, 'old.lock')
+    plantOwnerless(old, OWNERLESS_LOCK_SEC + 5)
+    expect((await acquire(old, 'b', 1)).code).toBe(0)
+    expect(readFileSync(join(old, 'owner'), 'utf8')).toMatch(/^b \d+$/)
+    expect(leftovers()).toEqual([])
+  })
+
+  test('an empty owner file counts as ownerless', async () => {
+    const lock = join(tmp, 'p.lock')
+    plantOwnerless(lock, OWNERLESS_LOCK_SEC + 5)
+    writeFileSync(join(lock, 'owner'), '')
+    const when = new Date((nowSec() - OWNERLESS_LOCK_SEC - 5) * 1000)
+    utimesSync(lock, when, when)
+    expect((await acquire(lock, 'b', 1)).code).toBe(0)
+  })
+
+  test('simultaneous takeovers of one dead lock yield exactly one winner and leave nothing behind', async () => {
+    // Without the recovery mutex this load produced rounds with two winners and leaked aside directories.
+    const contenders = 16
+    for (let round = 0; round < 300; round++) {
+      const lock = join(tmp, `p${round}.lock`)
+      if (round % 2 === 0) plant(lock, 'crashed', STALE_LOCK_SEC + 5)
+      else plantOwnerless(lock, OWNERLESS_LOCK_SEC + 5)
+      const codes = await Promise.all(Array.from({ length: contenders }, (_, i) => acquire(lock, `c${i}`, 0).then((r) => r.code)))
+      expect({ round, winners: codes.filter((c) => c === 0).length, busy: codes.filter((c) => c === 75).length }).toEqual({
+        round,
+        winners: 1,
+        busy: contenders - 1,
+      })
+      expect(readFileSync(join(lock, 'owner'), 'utf8')).toMatch(/^c\d+ \d+$/)
+    }
+    expect(leftovers()).toEqual([])
+  }, 60_000)
+
+  test('a fresh recovery mutex holds off a takeover; an old one is broken and the dead lock recovered', async () => {
+    const lock = join(tmp, 'p.lock')
+    plant(lock, 'crashed', STALE_LOCK_SEC + 5)
+    plantReap(lock, 1)
+    expect((await acquire(lock, 'a', 0)).code).toBe(75)
+    expect(readFileSync(join(lock, 'owner'), 'utf8')).toMatch(/^crashed \d+$/)
+    expect(existsSync(`${lock}${REAP_SUFFIX}`)).toBe(true)
+    rmSync(`${lock}${REAP_SUFFIX}`, { recursive: true })
+    plantReap(lock, OWNERLESS_LOCK_SEC + 5)
+    expect((await acquire(lock, 'b', 1)).code).toBe(0)
+    expect(readFileSync(join(lock, 'owner'), 'utf8')).toMatch(/^b \d+$/)
+    expect(leftovers()).toEqual([])
+    // A holder that died after recording its entry: the entry goes with the mutex.
+    const other = join(tmp, 'q.lock')
+    plant(other, 'crashed', STALE_LOCK_SEC + 5)
+    plantReap(other, OWNERLESS_LOCK_SEC + 5, 4242)
+    expect((await acquire(other, 'c', 1)).code).toBe(0)
+    expect(readFileSync(join(other, 'owner'), 'utf8')).toMatch(/^c \d+$/)
+    expect(leftovers()).toEqual([])
+  })
+
+  test('release removes an ownerless lock only when it is old; with an owner the token must still match', async () => {
+    const fresh = join(tmp, 'fresh.lock')
+    plantOwnerless(fresh, 1)
+    expect((await release(fresh, 'anyone')).code).toBe(1)
+    expect(existsSync(fresh)).toBe(true)
+    const old = join(tmp, 'old.lock')
+    plantOwnerless(old, OWNERLESS_LOCK_SEC + 5)
+    // The removal goes through the recovery mutex: while another recovery holds it, the lock is left.
+    plantReap(old, 1)
+    expect((await release(old, 'anyone')).code).toBe(1)
+    expect(existsSync(old)).toBe(true)
+    rmSync(`${old}${REAP_SUFFIX}`, { recursive: true })
+    expect((await release(old, 'anyone')).code).toBe(0)
+    expect(existsSync(old)).toBe(false)
+    expect(leftovers()).toEqual([])
+    // An owner exists: age is irrelevant to release, only the token.
+    const held = join(tmp, 'held.lock')
+    plant(held, 'holder', STALE_LOCK_SEC + 50)
+    expect((await release(held, 'other')).code).toBe(1)
+    expect(existsSync(held)).toBe(true)
+    expect((await release(held, 'holder')).code).toBe(0)
   })
 
   test('release with a wrong token leaves the lock; the right token removes it', async () => {
