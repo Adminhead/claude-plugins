@@ -78,6 +78,11 @@ export function validate(input: Record<string, any>): Checked {
   if (cli === 'agy') {
     if (!AGY_EFFORTS.includes(effort)) return { error: 'agy effort must be low|medium|high|xhigh|max' }
     if (!model.startsWith('gemini-')) return { error: 'agy model must be a gemini-* model (a different family from Claude)' }
+    // agy rejects a model whose name carries a level suffix when --effort differs, so refuse before spawning.
+    const suffix = /-(low|medium|high|xhigh)$/.exec(model)?.[1]
+    if (suffix !== undefined && effort !== suffix) {
+      return { error: `agy effort must be ${suffix} for model ${model} (its name fixes the level); pass effort "${suffix}", or pick a model without a -low|-medium|-high|-xhigh suffix. Do not resend the same pair.` }
+    }
   }
   const notes = input.notes ?? ''
   if (typeof notes !== 'string') return { error: 'notes must be a string' }

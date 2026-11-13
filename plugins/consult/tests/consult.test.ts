@@ -43,10 +43,18 @@ describe('validate', () => {
   test('codex refuses ultra; agy refuses ultra and non-gemini models', () => {
     expect(err({ effort: 'ultra' })).toMatch(/ultra is not allowed/)
     expect(err({ ...AGY, effort: 'ultra' })).toMatch(/agy effort/)
-    expect(err({ ...AGY, effort: 'xhigh' })).toBeNull()
     expect(err({ ...AGY, model: 'claude-sonnet-4-6' })).toMatch(/gemini-\*/)
-    expect(err({ ...AGY, effort: 'max' })).toBeNull()
     expect(err({ effort: 'xhigh' })).toBeNull()
+  })
+
+  test('agy refuses an effort that conflicts with the model suffix, and accepts a match', () => {
+    expect(err({ ...AGY, effort: 'xhigh' })).toMatch(/agy effort must be high for model gemini-4-argon-high/)
+    expect(err({ ...AGY, effort: 'low' })).toMatch(/must be high/)
+    expect(err({ ...AGY, model: 'gemini-3.8-flash-medium', effort: 'high' })).toMatch(/must be medium/)
+    expect(err({ ...AGY, model: 'gemini-3.8-flash-medium', effort: 'medium' })).toBeNull()
+    expect(err({ ...AGY, model: 'gemini-4-hydrogen-xhigh', effort: 'xhigh' })).toBeNull()
+    expect(err({ ...AGY, model: 'gemini-4-hydrogen-xhigh', effort: 'max' })).toMatch(/must be xhigh/)
+    expect(err({ ...AGY, model: 'gemini-pro-orchestrator-g1-pro', effort: 'max' })).toBeNull()
   })
 
   test('plan mode needs notes; diff mode does not', () => {

@@ -171,7 +171,7 @@
       "name": "architect",
       "source": "./plugins/architect",
       "description": "A planning subagent, read-only by instruction (enforced only when readonly-agent-gate is installed), that grounds an implementation plan in the code and returns ordered slices of step-by-step instructions a coder can follow, with risks and rejected alternatives, optionally stress-tested by an outside model. On request it saves the plan as Markdown under .claude/plans.",
-      "version": "0.2.10",
+      "version": "0.2.11",
       "category": "development"
     },
     {
@@ -528,7 +528,7 @@
       "name": "reviewer",
       "source": "./plugins/reviewer",
       "description": "A read-only review subagent for implementation plans, designs and diffs. It runs the checks and verifies the work against the brief and its acceptance criteria, returning pass or fail per criterion with evidence and findings ranked by severity. The caller picks quick or thorough depth.",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "category": "development"
     },
     {
@@ -829,7 +829,7 @@
       "name": "consult",
       "source": "./plugins/consult",
       "description": "A mod that registers the mcp__consult__consult tool: a read-only diff or plan review by codex (OpenAI, the default, on the user's locked codex-consult app server) or agy (Google Gemini), with a repo opt-out marker, a secret-file block, timeouts and a read-only agy hook gate.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "category": "development"
     },
     {
@@ -1067,14 +1067,14 @@
       "name": "second-opinion",
       "source": "./plugins/second-opinion",
       "description": "Second-opinion skill: pick codex (the default) or agy, model, effort and pass size for a read-only outside review of a diff or plan through the consult tool, weigh the replies, or run a local two-reviewer gate.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "development"
     },
     {
       "name": "security-auditor",
       "source": "./plugins/security-auditor",
       "description": "A read-only security review subagent for diffs and code areas: taint tracing, auth, injection, secrets, supply chain, CI and IaC trust, returning severity-ranked findings with attack paths.",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "category": "development"
     },
     {
