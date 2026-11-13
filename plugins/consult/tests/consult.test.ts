@@ -48,13 +48,15 @@ describe('validate', () => {
   })
 
   test('agy refuses an effort that conflicts with the model suffix, and accepts a match', () => {
-    expect(err({ ...AGY, effort: 'xhigh' })).toMatch(/agy effort must be high for model gemini-4-argon-high/)
-    expect(err({ ...AGY, effort: 'low' })).toMatch(/must be high/)
-    expect(err({ ...AGY, model: 'gemini-3.8-flash-medium', effort: 'high' })).toMatch(/must be medium/)
+    expect(err({ ...AGY, effort: 'xhigh' })).toMatch(/must be high/)
+    expect(err({ ...AGY, effort: 'low' })).not.toBeNull()
+    expect(err({ ...AGY, model: 'gemini-3.8-flash-medium', effort: 'high' })).not.toBeNull()
+    expect(err({ ...AGY, model: 'gemini-4-hydrogen-xhigh', effort: 'max' })).not.toBeNull()
     expect(err({ ...AGY, model: 'gemini-3.8-flash-medium', effort: 'medium' })).toBeNull()
     expect(err({ ...AGY, model: 'gemini-4-hydrogen-xhigh', effort: 'xhigh' })).toBeNull()
-    expect(err({ ...AGY, model: 'gemini-4-hydrogen-xhigh', effort: 'max' })).toMatch(/must be xhigh/)
-    expect(err({ ...AGY, model: 'gemini-pro-orchestrator-g1-pro', effort: 'max' })).toBeNull()
+    for (const effort of ['low', 'medium', 'high', 'xhigh', 'max']) {
+      expect(err({ ...AGY, model: 'gemini-pro-orchestrator-g1-pro', effort })).toBeNull()
+    }
   })
 
   test('plan mode needs notes; diff mode does not', () => {

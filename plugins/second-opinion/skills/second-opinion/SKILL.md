@@ -31,11 +31,11 @@ Start from this matrix. Move one step up or down when the task warrants it, and 
 | Review a normal diff | `gpt-6.1-sol` / `high` | `gemini-3.8-flash-high` / `high` |
 | Review a risky diff | `gpt-6-astra` / `high` | `gemini-4-argon-high` / `high` |
 | Adversarial plan critique | `gpt-6-astra` / `xhigh` | `gemini-4-hydrogen-xhigh` / `xhigh` |
-| High-stakes or irreversible plan | `gpt-6-astra` / `max` | `gemini-4-hydrogen-xhigh` / `xhigh` (agy has no `max` model; this is its cap) |
+| High-stakes or irreversible plan | `gpt-6-astra` / `max` | `gemini-4-hydrogen-xhigh` / `xhigh` (no `-max` agy model exists; `hydrogen-xhigh` is the top suffixed one) |
 
-Model names as of October 2026 (codex CLI 0.162, agy 1.4). The tiers are what matter: codex `luna` is fast and cheap, `sol` the workhorse, `astra` the frontier model; agy `flash` is fast, `argon` and `hydrogen` are the strong Gemini models. An agy model name ends in its level (`-low|-medium|-high|-xhigh`), and `effort` must equal that suffix: agy rejects any other pair (such as `gemini-4-argon-high` with `xhigh`), and consult refuses it before spawning. Only `hydrogen` has an `-xhigh` variant, and no agy model has `-max`. Model names change often, so if one is refused, list current ones with `codex debug models` or `agy models` and pick the nearest tier.
+Model names as of October 2026 (codex CLI 0.162, agy 1.4). The tiers are what matter: codex `luna` is fast and cheap, `sol` the workhorse, `astra` the frontier model; agy `flash` is fast, `argon` and `hydrogen` are the strong Gemini models. An agy model whose name ends in `-low|-medium|-high|-xhigh` needs `effort` equal to that suffix, and a model without such a suffix accepts any effort: agy rejects any other pair (such as `gemini-4-argon-high` with `xhigh`), and consult refuses it before spawning. Among suffixed models only `hydrogen` has an `-xhigh` variant, and none has `-max`. Model names change often, so if one is refused, list current ones with `codex debug models` or `agy models` and pick the nearest tier.
 
-Efforts are `low|medium|high|xhigh|max` for codex. For agy, `effort` is the model's own suffix, so it tops out at `xhigh`. codex `ultra` is refused because it spawns its own agents. agy accepts only `gemini-*` models, so the reviewer stays a different family from Claude. For codex, `model` and `effort` are optional: leave both out to use the codex-consult server's config. agy requires both.
+Efforts are `low|medium|high|xhigh|max` for codex. For agy, see the suffix rule above. codex `ultra` is refused because it spawns its own agents. agy accepts only `gemini-*` models, so the reviewer stays a different family from Claude. For codex, `model` and `effort` are optional: leave both out to use the codex-consult server's config. agy requires both.
 
 ## 4. Split the review into passes
 

@@ -32,7 +32,7 @@ export const TOOL = {
       cli: { type: 'string', enum: ['codex', 'agy'], description: 'The reviewer. Default codex.' },
       mode: { type: 'string', enum: ['diff', 'plan'], description: 'diff reviews changes in a git repo; plan critiques the plan given in notes.' },
       model: { type: 'string', description: 'codex (optional; default: the server config): e.g. gpt-6-astra (list: codex debug models). agy (required): a gemini-* model, e.g. gemini-4-argon-high (list: agy models).' },
-      effort: { type: 'string', enum: CODEX_EFFORTS, description: 'low|medium|high|xhigh|max. Optional for codex (default: the server config), required for agy.' },
+      effort: { type: 'string', enum: CODEX_EFFORTS, description: 'low|medium|high|xhigh|max. Optional for codex (default: the server config), required for agy; a model ending -low|-medium|-high|-xhigh needs effort equal to that suffix.' },
       notes: { type: 'string', maxLength: MAX_NOTES, description: 'Plan mode: the plan and what to scrutinize (required). Diff mode: optional focus, such as the dimension or file group for this pass.' },
       repo: { type: 'string', description: 'Directory to review. Default: the session directory.' },
       base: { type: 'string', description: 'Diff mode: review changes relative to this ref (git diff base...HEAD). Excludes commit.' },
