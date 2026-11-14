@@ -86,7 +86,7 @@ Turns "staircase" motion into smooth motion when the tick rate and frame rate di
 1. Enable Project Settings > Physics > Common > Physics Interpolation.
 2. Move everything that moves in `_physics_process`, including parents, Tweens and AnimationPlayers that drive physics objects (set them to physics process mode).
 3. Call `reset_physics_interpolation()` after the first placement and after any teleport, or the object streaks across the screen.
-4. Cameras: put the camera on its own branch or set `top_level = true`, update it in `_process`, and follow `target.get_global_transform_interpolated()`. Use that call only for one or two such nodes per frame.
+4. Cameras: put the camera on its own branch or set `top_level = true`, update it in `_process`, and follow `target.get_global_transform_interpolated()`. Use that call only for one or two such nodes per frame. This manual recipe is 3D only: the call is a `Node3D` method, `Node2D` has no equivalent, and the docs give no manual recipe for `Camera2D`. In 2D leave the camera on automatic interpolation and confirm with step 6.
 5. Opt nodes out with `physics_interpolation_mode = PHYSICS_INTERPOLATION_MODE_OFF`.
 6. To test, set Physics Ticks per Second to 10 temporarily; anything moved outside the tick will stutter visibly.
 
@@ -111,7 +111,7 @@ More Jolt detail, joints, ragdolls, soft bodies and Area overrides: [references/
 - **`is_on_floor()` always false:** wrong `up_direction`, missing or zero-size shape, floor not in the mask, or `move_and_slide()` not called this tick.
 - **Falls through the floor:** shape missing or disabled, floor on a layer outside the mask, the body moved with `position +=`, or a fast body tunneling (below).
 - **Tunneling:** `RigidBody3D.continuous_cd = true`; on `RigidBody2D` it's an enum (`CCD_MODE_CAST_RAY` or `CCD_MODE_CAST_SHAPE`). For bullets, raycast the frame's motion instead. Raising the tick rate also helps.
-- **Slides down slopes while idle:** keep `floor_stop_on_slope = true` and raise `floor_snap_length` (default 1.0) so the body sticks to downward slopes. `floor_max_angle` defaults to 45 degrees.
+- **Slides down slopes while idle:** keep `floor_stop_on_slope = true` and raise `floor_snap_length` (default 1.0 on `CharacterBody2D`, 0.1 on `CharacterBody3D`) so the body sticks to downward slopes. `floor_max_angle` defaults to 45 degrees.
 - **Moving platform doesn't carry the player:** use `AnimatableBody*` (a code-moved `StaticBody` doesn't push reliably); the rider inherits velocity through `platform_floor_layers` and `platform_on_leave`.
 - **Jitter with interpolation on:** something moves in `_process`, or a teleport skipped `reset_physics_interpolation()`.
 - **Concave shapes** (`ConcavePolygonShape*`) only on static bodies; dynamic bodies use primitives or convex hulls. Shapes on one body never collide with each other.

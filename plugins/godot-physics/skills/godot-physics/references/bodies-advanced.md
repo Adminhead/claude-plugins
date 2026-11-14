@@ -71,7 +71,7 @@ func _ready() -> void:
     gravity = 500.0
 ```
 
-Zero-G: `SPACE_OVERRIDE_REPLACE` with `gravity = 0.0`. Water: `linear_damp_space_override` and `linear_damp`. Bodies pick these up through `get_gravity()`. Areas can also redirect audio to a bus (`audio_bus_override`); since 4.7 `AudioStreamPlayer.area_mask` defaults to 0, so set it for bus overrides to apply.
+Zero-G: `SPACE_OVERRIDE_REPLACE` with `gravity = 0.0`. Water: `linear_damp_space_override` and `linear_damp`. Bodies pick these up through `get_gravity()`. Areas can also redirect audio to a bus (`audio_bus_override`); since 4.7 `AudioStreamPlayer2D.area_mask` and `AudioStreamPlayer3D.area_mask` defaults to 0, so set it for bus overrides to apply.
 
 ## Collision shapes and cost
 

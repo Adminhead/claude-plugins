@@ -201,7 +201,7 @@ Mouse look runs in `_unhandled_input`, so with physics interpolation on, rotatio
 | `up_direction` | `UP` | defines floor, wall, ceiling |
 | `motion_mode` | grounded | `MOTION_MODE_FLOATING` for top-down and space games |
 | `floor_max_angle` | 45 degrees (radians in code) | steepest walkable slope |
-| `floor_snap_length` | 1.0 | sticks to downward slopes and steps |
+| `floor_snap_length` | 1.0 (2D), 0.1 (3D) | sticks to downward slopes and steps |
 | `floor_stop_on_slope` | true | no idle sliding |
 | `floor_constant_speed` | false | same speed up and down slopes |
 | `floor_block_on_wall` | true | stops the body walking up walls; it does not fix sticking to walls |
