@@ -11,7 +11,8 @@ Checked against ansible-core 2.21 docs (docs.ansible.com/projects/ansible/latest
 
 ## Safety contract
 
-- Run freely: `ansible-playbook --syntax-check`, `ansible-lint`, `ansible-inventory --graph`, `ansible-doc`, and `ansible-playbook --check --diff --limit <host>` against hosts the user named.
+- Run freely: `ansible-playbook --syntax-check`, `ansible-lint`, `ansible-inventory --graph`, and `ansible-doc`.
+- `ansible-playbook --check --diff --limit <host>` against a real host is not free: a task with `check_mode: false` (legacy `always_run: true`) runs for real during `--check`. First grep the play and every role it includes for `check_mode: false`, `always_run`, `shell`, `command`, `raw`, and `script`. If any `check_mode: false` or `always_run` turns up, name those tasks and ask before running. Otherwise run it against hosts the user named, and still name any `shell`, `command`, `raw`, or `script` tasks: they are skipped in check mode (`command`, `shell` and `script` only test `creates`/`removes`), but a third-party module may implement check mode badly, so read an unfamiliar one.
 - Run against real hosts (no `--check`) only when asked, and always with an explicit `--limit`. Say the playbook, limit, and tags before running. A playbook with no `--limit` hits every host in its `hosts:` line.
 - Never run `ansible-vault decrypt`, `sops -d`, or `ansible-vault view` and paste the result. Never print decrypted vars, `--diff` output of secret files, or `-vvv` output of a task that handles credentials.
 - Treat `shell`, `command`, `raw`, `reboot`, `file: state=absent`, `package: state=absent`, and anything that restarts a service as changing state. Name them before running.
@@ -25,7 +26,7 @@ Find how Ansible is meant to run before typing `ansible-playbook`: a `mise.toml`
 1. Read `ansible.cfg`, the inventory, the playbook, and the role you will touch. Find which `group_vars` and `host_vars` apply to the target.
 2. Edit. Keep each task one action with a `name:` that says the outcome.
 3. `ansible-playbook <play>.yml --syntax-check`, then `ansible-lint`.
-4. `ansible-playbook <play>.yml --check --diff --limit <host>` and read the diff. Check mode does not prove the change works (see below).
+4. Apply the check-mode rule in the Safety contract (grep first, ask if `check_mode: false` is present), then `ansible-playbook <play>.yml --check --diff --limit <host>` and read the diff. Check mode does not prove the change works (see below).
 5. Report. Run for real only on instruction, with `--limit` and `--tags` if the play is large.
 6. After a real run, prove idempotency by rerunning the same command and confirming the recap shows `changed=0` and `failed=0` for every host. A rerun that still changes something is a bug in the task (see below).
 
@@ -71,7 +72,7 @@ A correct task changes the host once and reports `ok` on every later run.
 
 ## Check mode and its limits
 
-`--check` simulates. Modules that do not support it report nothing and do nothing, and tasks that depend on registered results of skipped tasks can misreport. Most importantly, check mode renders a template but never asks the service whether the file is valid. A haproxy config with a bad ACL passed `--check` and broke the service on the real run.
+`--check` simulates, except tasks with `check_mode: false`, which run for real. Modules that do not support it report nothing and do nothing, and tasks that depend on registered results of skipped tasks can misreport. Most importantly, check mode renders a template but never asks the service whether the file is valid. A haproxy config with a bad ACL passed `--check` and broke the service on the real run.
 
 - Add `validate:` to `template` and `copy` for any config the service can check. The command gets the candidate file as `%s`, and the file is installed only if it exits 0. This works on real runs, so a bad file never lands.
   ```yaml
@@ -83,9 +84,9 @@ A correct task changes the host once and reports `ok` on every later run.
     notify: Reload haproxy
   ```
   Others: `nginx -t -c %s`, `visudo -cf %s` for sudoers, `sshd -t -f %s`, `named-checkconf %s`. The command runs without a shell, so pipes and expansions do not work.
-- Use `check_mode: false` on a read-only task whose result later tasks need, and `when: not ansible_check_mode` to skip a task that cannot be simulated.
+- Use `check_mode: false` only on a read-only task whose result later tasks need, because it makes that task execute on the host even under `--check`, and `when: not ansible_check_mode` to skip a task that cannot be simulated. Never put it on a task that writes, and never on a `command` or `shell` that changes state.
 - `--diff` shows file changes. It can leak secrets, so set `diff: false` on tasks that write credentials.
-- Treat a clean `--check` as "no obvious error", not "safe". Prove behavior with a real run on one host (`--limit`) and an idempotent rerun.
+- Treat a clean `--check` as "no obvious error", not "safe", and a `--check` run as possibly not read-only until the grep in the Safety contract is done. Prove behavior with a real run on one host (`--limit`) and an idempotent rerun, on instruction.
 
 ## Secrets
 
