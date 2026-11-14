@@ -38,7 +38,7 @@ check_reject() {
 
 for verb in open goto close snapshot find click dblclick fill type hover select \
   check uncheck press keydown keyup go-back go-forward reload screenshot resize \
-  tab-list tab-new tab-select tab-close console requests list \
+  tab-list tab-new tab-select tab-close console requests list dialog-accept dialog-dismiss \
   set-color-scheme set-reduced-motion set-forced-colors set-contrast set-media \
   clear-color-scheme clear-reduced-motion clear-forced-colors clear-contrast clear-media; do
   check_pass "$verb"
