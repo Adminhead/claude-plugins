@@ -12,8 +12,8 @@ Traps in Prisma ORM's `PrismaClient` API (versions 6 and 7) that compile cleanly
 Run `npm ls prisma @prisma/client` (or the repo's package manager) before writing any Prisma code.
 
 - **Prisma 7** requires a driver adapter, a generated client with an explicit `output`, and `prisma.config.ts` for the datasource URL; the CLI no longer loads `.env` or runs `generate` after `migrate dev`. Read [references/prisma-7.md](references/prisma-7.md) when the repo is on 7 or upgrading from 6.
-- **Prisma 8** is a TypeScript rewrite with a different API: `@prisma/orm-postgres`, `contract.prisma`, `prisma contract emit` and `db.ts` instead of `PrismaClient`, and no `P2xxx` codes. Nothing below applies to it; read the docs at prisma.io/docs for it.
-- An unpinned `npx prisma` now fetches the Prisma 8 CLI, which has no `generate`, `migrate dev` or `db push` and does not read `schema.prisma`. In a 6 or 7 repo, run the locally installed binary (`npx prisma` inside the repo with it in `devDependencies`) or pin it (`npx prisma@7`), and keep `prisma` and `@prisma/client` on the same major.
+- **Prisma 8** is a release candidate, not a stable release: on 2026-11-14 the npm `latest` tag was `8.0.0-rc.33` and the newest stable was 7.10.1 (dist-tag `prev`; check with `npm view prisma dist-tags`). It is a TypeScript rewrite with a different API: `@prisma/orm-postgres`, `contract.prisma`, `prisma contract emit` and `db.ts` instead of `PrismaClient`, and no `P2xxx` codes. Nothing below applies to it; read the docs at prisma.io/docs for it.
+- An unpinned `npx prisma` resolves the npm `latest` tag, which currently points at the Prisma 8 CLI, which has no `generate`, `migrate dev` or `db push` and does not read `schema.prisma`. In a 6 or 7 repo, run the locally installed binary (`npx prisma` inside the repo with it in `devDependencies`) or pin it (`npx prisma@7`), and keep `prisma` and `@prisma/client` on the same major.
 - Check APIs against the installed version with Context7 (`resolve-library-id` "Prisma", then `query-docs`); the v7 docs live under `/orm/v7`.
 
 ## Traps

@@ -74,4 +74,4 @@ Requests that hang after an upgrade usually mean the pool is exhausted and `conn
 
 ## Accelerate
 
-Don't pass a `prisma://` or `prisma+postgres://` URL to a driver adapter; it expects a direct connection string. Accelerate uses `new PrismaClient({ accelerateUrl })` with its extension and no adapter. Standalone Accelerate and the hosted `accelerate.prisma-data.net` connections are announced for retirement on 1 December 2026, so plan a move to a direct or pooled TCP URL.
+Don't pass a `prisma://` or `prisma+postgres://` URL to a driver adapter; it expects a direct connection string. Accelerate uses `new PrismaClient({ accelerateUrl })` with its extension and no adapter. Standalone Accelerate and the hosted `accelerate.prisma-data.net` connections are being retired, so plan a move to a direct or pooled TCP URL. The retirement date (1 December 2026 when checked on 2026-11-14) is on https://www.prisma.io/docs/accelerate; read it there before quoting a date.
