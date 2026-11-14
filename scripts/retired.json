@@ -9,6 +9,11 @@
       "into": null,
       "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-pilot.md)",
       "date": "2026-11-14"
+    },
+    "privacy-review": {
+      "into": null,
+      "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-pilot.md)",
+      "date": "2026-11-14"
     }
   },
   "archived": {}
