@@ -53,6 +53,7 @@ Reuse existing values and names. Define any new decision by its purpose and its 
 
 - Start from content priority, not named devices. Say when the layout reflows, stacks, condenses, scrolls, or defers secondary content. Never hide the primary task to preserve a desktop layout. Use content- or container-driven breakpoints.
 - Require usable reflow at 320 CSS px and 200% text without two-dimensional scrolling. Give wide tables and dense data an intentional alternative to clipping.
+- For a full-screen mobile section use `min-height: 100svh`. `100vh` runs under the browser toolbar, and `dvh` follows the toolbar as it shows and hides, so content shifts while scrolling. Keep `dvh` for pinned bottom sheets.
 - For each meaningful interaction, specify the states that apply and what each one changes:
   - default
   - hover (pointer only)
@@ -66,6 +67,7 @@ Reuse existing values and names. Define any new decision by its purpose and its 
   - recovery
 - Hover must never be the only affordance, and status color never the only signal.
 - Give any drag interaction (reordering, sliders, drag-and-drop) a single-pointer alternative without dragging, such as buttons or a menu, unless dragging is essential (WCAG 2.2 SC 2.5.7, Level AA).
+- WCAG 2.2 removed 4.1.1 Parsing. Never cite it; file markup defects under 1.3.1 or 4.1.2.
 - Target WCAG 2.2 AA unless the product requires another level. Make these explicit:
   - visible focus
   - heading and landmark intent
