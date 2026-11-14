@@ -1052,8 +1052,8 @@
     {
       "name": "research",
       "source": "./plugins/research",
-      "description": "Answers an external, decision-relevant question with sourced, cited evidence at quick, standard or deep depth. Use for \"compare X vs Y\", \"is it true that...\", \"what's the current state of...\", choosing a library or tool, or explaining a topic from authoritative sources.",
-      "version": "0.1.1",
+      "description": "Deprecated. Answers an external, decision-relevant question with sourced, cited evidence at quick, standard or deep depth. Use for \"compare X vs Y\", \"is it true that...\", \"what's the current state of...\", choosing a library or tool, or explaining a topic from authoritative sources.",
+      "version": "0.1.2",
       "category": "development"
     },
     {
