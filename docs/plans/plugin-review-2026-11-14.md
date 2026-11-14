@@ -1,6 +1,8 @@
 # Plugin review plan, 2026-11-14
 
-Status: Phase 0 in progress on branch `fix/plugin-review-phase-0`. D1, D2, D3 and D6 decided; D4, D5, D7 and D8 open. Nothing in `plugins/` has been changed.
+Status (2026-11-14): Phase 0 done on `fix/plugin-review-phase-0`. On `feat/plugin-retire-tooling`: new check rules, `deprecate` and `archive` commands, installer `--prune`, and the value-eval pilot. Deprecated so far: `tanstack`, `accessibility-review`, `privacy-review`, `research` (see `scripts/retired.json`); the other 16 on the list are not yet tested or marked. D1, D2, D3 and D6 decided; D4, D5, D7 and D8 open.
+
+Before archiving the four: sibling skills still point at them in prose and need rewording (`design-critique`, `design-system`, `screen-reader-testing`, `web-design`, `react`, `vue`, `vite`, `web-development`, `threat-model`, `vet`, and any others `grep` finds). `check` does not catch prose pointers.
 
 Source: `docs/research/plugin-review-2026-11-14/` (the brief, eleven family reports G1 to G10, and `plugin-data.tsv`). This plan covers all 273 plugins: the fixes and enhancements to make, and the plugins to deprecate or merge because they do not help Haiku 5.5, Sonnet 5.5 or Opus 5.5 do better work. It replaces the open parts of `docs/plans/plugin-review-fixes.md` (2026-10-23), most of which has landed.
 
