@@ -1,7 +1,7 @@
 {
   "name": "goff-flags",
-  "version": "0.1.0",
-  "description": "Writes and reviews GO Feature Flag flag files (YAML, JSON, TOML): variations, targeting rules and query syntax, percentage, progressive and scheduled rollouts, experimentation, metadata, and the go-feature-flag-cli lint and evaluate commands.",
+  "version": "0.1.1",
+  "description": "Deprecated: use goff. Writes and reviews GO Feature Flag flag files (YAML, JSON, TOML): variations, targeting rules and query syntax, percentage, progressive and scheduled rollouts, experimentation, metadata, and the go-feature-flag-cli lint and evaluate commands.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

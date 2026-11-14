@@ -1,6 +1,6 @@
 {
   "name": "github-meta",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -14,7 +14,6 @@
     "shipper",
     "gh-actions",
     "dependabot",
-    "gh-readme",
     "readme"
   ]
 }

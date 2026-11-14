@@ -49,6 +49,31 @@
       "into": null,
       "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-round-2.md)",
       "date": "2026-11-14"
+    },
+    "gh-readme": {
+      "into": "readme",
+      "reason": "Merged into the forge-neutral readme skill",
+      "date": "2026-11-14"
+    },
+    "forgejo-readme": {
+      "into": "readme",
+      "reason": "Merged into the forge-neutral readme skill",
+      "date": "2026-11-14"
+    },
+    "goff-flags": {
+      "into": "goff",
+      "reason": "Merged into the single goff skill",
+      "date": "2026-11-14"
+    },
+    "goff-relay-proxy": {
+      "into": "goff",
+      "reason": "Merged into the single goff skill",
+      "date": "2026-11-14"
+    },
+    "goff-sdk": {
+      "into": "goff",
+      "reason": "Merged into the single goff skill",
+      "date": "2026-11-14"
     }
   },
   "archived": {}

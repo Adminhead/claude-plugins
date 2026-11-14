@@ -136,7 +136,7 @@
       "name": "github-meta",
       "source": "./plugins/github-meta",
       "description": "Plugin set for GitHub workflows (issues, pull requests, Actions, Dependabot), installed at project scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "meta"
     },
     {
@@ -1430,8 +1430,8 @@
     {
       "name": "gh-readme",
       "source": "./plugins/gh-readme",
-      "description": "README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules.",
-      "version": "0.1.1",
+      "description": "Deprecated: use readme. README skill: write, restructure, audit and beautify a GitHub repository's README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest shields.io badges, dark/light logos and GitHub rendering rules.",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1550,7 +1550,7 @@
       "name": "forgejo-meta",
       "source": "./plugins/forgejo-meta",
       "description": "Plugin set for Forgejo and Codeberg workflows (fj CLI, issues, pull requests, Actions, Renovate, READMEs, the Forgejo MCP server), installed at project scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "meta"
     },
     {
@@ -1619,8 +1619,8 @@
     {
       "name": "forgejo-readme",
       "source": "./plugins/forgejo-readme",
-      "description": "README skill for Forgejo and Codeberg repos: write, restructure, audit and beautify README.md from facts in the repo, with templates by project type, a scored audit, honest badges and Forgejo rendering rules.",
-      "version": "0.1.0",
+      "description": "Deprecated: use readme. README skill for Forgejo and Codeberg repos: write, restructure, audit and beautify README.md from facts in the repo, with templates by project type, a scored audit, honest badges and Forgejo rendering rules.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1885,22 +1885,22 @@
     {
       "name": "goff-flags",
       "source": "./plugins/goff-flags",
-      "description": "Writes and reviews GO Feature Flag flag files (YAML, JSON, TOML): variations, targeting rules and query syntax, percentage, progressive and scheduled rollouts, experimentation, metadata, and the go-feature-flag-cli lint and evaluate commands.",
-      "version": "0.1.0",
+      "description": "Deprecated: use goff. Writes and reviews GO Feature Flag flag files (YAML, JSON, TOML): variations, targeting rules and query syntax, percentage, progressive and scheduled rollouts, experimentation, metadata, and the go-feature-flag-cli lint and evaluate commands.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "goff-relay-proxy",
       "source": "./plugins/goff-relay-proxy",
-      "description": "Configures and runs the GO Feature Flag relay proxy: config file keys, retrievers, exporters, notifiers, API keys, flagsets, admin and OFREP endpoints, Docker and Kubernetes deployment.",
-      "version": "0.1.0",
+      "description": "Deprecated: use goff. Configures and runs the GO Feature Flag relay proxy: config file keys, retrievers, exporters, notifiers, API keys, flagsets, admin and OFREP endpoints, Docker and Kubernetes deployment.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "goff-sdk",
       "source": "./plugins/goff-sdk",
-      "description": "Integrates GO Feature Flag through OpenFeature providers (server, in-process, client) and the Go module: evaluation context, bucketing, tracking and testing.",
-      "version": "0.1.0",
+      "description": "Deprecated: use goff. Integrates GO Feature Flag through OpenFeature providers (server, in-process, client) and the Go module: evaluation context, bucketing, tracking and testing.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
