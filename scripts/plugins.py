@@ -7,17 +7,26 @@
   plugins.py sync-shared
   plugins.py upstream [PLUGIN ...] [--fetch]
   plugins.py catalog [--check]
+  plugins.py deprecate <name> --reason TEXT [--into PLUGIN] [--date YYYY-MM-DD]
+  plugins.py archive <name> [--force] [--date YYYY-MM-DD]
 
 A meta plugin is `baseline` or a name ending in `-meta`. A core bundle is a
 plugin whose marketplace entry has category "bundle" (named `*-core` by
 convention) that several metas share. Both ship only a plugin.json whose
 `dependencies` list the plugins they install. Every other plugin is a leaf and
 ships exactly one component; a leaf may end in `-core` (`ef-core`).
+
+Retire a plugin in two steps, never by hand. `deprecate` marks it (description prefix, patch bumps), drops it from
+the metas, bundles and example settings that list it, and records it in scripts/retired.json. A release later,
+`archive` moves it to archive/plugins/, removes its marketplace entry, and runs `check` to show dangling references.
+scripts/install.mjs reads retired.json to warn users and, with --prune, to clean archived ids out of their settings.
 """
 
 import argparse
+import datetime
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -231,6 +240,7 @@ def check(root, since=None, warnings=None):
     errors += plugin_file_errors(root, manifests)
     errors += skill_link_errors(root)
     errors += archive_reference_errors(root)
+    errors += retired_errors(root, entries, manifests, own)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
@@ -701,6 +711,132 @@ def archive_reference_errors(root):
                 if not (root / "archive/plugins" / name).is_dir():
                     errors.append(f"{f.relative_to(root)}:{n}: archive/plugins/{name} does not exist")
     return errors
+
+# --- Retired plugins ---------------------------------------------------------
+# scripts/retired.json is the one record of a retirement: `deprecate` writes `deprecated`, `archive` moves the
+# record to `archived`. A missing file means nothing is retired.
+
+RETIRED = Path("scripts/retired.json")
+ARCHIVE = Path("archive/plugins")
+RECORD_KEYS = {"into", "reason", "date"}
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def valid_date(value):
+    if not (isinstance(value, str) and DATE_RE.match(value)):
+        return False
+    try:
+        datetime.date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def read_retired(root):
+    """Return (tables, errors) for scripts/retired.json; tables is {"deprecated": {...}, "archived": {...}}."""
+    tables = {"deprecated": {}, "archived": {}}
+    path = root / RETIRED
+    if not path.is_file():
+        return tables, []
+    data, err = read_json(path)
+    if err or not isinstance(data, dict):
+        return tables, [f"{RETIRED}: {err or 'must be a JSON object'}"]
+    errors = [f"{RETIRED}: unknown key {k!r}" for k in sorted(map(str, set(data) - set(tables)))]
+    for table in tables:
+        section = data.get(table, {})
+        if not isinstance(section, dict):
+            errors.append(f"{RETIRED}: {table} must be an object keyed by plugin name")
+            continue
+        allowed = RECORD_KEYS | ({"archived"} if table == "archived" else set())
+        for name, rec in section.items():
+            where = f"{RETIRED}: {table}.{name}"
+            if not isinstance(rec, dict):
+                errors.append(f"{where} must be an object")
+                continue
+            errors += [f"{where}: unknown key {k!r}" for k in sorted(map(str, set(rec) - allowed))]
+            if not (rec.get("into") is None or isinstance(rec["into"], str) and rec["into"]):
+                errors.append(f"{where}: into must be a plugin name or null")
+            if not (isinstance(rec.get("reason"), str) and rec["reason"].strip()):
+                errors.append(f"{where}: reason must be a non-empty string")
+            for key in ("date", "archived") if table == "archived" else ("date",):
+                if not valid_date(rec.get(key)):
+                    errors.append(f"{where}: {key} must be a YYYY-MM-DD date")
+        tables[table] = section
+    errors += [f"{RETIRED}: {n} is both deprecated and archived" for n in sorted(set(tables["deprecated"]) & set(tables["archived"]))]
+    return tables, errors
+
+
+def load_retired(root):
+    tables, errors = read_retired(root)
+    if errors:
+        raise SystemExit("\n".join(errors))
+    return tables
+
+
+def write_retired(root, tables):
+    write_json(root / RETIRED, tables)
+
+
+def deprecation_prefix(into):
+    return f"Deprecated: use {into}. " if into else "Deprecated. "
+
+
+def example_ids(root, own):
+    """Yield (file, section, plugin name) for each `<plugin>@<this marketplace>` id in an example's enabledPlugins and pluginConfigs."""
+    suffix = f"@{own}"
+    for f in sorted((root / EXAMPLE_SETTINGS).glob("*.json")) if own else []:
+        data, err = read_json(f)
+        for key in ("enabledPlugins", "pluginConfigs"):
+            section = data.get(key) if not err and isinstance(data, dict) else None
+            for plugin_id in section if isinstance(section, dict) else ():
+                if plugin_id.endswith(suffix):
+                    yield f, key, plugin_id[:-len(suffix)]
+
+
+def dependents(name, manifests, own):
+    """Plugins whose dependencies list `name` from this marketplace."""
+    found = []
+    for other, manifest in manifests.items():
+        for dep in (manifest or {}).get("dependencies", []):
+            dep_name, dep_market = parse_dep(dep)
+            if other != name and dep_name == name and (not dep_market or dep_market == own):
+                found.append(other)
+                break
+    return sorted(found)
+
+
+def retired_errors(root, entries, manifests, own):
+    """retired.json parses; deprecated plugins are marked and unreferenced; archived ones are gone from plugins/."""
+    tables, errors = read_retired(root)
+    for table in ("deprecated", "archived"):
+        for name, rec in tables[table].items():
+            target = rec.get("into") if isinstance(rec, dict) else None
+            if target and (target not in entries or target in tables["deprecated"] or target in tables["archived"]):
+                errors.append(f"{RETIRED}: {table}.{name} into {target} must be a live plugin, not a missing, deprecated or archived one")
+    for name, rec in tables["deprecated"].items():
+        if not isinstance(rec, dict):
+            continue
+        if name not in entries:
+            errors.append(f"{name}: deprecated in {RETIRED} but not listed in marketplace.json")
+            continue
+        want = deprecation_prefix(rec.get("into"))
+        if not entries[name].get("description", "").startswith(want):
+            errors.append(f"{name}: deprecated, so the marketplace.json description must start with {want.strip()!r}")
+        manifest = manifests.get(name) or {}
+        if manifest and not manifest.get("description", "").startswith(want):
+            errors.append(f"{name}: deprecated, so the plugin.json description must start with {want.strip()!r}")
+        for other in dependents(name, manifests, own):
+            errors.append(f"{other}: depends on deprecated plugin {name}; remove the dependency")
+    for f, key, name in example_ids(root, own):
+        if name in tables["deprecated"]:
+            errors.append(f"{f.relative_to(root)}: {key} still names deprecated plugin {name}")
+    for name in tables["archived"]:
+        if name in entries or name in manifests:
+            errors.append(f"{name}: archived in {RETIRED} but still in marketplace.json or plugins/")
+        if not (root / ARCHIVE / name).is_dir():
+            errors.append(f"{name}: archived in {RETIRED} but {ARCHIVE}/{name} does not exist")
+    return errors
+
 
 # Root suites that load the plugins of whole metas: expected plugins = closure of the metas, minus meta and bundle
 # plugins, minus `exclude`, plus `extra`. `3rd-party/<dir>` names an external checkout.
@@ -1388,6 +1524,315 @@ def register(root, assignments):
     print(f"registered {len(added)} plugin(s){': ' + ', '.join(added) if added else ''}")
 
 
+# --- Retiring plugins --------------------------------------------------------
+
+_JSON = json.JSONDecoder()
+
+
+def _skip_ws(text, i):
+    while i < len(text) and text[i] in " \t\r\n":
+        i += 1
+    return i
+
+
+def json_members(text, start):
+    """Members of the JSON object or array whose `{` or `[` is at text[start]: ([(key, key_start, value_start, value_end, after)], close).
+
+    The key is None for an array item. `after` is the index past the member's trailing comma, or `value_end` for the last member."""
+    closer = "}" if text[start] == "{" else "]"
+    i = _skip_ws(text, start + 1)
+    members = []
+    while text[i] != closer:
+        key, member_start, j = None, i, i
+        if closer == "}":
+            key, j = _JSON.raw_decode(text, i)
+            j = _skip_ws(text, j)
+            if text[j] != ":":
+                raise ValueError(f"expected ':' at {j}")
+            j = _skip_ws(text, j + 1)
+        _, end = _JSON.raw_decode(text, j)
+        k = _skip_ws(text, end)
+        after = k + 1 if text[k] == "," else end
+        members.append((key, member_start, j, end, after))
+        i = _skip_ws(text, after)
+    return members, i
+
+
+def remove_member(text, container, n):
+    """Remove member `n` of the object or array at text[container], keeping every other byte (whole lines when the member has its own)."""
+    members, _ = json_members(text, container)
+    _, ks, _, ve, after = members[n]
+    line = text.rfind("\n", 0, ks) + 1
+    eol = text.find("\n", after)
+    eol = len(text) if eol == -1 else eol
+    if not text[line:ks].strip() and not text[after:eol].strip():
+        cut = (line, min(eol + 1, len(text)))
+    else:
+        cut = (ks, _skip_ws(text, after))
+    new = text[:cut[0]] + text[cut[1]:]
+    if after == ve and n > 0:  # the last member went: the one before loses its comma
+        comma = members[n - 1][4] - 1
+        new = new[:comma] + new[comma + 1:]
+    members, close = json_members(new, container)
+    if not members:
+        new = new[:container + 1] + new[close:]  # `{}` or `[]`
+    return new
+
+
+def top_member(text, key):
+    members, _ = json_members(text, _skip_ws(text, 0))
+    return next(((n, vs, ve) for n, (k, _, vs, ve, _) in enumerate(members) if k == key), None)
+
+
+def remove_json_key(text, section, key):
+    """Remove `key` from the top-level object `section` of a JSON text. Returns the new text."""
+    found = top_member(text, section)
+    if found is None or text[found[1]] != "{":
+        return text
+    members, _ = json_members(text, found[1])
+    n = next((n for n, m in enumerate(members) if m[0] == key), None)
+    return text if n is None else remove_member(text, found[1], n)
+
+
+def read_raw(path):
+    """File text with its line endings untouched."""
+    with open(path, newline="") as f:
+        return f.read()
+
+
+def write_raw(path, text):
+    with open(path, "w", newline="") as f:
+        f.write(text)
+
+
+def dump_like(original, data):
+    """`data` in the standard layout, with CRLF line endings when `original` used them."""
+    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    return text.replace("\n", "\r\n") if "\r\n" in original else text
+
+
+def save_manifest(path, data):
+    """Write `data` over a plugin.json, changing only the version, description and dependency lines that differ.
+
+    A layout or change it cannot patch (a new key, an edited value that is not a string) is rewritten whole."""
+    original = text = read_raw(path)
+    old = json.loads(text)
+    try:
+        for key, value in data.items():
+            if old.get(key) == value:
+                continue
+            found = top_member(text, key)
+            if found is None:
+                raise ValueError(key)
+            if isinstance(value, str):
+                text = text[:found[1]] + json.dumps(value, ensure_ascii=False) + text[found[2]:]
+            elif key == "dependencies" and isinstance(value, list) and all(v in old[key] for v in value):
+                for n in reversed([n for n, v in enumerate(old[key]) if v not in value]):
+                    text = remove_member(text, top_member(text, key)[1], n)
+            else:
+                raise ValueError(key)
+        patched = set(old) == set(data) and json.loads(text) == data
+    except (ValueError, IndexError):
+        patched = False
+    write_raw(path, text if patched else dump_like(original, data))
+
+
+def strip_example_ids(root, ids, own):
+    """Remove `<name>@<this marketplace>` for each name in `ids` from the example settings, formatting intact.
+
+    Returns the relative paths of the files that changed."""
+    changed = []
+    suffix = f"@{own}"
+    for f in sorted((root / EXAMPLE_SETTINGS).glob("*.json")):
+        original = read_raw(f)
+        data, err = read_json(f)
+        if err or not isinstance(data, dict):
+            continue  # deprecate refuses an unreadable example file before it writes anything
+        doomed = [(section, i) for section in ("enabledPlugins", "pluginConfigs")
+                  for i in (data[section] if isinstance(data.get(section), dict) else ())
+                  if i.endswith(suffix) and i[:-len(suffix)] in ids]
+        if not doomed:
+            continue
+        for section, i in doomed:
+            del data[section][i]
+        text = original
+        try:
+            for section, i in doomed:
+                text = remove_json_key(text, section, i)
+            intact = json.loads(text) == data
+        except (ValueError, IndexError):
+            intact = False
+        write_raw(f, text if intact else dump_like(original, data))  # unusual layout: standard format
+        changed.append(f.relative_to(root).as_posix())
+    return changed
+
+
+def require_catalog_markers(root):
+    """Refuse before any write when the README cannot take the regenerated catalog."""
+    readme = root / README
+    text = readme.read_text() if readme.is_file() else ""
+    if CATALOG_START not in text or CATALOG_END not in text:
+        raise SystemExit(f"README.md needs {CATALOG_START} and {CATALOG_END} markers; nothing was changed")
+
+
+def require_readable_examples(root):
+    """Refuse before any write when an example settings file is not a JSON object."""
+    for f in sorted((root / EXAMPLE_SETTINGS).glob("*.json")):
+        data, err = read_json(f)
+        if err or not isinstance(data, dict):
+            raise SystemExit(f"{f.relative_to(root)}: {err or 'settings must be a JSON object'}; fix it first, nothing was changed")
+
+
+def report_check(root, name, verb):
+    """Run check after a retirement step and print its errors. Returns the exit code; the changes are kept."""
+    errors = check(root)
+    for e in errors:
+        print(e, file=sys.stderr)
+    if errors:
+        print(f"{len(errors)} problem(s) after {verb} {name}; the changes were kept. Fix the references above.", file=sys.stderr)
+        return 1
+    print("check: ok")
+    return 0
+
+
+def bump_patch(name, version):
+    m = VERSION_RE.match(version) if isinstance(version, str) else None
+    if not m:
+        raise SystemExit(f"{name}: version {version!r} is not MAJOR.MINOR.PATCH; fix it before retiring")
+    major, minor, patch = map(int, m.groups())
+    return f"{major}.{minor}.{patch + 1}"
+
+
+def today():
+    return datetime.date.today().isoformat()
+
+
+def deprecate(root, name, into, reason, date):
+    """Mark a plugin deprecated: description prefix, dependency and example-settings removal, version bumps, retired.json.
+
+    Runs check at the end and returns 1 if it finds problems (the changes are kept)."""
+    market, entries, manifests = load_plugins(root)
+    own = market.get("name")
+    tables = load_retired(root)
+    if not valid_date(date):
+        raise SystemExit(f"--date {date!r} must be a YYYY-MM-DD date")
+    if not reason.strip():
+        raise SystemExit("--reason must say why the plugin is retired")
+    if name not in entries or manifests.get(name) is None:
+        raise SystemExit(f"{name}: no such plugin")
+    if name == "baseline":
+        raise SystemExit("baseline: the installer always installs it; it cannot be deprecated")
+    if name in tables["deprecated"] or name in tables["archived"]:
+        raise SystemExit(f"{name}: already {'deprecated' if name in tables['deprecated'] else 'archived'}")
+    if into is not None:
+        if into == name or into not in entries:
+            raise SystemExit(f"--into {into}: not another plugin in this marketplace")
+        if into in tables["deprecated"] or into in tables["archived"]:
+            raise SystemExit(f"--into {into}: that plugin is itself retired")
+    users = dependents(name, manifests, own)
+    blockers = users if is_meta(name) else [u for u in users if not is_group(u)]
+    if blockers:
+        raise SystemExit(f"{name}: still a dependency of {', '.join(blockers)}; "
+                         "decide what replaces it there, edit those plugins, then deprecate")
+    groups = [u for u in users if is_group(u)]
+    versions = {n: bump_patch(n, manifests[n].get("version")) for n in [name, *groups]}
+    require_yaml()
+    require_catalog_markers(root)
+    require_readable_examples(root)
+
+    prefix = deprecation_prefix(into)
+    changed = []
+    manifest_path = root / "plugins" / name / ".claude-plugin/plugin.json"
+    manifest = manifests[name]
+    entry = entries[name]
+    for doc in (manifest, entry):
+        if not doc.get("description", "").startswith(prefix):
+            doc["description"] = prefix + doc.get("description", "")
+        doc["version"] = versions[name]
+    save_manifest(manifest_path, manifest)
+    changed.append(manifest_path.relative_to(root).as_posix())
+    for group in groups:
+        path = root / "plugins" / group / ".claude-plugin/plugin.json"
+        gm = manifests[group]
+        gm["dependencies"] = [d for d in gm["dependencies"]
+                              if not (parse_dep(d)[0] == name and parse_dep(d)[1] in (None, own))]
+        gm["version"] = entries[group]["version"] = versions[group]
+        save_manifest(path, gm)
+        changed.append(path.relative_to(root).as_posix())
+    write_json(root / MARKETPLACE, market)
+    changed.append(MARKETPLACE.as_posix())
+    changed += strip_example_ids(root, {name}, own)
+    tables["deprecated"][name] = {"into": into, "reason": reason, "date": date}
+    write_retired(root, tables)
+    changed.append(RETIRED.as_posix())
+    if write_catalog(root):
+        changed.append(README.as_posix())
+    print(f"Deprecated {name}" + (f" (use {into})" if into else "") + ". Changed:")
+    for path in changed:
+        print(f"  {path}")
+    print(f"Archive it a release later with: scripts/plugins.py archive {name}")
+    return report_check(root, name, "deprecating")
+
+
+def in_work_tree(root):
+    top = git(root, "rev-parse", "--show-toplevel")
+    return top.returncode == 0 and Path(top.stdout.strip()).resolve() == root.resolve()
+
+
+def move_plugin(root, name):
+    """Move plugins/<name> to archive/plugins/<name>, with `git mv` when the path is tracked."""
+    src, dest = Path("plugins") / name, ARCHIVE / name
+    (root / dest).parent.mkdir(parents=True, exist_ok=True)
+    if in_work_tree(root) and git(root, "ls-files", "--error-unmatch", "--", src.as_posix()).returncode == 0:
+        moved = git(root, "mv", src.as_posix(), dest.as_posix())
+        if moved.returncode == 0:
+            return "git mv"
+        print(f"git mv failed ({moved.stderr.strip()}); moving the directory instead", file=sys.stderr)
+    shutil.move(str(root / src), str(root / dest))
+    return "move"
+
+
+def archive(root, name, force, date):
+    """Move a deprecated plugin to archive/plugins and drop its marketplace entry, then run check."""
+    market, entries, manifests = load_plugins(root)
+    own = market.get("name")
+    tables = load_retired(root)
+    if not valid_date(date):
+        raise SystemExit(f"--date {date!r} must be a YYYY-MM-DD date")
+    if name in tables["archived"]:
+        raise SystemExit(f"{name}: already archived")
+    if name == "baseline":
+        raise SystemExit("baseline: the installer always installs it; it cannot be archived")
+    if name not in tables["deprecated"]:
+        if not force:
+            raise SystemExit(f"{name}: not deprecated; run `plugins.py deprecate {name}` first, or pass --force")
+        if is_group(name):
+            raise SystemExit(f"{name}: a meta plugin or core bundle must be deprecated before it is archived, even with --force")
+    if name not in entries or manifests.get(name) is None:
+        raise SystemExit(f"{name}: no such plugin in plugins/ and marketplace.json")
+    if (root / "plugins" / name).is_symlink():
+        raise SystemExit(f"plugins/{name} is a symlink; archive moves real directories only")
+    require_yaml()
+    require_catalog_markers(root)
+    if (root / ARCHIVE / name).exists() or (root / ARCHIVE / name).is_symlink():
+        raise SystemExit(f"{ARCHIVE}/{name} already exists")
+    users = dependents(name, manifests, own)
+    if users:
+        raise SystemExit(f"{name}: still a dependency of {', '.join(users)}; remove it from them first")
+
+    how = move_plugin(root, name)
+    market["plugins"] = [e for e in market["plugins"] if e.get("name") != name]
+    write_json(root / MARKETPLACE, market)
+    record = tables["deprecated"].pop(name, None) or {
+        "into": None, "reason": "archived without a prior deprecation (--force)", "date": date}
+    tables["archived"][name] = {**record, "archived": date}
+    write_retired(root, tables)
+    write_catalog(root)
+    print(f"Archived {name}: plugins/{name} -> {ARCHIVE}/{name} ({how}), marketplace.json entry removed, "
+          f"{RETIRED} updated, README catalog regenerated.")
+    return report_check(root, name, "archiving")
+
+
 def main(argv=None, root=ROOT):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -1408,12 +1853,25 @@ def main(argv=None, root=ROOT):
     p_up.add_argument("--fetch", action="store_true", help="git fetch each 3rd-party checkout first")
     p_cat = sub.add_parser("catalog", help="regenerate the README plugin catalog")
     p_cat.add_argument("--check", action="store_true", help="exit 1 if the catalog is stale")
+    p_dep = sub.add_parser("deprecate", help="mark a plugin deprecated; archive it a release later")
+    p_dep.add_argument("name")
+    p_dep.add_argument("--into", metavar="PLUGIN", help="the plugin that replaces it")
+    p_dep.add_argument("--reason", required=True, help="why it is retired")
+    p_dep.add_argument("--date", default=None, metavar="YYYY-MM-DD", help="record this date (default: today)")
+    p_arc = sub.add_parser("archive", help="move a deprecated plugin to archive/plugins and run check")
+    p_arc.add_argument("name")
+    p_arc.add_argument("--force", action="store_true", help="archive a plugin that was never deprecated")
+    p_arc.add_argument("--date", default=None, metavar="YYYY-MM-DD", help="record this date (default: today)")
     args = parser.parse_args(argv)
 
     if args.cmd == "new":
         new(root, args.name, args.kind, args.description, args.meta)
     elif args.cmd == "register":
         register(root, args.meta)
+    elif args.cmd == "deprecate":
+        return deprecate(root, args.name, args.into, args.reason, args.date or today())
+    elif args.cmd == "archive":
+        return archive(root, args.name, args.force, args.date or today())
     elif args.cmd == "upstream":
         upstream(root, args.plugins, args.fetch)
     elif args.cmd == "sync-shared":

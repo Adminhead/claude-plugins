@@ -963,3 +963,443 @@ def test_archive_references_ignore_files_outside_live_paths_and_binaries(uv):
     (uv / "plugins/uv-lock/blob.bin").write_bytes(b"\0archive/plugins/gone")
     write(uv / "plugins/uv-lock/node_modules/x/README.md", "archive/plugins/gone\n")
     assert only(uv, "archive/plugins") == []
+
+
+# --- Retiring plugins: deprecate, archive, retired.json ----------------------
+
+EXAMPLE_GLOBAL = """{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledPlugins": {
+    "uv-lock@adminhead": true,
+    "uv-new@adminhead": true,
+    "other@elsewhere": true
+  },
+  "pluginConfigs": {
+    "uv-lock@adminhead": {
+      "options": { "k": "v" }
+    }
+  }
+}
+"""
+
+
+def read(root, rel):
+    return json.loads((root / rel).read_text())
+
+
+def retire_root(root):
+    """python-meta lists uv-lock and uv-new; an example settings file enables both."""
+    for name in ("uv-lock", "uv-new"):
+        run(root, "new", name, "--kind", "skill", "--description", "Locks deps.", "--meta", "python-meta")
+    example = root / "examples/claude-settings/settings.global.json"
+    example.parent.mkdir(parents=True)
+    example.write_text(EXAMPLE_GLOBAL)
+    assert plugins.check(root) == []
+    return root
+
+
+def set_retired(root, deprecated=None, archived=None):
+    plugins.write_json(root / plugins.RETIRED, {"deprecated": deprecated or {}, "archived": archived or {}})
+
+
+def rec(into=None, **extra):
+    return {"into": into, "reason": "why", "date": "2026-01-02", **extra}
+
+
+def snapshot(root):
+    """Every file a retirement step may write: marketplace, retired.json, README, plugin.json files, example settings."""
+    paths = [root / plugins.MARKETPLACE, root / plugins.RETIRED, root / "README.md"]
+    paths += sorted(root.glob("plugins/*/.claude-plugin/plugin.json")) + sorted(root.glob("examples/claude-settings/*.json"))
+    return {f: f.read_bytes() if f.exists() else None for f in paths}
+
+
+def refuses(root, *argv):
+    """The command exits with a message and changes none of the files a retirement step writes."""
+    before = snapshot(root)
+    with pytest.raises(SystemExit) as e:
+        run(root, *argv)
+    assert snapshot(root) == before
+    return str(e.value)
+
+
+def test_deprecate_marks_plugin_and_cleans_references(root, capsys):
+    retire_root(root)
+    run(root, "deprecate", "uv-lock", "--into", "uv-new", "--reason", "folded in", "--date", "2026-03-04")
+    prefix = "Deprecated: use uv-new. Locks deps."
+    for rel in ("plugins/uv-lock/.claude-plugin/plugin.json", plugins.MARKETPLACE):
+        data = read(root, rel)
+        item = data if rel != plugins.MARKETPLACE else next(p for p in data["plugins"] if p["name"] == "uv-lock")
+        assert item["description"] == prefix
+        assert item["version"] == "0.1.1"
+    assert read(root, "plugins/python-meta/.claude-plugin/plugin.json")["dependencies"] == ["uv-new"]
+    entries = {p["name"]: p["version"] for p in read(root, plugins.MARKETPLACE)["plugins"]}
+    assert entries == {"python-meta": "0.1.1", "uv-lock": "0.1.1", "uv-new": "0.1.0"}
+    assert read(root, "plugins/python-meta/.claude-plugin/plugin.json")["version"] == "0.1.1"
+    assert read(root, plugins.RETIRED) == {
+        "deprecated": {"uv-lock": {"into": "uv-new", "reason": "folded in", "date": "2026-03-04"}}, "archived": {}}
+    example = (root / "examples/claude-settings/settings.global.json").read_text()
+    assert json.loads(example) == {
+        "$schema": "https://json.schemastore.org/claude-code-settings.json",
+        "enabledPlugins": {"uv-new@adminhead": True, "other@elsewhere": True}, "pluginConfigs": {}}
+    assert '    "uv-new@adminhead": true,\n    "other@elsewhere": true\n  },' in example  # other lines untouched
+    assert f"| {prefix} |" in (root / "README.md").read_text()
+    assert plugins.check(root) == []
+    out = capsys.readouterr().out
+    for changed in ("plugins/uv-lock/.claude-plugin/plugin.json", "plugins/python-meta/.claude-plugin/plugin.json",
+                    ".claude-plugin/marketplace.json", "scripts/retired.json", "README.md",
+                    "examples/claude-settings/settings.global.json"):
+        assert changed in out
+
+
+def test_deprecate_edits_manifests_in_place(root):
+    retire_root(root)
+    path = root / "plugins/uv-lock/.claude-plugin/plugin.json"
+    text = path.read_text().rstrip("\n").removesuffix("}")
+    path.write_text(text.rstrip() + ',\n  "userConfig": {\n    "on": { "type": "boolean", "default": true }\n  }\n}\n')
+    meta = root / "plugins/python-meta/.claude-plugin/plugin.json"
+    meta_before = meta.read_text()
+    plugins.write_catalog(root)
+    before = path.read_text()
+    run(root, "deprecate", "uv-lock", "--reason", "gone")
+    after = path.read_text()
+    assert after.endswith('  "userConfig": {\n    "on": { "type": "boolean", "default": true }\n  }\n}\n')
+    assert [l for l in before.splitlines() if l not in after.splitlines()] == [
+        '  "version": "0.1.0",', '  "description": "Locks deps.",']
+    assert meta_before.replace('    "uv-lock",\n', "").replace("0.1.0", "0.1.1") == meta.read_text()
+
+
+def test_deprecate_without_into_uses_plain_prefix(root):
+    retire_root(root)
+    run(root, "deprecate", "uv-lock", "--reason", "gone")
+    assert read(root, "plugins/uv-lock/.claude-plugin/plugin.json")["description"] == "Deprecated. Locks deps."
+    assert read(root, plugins.RETIRED)["deprecated"]["uv-lock"] == {
+        "into": None, "reason": "gone", "date": plugins.today()}
+    assert plugins.check(root) == []
+
+
+def test_deprecate_does_not_double_the_prefix(root):
+    retire_root(root)
+    for path in (root / "plugins/uv-lock/.claude-plugin/plugin.json", root / plugins.MARKETPLACE):
+        data = json.loads(path.read_text())
+        item = data if "plugins" not in data else next(p for p in data["plugins"] if p["name"] == "uv-lock")
+        item["description"] = "Deprecated. Locks deps."
+        plugins.write_json(path, data)
+    plugins.write_catalog(root)
+    run(root, "deprecate", "uv-lock", "--reason", "gone")
+    assert read(root, "plugins/uv-lock/.claude-plugin/plugin.json")["description"] == "Deprecated. Locks deps."
+    assert plugins.check(root) == []
+
+
+def test_deprecate_leaves_unrelated_example_files_untouched(root):
+    retire_root(root)
+    other = root / "examples/claude-settings/settings.project.json"
+    other.write_text('{\n  "enabledPlugins": { "<plugin>@adminhead": true }\n}\n')
+    run(root, "deprecate", "uv-lock", "--reason", "gone")
+    assert other.read_text() == '{\n  "enabledPlugins": { "<plugin>@adminhead": true }\n}\n'
+
+
+def test_deprecate_removes_a_bundle_member_from_bundles_and_metas(root):
+    retire_root(root)
+    add_bundle(root, "py-core", ["uv-lock"])
+    set_deps(root, "python-meta", ["py-core", "uv-new"])
+    plugins.write_catalog(root)
+    run(root, "deprecate", "uv-lock", "--reason", "gone")
+    assert read(root, "plugins/py-core/.claude-plugin/plugin.json")["dependencies"] == []
+    assert read(root, "plugins/py-core/.claude-plugin/plugin.json")["version"] == "0.1.1"
+    assert {p["name"]: p["version"] for p in read(root, plugins.MARKETPLACE)["plugins"]}["py-core"] == "0.1.1"
+    assert plugins.check(root) == []
+
+
+def test_deprecate_refusals(root):
+    retire_root(root)
+    assert "no such plugin" in refuses(root, "deprecate", "nope", "--reason", "x")
+    assert "baseline" in refuses(root, "deprecate", "baseline", "--reason", "x")
+    assert "--into" in refuses(root, "deprecate", "uv-lock", "--into", "nope", "--reason", "x")
+    assert "--into" in refuses(root, "deprecate", "uv-lock", "--into", "uv-lock", "--reason", "x")
+    assert "--date" in refuses(root, "deprecate", "uv-lock", "--reason", "x", "--date", "2026-13-40")
+    assert "reason" in refuses(root, "deprecate", "uv-lock", "--reason", "  ")
+    # a non-meta plugin that depends on it blocks the move
+    add_plugin(root, "uv-user", ["uv-lock"])
+    assert "uv-user" in refuses(root, "deprecate", "uv-lock", "--reason", "x")
+    # a meta with dependents
+    add_plugin(root, "needs-meta", ["python-meta"])
+    assert "needs-meta" in refuses(root, "deprecate", "python-meta", "--reason", "x")
+    # an --into target that is itself deprecated, and a repeat
+    set_retired(root, deprecated={"uv-new": rec()})
+    assert "retired" in refuses(root, "deprecate", "uv-lock", "--into", "uv-new", "--reason", "x")
+    assert "already deprecated" in refuses(root, "deprecate", "uv-new", "--reason", "x")
+    set_retired(root, archived={"uv-new": rec(archived="2026-02-02")})
+    assert "already archived" in refuses(root, "deprecate", "uv-new", "--reason", "x")
+
+
+def test_deprecate_refuses_before_writing_when_a_version_is_malformed(root):
+    retire_root(root)
+    set_deps(root, "python-meta", ["uv-lock", "uv-new"])
+    path = root / "plugins/python-meta/.claude-plugin/plugin.json"
+    manifest = json.loads(path.read_text())
+    manifest["version"] = "next"
+    plugins.write_json(path, manifest)
+    before = (root / "plugins/uv-lock/.claude-plugin/plugin.json").read_bytes()
+    assert "version" in refuses(root, "deprecate", "uv-lock", "--reason", "x")
+    assert (root / "plugins/uv-lock/.claude-plugin/plugin.json").read_bytes() == before
+
+
+def deprecated_root(root, into="uv-new"):
+    retire_root(root)
+    run(root, "deprecate", "uv-lock", "--into", into, "--reason", "folded in", "--date", "2026-03-04")
+    return root
+
+
+def test_archive_moves_the_plugin_and_updates_the_record(root, capsys):
+    deprecated_root(root)
+    assert run(root, "archive", "uv-lock", "--date", "2026-05-06") == 0
+    assert not (root / "plugins/uv-lock").exists()
+    assert (root / "archive/plugins/uv-lock/skills/uv-lock/SKILL.md").is_file()
+    assert [p["name"] for p in read(root, plugins.MARKETPLACE)["plugins"]] == ["python-meta", "uv-new"]
+    assert read(root, plugins.RETIRED) == {"deprecated": {}, "archived": {"uv-lock": {
+        "into": "uv-new", "reason": "folded in", "date": "2026-03-04", "archived": "2026-05-06"}}}
+    assert "uv-lock" not in (root / "README.md").read_text()
+    assert plugins.check(root) == []
+    assert "check: ok" in capsys.readouterr().out
+
+
+def git_ok(root, *args):
+    done = plugins.git(root, "-c", "user.name=t", "-c", "user.email=t@t", *args)
+    assert done.returncode == 0, done.stderr
+    return done.stdout
+
+
+def test_archive_uses_git_mv_for_a_tracked_plugin(root):
+    deprecated_root(root)
+    git_ok(root, "init", "-q")
+    git_ok(root, "add", "-A")
+    git_ok(root, "commit", "-q", "-m", "x")
+    assert run(root, "archive", "uv-lock") == 0
+    status = git_ok(root, "status", "--porcelain")
+    assert "R  plugins/uv-lock/.claude-plugin/plugin.json -> archive/plugins/uv-lock/.claude-plugin/plugin.json" in status
+
+
+def test_archive_refusals(root):
+    deprecated_root(root)
+    assert "not deprecated" in refuses(root, "archive", "uv-new")
+    assert "no such plugin" in refuses(root, "archive", "nope", "--force")
+    (root / "archive/plugins/uv-lock").mkdir(parents=True)
+    assert "already exists" in refuses(root, "archive", "uv-lock")
+    (root / "archive/plugins/uv-lock").rmdir()
+    add_plugin(root, "uv-user", ["uv-lock"])
+    assert "uv-user" in refuses(root, "archive", "uv-lock")
+    assert (root / "plugins/uv-lock").is_dir()
+
+
+def test_archive_force_archives_an_undeprecated_plugin(root):
+    retire_root(root)
+    set_deps(root, "python-meta", ["uv-new"])
+    (root / "examples/claude-settings/settings.global.json").unlink()
+    assert run(root, "archive", "uv-lock", "--force", "--date", "2026-05-06") == 0
+    record = read(root, plugins.RETIRED)["archived"]["uv-lock"]
+    assert record["into"] is None and record["archived"] == "2026-05-06"
+    assert (root / "archive/plugins/uv-lock").is_dir() and not (root / "plugins/uv-lock").exists()
+
+
+def test_archive_reports_dangling_references_and_keeps_the_move(root, capsys):
+    deprecated_root(root)
+    run(root, "new", "uv-agent", "--kind", "agent", "--description", "Agent.")
+    agent = root / "plugins/uv-agent/agents/uv-agent.md"
+    agent.write_text(agent.read_text().replace("tools: Read", "skills: [uv-lock]\ntools: Read"))
+    assert plugins.check(root) == []
+    assert run(root, "archive", "uv-lock") == 1
+    assert (root / "archive/plugins/uv-lock").is_dir()
+    assert "uv-agent.md" in capsys.readouterr().err
+
+
+def test_check_accepts_a_missing_retired_file(root):
+    retire_root(root)
+    assert not (root / plugins.RETIRED).exists()
+    assert plugins.check(root) == []
+
+
+@pytest.mark.parametrize("content", ['{"deprecated": []}', "not json", '{"surprise": {}}',
+                                     '{"deprecated": {"a": {"into": null, "reason": "", "date": "2026-01-01"}}}',
+                                     '{"deprecated": {"a": {"into": null, "reason": "x", "date": "01/02/2026"}}}',
+                                     '{"deprecated": {"a": {"into": 3, "reason": "x", "date": "2026-01-01"}}}',
+                                     '{"archived": {"a": {"into": null, "reason": "x", "date": "2026-01-01"}}}',
+                                     '{"deprecated": {"a": {"into": null, "reason": "x", "date": "2026-01-01", "extra": 1}}}'])
+def test_check_rejects_a_malformed_retired_file(root, content):
+    (root / "scripts").mkdir()
+    (root / plugins.RETIRED).write_text(content)
+    assert any(e.startswith(str(plugins.RETIRED)) for e in plugins.check(root))
+
+
+def retired_errors(root):
+    return [e for e in plugins.check(root) if not e.startswith("README.md")]
+
+
+def test_check_rules_for_deprecated_plugins(root):
+    retire_root(root)
+    set_retired(root, deprecated={"ghost": rec()})
+    assert any("ghost" in e and "marketplace.json" in e for e in retired_errors(root))
+
+    # recorded but not marked, still in a meta and in an example file
+    set_retired(root, deprecated={"uv-lock": rec("uv-new")})
+    errors = retired_errors(root)
+    assert sum("description must start with" in e for e in errors) == 2
+    assert any("python-meta" in e and "deprecated plugin uv-lock" in e for e in errors)
+    assert any("settings.global.json" in e and "uv-lock" in e for e in errors)
+
+
+def test_check_into_must_be_a_live_plugin(root):
+    deprecated_root(root)
+    assert plugins.check(root) == []
+    for into in ("missing", "uv-lock"):
+        set_retired(root, deprecated={"uv-lock": rec(into)})
+        assert any("into" in e for e in retired_errors(root))
+    # a deprecated plugin pointing at a plugin that was archived later
+    set_retired(root, deprecated={"uv-lock": rec("uv-new")}, archived={"uv-new": rec(archived="2026-01-03")})
+    assert any("into uv-new" in e for e in retired_errors(root))
+
+
+def test_check_rules_for_archived_plugins(root):
+    deprecated_root(root)
+    run(root, "archive", "uv-lock")
+    assert plugins.check(root) == []
+    # restored to plugins/ and the marketplace: no longer archived
+    shutil.copytree(root / "archive/plugins/uv-lock", root / "plugins/uv-lock")
+    assert any("uv-lock" in e and "still in marketplace.json or plugins/" in e for e in plugins.check(root))
+    shutil.rmtree(root / "plugins/uv-lock")
+    shutil.rmtree(root / "archive/plugins/uv-lock")
+    assert any("archive/plugins/uv-lock does not exist" in e for e in plugins.check(root))
+
+
+# --- Review follow-ups: atomicity, check after deprecate, CRLF, guards ------
+
+def test_deprecate_refuses_without_catalog_markers_and_changes_nothing(root):
+    retire_root(root)
+    (root / "README.md").write_text("# no markers\n")
+    assert "markers" in refuses(root, "deprecate", "uv-lock", "--reason", "x")
+
+
+def test_archive_refuses_without_catalog_markers_and_moves_nothing(root):
+    deprecated_root(root)
+    (root / "README.md").write_text("# no markers\n")
+    assert "markers" in refuses(root, "archive", "uv-lock")
+    assert (root / "plugins/uv-lock").is_dir() and not (root / "archive").exists()
+
+
+def test_deprecate_refuses_an_unreadable_example_file_and_changes_nothing(root):
+    retire_root(root)
+    (root / "examples/claude-settings/settings.project.json").write_text("{ not json")
+    assert "settings.project.json" in refuses(root, "deprecate", "uv-lock", "--reason", "x")
+
+
+def test_check_reports_an_unreadable_example_file(root):
+    retire_root(root)
+    (root / "examples/claude-settings/settings.project.json").write_text("{ not json")
+    assert any("settings.project.json" in e and "JSON" in e for e in plugins.check(root))
+    (root / "examples/claude-settings/settings.project.json").write_text("[]")
+    assert any("settings.project.json" in e for e in plugins.check(root))
+
+
+def drift_suite(root, monkeypatch):
+    """A root eval suite whose case lists every plugin of python-meta, as the real forges and jvm suites do."""
+    monkeypatch.setitem(plugins.ROOT_SUITES, "suite", {"metas": ("python-meta",), "extra": (), "exclude": ()})
+    case = root / "evals/suite/evals/c1"
+    (case / "graders").mkdir(parents=True)
+    (case / "prompt.md").write_text("---\nplugins:\n  - ../../../../plugins/uv-lock\n  - ../../../../plugins/uv-new\n---\nDo it.\n")
+    (case / "graders/g.md").write_text("---\ntype: regex\npattern: done\n---\n")
+
+
+def test_deprecate_runs_check_and_reports_a_drifting_eval_suite(root, monkeypatch, capsys):
+    retire_root(root)
+    drift_suite(root, monkeypatch)
+    assert plugins.check(root) == []
+    assert run(root, "deprecate", "uv-lock", "--reason", "gone") == 1
+    err = capsys.readouterr().err
+    assert "drifts from the suite closure" in err and "unexpected uv-lock" in err
+    assert "deprecated" in read(root, plugins.RETIRED)  # the changes are kept
+    assert "uv-lock" in read(root, plugins.RETIRED)["deprecated"]
+
+
+def test_deprecate_returns_zero_when_check_is_clean(root, capsys):
+    retire_root(root)
+    assert run(root, "deprecate", "uv-lock", "--reason", "gone") == 0
+    assert "check: ok" in capsys.readouterr().out
+
+
+def crlf(path):
+    path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+
+
+def only_crlf(path):
+    data = path.read_bytes()
+    return b"\r\n" in data and b"\n" not in data.replace(b"\r\n", b"")
+
+
+def test_deprecate_keeps_crlf_line_endings(root):
+    retire_root(root)
+    files = [root / "plugins/uv-lock/.claude-plugin/plugin.json", root / "plugins/python-meta/.claude-plugin/plugin.json",
+             root / "examples/claude-settings/settings.global.json"]
+    for f in files:
+        crlf(f)
+    assert run(root, "deprecate", "uv-lock", "--reason", "gone") == 0
+    for f in files:
+        assert only_crlf(f), f
+    assert read(root, "plugins/python-meta/.claude-plugin/plugin.json")["dependencies"] == ["uv-new"]
+    assert "uv-lock@adminhead" not in (root / "examples/claude-settings/settings.global.json").read_text()
+
+
+def test_save_manifest_rewrites_whole_when_a_key_is_new_and_keeps_crlf(tmp_path):
+    path = tmp_path / "plugin.json"
+    path.write_bytes(b'{\r\n  "name": "x",\r\n  "meta": { "a": 1 }\r\n}\r\n')
+    plugins.save_manifest(path, {"name": "x", "meta": {"a": 1}, "version": "0.1.1"})  # no version key to patch
+    assert json.loads(path.read_text()) == {"name": "x", "meta": {"a": 1}, "version": "0.1.1"}
+    assert only_crlf(path)
+    assert '"a": 1\r\n  }' in path.read_bytes().decode()  # standard layout
+
+
+def test_save_manifest_patches_only_the_changed_lines(tmp_path):
+    path = tmp_path / "plugin.json"
+    text = '{\n  "name": "x",\n  "version": "0.1.0",\n  "meta": { "a": 1 },\n  "dependencies": [\n    "a",\n    "b"\n  ]\n}\n'
+    path.write_text(text)
+    plugins.save_manifest(path, {"name": "x", "version": "0.1.1", "meta": {"a": 1}, "dependencies": ["b"]})
+    assert path.read_text() == text.replace("0.1.0", "0.1.1").replace('    "a",\n', "")
+
+
+def test_archive_force_refuses_baseline_and_live_metas(root):
+    retire_root(root)
+    add_plugin(root, "baseline", ["uv-new"])
+    assert "baseline" in refuses(root, "archive", "baseline", "--force")
+    assert "deprecated before" in refuses(root, "archive", "python-meta", "--force")
+    add_bundle(root, "py-core", ["uv-new"])
+    assert "deprecated before" in refuses(root, "archive", "py-core", "--force")
+    assert (root / "plugins/python-meta").is_dir() and (root / "plugins/py-core").is_dir()
+
+
+def test_archive_allows_a_deprecated_meta(root):
+    retire_root(root)
+    run(root, "deprecate", "python-meta", "--reason", "gone")
+    assert run(root, "archive", "python-meta") == 0
+    assert (root / "archive/plugins/python-meta").is_dir()
+
+
+def test_archive_refuses_a_symlinked_plugin_directory(root, tmp_path_factory):
+    deprecated_root(root)
+    elsewhere = tmp_path_factory.mktemp("elsewhere") / "uv-lock"
+    shutil.move(str(root / "plugins/uv-lock"), str(elsewhere))
+    (root / "plugins/uv-lock").symlink_to(elsewhere, target_is_directory=True)
+    assert "symlink" in refuses(root, "archive", "uv-lock")
+    assert elsewhere.is_dir() and not (root / "archive").exists()
+
+
+def test_archive_refuses_an_already_archived_plugin(root):
+    deprecated_root(root)
+    assert run(root, "archive", "uv-lock") == 0
+    assert "already archived" in refuses(root, "archive", "uv-lock")
+    assert "already archived" in refuses(root, "archive", "uv-lock", "--force")
+
+
+def test_archive_refuses_when_the_destination_is_a_file(root):
+    deprecated_root(root)
+    (root / "archive/plugins").mkdir(parents=True)
+    (root / "archive/plugins/uv-lock").write_text("in the way")
+    assert "already exists" in refuses(root, "archive", "uv-lock")
+    assert (root / "plugins/uv-lock").is_dir()
