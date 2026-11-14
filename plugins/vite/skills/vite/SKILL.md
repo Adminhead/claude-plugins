@@ -5,7 +5,7 @@ description: "Configures and debugs Vite 7 and 8 (Rolldown/Oxc): env variables a
 
 # Vite
 
-This skill owns build and dev-server configuration. Framework code belongs to the framework skill: `react`, `vue`, or `tanstack` when the project uses TanStack Start (if installed). Module-format semantics belong to `javascript`.
+This skill owns build and dev-server configuration. Framework code belongs to the framework skill: `react` or `vue` (if installed). Module-format semantics are out of scope.
 
 ## 1. Establish the version and the setup
 

@@ -30,7 +30,7 @@ Each reference starts with an "Addon vX checked against Godot 4.x" line. The ver
 
 - **No addon yet, AI requested.** For fewer than about five states, use a plain state machine (see `godot`'s patterns reference). For a behavior tree in a GDScript-only project, use Beehave. Pick LimboAI when you also want a hierarchical state machine, the visual BT editor, or C# tasks (C# needs the LimboAI module build). Behavior-tree theory and when to use one at all are in `game-ai`.
 - **Camera.** For one camera with a simple follow or shake, hand-roll it (`game-feel` covers the technique). Use Phantom Camera when a scene needs several shots that take over by priority, such as gameplay, a cutscene framing and a boss group shot.
-- **Dialogue.** Use Dialogue Manager when writers should author branching dialogue as text with conditions, mutations and translation keys. Hand-rolled data, Ink or Yarn are in `game-genres`' dialogue reference.
+- **Dialogue.** Use Dialogue Manager when writers should author branching dialogue as text with conditions, mutations and translation keys. Hand-rolled data, Ink or Yarn are out of scope here.
 
 ## Installing an addon
 

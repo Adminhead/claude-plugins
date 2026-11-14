@@ -5,7 +5,7 @@ description: "Plans, runs with the user, and reports manual screen-reader and ke
 
 # Screen Reader Testing
 
-Not for WCAG audits of designs (`accessibility-review`) or automated axe checks (the smoke QA reference in `playwright-cli`).
+Not for WCAG audits of designs or automated axe checks (the smoke QA reference in `playwright-cli`).
 
 Get manual evidence of how an implemented interaction behaves with a real screen reader and keyboard. This skill tests the rendered experience. It does not choose visual design, prescribe generic accessibility fixes, or certify legal conformance.
 
@@ -51,7 +51,7 @@ The accessibility tree, emulators, and automated audits are diagnostic aids. **T
 
    Don't extrapolate one widget's result to unrelated widgets.
 
-8. **Separate observation from diagnosis.** Record the exact steps, the actual speech (a faithful short transcription), the focus location, and the visible result. Repeat an unexpected result once from a clean state. Only then inspect the accessibility tree, DOM, or code to form a falsifiable explanation. If installed, hand fixes to `web-development`, or to `react` for React component faults, and leave hierarchy and interaction-intent decisions to `web-design`.
+8. **Separate observation from diagnosis.** Record the exact steps, the actual speech (a faithful short transcription), the focus location, and the visible result. Repeat an unexpected result once from a clean state. Only then inspect the accessibility tree, DOM, or code to form a falsifiable explanation. If installed, hand fixes to `react` for React component faults, and leave hierarchy and interaction-intent decisions to `web-design`.
 
 9. **Report bounded results.** Mark each scenario pass, fail, blocked, or inconclusive for the recorded environment. Name the untested environments and scenarios. Never claim cross-browser, cross-screen-reader, legal, or conformance coverage from one run. Strip test-account data and other sensitive content from transcripts.
 

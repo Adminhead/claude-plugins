@@ -7,7 +7,7 @@ description: Writes and reviews game design documents and decisions, covering pi
 
 Procedures and templates for deciding what a game is and tuning its numbers. Output is a document, a spec, a table of numbers or a simulation, never engine code. Building the mechanic goes to the engine skill (for Godot, the `godot` skill).
 
-Not for: genre norms and genre-specific systems (`game-genres`), moment-to-moment feel and juice (`game-feel`), level layout and pacing (`level-design`), running playtests and reading feedback (`game-playtest`), or a fast throwaway build (`game-prototype`). Use each one if installed.
+Not for: genre norms and genre-specific systems, moment-to-moment feel and juice (`game-feel`), level layout and pacing (`level-design`), running playtests and reading feedback (`game-playtest`), or a fast throwaway build (`game-prototype`). Use each one if installed.
 
 ## Pick the artifact
 

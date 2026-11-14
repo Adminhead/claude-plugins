@@ -7,7 +7,7 @@ description: Designs NPC and enemy decision-making in any engine - finite state 
 
 Build NPC behavior from three separate layers: **decide** (what to do), **path** (how to route there) and **steer** (how to move along the route). A behavior tree picks a target, the pathfinder returns waypoints, steering follows them. Keep each layer swappable and testable on its own.
 
-Not for: an engine's concrete navigation API (in Godot, `NavigationRegion`/`NavigationAgent`, baking, avoidance and layers live in the `godot` skill's navigation reference), addon APIs such as beehave or LimboAI (`godot-addons`), state-machine architecture for non-AI game state (`game-architecture`), movement and collision feel (`game-feel`, `godot-physics`), wave spawning and lanes (`game-genres`, tower defense), procedural maps (`level-design`).
+Not for: an engine's concrete navigation API (in Godot, `NavigationRegion`/`NavigationAgent`, baking, avoidance and layers live in the `godot` skill's navigation reference), addon APIs such as beehave or LimboAI (`godot-addons`), state-machine architecture for non-AI game state (`game-architecture`), movement and collision feel (`game-feel`, `godot-physics`), wave spawning and lanes (tower defense), procedural maps (`level-design`).
 
 ## Orient
 
@@ -119,6 +119,5 @@ Tune difficulty through what the AI perceives and how fast it acts, not by infla
 
 - `godot` (navigation reference), `godot-addons` (beehave, LimboAI): engine and addon APIs.
 - `game-architecture`: state machines for non-AI game state, event buses, data-driven design.
-- `game-genres`: genre AI expectations (roguelike monsters, FPS enemy states, tower-defense lanes, card-game opponents).
 - `game-performance`: profiling when AI shows up in the frame budget.
 - `level-design`: the generated or authored spaces agents navigate.

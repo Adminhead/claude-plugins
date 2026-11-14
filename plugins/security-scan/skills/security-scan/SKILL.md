@@ -12,7 +12,7 @@ allowed-tools:
 
 Scan the branch, verify cheaply, then let the user choose fixes. Edit nothing until the user picks findings.
 
-Not for a model-only read of the branch diff (built-in `/security-review`), a design-level threat model (`threat-model`), or personal-data flows (`privacy-review`). For a read-only review of a code area outside a branch diff, the `security-auditor` agent, if installed, is the better fit.
+Not for a model-only read of the branch diff (built-in `/security-review`), a design-level threat model (`threat-model`), or personal-data flow reviews. For a read-only review of a code area outside a branch diff, the `security-auditor` agent, if installed, is the better fit.
 
 ## 1. Scan
 

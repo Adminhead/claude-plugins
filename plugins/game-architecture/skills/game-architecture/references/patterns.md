@@ -97,7 +97,7 @@ Three decisions shape every inventory. Make them explicitly and say which you pi
 | Slot containers | plain runtime objects, not assets | slots are runtime state; making them assets invites saving stale item copies |
 | `add_item(item, qty)` returns | the leftover count | partial adds are the common case (stack caps, full bag); a boolean forces the caller to re-query |
 
-If the game needs a weight-based bag, a grid with shaped items or an unlimited list, say so before building; the fixed slot array is the wrong skeleton for all three. Genre-specific inventories (crafting, grid shapes) are covered in `game-genres`.
+If the game needs a weight-based bag, a grid with shaped items or an unlimited list, say so before building; the fixed slot array is the wrong skeleton for all three. Genre-specific inventories (crafting, grid shapes) are out of scope here.
 
 Rules:
 

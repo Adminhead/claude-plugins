@@ -15,7 +15,6 @@ Out of scope are identity-provider administration, access-policy decisions (who 
 
 - `better-auth`, for projects that use the Better Auth library, covers its setup, CLI, and plugins. Use this skill for the policy.
 - `api-oauth-provider` covers building an OAuth authorization server. This skill covers an application as an OAuth client or resource server.
-- `web-development` handles flows beyond the auth boundary.
 - `api-keys` covers issuing API keys to your own consumers.
 - `unit-testing` handles regression tests.
 - `gh-actions` handles auth-related CI workflows or their secrets.

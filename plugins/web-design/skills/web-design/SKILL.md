@@ -11,8 +11,7 @@ Not for new UI with no design system or a visual reshape (`ui-direction`), devel
 
 It produces design intent and acceptance criteria. Implementation belongs elsewhere, each skill if installed:
 
-- `web-development` handles HTML, CSS, browser behavior, and performance.
-- `react` and `tanstack` handle framework composition and state.
+- `react` handles framework composition and state.
 - `uiux-lookup` is an offline catalog of cited UX rules and stack guidelines. When it is installed, cite its rules as evidence for a recommendation.
 
 ## 1. Frame the decision
@@ -94,7 +93,7 @@ Keep this to the design acceptance criteria for the change. For a full developer
 ## 8. Review the rendered result
 
 - When the UI runs and the `ui-critic` agent is installed, delegate the rendered critique to it in "existing system" mode, pointing it at DESIGN.md if present, so screenshots stay out of the main context. Otherwise drive the UI yourself with the `playwright-cli` skill (if installed) or the claude-in-chrome skill. Check a wide width, a narrow width, 200% zoom, and each material state. Walk it by keyboard. Inspect focus, labels, contrast, order, target spacing, overflow, and reduced motion.
-- Treat an automated audit (axe, Lighthouse) as supplemental evidence, not proof. For a full WCAG audit use `accessibility-review` (if installed). For screen reader behavior use `screen-reader-testing` (if installed).
+- Treat an automated audit (axe, Lighthouse) as supplemental evidence, not proof. A full WCAG audit is out of scope here. For screen reader behavior use `screen-reader-testing` (if installed).
 - Judge the result against the documented hierarchy and system, not taste. Record the viewport, state, and interaction path.
 - Read [references/rendered-review-checklist.md](references/rendered-review-checklist.md) for the defects to look for (overflow and containment, alignment, readability, media, font loading, focus) and a P0 to P3 severity scale.
 - Read [references/interface-polish.md](references/interface-polish.md) only when the user asks for a polish pass.

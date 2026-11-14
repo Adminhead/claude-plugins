@@ -1,6 +1,6 @@
 ---
 name: route-rest-vs-web
-description: Designing a public REST API goes to api-rest-design, not web-development, if installed.
+description: Designing a public REST API routes to api-rest-design.
 tags: [routing]
 runs: 1
 max_turns: 6

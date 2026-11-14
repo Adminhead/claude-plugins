@@ -1,6 +1,6 @@
 {
   "name": "game-design",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Game design documents and decisions: pitch, pillars, core loop, mechanic specs, progression, economy and balancing (curves, sinks and faucets, loot tables, simulation), difficulty and scope cuts. Engine-neutral templates and checklists.",
   "author": {
     "name": "AdminHead",

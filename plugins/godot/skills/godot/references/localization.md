@@ -95,4 +95,4 @@ func _notification(what: int) -> void:
 - Text stays in the old language after switching: it was built in code once; refresh it on `NOTIFICATION_TRANSLATION_CHANGED`.
 - A node stopped translating after an upgrade from 4.2: an ancestor's `auto_translate_mode` is `DISABLED`.
 - Literal `%s` on screen: the value was formatted into the key before `tr()`.
-- Dialogue lines: give each line an ID key rather than raw text (see the `game-genres` dialogue reference).
+- Dialogue lines: give each line an ID key rather than raw text.

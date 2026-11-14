@@ -7,7 +7,7 @@ description: Designs and builds game levels in any engine. Covers player metrics
 
 A level is a sequence of intended experiences delivered through space. Build it in this order: metrics, blockout, play, fix, and only then dress. Authored and procedural levels follow the same rules. A generator still needs metrics, a critical path, pacing and a validation pass.
 
-Not for: tile, grid-map or terrain API (for Godot, use the `godot` skill if installed); movement and jump tuning (`game-feel`); enemy behaviour (`game-ai`); loot tables, economy and difficulty balance (`game-design`); genre conventions (`game-genres`).
+Not for: tile, grid-map or terrain API (for Godot, use the `godot` skill if installed); movement and jump tuning (`game-feel`); enemy behaviour (`game-ai`); loot tables, economy and difficulty balance (`game-design`); genre conventions.
 
 ## Workflow
 

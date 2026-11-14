@@ -12,7 +12,6 @@ Use the repo's installed runner and browser matrix. Don't install a runner, add 
 Not for unit or API tests, Android UI and device tests (`android-testing`), or ad-hoc browser driving. Related skills, each if installed:
 
 - `unit-testing` covers non-browser tests.
-- `web-development` covers fixing the browser-facing behavior itself.
 - `react` covers component-level issues.
 - `playwright-cli` covers driving a browser interactively without writing a spec. The `browser-tester` agent verifies a running app against acceptance criteria without writing specs.
 

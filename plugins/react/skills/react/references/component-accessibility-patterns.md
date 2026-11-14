@@ -1,6 +1,6 @@
 # Component accessibility patterns
 
-Read this when building or reviewing the markup of a custom control. Start from the native element, and add ARIA only for a gap it cannot fill. Use `accessibility-review` (if installed) for a full WCAG audit.
+Read this when building or reviewing the markup of a custom control. Start from the native element, and add ARIA only for a gap it cannot fill. A full WCAG audit is out of scope here.
 
 ## Anti-patterns
 

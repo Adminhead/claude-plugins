@@ -11,7 +11,7 @@ Related skills, each used if installed:
 
 - `python` for typing, resource lifetimes, and asyncio mechanics.
 - `app-auth` for auth policy: token formats, permission models, cookies/CSRF, and cryptography.
-- `web-development` for general HTTP API and browser-facing decisions; `api-rest-design` for resource and status-code design.
+- `api-rest-design` for resource and status-code design.
 - `db-schema-design` and `postgres` for ORM choice, schemas, and constraints.
 
 ## Orient

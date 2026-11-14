@@ -7,7 +7,7 @@ description: Designs and reviews game UI and UX that holds up on every screen an
 
 Engine-neutral architecture for game HUDs and menus: layout, scaling, focus navigation, screen flow, how UI hears about game state, and accessibility. The concrete widget API lives in the engine skill (for Godot, the `godot` skill's `ui-control.md` and `localization.md` references).
 
-Not for: web or app UI (`design-core`, `web-design`), visual punch such as button pops, damage numbers and screen shake (`game-feel`), conversation UI (`game-genres`), or art style and icon specs (`game-assets`). Use each one if installed.
+Not for: web or app UI (`design-core`, `web-design`), visual punch such as button pops, damage numbers and screen shake (`game-feel`), or art style and icon specs (`game-assets`). Use each one if installed.
 
 ## Workflow
 

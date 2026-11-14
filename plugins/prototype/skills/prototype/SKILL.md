@@ -7,7 +7,7 @@ description: Builds a throwaway prototype that answers one design question, eith
 
 A prototype is throwaway code that answers a question. The question decides its shape, so pin it down before writing anything.
 
-Not for production UI work (`web-development`, `react`), extending an existing design system (`web-design`), a design review of existing screens (`ui-critic`), or planning the real implementation once the question is answered (`planning`). Use each one if installed.
+Not for production UI work (`react`), extending an existing design system (`web-design`), a design review of existing screens (`ui-critic`), or planning the real implementation once the question is answered (`planning`). Use each one if installed.
 
 ## Pick the branch
 

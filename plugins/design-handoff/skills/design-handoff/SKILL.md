@@ -13,8 +13,8 @@ Design: $ARGUMENTS
 ## Scope
 
 - Owns the design-to-engineering spec sheet for a screen, flow or component.
-- Acceptance criteria for a visual change to an existing product in this codebase, judged against its own system and DESIGN.md, go to `web-design`. Building it goes to `web-development` (and `react`, `vue` and similar for framework code).
-- A component's standing documentation in the design system goes to `design-system`. Wording goes to `ux-copy`.
+- Acceptance criteria for a visual change to an existing product in this codebase, judged against its own system and DESIGN.md, go to `web-design`. Building it goes to the framework skill (`react`, `vue` and similar), if installed.
+- A component's standing documentation in a design system is out of scope. Wording goes to `ux-copy`.
 - Work from what the user shares: screenshots, exported frames, spec values, token files, or source. If the design lives in a tool you can't read (a Figma link), ask for an export plus the values you can't measure from an image (exact spacing, token names, easing). Mark every value you estimated from a screenshot as an estimate.
 - If the codebase is available, read its tokens and existing components and reference them by name instead of raw values.
 

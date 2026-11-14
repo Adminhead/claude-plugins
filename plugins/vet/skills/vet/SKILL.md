@@ -16,7 +16,7 @@ description: >-
 
 Someone HAS shipped it, here is the link: does it earn a place here? **vet** ends in a
 ledger entry, not an opinion, so the same repo never gets evaluated twice from scratch. For
-a general research question, use `research`, not this skill.
+a general research question is out of scope.
 
 **Default: steal the pattern, don't install the thing.** Installing is the exception and has
 to be argued for. Rejecting is a normal, cheap outcome.

@@ -5,7 +5,7 @@ description: "Builds and debugs Vue 3 components with the Composition API, Pinia
 
 # Vue
 
-This skill owns Vue component structure and local state, Pinia stores, and Nuxt page data and hydration. It does not own React (`react`), bundler configuration (`vite`), visual direction (`web-design`, if installed), language-level concerns (`javascript`, `typescript`), or TanStack Query, Router, and Form, including their Vue adapters (`tanstack`).
+This skill owns Vue component structure and local state, Pinia stores, and Nuxt page data and hydration. It does not own React (`react`), bundler configuration (`vite`), visual direction (`web-design`, if installed), language-level concerns (`typescript`), or TanStack Query, Router, and Form, including their Vue adapters.
 
 ## Before editing
 
@@ -59,7 +59,7 @@ Classify each value, then place it:
 - Do not put `v-if` and `v-for` on one element. Filter in a `computed` or wrap with `<template v-for>`.
 - Render user-supplied HTML with `v-html` only after sanitizing it. Prefer text interpolation.
 - Use `useId()` (3.5) for ids that must match between server and client.
-- Start with native elements, labels, and keyboard behavior. The accessibility rules in `web-development`, if installed, apply unchanged.
+- Start with native elements, labels, and keyboard behavior. Apply the same accessibility rules as for any web UI.
 
 ## Nuxt and SSR
 

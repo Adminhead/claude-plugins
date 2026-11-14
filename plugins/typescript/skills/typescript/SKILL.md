@@ -5,7 +5,7 @@ description: Handles TypeScript type-level and compiler work, covering tsconfig 
 
 # TypeScript
 
-This skill owns the compile-time contract, meaning compiler configuration, type representations, inference, declarations, module typing, and type tests. Preserve runtime behavior unless the request changes it. JS runtime behavior (modules, async, the event loop) belongs to the `javascript` skill and React components to `react`, if installed.
+This skill owns the compile-time contract, meaning compiler configuration, type representations, inference, declarations, module typing, and type tests. Preserve runtime behavior unless the request changes it. JS runtime behavior (modules, async, the event loop) is out of scope, and React components belong to `react`, if installed.
 
 ## Orient
 

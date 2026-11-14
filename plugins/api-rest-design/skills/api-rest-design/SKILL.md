@@ -7,7 +7,7 @@ description: Designs and reviews REST/HTTP API contracts for external consumers,
 
 Design or review an HTTP API as a contract that consumers depend on. The goal is one consistent surface: the same casing, pagination, error shape, and status meaning on every endpoint, so it reads as if one team built it. Repo conventions beat the defaults below. If the repo already uses `/v1` paths, a `data` envelope, or snake_case, keep them and apply this skill to what is inconsistent or missing.
 
-Not for GraphQL (`api-graphql`), gRPC (`api-grpc`), idempotency keys and retries (`api-idempotency`), webhooks (`api-webhooks`), or the browser side of an API contract (`web-development`), each if installed.
+Not for GraphQL (`api-graphql`), gRPC (`api-grpc`), idempotency keys and retries (`api-idempotency`), or webhooks (`api-webhooks`), each if installed. The browser side of an API contract is out of scope.
 
 ## Set the scope first
 
@@ -33,7 +33,7 @@ Not for GraphQL (`api-graphql`), gRPC (`api-grpc`), idempotency keys and retries
 - Paginate every collection that can grow, with a default and a maximum page size. Choose offset, cursor, or keyset once and use it across the surface.
 - Signal rate limits on every response that counts against a limit and send `429` with `Retry-After` when throttling. See [references/rate-limits.md](references/rate-limits.md).
 - Pick a version scheme before the first release. URI major version is the default; see [references/versioning.md](references/versioning.md).
-- Unsafe operations that clients may retry need an idempotency mechanism. Use `api-idempotency` for the design, and `web-development`'s api-contract-review reference for the browser-side view of the same contract, each if installed.
+- Unsafe operations that clients may retry need an idempotency mechanism. Use `api-idempotency` for the design, if installed.
 - Authenticate with one model across the surface. For issuing keys to your own consumers use `api-keys`; for acting as an OAuth server use `api-oauth-provider`, each if installed.
 
 ## Change a contract safely

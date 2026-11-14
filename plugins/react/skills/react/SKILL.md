@@ -5,7 +5,7 @@ description: "Changes, reviews and debugs React components: state ownership, eff
 
 # React
 
-This skill owns component composition and local UI behavior. It does not own visual direction (`web-design` for an existing system, `ui-direction` for new UI, if installed), language-level concerns (`javascript`, `typescript`), bundler configuration (`vite`), Vue components (`vue`), or routing and server state (`tanstack` when the project uses TanStack; otherwise follow the installed library's conventions).
+This skill owns component composition and local UI behavior. It does not own visual direction (`web-design` for an existing system, `ui-direction` for new UI, if installed), language-level concerns (`typescript`), bundler configuration (`vite`), Vue components (`vue`), or routing and server state (follow the installed library's conventions).
 
 ## Before editing
 
