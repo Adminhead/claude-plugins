@@ -119,6 +119,8 @@ A `Blackboard` node is a key/value store passed to every `tick`. Methods: `set_v
 
 Inspector-only leaves exist for simple cases: `BlackboardSetAction`, `BlackboardEraseAction`, `BlackboardHasCondition`, `BlackboardCompareCondition`. Their expressions run through Godot's `Expression` with the blackboard as the base instance, so `get_value("health") < 20` works in the expression string.
 
+`Expression.execute()` can call any method reachable from its base instance, and its `const_calls_only` argument limits it to const methods without making it a sandbox. Evaluate only expression strings the project authored; for modded or downloaded text, write a whitelisted parser.
+
 ## Custom decorators and manual ticking
 
 A custom decorator extends `Decorator` and must drive its child's lifecycle itself, as the built-ins in `addons/beehave/nodes/decorators/` do (copy `inverter.gd` as the template):
