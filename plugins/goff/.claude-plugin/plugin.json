@@ -1,0 +1,9 @@
+{
+  "name": "goff",
+  "version": "0.1.0",
+  "description": "Works with GO Feature Flag: flag files, the relay proxy and OpenFeature SDK wiring.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
