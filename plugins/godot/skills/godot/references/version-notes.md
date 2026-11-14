@@ -69,6 +69,7 @@ Notable and breaking changes per Godot 4 minor release, so code matches the proj
 | Rendering | Volumetric fog blending more physically accurate (brighter); `ssr_depth_tolerance` 0.2 to 0.5 | Retune fog and SSR |
 | IO | `FileAccess.get_as_text()` loses `skip_cr` | Drop the argument |
 | i18n | CSV translations gain `?context`, `?plural` columns and `?pluralrule` rows | See `references/localization.md` |
+| Editor | `EditorPlugin.add_dock(EditorDock)` added; `add_control_to_dock()` deprecated | See `references/tool-scripts.md` |
 | Animation | IKModifier3D solvers (unverified list) | See `references/animation.md` |
 
 ## 4.7
@@ -91,7 +92,6 @@ Notable and breaking changes per Godot 4 minor release, so code matches the proj
 | Physics | Jolt: `WorldBoundaryShape3D.plane.d` sign flipped to Godot's convention; SoftBody3D stiffness reworked | Flip the sign; retune soft bodies (see `godot-physics`) |
 | Import | Font `hinting` default 1 to 3; import a 3D file as a Mesh or MeshLibrary | See `references/import-pipeline.md` |
 | Navigation | `map_get_closest_point_normal()` returns a normalized vector (unverified) | See `references/navigation.md` |
-| Editor | `EditorPlugin.add_control_to_dock()` deprecated; use `add_dock(EditorDock)` | See `references/tool-scripts.md` |
 | Particles | `request_particles_process()` gains `process_time_residual` | See `godot-shaders` |
 
 ### 4.7 C# breaks

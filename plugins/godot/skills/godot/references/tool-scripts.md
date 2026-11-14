@@ -80,6 +80,8 @@ version="0.1.0"
 script="plugin.gd"
 ```
 
+The dock lines need Godot 4.6+ (`EditorDock`); on 4.5 and older replace them with `add_control_to_dock()` / `remove_control_from_docks()`.
+
 ```gdscript
 @tool
 extends EditorPlugin
@@ -107,7 +109,7 @@ func _rebuild() -> void:
 
 - `script` in `plugin.cfg` is relative to the plugin folder. Enable the plugin in Project Settings > Plugins, which adds it to `[editor_plugins] enabled` in `project.godot`.
 - Everything added in `_enter_tree()` must be removed in `_exit_tree()`, or disabling the plugin leaves orphaned docks and duplicate menu items.
-- Docks: the 4.7 docs mark `add_control_to_dock()` / `remove_control_from_docks()` deprecated in favour of `add_dock(EditorDock)` / `remove_dock()`. Check the project's version before using `EditorDock`; older projects use `add_control_to_dock(DOCK_SLOT_..., control)`.
+- Docks: `add_dock(EditorDock)` / `remove_dock()` arrived in 4.6, which deprecated `add_control_to_dock()` / `remove_control_from_docks()`. The `EditorDock` sample above needs 4.6+; on 4.5 and older use `add_control_to_dock(DOCK_SLOT_..., control)`.
 - `add_custom_type` registers a type in the Add Node dialog; a `class_name` script with an `@icon("res://...svg")` annotation does the same with no plugin.
 - Use `get_undo_redo()` (an `EditorUndoRedoManager`) for edits a plugin makes to the scene so Ctrl+Z works.
 - Structural changes (new custom types, docks) need the plugin toggled off and on; script edits hot-reload.
