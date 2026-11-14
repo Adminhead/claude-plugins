@@ -675,7 +675,7 @@
       "name": "web-design",
       "source": "./plugins/web-design",
       "description": "Extend an existing product's visual system: hierarchy, responsive, state and accessibility intent, DESIGN.md, and review of the rendered UI against it.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1326,7 +1326,7 @@
       "name": "godot-addons",
       "source": "./plugins/godot-addons",
       "description": "Godot addon APIs for Beehave and LimboAI behavior trees, Phantom Camera and Dialogue Manager v4. Use when a project has addons/beehave, addons/limboai, addons/phantom_camera or addons/dialogue_manager, or when choosing, installing or writing code and .dialogue files for one of them.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
