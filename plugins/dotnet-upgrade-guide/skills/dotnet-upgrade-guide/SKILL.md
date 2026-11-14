@@ -21,7 +21,8 @@ Upgrade one hop at a time, commit at each boundary, and treat a clean build as h
 
 - Legacy (non-SDK-style) project or `packages.config`: convert first, keeping the old TFM, per [references/sdk-style.md](references/sdk-style.md). Moving off .NET Framework then also needs [references/thread-abort.md](references/thread-abort.md) wherever `Thread.Abort` or `Response.End` appear; ASP.NET (System.Web) to ASP.NET Core is a rewrite to plan with the user, not a hop.
 - Modern .NET: chain the hops from the current TFM to the target, 8 -> 9 -> 10 -> 11, and work through every hop's checklist even when jumping several versions; each lists changes the others don't. From .NET 7 or earlier, apply that version's breaking changes from Microsoft Learn before starting at 8.
-- .NET 11 is prerelease until its November 2026 GA. Say so, confirm the user wants it, and read the prerelease notes at the top of its overview.
+- .NET 11 (STS) went GA on 2026-11-10. Its references were written against the previews: check them against the [.NET 11 breaking changes page](https://learn.microsoft.com/dotnet/core/compatibility/11), and confirm the user wants 11 rather than .NET 10 (LTS, also supported to 2028-11-14).
+- Support: as of 2026-11-10 net8.0 and net9.0 are out of support, and building them warns NETSDK1138 (target framework out of support, no security updates). Upgrading from 8 should end on a supported release (10 or 11), not stop at 9.
 - Test framework or runner moves are separate changes: do them before or after the TFM hops, never in the same commit.
 
 ## 3. Per hop
@@ -41,7 +42,7 @@ Report per hop: TFM change, packages raised, breaking changes hit and how each w
 |---|---|
 | net8.0 -> net9.0 | [references/net8-to-net9/overview.md](references/net8-to-net9/overview.md) |
 | net9.0 -> net10.0 | [references/net9-to-net10/overview.md](references/net9-to-net10/overview.md) |
-| net10.0 -> net11.0 (prerelease) | [references/net10-to-net11/overview.md](references/net10-to-net11/overview.md) |
+| net10.0 -> net11.0 | [references/net10-to-net11/overview.md](references/net10-to-net11/overview.md) |
 | Legacy csproj, `packages.config`, AssemblyInfo | [references/sdk-style.md](references/sdk-style.md) |
 | IL2026/IL3050/IL2070 warnings, `IsAotCompatible`, `PublishAot` readiness | [references/aot-trimming.md](references/aot-trimming.md) |
 | `Thread.Abort`, `ThreadAbortException`, `Response.End`, SYSLIB0006 | [references/thread-abort.md](references/thread-abort.md) |

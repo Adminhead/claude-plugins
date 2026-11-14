@@ -2,7 +2,7 @@
 
 These breaking changes affect projects using cryptography APIs. Source: https://learn.microsoft.com/en-us/dotnet/core/compatibility/11
 
-> **Note:** .NET 11 is prerelease until its November 2026 GA. This file covers changes through Preview 3 in detail; later previews and RCs added more, listed in [overview.md](overview.md).
+> **Note:** .NET 11 reached GA on 2026-11-10. This file was written against the previews (changes through Preview 3 in detail; later previews and RCs are listed in [overview.md](overview.md)). Check each item against the [.NET 11 breaking changes page](https://learn.microsoft.com/dotnet/core/compatibility/11) before acting; GA behavior may differ.
 
 ## Behavioral Changes
 

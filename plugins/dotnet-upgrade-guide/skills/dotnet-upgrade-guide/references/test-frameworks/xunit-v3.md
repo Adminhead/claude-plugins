@@ -11,6 +11,7 @@ Contents: preflight, required steps 1-5, conditional steps 6-12, verify.
 - Runner: xUnit v2 runs on VSTest unless the project references `YTest.MTP.XUnit2`. Keep whichever platform it was on.
 - TFMs: xunit.v3 needs .NET 8+ or .NET Framework 4.7.2+ (test libraries may target netstandard2.0), and an SDK-style project. If a TFM is older, stop and upgrade it first.
 - Pick versions from the configured feed (`dotnet package search xunit.v3 --exact-match` or the restore graph), not from the "v3" in the name. Keep `xunit.v3`, `Xunit.Combinatorial` and `Xunit.StaFact` as one compatible set.
+- Lines: `xunit.v3` 3.x defaults to Microsoft Testing Platform (MTP) v1; 4.x (stable 4.0.0 to 4.0.3 on nuget.org as of 2026-11-14) removed MTP v1 and defaults to MTP v2. `xunit.v3.mtp-v1` exists only for 3.x, `xunit.v3.mtp-v2` selects v2, and `xunit.v3.mtp-off` disables MTP support. Source: [xunit.net MTP docs](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform).
 
 ## Required steps
 

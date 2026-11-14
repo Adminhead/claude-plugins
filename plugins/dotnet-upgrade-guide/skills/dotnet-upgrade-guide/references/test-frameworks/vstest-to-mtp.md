@@ -55,7 +55,7 @@ Contents: rules, assess, central properties, runner opt-in per framework, `dotne
 
    Name the owning package whenever you translate a reporter, coverage or dump option; the option fails without it. Under Central Package Management add `PackageVersion` entries at versions resolved from the feed.
 
-6. **xunit.v3 filters.** The VSTest `--filter` syntax doesn't work on xunit.v3 under MTP. Use `--filter-class`, `--filter-method`, `--filter-namespace`, `--filter-trait "name=value"` and their `--filter-not-*` forms; several flags AND together, and one flag takes several values (`--filter-class Foo Bar`).
+6. **xunit.v3 filters.** Which MTP version runs depends on the package line: 3.x defaults to MTP v1, 4.x removed v1 and uses MTP v2 (see `xunit-v3.md`). On the .NET 10 SDK, `dotnet test` uses MTP only with the `global.json` `"test": { "runner": "Microsoft.Testing.Platform" }` setting. The VSTest `--filter` syntax doesn't work on xunit.v3 under MTP. Use `--filter-class`, `--filter-method`, `--filter-namespace`, `--filter-trait "name=value"` and their `--filter-not-*` forms; several flags AND together, and one flag takes several values (`--filter-class Foo Bar`).
 
    | VSTest | xunit.v3 |
    |---|---|

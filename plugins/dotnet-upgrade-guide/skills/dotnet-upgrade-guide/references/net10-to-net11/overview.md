@@ -1,14 +1,14 @@
-# .NET 10 to .NET 11: hop checklist (prerelease)
+# .NET 10 to .NET 11: hop checklist
 
 Read at the start of the net10.0 -> net11.0 hop, after the TFM bump.
 
-.NET 11 is prerelease until its GA in November 2026. RC 2 shipped on 2026-10-13 with a go-live license; earlier previews are not supported. Before starting, tell the user the target is prerelease and confirm they want it; for production work without go-live needs, staying on .NET 10 (LTS) is the default. Use the newest preview or RC SDK, pin it in `global.json` (for example `"version": "11.0.100-rc.2.xxxxx"` taken from `dotnet --list-sdks`), and expect changes until GA.
+.NET 11 reached GA on 2026-11-10 as an STS release (supported until 2028-11-14, per the [.NET support policy](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)). .NET 10 is the LTS and is also supported until 2028-11-14, so ask the user which they want; moving to .NET 11 is not required for support. Use the released 11.0 SDK and pin a GA version in `global.json` (for example `"version": "11.0.100"`, from `dotnet --list-sdks`).
 
-The area files in this folder describe changes through Preview 3 in detail. The section "Later previews and RCs" lists changes Microsoft documented after that; read the linked Learn page for the fix before acting on one, and recheck the [.NET 11 breaking changes list](https://learn.microsoft.com/dotnet/core/compatibility/11) since it keeps growing until GA.
+This checklist and the area files in this folder were written against the previews: the area files cover changes through Preview 3 in detail, and "Later previews and RCs" lists changes Microsoft documented after that. GA behavior may differ, so check each item, and look for items missing here, against the [.NET 11 breaking changes list](https://learn.microsoft.com/dotnet/core/compatibility/11) before acting; read the linked Learn page for the fix.
 
 Contents: source-incompatible checklist, behavioral checklist, later previews and RCs, infrastructure, smoke-test focus, area files.
 
-## Source-incompatible checklist (through Preview 3)
+## Source-incompatible checklist (written against Preview 3)
 
 1. C# 15: span-typed collection expressions get `declaration-block` safe-context, so assigning one to an outer-scope variable errors; use an array or move the expression. See csharp-compiler.
 2. `ref readonly` delegates and local functions need `System.Runtime.InteropServices.InAttribute` available.
@@ -21,7 +21,7 @@ Contents: source-incompatible checklist, behavioral checklist, later previews an
 9. `Microsoft.AspNetCore.OpenApi` depends on `Microsoft.OpenApi` 3.x; direct use of its types needs the v3 changes (aspnet-core).
 10. `Microsoft.EntityFrameworkCore.Tools`/`.Tasks` no longer bring `.Design`; reference it explicitly. `EFOptimizeContext` is replaced by `EFScaffoldModelStage` and `EFPrecompileQueriesStage` (efcore).
 
-## Behavioral checklist (through Preview 3)
+## Behavioral checklist (written against Preview 3)
 
 1. `DeflateStream`/`GZipStream` write header and footer even for empty payloads.
 2. `MemoryStream` maximum capacity and its exception changed.
@@ -52,8 +52,8 @@ Documented on Learn after Preview 3 (titles as listed there; check each page for
 
 ## Infrastructure
 
-- Docker: `sdk:11.0`, `aspnet:11.0` tags for the prerelease (or the `11.0-preview`/`-rc` tags the registry offers).
-- `global.json`: update `sdk.version` to the installed prerelease SDK and keep the other keys (`rollForward`, `test`, `msbuild-sdks`). Add `"allowPrerelease": true` if the policy needs it.
+- Docker: `sdk:11.0`, `aspnet:11.0`, `runtime:11.0` tags. Replace any `11.0-preview`/`-rc` tags left from earlier testing.
+- `global.json`: update `sdk.version` to the installed 11.0 SDK and keep the other keys (`rollForward`, `test`, `msbuild-sdks`). Drop `"allowPrerelease": true` if it was added only for previews.
 - Confirm deployment hardware meets x86-64-v2 / Arm64 LSE.
 
 ## Smoke-test focus
