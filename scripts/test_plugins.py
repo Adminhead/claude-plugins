@@ -337,6 +337,17 @@ def test_exclusive_metas_may_share_through_baseline(root):
     assert not [e for e in plugins.check(root) if "must not share" in e]
 
 
+def test_exclusive_metas_may_share_a_forge_neutral_plugin(root, monkeypatch):
+    monkeypatch.setattr(plugins, "FORGE_NEUTRAL", {"any-forge"})
+    add_plugin(root, "github-meta", ["any-forge", "gh-only"])
+    add_plugin(root, "forgejo-meta", ["any-forge", "gh-only"])
+    add_plugin(root, "any-forge")
+    add_plugin(root, "gh-only")
+    errors = [e for e in plugins.check(root) if "must not share" in e]
+    assert len(errors) == 1
+    assert "gh-only" in errors[0] and "any-forge" not in errors[0]
+
+
 def test_exclusive_metas_skip_when_absent(root):
     add_plugin(root, "github-meta", ["git-tool"])
     add_plugin(root, "git-tool")

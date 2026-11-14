@@ -51,6 +51,8 @@ MULTI_COMPONENT = {
 }
 # Pairs of metas whose plugin sets must not overlap, except through baseline.
 EXCLUSIVE_METAS = [("github-meta", "forgejo-meta")]
+# Plugins that detect the forge themselves, so both forge metas may list them.
+FORGE_NEUTRAL = {"readme"}
 
 
 def is_meta(name):
@@ -156,7 +158,7 @@ def exclusive_meta_errors(manifests, own=None):
     for a, b in EXCLUSIVE_METAS:
         if a not in manifests or b not in manifests:
             continue
-        shared = (closure(a, manifests, own) & closure(b, manifests, own)) - base - {a, b}
+        shared = (closure(a, manifests, own) & closure(b, manifests, own)) - base - {a, b} - FORGE_NEUTRAL
         if shared:
             errors.append(f"{a} and {b} must not share {', '.join(sorted(shared))}; scope them per forge")
     return errors
