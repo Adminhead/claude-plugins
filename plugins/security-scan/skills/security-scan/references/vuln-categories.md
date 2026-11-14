@@ -24,7 +24,7 @@ Secrets in code are covered by gitleaks in step 1. Do not hand-search for key pa
 Each line is a pattern to look for, then the safe form. The OWASP Top 10:2025 id is in brackets. Apply the reachability filter in part 2 to every one.
 
 - **NoSQL operator injection** [A05]: a request body passed straight into a Mongo-style filter, so `{"password": {"$gt": ""}}` matches any row. Cast fields to the expected scalar type, or validate with a schema, before building the query.
-- **XML external entities** [A05]: an XML parser reading uploads or request bodies with DTDs or external entities enabled. Disable DTD and entity processing in the parser options.
+- **XML external entities** [A02]: an XML parser reading uploads or request bodies with DTDs or external entities enabled. Disable DTD and entity processing in the parser options.
 - **Session fixation** [A07]: login sets the user on the existing session without regenerating its id. Regenerate the session id at login and privilege change, and invalidate other sessions on password change.
 - **OAuth client without `state` or PKCE** [A07]: an authorization request with no unguessable `state` bound to the session, or a public client (SPA, mobile, CLI) without PKCE `S256`. Both are login CSRF or code interception.
 - **JWT claims not checked** [A07]: beyond the signature and `alg`, `exp`, `aud` and `iss` are not verified, so a token minted for another service is accepted.
@@ -32,16 +32,16 @@ Each line is a pattern to look for, then the safe form. The OWASP Top 10:2025 id
 - **Cookie flags** [A02]: session cookies without `HttpOnly`, `Secure` and a `SameSite` value, or set on a broad `Domain`.
 - **CORS** [A02]: a reflected `Origin` or `*` together with `Access-Control-Allow-Credentials: true`. Allowlist exact origins.
 - **CSP that does nothing** [A02]: `script-src` with `'unsafe-inline'` or `'unsafe-eval'` is no XSS defence. Report it only next to a real injection sink, since a missing header alone fails the filter.
-- **`postMessage` without an origin check** [A01]: a `message` listener that acts on `event.data` without comparing `event.origin` to an exact allowlist, or `postMessage(data, "*")` carrying secrets.
+- **`postMessage` without an origin check** [A08]: a `message` listener that acts on `event.data` without comparing `event.origin` to an exact allowlist, or `postMessage(data, "*")` carrying secrets.
 - **Open redirect** [A01]: a `redirect`, `next` or `returnTo` parameter sent to `Location` or `window.location`. Accept relative paths only (starts with `/`, not `//` or `/\`), or an allowlist of hosts.
 - **Unsigned webhooks** [A08]: an inbound webhook parsed and acted on before verifying the provider's HMAC or signature over the raw body, or with no timestamp or replay check.
-- **File uploads** [A05]: no size limit, type checked only by client-supplied MIME or extension, stored under the web root or with the client's file name. Limit size, sniff content, store outside the web root under a generated name.
+- **File uploads** [A06]: no size limit, type checked only by client-supplied MIME or extension, stored under the web root or with the client's file name. Limit size, sniff content, store outside the web root under a generated name.
 - **GraphQL without limits** [A05]: no depth, complexity or alias limit, or introspection on in production for a private API.
 - **No body size or pagination cap** [A10]: request bodies, page sizes or batch endpoints without an upper bound, so one request causes unbounded work.
 - **Failing open** [A10]: a `catch` that grants access, skips a check or commits half a transaction on error. Deny by default and roll back on failure.
 - **Errors that leak** [A10]: stack traces, SQL, internal paths or upstream responses returned to clients. Log them server-side and return a generic error with a correlation id.
 - **Log injection and secrets in logs** [A09]: user input concatenated into log lines (forged entries, CRLF), or tokens, passwords and personal data written to logs. Use structured logging and an allowlist of logged fields.
-- **Default credentials** [A02]: shipped admin passwords, sample API keys or `changeme` values in config or seed data that reach a deployed environment.
+- **Default credentials** [A07]: shipped admin passwords, sample API keys or `changeme` values in config or seed data that reach a deployed environment.
 - **Secrets reachable by the client** [A02]: server secrets in client bundles (`NEXT_PUBLIC_*`, `VITE_*`, `process.env` read in a `'use client'` file), or full database objects passed to client components.
 - **LLM and agent features** [A05, A08]: user or retrieved content concatenated into a prompt that drives privileged tools; model output passed to SQL, a shell, `eval` or raw HTML; model output used without schema validation. Treat model output as untrusted input and gate tools by the caller's permissions, not the model's request.
 
