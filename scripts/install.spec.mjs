@@ -1,8 +1,15 @@
 // Specs for the pure parts of install.mjs. Run: node --test scripts/install.spec.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { marketplacesOf, mergeSettings, needsOfficialMarketplace, offPluginsOf, planPlugins, pluginsOf } from './install.mjs'
+import { spawnSync } from 'node:child_process'
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import {
+  marketplacesOf, mergeSettings, needsOfficialMarketplace, offPluginsOf, planPlugins, pluginsOf,
+  pruneArchived, retiredNotices, withoutArchived,
+} from './install.mjs'
 
 const example = JSON.parse(readFileSync(new URL('../examples/claude-settings/settings.global.json', import.meta.url)))
 
@@ -110,4 +117,133 @@ test('plan: enabled plugins update when installed at user scope and install othe
   const { main } = planPlugins(example, m, new Set(['baseline@adminhead']), new Set(['baseline@adminhead']), {})
   assert.deepEqual(main[0], { id: 'baseline@adminhead', action: 'update' })
   assert.ok(main.slice(1).every(p => p.action === 'install'))
+})
+
+const retired = {
+  deprecated: { old: { into: 'new', reason: 'folded in', date: '2026-01-01' }, soon: { into: null, reason: 'unused', date: '2026-01-01' } },
+  archived: { gone: { into: 'new', reason: 'folded in', date: '2025-01-01', archived: '2026-01-01' } },
+}
+
+test('a notice for each retired id the settings enable, naming the replacement', () => {
+  const settings = { enabledPlugins: { 'old@adminhead': true, 'gone@adminhead': true, 'soon@adminhead': false, 'keep@adminhead': true, 'gone@other': true } }
+  const notices = retiredNotices(settings, retired)
+  assert.equal(notices.length, 2)
+  assert.ok(notices[0].includes('old@adminhead') && notices[0].includes('new@adminhead'))
+  assert.ok(notices[1].includes('gone@adminhead') && notices[1].includes('--prune'))
+  assert.deepEqual(retiredNotices({}, retired), [])
+  assert.deepEqual(retiredNotices(settings, {}), [])
+})
+
+test('prune removes archived ids only, from enabledPlugins and pluginConfigs, without mutating its input', () => {
+  const settings = {
+    model: 'opus',
+    enabledPlugins: { 'old@adminhead': true, 'gone@adminhead': true, 'gone@other': true, 'keep@adminhead': true },
+    pluginConfigs: { 'gone@adminhead': { options: { a: 1 } }, 'old@adminhead': { options: { b: 2 } } },
+  }
+  const before = JSON.stringify(settings)
+  const { pruned, removed } = pruneArchived(settings, retired)
+  assert.deepEqual(pruned.enabledPlugins, { 'old@adminhead': true, 'gone@other': true, 'keep@adminhead': true })
+  assert.deepEqual(pruned.pluginConfigs, { 'old@adminhead': { options: { b: 2 } } })
+  assert.equal(pruned.model, 'opus')
+  assert.deepEqual(removed, ['enabledPlugins.gone@adminhead (removed)', 'pluginConfigs.gone@adminhead (removed)'])
+  assert.equal(JSON.stringify(settings), before)
+  assert.deepEqual(pruneArchived(settings, {}).removed, [])
+})
+
+test('merging never removes a retired id, with or without a retired list', () => {
+  const user = { enabledPlugins: { 'gone@adminhead': true, 'old@adminhead': true } }
+  const { merged } = mergeSettings(user, { enabledPlugins: { 'baseline@adminhead': true } })
+  assert.deepEqual(Object.keys(merged.enabledPlugins), ['gone@adminhead', 'old@adminhead', 'baseline@adminhead'])
+})
+
+test('an archived id in the example is dropped before planning, a deprecated one is kept', () => {
+  const ex = {
+    enabledPlugins: { 'gone@adminhead': true, 'old@adminhead': true, 'off@adminhead': false },
+    pluginConfigs: { 'gone@adminhead': { options: {} } },
+  }
+  const { example: cleaned, skipped } = withoutArchived(ex, retired)
+  assert.deepEqual(skipped, ['gone@adminhead'])
+  assert.deepEqual(cleaned.enabledPlugins, { 'old@adminhead': true, 'off@adminhead': false })
+  assert.deepEqual(cleaned.pluginConfigs, {})
+  const m = marketplacesOf(cleaned)
+  assert.ok(!pluginsOf(cleaned, m).includes('gone@adminhead'))
+  assert.ok(pluginsOf(cleaned, m).includes('old@adminhead'))
+  assert.deepEqual(ex.enabledPlugins['gone@adminhead'], true)
+})
+
+// Runs install.mjs from a throwaway checkout with a fake `claude` that records its calls.
+function runInstaller(flags, { settings, example, retiredFile }) {
+  const dir = mkdtempSync(join(tmpdir(), 'install-spec-'))
+  try {
+    mkdirSync(join(dir, 'scripts'))
+    mkdirSync(join(dir, 'examples/claude-settings'), { recursive: true })
+    mkdirSync(join(dir, 'bin'))
+    copyFileSync(fileURLToPath(new URL('./install.mjs', import.meta.url)), join(dir, 'scripts/install.mjs'))
+    writeFileSync(join(dir, 'examples/claude-settings/settings.global.json'), JSON.stringify(example))
+    if (retiredFile) writeFileSync(join(dir, 'scripts/retired.json'), JSON.stringify(retiredFile))
+    const log = join(dir, 'claude.log')
+    const fake = join(dir, 'bin/claude')
+    writeFileSync(fake, `#!/bin/sh
+echo "$@" >> "${log}"
+case "$*" in
+  "plugin marketplace list --json") echo '[{"name":"adminhead","installLocation":"/nonexistent"}]' ;;
+  "plugin list --json") echo '[]' ;;
+esac
+`)
+    chmodSync(fake, 0o755)
+    const settingsPath = join(dir, 'settings.json')
+    writeFileSync(settingsPath, JSON.stringify(settings))
+    const run = spawnSync(process.execPath, [join(dir, 'scripts/install.mjs'), '--settings', settingsPath, ...flags], {
+      encoding: 'utf8', env: { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}`, CLAUDE_CONFIG_DIR: dir },
+    })
+    const calls = readFileSync(log, 'utf8').split('\n').filter(Boolean)
+    return { run, calls, saved: JSON.parse(readFileSync(settingsPath, 'utf8')) }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+const userSettings = {
+  enabledPlugins: { 'gone@adminhead': true, 'old@adminhead': true, 'keep@adminhead': true },
+  pluginConfigs: { 'gone@adminhead': { options: { a: 1 } } },
+}
+const archivedExample = { enabledPlugins: { 'baseline@adminhead': true, 'gone@adminhead': true, 'old@adminhead': true } }
+
+test('installer: notices for retired ids and no removal without --prune', () => {
+  const { run, saved } = runInstaller([], { settings: userSettings, example: archivedExample, retiredFile: retired })
+  assert.equal(run.status, 0, run.stderr)
+  assert.ok(run.stdout.includes('gone@adminhead is archived') && run.stdout.includes('old@adminhead is deprecated'))
+  assert.equal(saved.enabledPlugins['gone@adminhead'], true)
+  assert.deepEqual(saved.pluginConfigs, userSettings.pluginConfigs)
+})
+
+test('installer: an archived id in the example is skipped, not installed, and does not abort', () => {
+  const { run, calls, saved } = runInstaller([], { settings: {}, example: archivedExample, retiredFile: retired })
+  assert.equal(run.status, 0, run.stderr)
+  assert.ok(run.stdout.includes('Skipping gone@adminhead'))
+  assert.ok(calls.includes('plugin install baseline@adminhead --scope user'))
+  assert.ok(calls.includes('plugin install old@adminhead --scope user'))
+  assert.ok(!calls.some(c => c.includes('gone@adminhead')))
+  assert.ok(!('gone@adminhead' in saved.enabledPlugins))
+})
+
+test('installer: --prune removes archived ids and keeps deprecated ones', () => {
+  const { run, saved } = runInstaller(['--prune'], { settings: userSettings, example: archivedExample, retiredFile: retired })
+  assert.equal(run.status, 0, run.stderr)
+  assert.ok(!('gone@adminhead' in saved.enabledPlugins) && !('gone@adminhead' in saved.pluginConfigs))
+  assert.equal(saved.enabledPlugins['old@adminhead'], true)
+  assert.equal(saved.enabledPlugins['keep@adminhead'], true)
+})
+
+test('installer: --prune --dry-run leaves the settings file alone', () => {
+  const { run, saved } = runInstaller(['--prune', '--dry-run'], { settings: userSettings, example: archivedExample, retiredFile: retired })
+  assert.equal(run.status, 0, run.stderr)
+  assert.ok(run.stdout.includes('enabledPlugins.gone@adminhead (removed)'))
+  assert.deepEqual(saved, userSettings)
+})
+
+test('installer: a checkout without retired.json retires nothing', () => {
+  const { run, saved } = runInstaller(['--prune'], { settings: userSettings, example: archivedExample })
+  assert.equal(run.status, 0, run.stderr)
+  assert.equal(saved.enabledPlugins['gone@adminhead'], true)
 })

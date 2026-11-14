@@ -4,7 +4,11 @@
 // Plugins the example sets to false are installed and disabled once, if they are installed nowhere and the
 // user has not enabled them; a rerun neither updates nor re-disables an installed off plugin.
 //
-//   node scripts/install.mjs [--dry-run] [--no-settings] [--no-plugins] [--settings PATH]
+// scripts/retired.json (next to the example) lists the plugins the marketplace has deprecated or archived. The
+// installer prints a notice for each one the user's settings enable and never installs an archived one. Only with
+// --prune does it remove archived ids from enabledPlugins and pluginConfigs; without it nothing is ever removed.
+//
+//   node scripts/install.mjs [--dry-run] [--no-settings] [--no-plugins] [--prune] [--settings PATH]
 //   curl -fsSL <raw url of this file> | node --input-type=module - [OPTIONS]
 
 import { spawnSync } from 'node:child_process'
@@ -17,6 +21,7 @@ const REPO = 'Adminhead/claude-plugins'
 const EXAMPLE = 'examples/claude-settings/settings.global.json'
 const DEFAULT_PLUGINS = ['baseline@adminhead']
 const BUILTIN_MARKETPLACE = 'claude-plugins-official'
+const RETIRED = 'scripts/retired.json'
 
 // Piped into `node -`, there is no checkout around the script: argv[1] is "-" and import.meta.url
 // names a virtual file in the current directory.
@@ -103,16 +108,76 @@ export function needsOfficialMarketplace(plan, knownMarketplaces) {
   return [...plan.main.map(p => p.id), ...plan.off].some(id => id.endsWith(suffix)) && !knownMarketplaces.includes(BUILTIN_MARKETPLACE)
 }
 
+// The retired plugins as a Map of settings id (`name@adminhead`) to { state, into, reason }. `retired` is the parsed
+// scripts/retired.json: { deprecated: {name: record}, archived: {name: record} }; a missing table is empty.
+export function retiredIdsOf(retired) {
+  const ids = new Map()
+  for (const state of ['deprecated', 'archived']) {
+    const table = isObject(retired?.[state]) ? retired[state] : {}
+    for (const [name, rec] of Object.entries(table)) {
+      ids.set(`${name}@adminhead`, { state, into: isObject(rec) && typeof rec.into === 'string' ? rec.into : null, reason: isObject(rec) ? rec.reason : undefined })
+    }
+  }
+  return ids
+}
+
+// `example` without the archived plugin ids, which `claude plugin install` could not find, and the ids it dropped.
+export function withoutArchived(example, retired) {
+  const archived = [...retiredIdsOf(retired)].filter(([, r]) => r.state === 'archived').map(([id]) => id)
+  const out = { ...example }
+  const skipped = new Set()
+  for (const key of ['enabledPlugins', 'pluginConfigs']) {
+    if (!isObject(example[key])) continue
+    const kept = {}
+    for (const [id, value] of Object.entries(example[key])) {
+      if (archived.includes(id)) skipped.add(id)
+      else kept[id] = value
+    }
+    out[key] = kept
+  }
+  return { example: out, skipped: [...skipped] }
+}
+
+// One notice per retired id the user's settings enable.
+export function retiredNotices(settings, retired) {
+  const notices = []
+  for (const [id, { state, into, reason }] of retiredIdsOf(retired)) {
+    if (settings?.enabledPlugins?.[id] !== true) continue
+    const use = into ? `; use ${into}@adminhead instead` : ''
+    const why = reason ? ` (${reason})` : ''
+    notices.push(state === 'archived'
+      ? `${id} is archived and no longer in the marketplace${use}${why}. Run with --prune to remove it from your settings.`
+      : `${id} is deprecated${use}${why}. It will be archived in a later release.`)
+  }
+  return notices
+}
+
+// `settings` without the archived plugin ids in enabledPlugins and pluginConfigs, and the dotted paths removed.
+export function pruneArchived(settings, retired) {
+  const archived = new Set([...retiredIdsOf(retired)].filter(([, r]) => r.state === 'archived').map(([id]) => id))
+  const out = { ...settings }
+  const removed = []
+  for (const key of ['enabledPlugins', 'pluginConfigs']) {
+    if (!isObject(settings[key])) continue
+    const gone = Object.keys(settings[key]).filter(id => archived.has(id))
+    if (!gone.length) continue
+    out[key] = Object.fromEntries(Object.entries(settings[key]).filter(([id]) => !archived.has(id)))
+    removed.push(...gone.map(id => `${key}.${id} (removed)`))
+  }
+  return { pruned: out, removed }
+}
+
 function parseArgs(argv) {
-  const args = { dryRun: false, settings: true, plugins: true, settingsPath: null }
+  const args = { dryRun: false, settings: true, plugins: true, prune: false, settingsPath: null }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--dry-run') args.dryRun = true
     else if (a === '--no-settings') args.settings = false
     else if (a === '--no-plugins') args.plugins = false
+    else if (a === '--prune') args.prune = true
     else if (a === '--settings') args.settingsPath = argv[++i]
     else if (a === '-h' || a === '--help') {
-      console.log('Usage: node scripts/install.mjs [--dry-run] [--no-settings] [--no-plugins] [--settings PATH]\n' +
+      console.log('Usage: node scripts/install.mjs [--dry-run] [--no-settings] [--no-plugins] [--prune] [--settings PATH]\n' +
         '       curl -fsSL <url> | node --input-type=module - [OPTIONS]')
       process.exit(0)
     } else throw new Error(`unknown option ${a}`)
@@ -155,6 +220,18 @@ function loadExample(installLocation) {
   throw new Error(`cannot find ${EXAMPLE}; run this script from a checkout or after the marketplace is added`)
 }
 
+// scripts/retired.json from the checkout the example came from; absent or unreadable means nothing is retired.
+function loadRetired(examplePath) {
+  const path = join(dirname(examplePath), '..', '..', RETIRED)
+  if (!existsSync(path)) return {}
+  try {
+    return readJson(path)
+  } catch (e) {
+    console.error(`  ${e.message}; treating no plugin as retired`)
+    return {}
+  }
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2))
   const configDir = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
@@ -192,6 +269,12 @@ function main() {
     }
   }
 
+  // Archived plugins are skipped: `claude plugin install` would fail on an id the marketplace no longer lists.
+  const retired = loadRetired(examplePath)
+  const skipped = withoutArchived(example, retired)
+  example = skipped.example
+  for (const id of skipped.skipped) console.log(`Skipping ${id}: the example still lists it, but it is archived.`)
+
   // 2. Settings: merge, never overwrite, so hooks other installers wrote stay.
   // Under --no-settings the file is only read for planning, so a missing, corrupt or non-object one counts as empty.
   let current = {}
@@ -202,8 +285,16 @@ function main() {
     if (args.settings) throw e
     current = {}
   }
+  const notices = retiredNotices(current, retired)
+  if (notices.length) console.log(`\nRetired plugins:\n${notices.map(n => `  ${n}`).join('\n')}`)
+  if (args.prune && !args.settings) console.log('\n--prune only edits settings; it has no effect with --no-settings.')
   if (args.settings) {
-    const { merged, changes } = mergeSettings(current, example, new Set(offPluginsOf(example, marketplaces)))
+    let { merged, changes } = mergeSettings(current, example, new Set(offPluginsOf(example, marketplaces)))
+    if (args.prune) {
+      const { pruned, removed } = pruneArchived(merged, retired)
+      merged = pruned
+      changes = [...changes, ...removed]
+    }
     console.log(`\nSettings: ${examplePath} -> ${settingsPath}`)
     if (!changes.length) console.log('  already up to date')
     for (const c of changes) console.log(`  ${c}`)
