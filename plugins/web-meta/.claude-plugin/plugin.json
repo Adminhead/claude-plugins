@@ -1,6 +1,6 @@
 {
   "name": "web-meta",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Plugin set for web front-end projects, installed at project scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -9,7 +9,6 @@
   "dependencies": [
     "programming-core",
     "design-core",
-    "web-development",
     "react",
     "vite",
     "e2e-testing",

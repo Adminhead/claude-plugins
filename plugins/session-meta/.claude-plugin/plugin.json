@@ -1,6 +1,6 @@
 {
   "name": "session-meta",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Plugin set for long-running, multi-session projects, installed at project scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -11,7 +11,6 @@
     "catchup",
     "tunnel-check",
     "lens-review",
-    "fact-check",
     "v0-restart"
   ]
 }

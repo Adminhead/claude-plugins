@@ -19,6 +19,36 @@
       "into": null,
       "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-pilot.md)",
       "date": "2026-11-14"
+    },
+    "javascript": {
+      "into": null,
+      "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-round-2.md)",
+      "date": "2026-11-14"
+    },
+    "web-development": {
+      "into": null,
+      "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-round-2.md)",
+      "date": "2026-11-14"
+    },
+    "fact-check": {
+      "into": null,
+      "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-round-2.md)",
+      "date": "2026-11-14"
+    },
+    "design-critique": {
+      "into": null,
+      "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-round-2.md)",
+      "date": "2026-11-14"
+    },
+    "design-system": {
+      "into": null,
+      "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-round-2.md)",
+      "date": "2026-11-14"
+    },
+    "game-genres": {
+      "into": null,
+      "reason": "Value evals on Sonnet 5.5 and Haiku 5.5 showed no lift over the bare model (docs/research/plugin-review-2026-11-14/value-eval-round-2.md)",
+      "date": "2026-11-14"
     }
   },
   "archived": {}

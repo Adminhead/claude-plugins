@@ -1,7 +1,7 @@
 {
   "name": "game-genres",
-  "version": "0.1.1",
-  "description": "Engine-agnostic genre playbooks: core systems, data model, feel targets, balancing norms and pitfalls for platformers, roguelikes, card games, puzzles, RPGs, FPS, tower defense, survival-crafting and visual novels, plus branching dialogue (Ink, Yarn Spinner, custom runners).",
+  "version": "0.1.2",
+  "description": "Deprecated. Engine-agnostic genre playbooks: core systems, data model, feel targets, balancing norms and pitfalls for platformers, roguelikes, card games, puzzles, RPGs, FPS, tower defense, survival-crafting and visual novels, plus branching dialogue (Ink, Yarn Spinner, custom runners).",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

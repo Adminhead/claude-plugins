@@ -1,7 +1,7 @@
 {
   "name": "fact-check",
-  "version": "0.2.3",
-  "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
+  "version": "0.2.4",
+  "description": "Deprecated. Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

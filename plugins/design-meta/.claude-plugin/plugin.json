@@ -1,6 +1,6 @@
 {
   "name": "design-meta",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Plugin set for design work (new UI direction, rendered critique, UX rules and copy, accessibility, design systems and handoff) in any repo, installed at project scope. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -9,8 +9,6 @@
   "dependencies": [
     "design-core",
     "uiux-lookup",
-    "design-critique",
-    "design-system",
     "design-handoff"
   ]
 }

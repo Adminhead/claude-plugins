@@ -80,7 +80,7 @@
       "name": "node-typescript-meta",
       "source": "./plugins/node-typescript-meta",
       "description": "Plugin set for Node.js and TypeScript projects, installed at project scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "meta"
     },
     {
@@ -94,14 +94,14 @@
       "name": "web-meta",
       "source": "./plugins/web-meta",
       "description": "Plugin set for web front-end projects, installed at project scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "meta"
     },
     {
       "name": "design-meta",
       "source": "./plugins/design-meta",
       "description": "Plugin set for design work (new UI direction, rendered critique, UX rules and copy, accessibility, design systems and handoff) in any repo, installed at project scope. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "category": "meta"
     },
     {
@@ -247,8 +247,8 @@
     {
       "name": "design-critique",
       "source": "./plugins/design-critique",
-      "description": "Gives structured feedback on a static design (mockup, wireframe, exported Figma frame or screenshot) covering usability, hierarchy, consistency and accessibility. Use for \"critique this mockup\", \"review this design\", \"what do you think of this screen?\". A rendered page or built UI goes to the ui-critic agent.",
-      "version": "0.1.1",
+      "description": "Deprecated. Gives structured feedback on a static design (mockup, wireframe, exported Figma frame or screenshot) covering usability, hierarchy, consistency and accessibility. Use for \"critique this mockup\", \"review this design\", \"what do you think of this screen?\". A rendered page or built UI goes to the ui-critic agent.",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -261,8 +261,8 @@
     {
       "name": "design-system",
       "source": "./plugins/design-system",
-      "description": "Audits, documents or extends a design system as a whole: token inventory, naming consistency, hardcoded values, component completeness, component docs, and proposals for a new component or pattern. Use for \"audit our design system\", \"document this component\", \"design a new pattern that fits\". Restyling a product screen goes to web-design.",
-      "version": "0.1.1",
+      "description": "Deprecated. Audits, documents or extends a design system as a whole: token inventory, naming consistency, hardcoded values, component completeness, component docs, and proposals for a new component or pattern. Use for \"audit our design system\", \"document this component\", \"design a new pattern that fits\". Restyling a product screen goes to web-design.",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -422,8 +422,8 @@
     {
       "name": "javascript",
       "source": "./plugins/javascript",
-      "description": "Covers JavaScript runtime semantics, meaning ESM vs CommonJS, import side effects, promises and the event loop, async cleanup and cancellation, browser vs Node/Bun/Deno/edge, measured performance and JS tests. Use when writing, reviewing or debugging *.js/*.mjs/*.cjs or runtime behavior of JS/TS code (import errors, unhandled rejections, leaks, ordering bugs).",
-      "version": "0.1.0",
+      "description": "Deprecated. Covers JavaScript runtime semantics, meaning ESM vs CommonJS, import side effects, promises and the event loop, async cleanup and cancellation, browser vs Node/Bun/Deno/edge, measured performance and JS tests. Use when writing, reviewing or debugging *.js/*.mjs/*.cjs or runtime behavior of JS/TS code (import errors, unhandled rejections, leaks, ordering bugs).",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -681,8 +681,8 @@
     {
       "name": "web-development",
       "source": "./plugins/web-development",
-      "description": "Builds or repairs a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard and focus, request and response contracts, server validation, error mapping and measured performance, verified in a real browser. Use for a form, page or flow that must work for real users, an HTTP API contract change, or a browser or network bug.",
-      "version": "0.1.0",
+      "description": "Deprecated. Builds or repairs a browser-facing web feature end to end: semantic HTML and forms, responsive CSS, keyboard and focus, request and response contracts, server validation, error mapping and measured performance, verified in a real browser. Use for a form, page or flow that must work for real users, an HTTP API contract change, or a browser or network bug.",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1276,8 +1276,8 @@
     {
       "name": "game-genres",
       "source": "./plugins/game-genres",
-      "description": "Engine-agnostic genre playbooks: core systems, data model, feel targets, balancing norms and pitfalls for platformers, roguelikes, card games, puzzles, RPGs, FPS, tower defense, survival-crafting and visual novels, plus branching dialogue (Ink, Yarn Spinner, custom runners).",
-      "version": "0.1.1",
+      "description": "Deprecated. Engine-agnostic genre playbooks: core systems, data model, feel targets, balancing norms and pitfalls for platformers, roguelikes, card games, puzzles, RPGs, FPS, tower defense, survival-crafting and visual novels, plus branching dialogue (Ink, Yarn Spinner, custom runners).",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1696,8 +1696,8 @@
     {
       "name": "fact-check",
       "source": "./plugins/fact-check",
-      "description": "Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
-      "version": "0.2.3",
+      "description": "Deprecated. Manual command that checks each factual claim in an earlier answer against files, commands and authoritative sources, reports it Confirmed, Wrong or Unverified, and restates the corrected answer.",
+      "version": "0.2.4",
       "category": "development"
     },
     {
@@ -1879,7 +1879,7 @@
       "name": "session-meta",
       "source": "./plugins/session-meta",
       "description": "Plugin set for long-running, multi-session projects, installed at project scope. Ships no components of its own.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "meta"
     },
     {
