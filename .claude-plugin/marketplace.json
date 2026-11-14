@@ -1088,7 +1088,7 @@
       "name": "sentry-mcp-self-hosted",
       "source": "./plugins/sentry-mcp-self-hosted",
       "description": "Sentry's MCP server (@sentry/mcp-server 0.42.0, pinned) over stdio for self-hosted Sentry, read-only by default. Off until enabled; prompts for the host and a user auth token kept in secure storage.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
