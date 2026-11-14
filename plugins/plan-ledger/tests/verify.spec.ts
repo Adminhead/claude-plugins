@@ -6,7 +6,6 @@ import {
   approveQuestion,
   commandFor,
   fingerprint,
-  gateQuestion,
   judge,
   outTail,
   skippedNote,
@@ -205,22 +204,6 @@ describe('words and verdicts', () => {
     expect(verdictOf({ decision: 'deny', reason: 'r' })).toBe('deny')
     for (const v of [{ decision: 'ask' }, {}, null, undefined, 'allow', { decision: 'ALLOW' }, { decision: 1 }, []]) {
       expect(verdictOf(v)).toBe('ask')
-    }
-  })
-
-  test('the gate question shows the exact argv and directory, escaped', () => {
-    const q = gateQuestion({ label: 'x', argv: ['sh', '-c', 'echo "hi"\nrm -rf /'], expectExit: 0 }, '/w/my dir')
-    expect(q).toContain(JSON.stringify(['sh', '-c', 'echo "hi"\nrm -rf /']))
-    expect(q).toContain('"/w/my dir"')
-    expect(q).not.toContain('\n')
-  })
-
-  test('the gate question ends in a question mark, and a label cannot add lines or hide the end of it', () => {
-    for (const label of ['unit', 'a\nb\u001b[2Jc', 'x'.repeat(500)]) {
-      const q = gateQuestion({ label, argv: ['bun', 'test'], expectExit: 0 }, '/w')
-      expect(q.endsWith('?')).toBe(true)
-      expect(q).not.toMatch(/[\u0000-\u001f]/)
-      expect(q.length).toBeLessThan(400)
     }
   })
 

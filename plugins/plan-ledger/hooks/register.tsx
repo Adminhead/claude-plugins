@@ -52,7 +52,6 @@ import {
   approveQuestion,
   commandFor,
   fingerprint,
-  gateQuestion,
   judge,
   outTail,
   skippedNote,
@@ -679,16 +678,10 @@ async function resolveCwd($: Dollar, given: unknown): Promise<{ ok: true; cwd: s
 }
 
 /**
- * The execution gate for one check, before anything runs. `$.process.run` is not a Bash call, so installed Bash guards do
- * not see it; `$.tool.check` reports only the user's own rules (and not the directory), and shows a guard's target as
- * `ask`. So `allow` means "the user's rules allow it", `deny` refuses, and `ask` or any other answer (a throw, an unknown
- * shape) goes to the person with the exact argv and directory. A refused, dismissed or unanswerable question (`-p`) refuses.
- * On `allow` nothing is asked, so the directory is not shown: showing it there would be one more prompt, which the user's
- * own allow rule exists to avoid. The directory is recorded in the verification either way.
- *
- * TODO(G3, docs/plans/goal-ledger.md "Open interactive gates"): the real `$.ui.ask` dialog is unverified. Headless runs and
- * tests only show that a rejection (`-p`) refuses. A person must confirm in an interactive session that the dialog shows
- * the exact argv and cwd, that "Run it" runs the check, and that "Refuse" and dismissing it refuse.
+ * The rule decision for one check, before anything runs. `$.process.run` is not a Bash call, so installed Bash guards do
+ * not see it; `$.tool.check` reports only the user's own rules and shows a guard's target as `ask`. So only `deny` is
+ * meaningful here: a check the user's rules deny is refused. `allow`, `ask` and any other answer (a throw, an unknown
+ * shape) are not refusals; `auto` runs the check without asking and `ask` mode asks once for the whole run in `approveRun`.
  */
 async function ruleDecision($: Dollar, check: Check): Promise<'allow' | 'ask' | 'deny'> {
   try {
@@ -701,28 +694,26 @@ async function ruleDecision($: Dollar, check: Check): Promise<'allow' | 'ask' | 
 const deniedByRules = (check: Check): string =>
   `Check "${check.label}" is denied by the user's permission rules, so nothing was run and the item is not verified. Tell the person.`
 
-async function gateCheck($: Dollar, check: Check, cwd: string): Promise<string | null> {
-  const decision = await ruleDecision($, check)
-  if (decision === 'deny') return deniedByRules(check)
-  if (decision === 'allow') return null
-  let answer: unknown
-  try {
-    answer = await $.ui.ask(gateQuestion(check, cwd), { options: [RUN_IT, REFUSE_IT], header: 'Run check' })
-  } catch {
-    return `Check "${check.label}" needs the person's approval and could not be asked, so nothing was run and the item is not verified. Tell the person to verify in an interactive session.`
+/** The refusal for the first check the user's rules deny, or null when none is denied. Never asks. */
+async function deniedCheck($: Dollar, checks: Check[]): Promise<string | null> {
+  for (const check of checks) {
+    if ((await ruleDecision($, check)) === 'deny') return deniedByRules(check)
   }
-  return answer === RUN_IT ? null : `The person refused check "${check.label}", so nothing was run and the item is not verified.`
+  return null
 }
 
 /**
  * The gate for `verifyChecks: ask`: the person approves the whole run once, whatever their rules say. A check the user's own
- * rules deny still refuses first, without asking. The dialog lists every argv and the directory, so it replaces the per-check
- * questions. A refused, dismissed or unanswerable question (`-p`) refuses, as in `gateCheck`.
+ * rules deny still refuses first, without asking. The dialog lists every argv and the directory. A refused, dismissed or
+ * unanswerable question (`-p`) refuses.
+ *
+ * TODO(G3, docs/plans/goal-ledger.md "Open interactive gates"): the real `$.ui.ask` dialog is unverified. Headless runs and
+ * tests only show that a rejection (`-p`) refuses. A person must confirm in an interactive session that the dialog shows
+ * the exact argv and cwd, that "Run it" runs the checks, and that "Refuse" and dismissing it refuse.
  */
 async function approveRun($: Dollar, itemId: string, checks: Check[], cwd: string): Promise<string | null> {
-  for (const check of checks) {
-    if ((await ruleDecision($, check)) === 'deny') return deniedByRules(check)
-  }
+  const denied = await deniedCheck($, checks)
+  if (denied !== null) return denied
   let answer: unknown
   try {
     answer = await $.ui.ask(approveQuestion(itemId, checks, cwd), { options: [RUN_IT, REFUSE_IT], header: 'Run checks' })
@@ -785,13 +776,13 @@ function recordedSummary(itemId: string, change: Change | null): string {
  * `verify` for one item. Order matters: (0) a retry (`opts.op`) first looks its op up in the ledger and, when the change is
  * there, runs and asks nothing and reports what the ledger holds; (1) read the plan and run `authorize` and the
  * `claimed_done` and `gen` preconditions, and when any fails hand the plain action to `mutate`, which denies it and logs
- * it, with no prompt and no subprocess for a check; (2) a `manual` verify runs nothing; (3) gate every check before any
- * runs; (4) HEAD and tree fingerprint, the checks (the argv recorded at plan time, in the canonical cwd, outside the
+ * it, with no prompt and no subprocess for a check; (2) a `manual` verify runs nothing; (3) refuse before any runs when the
+ * user's rules deny a check, and in `ask` mode ask once for the whole run; (4) HEAD and tree fingerprint, the checks (the argv recorded at plan time, in the canonical cwd, outside the
  * lock), the tree again; (5) `judge`; (6) `mutate` records the verification built here (the public input has no field for
  * one), and `apply` refuses it if the item is no longer `claimed_done` at the same `gen` or its checks changed during
  * the run. Other items changing meanwhile does not matter, so the plan `rev` is not part of the commit condition.
  *
- * `opts.memo` carries the steps already done across the attempts of one call: a retry skips the prompt, the checks and the
+ * `opts.memo` carries the steps already done across the attempts of one call: a retry skips the gate, the checks and the
  * judging that finished, and repeats only the step that failed (a tree read, the commit). The answer's summary is always
  * of what the ledger holds: of this run's verification when this call applied it, of the recorded one on a duplicate.
  */
@@ -905,10 +896,8 @@ export async function verifyItem(
       const why = await approveRun($, item.id, checks, cwd)
       if (why !== null) return refusal(why, planId)
     } else {
-      for (const check of checks) {
-        const why = await gateCheck($, check, cwd)
-        if (why !== null) return refusal(why, planId)
-      }
+      const why = await deniedCheck($, checks)
+      if (why !== null) return refusal(why, planId)
     }
     memo.gated = true
   }

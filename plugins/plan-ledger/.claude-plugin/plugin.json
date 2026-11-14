@@ -1,6 +1,6 @@
 {
   "name": "plan-ledger",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Work-plan tracker: the orchestrator hands items to subagents by reference; the agent claims done and the mod verifies.",
   "author": {
     "name": "AdminHead",
@@ -25,7 +25,7 @@
     "verifyChecks": {
       "type": "string",
       "title": "Verification checks",
-      "description": "How verify treats an item's recorded checks. auto: the mod runs them, asking the person only where their permission rules say ask. ask: the person approves every run first, in one question. off: nothing runs, and verify is recorded as an unchecked manual verification. Anything else is auto.",
+      "description": "How verify treats an item's recorded checks. auto: the mod runs them without asking, except checks the person's permission rules deny. ask: the person approves every run first, in one question. off: nothing runs, and verify is recorded as an unchecked manual verification. Anything else is auto.",
       "options": ["auto", "ask", "off"],
       "default": "auto"
     },

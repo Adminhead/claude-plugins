@@ -30,7 +30,7 @@ Give an item `checks` as argv lists (`{ label, argv, expectExit }`, exit 0 by de
 
 The person sets it in the plugin options; you cannot change it. It decides what `verify` does with an item's `checks`:
 
-- `auto` (default): the mod runs the checks, and asks the person only where their permission rules say ask.
+- `auto` (default): the mod runs the checks, without asking, but refuses any check the person's permission rules deny.
 - `ask`: the person approves each run first, in one question listing every command. A refusal leaves the item `claimed_done`; tell the person and `verify` again once they agree.
 - `off`: nothing runs. `verify` is accepted as an unchecked manual verification, and the plan shows it as manual. Say so when you report the item as done.
 

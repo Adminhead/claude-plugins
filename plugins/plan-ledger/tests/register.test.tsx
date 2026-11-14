@@ -1107,46 +1107,31 @@ describe('verification', () => {
       expect(w.gitCalls).toEqual([])
     })
 
-    test('ask goes to the person with the exact argv and cwd; "Run it" runs, anything else refuses', async ($: any, on: any) => {
-      const w = world(on)
-      const id = await claimed(w)
-      w.verdict = () => ({ decision: 'ask', reason: 'needs approval' })
-      w.answer = 'Run it'
-      expect(await verify(w, id)).toMatchObject({ ok: true })
-      expect(w.asked).toHaveLength(1)
-      expect(w.asked[0].question).toContain(JSON.stringify(unit.argv))
-      expect(w.asked[0].question).toContain('"/work/repo"')
-      expect(w.asked[0].question.endsWith('?')).toBe(true)
-      expect(w.asked[0].options).toMatchObject({ options: ['Run it', 'Refuse'] })
-      expect(w.checkRuns).toHaveLength(1)
-
-      for (const answer of ['Refuse', 'reject', 'Run it please', '', 'run it']) {
-        const w2 = world(on)
-        const id2 = await claimed(w2)
-        w2.verdict = () => ({ decision: 'ask' })
-        w2.answer = answer
-        const r = await verify(w2, id2)
-        expect([answer, r.ok]).toEqual([answer, false])
-        expect(w2.asked).toHaveLength(1)
-        expect(w2.checkRuns).toEqual([])
-        expect(w2.gitCalls).toEqual([])
-        expect((await itemOf(w2, id2)).status).toBe('claimed_done')
+    test('auto runs a check whose rule verdict is ask, unknown or unavailable, and never prompts', async ($: any, on: any) => {
+      const verdicts: [string, () => unknown][] = [
+        ['ask', () => ({ decision: 'ask', reason: 'needs approval' })],
+        ['maybe', () => ({ decision: 'maybe' })],
+        ['throws', () => { throw new Error('no engine') }],
+      ]
+      for (const [name, verdict] of verdicts) {
+        const w = world(on)
+        const id = await claimed(w)
+        w.verdict = verdict as any
+        w.answer = 'Refuse'
+        expect([name, (await verify(w, id)).ok]).toEqual([name, true])
+        expect(w.asked).toEqual([])
+        expect(w.checkRuns).toHaveLength(1)
       }
     })
 
-    test('an unavailable or unrecognised verdict is an ask, never a run', async ($: any, on: any) => {
+    test('a deny on any check still refuses under auto with ask verdicts on the others', async ($: any, on: any) => {
       const w = world(on)
-      const id = await claimed(w)
-      w.verdict = () => {
-        throw new Error('no engine')
-      }
-      w.answer = 'Refuse'
-      expect(await verify(w, id)).toMatchObject({ ok: false })
-      expect(w.asked).toHaveLength(1)
-      w.verdict = () => ({ decision: 'maybe' })
-      expect(await verify(w, id)).toMatchObject({ ok: false })
-      expect(w.asked).toHaveLength(2)
+      const id = await claimed(w, [unit, lint])
+      w.verdict = (command) => (command.includes('lint') ? { decision: 'deny' } : { decision: 'ask' })
+      expect(await verify(w, id)).toMatchObject({ ok: false, code: 'denied' })
+      expect(w.asked).toEqual([])
       expect(w.checkRuns).toEqual([])
+      expect(w.gitCalls).toEqual([])
     })
 
     test('allow runs without asking', async ($: any, on: any) => {
@@ -1158,13 +1143,12 @@ describe('verification', () => {
   })
 
   describe('cwd', () => {
-    test('the named cwd is canonicalized, recorded, shown to the person, and used for every command', async ($: any, on: any) => {
+    test('the named cwd is canonicalized, recorded, and used for every command', async ($: any, on: any) => {
       const w = world(on)
       const id = await claimed(w)
       w.verdict = () => ({ decision: 'ask' })
       const r = await verify(w, id, { cwd: '/work/link' })
       expect(r).toMatchObject({ ok: true })
-      expect(w.asked[0].question).toContain('"/work/other"')
       expect(w.checkRuns[0].cwd).toBe('/work/other')
       expect(w.gitCalls.every((g) => g.cwd === '/work/other')).toBe(true)
       expect((await itemOf(w, id)).verification?.cwd).toBe('/work/other')
@@ -1310,7 +1294,7 @@ describe('verification', () => {
 
   describe('a retried verify tells the model what is persisted and never repeats the prompt or the checks', () => {
     const viaTool = (w: World & { $: any }, id: string, gen: number) =>
-      planTool(w.$, { tool: 'mcp__plan-ledger__plan', tool_use_id: 'tu', action: 'verify', plan: id, item: 's1', gen }, 3) as Promise<any>
+      planTool(w.$, { tool: 'mcp__plan-ledger__plan', tool_use_id: 'tu', action: 'verify', plan: id, item: 's1', gen }, 3, 'ask') as Promise<any>
 
     test('the ledger has a failing verification but the publish failed: the retry reports that one, runs nothing, asks nothing', async ($: any, on: any) => {
       const w = world(on)

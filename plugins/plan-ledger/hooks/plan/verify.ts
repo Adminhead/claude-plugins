@@ -54,17 +54,6 @@ export function verdictOf(v: unknown): 'allow' | 'ask' | 'deny' {
 }
 
 /**
- * The question the person answers before a check runs, one line ending in a question mark: the instruction first, then the
- * exact argv and directory, JSON-escaped so nothing is hidden. The label is a stored caller string, so it goes through `one`.
- */
-export function gateQuestion(check: Check, cwd: string): string {
-  return (
-    `Run the plan check "${one(check.label).slice(0, 60)}" as argv ${JSON.stringify(check.argv)} in directory ${JSON.stringify(cwd)}, ` +
-    'which the plan tool starts directly so installed command guards do not see it?'
-  )
-}
-
-/**
  * The question for `verifyChecks: ask`: one approval for the whole run, listing every check's exact argv and the directory,
  * JSON-escaped so nothing is hidden. Labels are stored caller strings, so they go through `one`.
  */
