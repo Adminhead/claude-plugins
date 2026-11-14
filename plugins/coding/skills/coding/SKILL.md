@@ -18,7 +18,7 @@ Validation at trust boundaries, authorization, error handling that prevents data
 1. **Set the change envelope.** Read the request, the owning code path, its callers, nearby tests, and local instructions and config. State the input, observable result, errors, side effects, ordering, compatibility constraints, and acceptance evidence. List every place the change must reach (callers, tests, fixtures, config, exports) and what it could break for users (data it would destroy or expose, callers that stop working). That is scope; extra features are not. Treat everything else as out of scope, because every extra edit widens review and adds regression risk.
    - For a behavior-preserving refactor, preserve every observable result, error, side effect, ordering, and supported interface. Keep structural moves and behavior changes in separate steps so each can be verified and reverted alone.
    - For a bug fix, find every caller of the function you touch before editing, then fix the root cause once in the shared code.
-   - If the contract is missing or contradictory, ask for the smallest clarifying fact (AskUserQuestion) or report the blocker and leave the code unchanged.
+   - If the contract is missing or contradictory, ask for the smallest clarifying fact (in a main session, ask the user; as a subagent, put it in the hand-back) or report the blocker and leave the code unchanged.
 
 2. **Take the first option that fully works.** Check in this order and stop at the first that meets the contract:
    1. Does it need to exist? Skip features, options, and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
