@@ -1,6 +1,6 @@
 {
   "name": "plan-ledger-usage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "How to use the plan-ledger plan tool (mcp__plan-ledger__plan): the orchestrator and subagent call sequences, the verifyChecks setting and parallelSafe items. Preloaded by the agents that list the tool.",
   "author": {
     "name": "AdminHead",
