@@ -465,7 +465,7 @@
       "name": "pr-comments",
       "source": "./plugins/pr-comments",
       "description": "Manual /pr-comments: pull a PR's review comments and review summaries into context on GitHub (gh) or Forgejo and Codeberg (fj), triage them, and fix the ones you pick. Detects the forge from the git remote. Read-only.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
