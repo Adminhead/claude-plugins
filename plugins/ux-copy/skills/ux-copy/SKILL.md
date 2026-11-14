@@ -13,8 +13,11 @@ Request: $ARGUMENTS
 ## Scope
 
 - Owns interface microcopy: labels, CTAs, errors, empty states, confirmations, tooltips, loading, success and onboarding text, notifications.
-- Marketing and landing-page copy (headline, argument, section copy) goes to `ui-direction`. A whole-screen design critique goes to `design-critique`. Accessibility conformance goes to `accessibility-review`.
-- When the user has a style guide, glossary or brand voice document, read it first and follow it over the defaults below.
+- Marketing and landing-page copy (headline, argument, section copy) goes to `ui-direction`. An accessibility conformance audit is out of scope here.
+
+## First: find the project's own rules
+
+Before drafting, search the repo even if the request does not mention a guide: `docs/`, `CONTRIBUTING`, the README, a design-system folder, and files named like `content-style`, `style-guide`, `voice`, `tone`, `writing` or `glossary`; also the existing strings file. Read what you find. A project guide overrides every pattern, example and default in this skill, button labels and titles included. Use the skill only where the guide is silent.
 
 ## What to establish
 
@@ -33,7 +36,9 @@ Ask only for what would change the answer; otherwise state your assumption and w
 4. **Useful**: every word helps the user reach their goal.
 5. **Human**: write like a helpful person, not a system log.
 
-## Copy patterns
+## Default copy patterns
+
+Used only where the project has no rule of its own.
 
 ### CTAs
 - Start with a verb: "Start free trial", "Save changes", "Download report".
