@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: value-hotfix-with-open-release
+context:
+  scaffold_script: scaffold.sh
