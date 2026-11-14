@@ -1,6 +1,6 @@
 {
   "name": "play-publishing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sets up and runs the release path to Google Play. Use for \"Version code 42 has already been used\", \"signed with the wrong key\", a lost upload key, shipping the AAB to the internal track from CI, staged rollouts, or the target API deadline. Covers upload key versus Play App Signing, Gradle Play Publisher, fastlane supply, tracks, mapping upload, store listing and data safety drafts. Never publishes without an explicit yes.",
   "author": {
     "name": "AdminHead",
