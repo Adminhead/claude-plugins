@@ -74,6 +74,21 @@
       "into": "goff",
       "reason": "Merged into the single goff skill",
       "date": "2026-11-14"
+    },
+    "forgejo-pr-comments": {
+      "into": "pr-comments",
+      "reason": "Merged into the forge-neutral pr-comments skill",
+      "date": "2026-11-14"
+    },
+    "hubflow": {
+      "into": "git-flow",
+      "reason": "Merged into git-flow, which now covers git-flow, HubFlow and trunk-based",
+      "date": "2026-11-14"
+    },
+    "trunk-based": {
+      "into": "git-flow",
+      "reason": "Merged into git-flow, which now covers git-flow, HubFlow and trunk-based",
+      "date": "2026-11-14"
     }
   },
   "archived": {}
