@@ -13,7 +13,7 @@ Not for: MSBuild and build failures (`msbuild`), package versions (`nuget`), tes
 ## Orient
 
 - Read `global.json`, `Directory.Build.props`/`.targets`, the project file (`TargetFramework(s)`, `LangVersion`, `Nullable`, `ImplicitUsings`, `TreatWarningsAsErrors`, `AnalysisLevel`), and `.editorconfig`. Run `dotnet --version` from the repo root.
-- Use only language features the project's language version allows: the default follows the TFM (net8.0 is C# 12, net9.0 C# 13, net10.0 C# 14). Don't raise `LangVersion`, the TFM or the SDK unless asked. A multi-targeted project is limited by its oldest TFM; `netstandard2.0` and .NET Framework also lack newer BCL APIs.
+- Use only language features the project's language version allows: the default follows the TFM (net8.0 is C# 12, net9.0 C# 13, net10.0 C# 14, net11.0 C# 15). Don't raise `LangVersion`, the TFM or the SDK unless asked. A multi-targeted project is limited by its oldest TFM; `netstandard2.0` and .NET Framework also lack newer BCL APIs.
 - Find definitions, callers and implementations with codebase-memory when the repo is indexed (`search_graph`, `trace_path`, `get_code_snippet`), then the C# language server (csharp-ls) through the LSP tool, then Grep. Before changing a member, list its references; include every `partial` declaration and edit generator inputs, never `*.g.cs` output.
 - For a library API, check the docs for the referenced version (Context7 `resolve-library-id` then `query-docs`, or Microsoft Learn).
 - Use the repo's build and test commands when it documents them (README, `build.sh`, CI). Reproduce with the narrowest one.
@@ -80,4 +80,4 @@ Not for: MSBuild and build failures (`msbuild`), package versions (`nuget`), tes
 - [references/file-based-apps.md](references/file-based-apps.md) for `dotnet run app.cs`, `#:package`/`#:sdk` directives, and quick C# experiments without a project.
 - [references/cli-apps.md](references/cli-apps.md) when building or changing a System.CommandLine (v2) CLI.
 - [references/sdk-setup.md](references/sdk-setup.md) for installing an SDK into the repo without touching the system, and `global.json` pinning.
-- [references/net11-apis.md](references/net11-apis.md) when the project targets `net11.0`: new `Process` and `System.Text.Json` APIs (preview until .NET 11 GA).
+- [references/net11-apis.md](references/net11-apis.md) when the project targets `net11.0`: new `Process` and `System.Text.Json` APIs (.NET 11 went GA on 2026-11-10).

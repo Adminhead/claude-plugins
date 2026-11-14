@@ -1,6 +1,6 @@
 # .NET 11 APIs: Process and System.Text.Json
 
-.NET 11 is in preview until its GA (planned for November 2026); these API shapes can still change. Use them only when the project targets `net11.0` or later, and check the API docs for the installed SDK if a signature doesn't compile. For anything older, use the pre-.NET 11 patterns noted below.
+.NET 11 went GA on 2026-11-10; these API shapes were written against the previews, so check the API docs for the GA shape. Use them only when the project targets `net11.0` or later, and check the API docs for the installed SDK if a signature doesn't compile. For anything older, use the pre-.NET 11 patterns noted below.
 
 ## Process
 
