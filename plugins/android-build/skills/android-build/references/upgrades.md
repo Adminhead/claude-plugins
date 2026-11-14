@@ -1,6 +1,6 @@
 # Upgrades within a major
 
-Verified 2026-11-01 against https://developer.android.com/build/releases/gradle-plugin (AGP 9.5.0: Gradle 9.6.0, JDK 17, SDK Build Tools 36.0.0, API 37). The page documents the current release only; fetch it again for any other AGP before choosing.
+The required Gradle, JDK, SDK Build Tools and API level depend on the AGP version. Read them from the AGP release notes at https://developer.android.com/build/releases/gradle-plugin (the page documents the current release only; use the compatibility table there for any other AGP) before choosing.
 
 AGP 8 to 9 is not covered here: `android-skills:agp-9-upgrade`.
 
