@@ -50,3 +50,4 @@ Research files with no verdict, one bullet each.
 - [evals-2026-10-21.md](research/evals-2026-10-21.md) — eval run, 2026-10-21 (vet triggers; dependency breaks the eval sandbox).
 - [inventory-2026-10-17/](research/inventory-2026-10-17/) — per-scope inventories behind the adoption plan.
 - [implementation-2026-10-17/](research/implementation-2026-10-17/) — implementation briefs and round notes for the 2026-10-17 batch.
+- [plugin-review-2026-11-14/](research/plugin-review-2026-11-14/) — per-family review reports and the usage and eval evidence table behind [plans/plugin-review-2026-11-14.md](plans/plugin-review-2026-11-14.md).
