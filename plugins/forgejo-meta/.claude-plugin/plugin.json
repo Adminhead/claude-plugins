@@ -16,6 +16,7 @@
     "forgejo-actions",
     "forgejo-mcp",
     "renovate",
-    "forgejo-readme"
+    "forgejo-readme",
+    "readme"
   ]
 }

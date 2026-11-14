@@ -1,0 +1,9 @@
+{
+  "name": "readme",
+  "version": "0.1.0",
+  "description": "README skill for GitHub, Forgejo, Codeberg and Gitea repos: detects the forge from the git remote, then writes, restructures, audits and beautifies README.md from facts in the repo, with templates by project type, a scored audit and link-check script, honest badges and the forge's rendering rules.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}
