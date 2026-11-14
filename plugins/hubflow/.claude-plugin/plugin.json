@@ -1,7 +1,7 @@
 {
   "name": "hubflow",
   "version": "0.1.1",
-  "description": "Deprecated: use git-flow. Teaches Claude to work in repos that use HubFlow (git hf), the archived GitHub-oriented git-flow fork, with warnings about its auto-pushing and merge behaviour.",
+  "description": "Deprecated: use branching-models. Teaches Claude to work in repos that use HubFlow (git hf), the archived GitHub-oriented git-flow fork, with warnings about its auto-pushing and merge behaviour.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

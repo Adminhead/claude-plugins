@@ -1,7 +1,7 @@
 {
   "name": "git-flow",
   "version": "0.1.1",
-  "description": "Follows the branching model a repo already uses and answers which to choose: git-flow with git-flow-next, AVH or plain git, HubFlow (git hf) and its auto-pushing, and trunk-based release rules.",
+  "description": "Deprecated: use branching-models. Teaches Claude the git-flow branching model: detecting it, feature/release/hotfix procedures with git-flow-next, AVH or plain git, and when to pick another model.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"

@@ -1,5 +1,5 @@
 ---
-name: not-git-flow-open-pr
+name: not-branching-open-pr
 description: Hard negative. Opening a pull request is a ship task and must not load the branching-model skill.
 tags: [routing]
 runs: 3

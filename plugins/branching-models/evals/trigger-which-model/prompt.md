@@ -1,6 +1,6 @@
 ---
 name: trigger-which-model
-description: A model-choice question with the repo's current behaviour described routes to git-flow, which now covers trunk-based too.
+description: A model-choice question with the repo's current behaviour described routes to branching-models, which now covers trunk-based too.
 tags: [routing]
 runs: 3
 max_turns: 6

@@ -1,0 +1,9 @@
+{
+  "name": "branching-models",
+  "version": "0.1.0",
+  "description": "Follows the branching model a repo already uses and answers which to choose: git-flow with git-flow-next, AVH or plain git, HubFlow (git hf) and its auto-pushing, and trunk-based release rules.",
+  "author": {
+    "name": "AdminHead",
+    "email": "support@adminhead.com"
+  }
+}

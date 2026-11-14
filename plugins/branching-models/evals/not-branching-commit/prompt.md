@@ -1,5 +1,5 @@
 ---
-name: not-git-flow-commit
+name: not-branching-commit
 description: Hard negative. A plain commit request belongs to git-commit and must not load the branching-model skill.
 tags: [routing]
 runs: 3

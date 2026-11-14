@@ -81,13 +81,18 @@
       "date": "2026-11-14"
     },
     "hubflow": {
-      "into": "git-flow",
-      "reason": "Merged into git-flow, which now covers git-flow, HubFlow and trunk-based",
+      "into": "branching-models",
+      "reason": "Merged into branching-models, which covers git-flow, HubFlow and trunk-based",
       "date": "2026-11-14"
     },
     "trunk-based": {
-      "into": "git-flow",
-      "reason": "Merged into git-flow, which now covers git-flow, HubFlow and trunk-based",
+      "into": "branching-models",
+      "reason": "Merged into branching-models, which covers git-flow, HubFlow and trunk-based",
+      "date": "2026-11-14"
+    },
+    "git-flow": {
+      "into": "branching-models",
+      "reason": "Merged into branching-models, which covers git-flow, HubFlow and trunk-based",
       "date": "2026-11-14"
     }
   },
