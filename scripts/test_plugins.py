@@ -728,3 +728,238 @@ def test_write_json_keeps_non_ascii(tmp_path):
     path = tmp_path / "x.json"
     plugins.write_json(path, {"d": "a → b"})
     assert "→" in path.read_text()
+
+
+# --- Reference rules: examples, agent values, hook and MCP files, skill links, archive paths ---
+
+def only(root, needle):
+    """Errors from `check` that contain `needle`, ignoring the stale-catalog error."""
+    return [e for e in plugins.check(root) if needle in e]
+
+
+def write_example(root, **sections):
+    write(root / "examples/claude-settings/settings.global.json", json.dumps(sections))
+
+
+def test_example_settings_ids_must_name_marketplace_plugins(uv):
+    write_example(uv, enabledPlugins={"uv-lock@adminhead": True, "ghost@adminhead": True, "other@elsewhere": True,
+                                      "<plugin>@adminhead": False},
+                  pluginConfigs={"gone@adminhead": {"options": {}}, "<plugin>@adminhead": {}})
+    found = only(uv, "examples/claude-settings")
+    assert sorted(e.split(": ", 1)[1].split(" is not")[0] for e in found) == ["enabledPlugins id ghost@adminhead",
+                                                                              "pluginConfigs id gone@adminhead"]
+    write_example(uv, enabledPlugins={"uv-lock@adminhead": True, "other@elsewhere": True})
+    assert only(uv, "examples/claude-settings") == []
+
+
+def test_example_settings_must_be_valid_json(uv):
+    write(uv / "examples/claude-settings/settings.global.json", "{ not json")
+    assert only(uv, "settings.global.json: invalid JSON")
+
+
+def agent_with(root, extra="", tools="Read, Grep, Glob"):
+    run(root, "new", "helper", "--kind", "agent", "--description", "Helps.")
+    path = root / "plugins/helper/agents/helper.md"
+    path.write_text(path.read_text().replace("tools: Read, Grep, Glob\n", f"{extra}tools: {tools}\n" if tools else extra))
+    return path
+
+
+def test_agent_skills_must_resolve(uv):
+    agent_with(uv, "skills:\n  - uv-lock:uv-lock\n  - uv-lock\n  - skill-creator\n  - gradle-skills:anything\n")
+    assert only(uv, "skills entry") == []
+    for bad in ("ghost", "uv-lock:ghost", "ghost:uv-lock"):
+        agent_with_path = uv / "plugins/helper/agents/helper.md"
+        text = agent_with_path.read_text()
+        agent_with_path.write_text(text.replace("skills:\n", f"skills:\n  - {bad}\n"))
+        assert any(f"skills entry '{bad}'" in e for e in plugins.check(uv)), bad
+        agent_with_path.write_text(text)
+
+
+def test_agent_skills_must_be_a_list_of_strings(uv):
+    path = agent_with(uv, "skills: {a: b}\n")
+    assert only(uv, "skills must be a list")
+    path.write_text(path.read_text().replace("skills: {a: b}", "skills:\n  - 3"))
+    assert only(uv, "skills entry 3")
+
+
+def test_agent_model_must_be_a_known_alias_or_id(uv):
+    path = agent_with(uv)
+    for good in ("sonnet", "opus", "haiku", "inherit", "opus[1m]", "claude-opus-5-5", "us.anthropic.claude-sonnet-4-5-v1:0"):
+        path.write_text(path.read_text().replace("tools:", f"model: {good}\ntools:", 1))
+        assert only(uv, "model") == [], good
+        path.write_text(path.read_text().replace(f"model: {good}\n", ""))
+    for bad in ("sonet", "gpt-4", "claude", "''"):
+        path.write_text(path.read_text().replace("tools:", f"model: {bad}\ntools:", 1))
+        assert only(uv, "agents/helper.md: model"), bad
+        path.write_text(path.read_text().replace(f"model: {bad}\n", ""))
+
+
+def test_agent_tools_must_be_non_empty(uv):
+    path = agent_with(uv, tools="[Read, Grep]")
+    assert only(uv, "tools must") == []
+    for bad in ("''", "[]", "[Read, '']"):
+        path.write_text(path.read_text().split("tools:")[0] + f"tools: {bad}\n---\n\nBody.\n")
+        assert only(uv, "tools must be a non-empty"), bad
+    path.write_text(path.read_text().split("tools:")[0] + "tools:\n---\n\nBody.\n")
+    assert only(uv, "tools must be a non-empty")
+
+
+def test_agent_without_tools_or_model_is_left_to_other_rules(uv):
+    agent_with(uv, tools=None)
+    assert only(uv, "tools must") == [] and only(uv, "model") == []
+
+
+def test_duplicate_marketplace_entry_fails(uv):
+    path = uv / ".claude-plugin/marketplace.json"
+    market = json.loads(path.read_text())
+    assert only(uv, "more than once") == []
+    market["plugins"].append(dict(market["plugins"][-1]))
+    plugins.write_json(path, market)
+    assert only(uv, "uv-lock: listed more than once")
+
+
+def hook_plugin(root, hooks_json, files=()):
+    run(root, "new", "guard", "--kind", "hook", "--description", "Guards.")
+    plugins.write_json(root / "plugins/guard/hooks/hooks.json", hooks_json)
+    for rel in files:
+        write(root / "plugins/guard" / rel, "x")
+
+
+COMMAND_HOOK = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
+    {"type": "command", "command": "bun", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/g.ts"]}]}]}}
+
+
+def test_hooks_json_valid_shapes_pass(root):
+    hook_plugin(root, {"description": "d", "hooks": {}})
+    assert only(root, "hooks/hooks.json") == []
+    hook_plugin_modules = {"modules": ["./register.tsx"]}
+    plugins.write_json(root / "plugins/guard/hooks/hooks.json", hook_plugin_modules)
+    write(root / "plugins/guard/hooks/register.tsx", "x")
+    assert only(root, "hooks/hooks.json") == []
+    plugins.write_json(root / "plugins/guard/hooks/hooks.json", {**COMMAND_HOOK, **hook_plugin_modules})
+    write(root / "plugins/guard/scripts/g.ts", "x")
+    assert only(root, "hooks/hooks.json") == []
+
+
+def test_hooks_json_bad_json_and_shape_fail(root):
+    hook_plugin(root, {})
+    path = root / "plugins/guard/hooks/hooks.json"
+    path.write_text("{ nope")
+    assert only(root, "hooks.json: invalid JSON")
+    path.write_text("[]")
+    assert only(root, "hooks.json: must be a JSON object")
+    # a bare event map, without the top-level "hooks" key, fails to load
+    path.write_text(json.dumps(COMMAND_HOOK["hooks"]))
+    assert only(root, "needs a \"hooks\" object and/or a \"modules\" list")
+    for broken in ({"hooks": []}, {"hooks": {"Stop": {}}}, {"hooks": {"Stop": [{"matcher": "x"}]}},
+                   {"hooks": {"Stop": [{"hooks": [{"command": "x"}]}]}},
+                   {"hooks": {"Stop": [{"hooks": [{"type": "command"}]}]}},
+                   {"modules": "./register.tsx"}, {"modules": [1]}):
+        path.write_text(json.dumps(broken))
+        assert only(root, "hooks/hooks.json"), broken
+
+
+def test_hooks_json_dangling_paths_fail(root):
+    hook_plugin(root, {**COMMAND_HOOK, "modules": ["./register.tsx"]})
+    found = only(root, "hooks/hooks.json")
+    assert any("${CLAUDE_PLUGIN_ROOT}/scripts/g.ts does not exist" in e for e in found)
+    assert any("module ./register.tsx is not a file inside the plugin" in e for e in found)
+    write(root / "plugins/guard/scripts/g.ts", "x")
+    write(root / "plugins/guard/hooks/register.tsx", "x")
+    assert only(root, "hooks/hooks.json") == []
+    # a module must live inside the plugin and a directory is not a module
+    write(root / "plugins/escape.tsx", "x")
+    plugins.write_json(root / "plugins/guard/hooks/hooks.json", {"modules": ["../../escape.tsx", "../scripts"]})
+    assert len(only(root, "is not a file inside the plugin")) == 2
+
+
+def mcp_plugin(root, content, name="srv"):
+    run(root, "new", name, "--kind", "mcp", "--description", "Serves.")
+    path = root / f"plugins/{name}/.mcp.json"
+    if isinstance(content, str):
+        path.write_text(content)
+    else:
+        plugins.write_json(path, content)
+    return path
+
+
+def test_mcp_json_valid_shapes_pass(root):
+    mcp_plugin(root, {"mcpServers": {"a": {"type": "http", "url": "https://x.test/mcp"},
+                                     "b": {"command": "sh", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/h.sh"]}}})
+    write(root / "plugins/srv/scripts/h.sh", "x")
+    assert only(root, ".mcp.json") == []
+
+
+def test_mcp_json_bad_shapes_fail(root):
+    path = mcp_plugin(root, "{ nope")
+    assert only(root, ".mcp.json: invalid JSON")
+    for bare in ({"sentry": {"command": "npx"}}, []):
+        path.write_text(json.dumps(bare))
+        assert only(root, ".mcp.json"), bare
+    path.write_text(json.dumps({"mcpServers": []}))
+    assert only(root, "the top level must be")
+    path.write_text(json.dumps({"mcpServers": {"a": {"type": "http"}}}))
+    assert only(root, "server 'a' needs a command or a url")
+    path.write_text(json.dumps({"mcpServers": {"a": {"command": "sh", "args": ["${CLAUDE_PLUGIN_ROOT}/gone.sh"]}}}))
+    assert only(root, "${CLAUDE_PLUGIN_ROOT}/gone.sh does not exist")
+
+
+def skill_body(root, body):
+    path = root / "plugins/uv-lock/skills/uv-lock/SKILL.md"
+    path.write_text("---\nname: uv-lock\ndescription: Locks deps. Use when TODO.\n---\n\n" + body)
+
+
+def test_skill_links_must_exist(uv):
+    base = uv / "plugins/uv-lock/skills/uv-lock"
+    write(base / "references/a.md", "x")
+    write(base / "scripts/run.sh", "x")
+    skill_body(uv, "See [a](references/a.md#top), `references/a.md`, [run](./scripts/run.sh) and `scripts/run.sh`.\n")
+    assert only(uv, "SKILL.md:") == []
+    skill_body(uv, "line\n[gone](references/gone.md) and `references/also-gone.md` and [t](templates/x.txt)\n")
+    found = only(uv, "SKILL.md:")
+    assert sorted(e.split(" does not exist")[0].split(": ")[1] for e in found) == [
+        "references/also-gone.md", "references/gone.md", "templates/x.txt"]
+    assert all(e.startswith("plugins/uv-lock/skills/uv-lock/SKILL.md:7:") for e in found)
+
+
+def test_skill_links_ignore_what_is_not_a_concrete_own_path(uv):
+    write(uv / "plugins/uv-lock/skills/uv-lock/references/a.md", "x")
+    skill_body(uv, "\n".join([
+        "```",
+        "see references/gone.md and `references/gone.md`",
+        "```",
+        "No extension: `references/gone`, a glob `references/*.md`, a placeholder `references/<name>.md`.",
+        "Other owners: the `godot` plugin's `references/gone.md`, `postgres` `references/gone.md`, its `references/gone.md`.",
+        "A path in the user's project, `assets/gone.prof`, and a repo path, `scripts/gone.py`, with no such dir here.",
+        "A URL: [x](https://example.test/references/gone.md) and a parent link [y](../other/references/gone.md).",
+        "A line reference `references/gone.md:12` and bare text references/gone.md.",
+    ]) + "\n")
+    assert only(uv, "SKILL.md:") == []
+
+
+def test_archive_references_must_exist(uv):
+    write(uv / "archive/plugins/old/README.md", "x")
+    write(uv / "plugins/uv-lock/README.md", "Moved from archive/plugins/old, see archive/plugins/old/README.md.\n")
+    write(uv / "CLAUDE.md", "See archive/plugins/old/ and the pattern archive/plugins/<name>.\n")
+    write(uv / ".claude/skills/s/SKILL.md", "ok archive/plugins/old.\n")
+    write(uv / "examples/e.md", "ok\n")
+    assert only(uv, "archive/plugins") == []
+    write(uv / "plugins/uv-lock/README.md", "line one\nMoved from archive/plugins/gone.\n")
+    write(uv / "CLAUDE.md", "See `archive/plugins/gone2/evals`.\n")
+    write(uv / ".claude/skills/s/SKILL.md", "ok archive/plugins/gone3\n")
+    write(uv / "examples/e.md", "see archive/plugins/gone4.\n")
+    found = only(uv, "archive/plugins")
+    assert sorted(found) == [
+        ".claude/skills/s/SKILL.md:1: archive/plugins/gone3 does not exist",
+        "CLAUDE.md:1: archive/plugins/gone2 does not exist",
+        "examples/e.md:1: archive/plugins/gone4 does not exist",
+        "plugins/uv-lock/README.md:2: archive/plugins/gone does not exist",
+    ]
+
+
+def test_archive_references_ignore_files_outside_live_paths_and_binaries(uv):
+    write(uv / "docs/plan.md", "archive/plugins/gone\n")
+    write(uv / "archive/notes.md", "archive/plugins/gone\n")
+    (uv / "plugins/uv-lock/blob.bin").write_bytes(b"\0archive/plugins/gone")
+    write(uv / "plugins/uv-lock/node_modules/x/README.md", "archive/plugins/gone\n")
+    assert only(uv, "archive/plugins") == []

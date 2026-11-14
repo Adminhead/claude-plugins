@@ -102,8 +102,9 @@ def components(plugin_dir, manifest):
     for kind, key, file in (("mcp", "mcpServers", ".mcp.json"), ("lsp", "lspServers", ".lsp.json")):
         servers = dict(manifest.get(key) or {}) if isinstance(manifest.get(key), dict) else {}
         if (plugin_dir / file).is_file():
-            data = load_json(plugin_dir / file)
-            servers.update(data.get(key, data))
+            data, _ = read_json(plugin_dir / file)  # a malformed file is reported by plugin_file_errors
+            found_servers = data.get(key, data) if isinstance(data, dict) else None
+            servers.update(found_servers if isinstance(found_servers, dict) else {})
         found += [(kind, name) for name in servers]
     return found
 
@@ -224,6 +225,12 @@ def check(root, since=None, warnings=None):
     errors += category_errors(entries)
     errors += eval_errors(root, entries, manifests, docs, skills, own, warnings)
     errors += exclusive_meta_errors(manifests, own)
+    errors += duplicate_entry_errors(market)
+    errors += example_settings_errors(root, entries, own)
+    errors += agent_frontmatter_errors(root, docs, skills)
+    errors += plugin_file_errors(root, manifests)
+    errors += skill_link_errors(root)
+    errors += archive_reference_errors(root)
     if (root / SHARED).is_dir():
         for canonical, copy in shared_copies(root):
             if canonical.read_bytes() != copy.read_bytes():
@@ -449,7 +456,251 @@ def category_errors(entries):
 
 # Skills that live outside this marketplace. An entry ending in `:*` is a plugin whose skill names are not listed here;
 # a regex naming that plugin counts as aimed at it.
-EXTERNAL_SKILLS = ("gradle-skills:*", "android-skills:*", "create-skill", "skill-creator")
+# codebase-memory is the user-level skill that ships with the codebase-memory MCP server; the coder-tier agents preload it.
+EXTERNAL_SKILLS = ("gradle-skills:*", "android-skills:*", "create-skill", "skill-creator", "codebase-memory")
+
+
+# --- References between files ------------------------------------------------
+# Rules that keep a removal safe: a plugin that is renamed, deprecated or archived must leave no dangling pointer.
+
+def read_json(path):
+    """Return (data, error) for a JSON file."""
+    try:
+        return load_json(path), None
+    except (ValueError, OSError) as e:
+        return None, f"invalid JSON ({e})"
+
+
+def duplicate_entry_errors(market):
+    errors, seen = [], set()
+    for entry in market.get("plugins", []):
+        name = entry.get("name")
+        if name in seen:
+            errors.append(f"{name}: listed more than once in marketplace.json plugins")
+        seen.add(name)
+    return errors
+
+
+EXAMPLE_SETTINGS = Path("examples/claude-settings")
+
+
+def example_settings_errors(root, entries, own):
+    """Every `<plugin>@<this marketplace>` id in an example settings file names a marketplace entry.
+
+    `<plugin>`-style placeholders and ids from other marketplaces are skipped. scripts/install.mjs installs the
+    `enabledPlugins` ids of settings.global.json and aborts on one that does not exist."""
+    errors = []
+    suffix = f"@{own}"
+    for f in sorted((root / EXAMPLE_SETTINGS).glob("*.json")) if own else []:
+        rel = f.relative_to(root)
+        data, err = read_json(f)
+        if err or not isinstance(data, dict):
+            errors.append(f"{rel}: {err or 'settings must be a JSON object'}")
+            continue
+        for key in ("enabledPlugins", "pluginConfigs"):
+            section = data.get(key)
+            for plugin_id in section if isinstance(section, dict) else ():
+                name = plugin_id[:-len(suffix)]
+                if plugin_id.endswith(suffix) and "<" not in name and name not in entries:
+                    errors.append(f"{rel}: {key} id {plugin_id} is not a plugin in marketplace.json")
+    return errors
+
+
+MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
+# `claude-opus-5-5`, optionally with a provider prefix (`us.anthropic.claude-...`) or a `[1m]` suffix.
+MODEL_ID_RE = re.compile(r"^(?:[a-z0-9.-]+\.)?claude-[a-z0-9][a-z0-9._-]*(?::\d+)?(?:\[1m\])?$")
+
+
+def model_ok(model):
+    return isinstance(model, str) and (model.removesuffix("[1m]") in MODEL_ALIASES or MODEL_ID_RE.match(model) is not None)
+
+
+def skill_ref_ok(ref, skills):
+    """A preload resolves as `skill` or `plugin:skill` to a marketplace skill, or names an external skill."""
+    if any(ref == skill or ref == f"{plugin}:{skill}" for plugin, skill in skills):
+        return True
+    return any(ref == e or (e.endswith(":*") and ref.startswith(e[:-1])) for e in EXTERNAL_SKILLS)
+
+
+def agent_frontmatter_errors(root, docs, skills):
+    """Agent `skills`, `model` and `tools` values Claude Code would reject or silently drop.
+
+    `skills` is the index component_doc_errors fills. Whether a preloaded skill's plugin is a declared dependency
+    is deliberately not checked."""
+    errors = []
+    for f in sorted((root / "plugins").glob("*/agents/*.md")):
+        data, _, _ = docs.md(f)
+        if data is None:
+            continue
+        rel = f.relative_to(root)
+        if "skills" in data:
+            refs = data["skills"]
+            refs = re.split(r"[,\s]+", refs.strip()) if isinstance(refs, str) else refs
+            if not isinstance(refs, list):
+                errors.append(f"{rel}: skills must be a list of skill names")
+            for ref in refs if isinstance(refs, list) else ():
+                if not isinstance(ref, str) or not skill_ref_ok(ref, skills):
+                    errors.append(f"{rel}: skills entry {ref!r} is not a skill in this marketplace or in EXTERNAL_SKILLS")
+        if "model" in data and not model_ok(data["model"]):
+            errors.append(f"{rel}: model {data['model']!r} must be {', '.join(MODEL_ALIASES)} or a full claude-* model id")
+        if "tools" in data:
+            tools = data["tools"]
+            items = tools if isinstance(tools, list) else [tools]
+            if not items or not all(isinstance(t, str) and t.strip() for t in items):
+                errors.append(f"{rel}: tools must be a non-empty string or list of tool names")
+    return errors
+
+
+PLUGIN_ROOT_REF = re.compile(r"\$(?:\{CLAUDE_PLUGIN_ROOT\}|CLAUDE_PLUGIN_ROOT)/([^\s\"'`$|;&<>()*?\[\]{}]+)")
+
+
+def strings_in(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, list):
+        for v in value:
+            yield from strings_in(v)
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from strings_in(v)
+
+
+def plugin_root_ref_errors(rel, pdir, value):
+    """`${CLAUDE_PLUGIN_ROOT}/<path>` inside a hook or server definition must name a file in the plugin."""
+    errors = []
+    for text in strings_in(value):
+        for m in PLUGIN_ROOT_REF.finditer(text):
+            if not (pdir / m.group(1)).exists():
+                errors.append(f"{rel}: ${{CLAUDE_PLUGIN_ROOT}}/{m.group(1)} does not exist")
+    return errors
+
+
+def hooks_file_errors(root, pdir):
+    f = pdir / "hooks/hooks.json"
+    rel = f.relative_to(root)
+    data, err = read_json(f)
+    if err or not isinstance(data, dict):
+        return [f"{rel}: {err or 'must be a JSON object'}"]
+    if "hooks" not in data and "modules" not in data:
+        return [f"{rel}: needs a \"hooks\" object and/or a \"modules\" list; a bare event map fails to load"]
+    errors = []
+    hooks = data.get("hooks", {})
+    if not isinstance(hooks, dict):
+        errors.append(f"{rel}: \"hooks\" must be an object keyed by event")
+        hooks = {}
+    for event, groups in hooks.items():
+        handlers = []
+        if not isinstance(groups, list) or not all(isinstance(g, dict) and isinstance(g.get("hooks"), list) for g in groups):
+            errors.append(f"{rel}: hooks.{event} must be a list of {{\"hooks\": [...]}} groups")
+            continue
+        for g in groups:
+            handlers += g["hooks"]
+        for h in handlers:
+            if not isinstance(h, dict) or not isinstance(h.get("type"), str):
+                errors.append(f"{rel}: hooks.{event} has a handler without a string type")
+            elif h["type"] == "command" and not (isinstance(h.get("command"), str) and h["command"].strip()):
+                errors.append(f"{rel}: hooks.{event} command handler has no command")
+    errors += plugin_root_ref_errors(rel, pdir, hooks)
+    modules = data.get("modules", [])
+    if not isinstance(modules, list) or not all(isinstance(m, str) for m in modules):
+        errors.append(f"{rel}: \"modules\" must be a list of file paths")
+        modules = []
+    for module in modules:
+        # Paths are relative to hooks/, the directory of hooks.json; ${CLAUDE_PLUGIN_ROOT}/ anchors at the plugin root.
+        target = pdir / module.removeprefix("${CLAUDE_PLUGIN_ROOT}/") if module.startswith("${") else f.parent / module
+        if not (pdir.resolve() in target.resolve().parents and target.is_file()):
+            errors.append(f"{rel}: module {module} is not a file inside the plugin")
+    return errors
+
+
+def mcp_file_errors(root, pdir):
+    f = pdir / ".mcp.json"
+    rel = f.relative_to(root)
+    data, err = read_json(f)
+    if err or not isinstance(data, dict):
+        return [f"{rel}: {err or 'must be a JSON object'}"]
+    servers = data.get("mcpServers")
+    if not isinstance(servers, dict):
+        return [f"{rel}: the top level must be {{\"mcpServers\": {{...}}}}; a bare server map is not the plugin format"]
+    errors = []
+    for name, server in servers.items():
+        if not isinstance(server, dict) or not any(isinstance(server.get(k), str) and server[k] for k in ("command", "url")):
+            errors.append(f"{rel}: server {name!r} needs a command or a url")
+    return errors + plugin_root_ref_errors(rel, pdir, servers)
+
+
+def plugin_file_errors(root, manifests):
+    """`hooks/hooks.json` and `.mcp.json` parse, have the shape Claude Code loads, and point at files that exist."""
+    errors = []
+    for name, manifest in manifests.items():
+        pdir = root / "plugins" / name
+        if manifest is None:
+            continue
+        if (pdir / "hooks/hooks.json").is_file():
+            errors += hooks_file_errors(root, pdir)
+        if (pdir / ".mcp.json").is_file():
+            errors += mcp_file_errors(root, pdir)
+    return errors
+
+
+# A relative path into one of a skill's own directories, ending in a file extension. Spaces, globs, `<placeholders>`
+# and `${vars}` never match, so only a concrete path is checked.
+SKILL_PATH = r"(?:\./)?(?:references|scripts|templates|assets)/[^\s)`'\"<>#?*{}$\[\]]*\.[A-Za-z0-9]+"
+SKILL_LINK_RE = re.compile(rf"\]\(\s*({SKILL_PATH})(?:#[^)\s]*)?\s*\)|`({SKILL_PATH})`")
+# A backticked path right after "`other-skill` ", "the plugin's " or "its " belongs to another skill.
+OTHER_OWNER_RE = re.compile(r"(?:'s|\bits|`)\s+$")
+
+
+def skill_link_errors(root):
+    """Markdown links and backticked `references/x.md`-style paths in a SKILL.md must exist next to it.
+
+    A backticked path is checked only when the skill ships that top-level directory and the text does not hand
+    the path to another skill; prose also names files in a user's project and in this repo."""
+    errors = []
+    for f in sorted((root / "plugins").glob("*/skills/*/SKILL.md")):
+        fenced = False
+        for n, line in enumerate(f.read_text(errors="replace").splitlines(), 1):
+            if line.lstrip().startswith(("```", "~~~")):
+                fenced = not fenced
+            elif not fenced:
+                for m in SKILL_LINK_RE.finditer(line):
+                    ref = m.group(1) or m.group(2)
+                    if m.group(2) and (OTHER_OWNER_RE.search(line[:m.start()])
+                                       or not (f.parent / ref.removeprefix("./").split("/")[0]).is_dir()):
+                        continue
+                    if not (f.parent / ref).exists():
+                        errors.append(f"{f.relative_to(root)}:{n}: {ref} does not exist")
+    return errors
+
+
+ARCHIVE_REF_RE = re.compile(r"archive/plugins/([A-Za-z0-9][A-Za-z0-9._-]*)")
+LIVE_PATHS = ("plugins", ".claude/skills", "CLAUDE.md", "examples")
+SKIP_DIRS = {"node_modules", ".git"}
+
+
+def live_files(root):
+    for entry in LIVE_PATHS:
+        base = root / entry
+        if base.is_file():
+            yield base
+        for f in sorted(base.rglob("*")) if base.is_dir() else ():
+            if f.is_file() and not SKIP_DIRS & set(f.relative_to(root).parts):
+                yield f
+
+
+def archive_reference_errors(root):
+    """Live files must not point at `archive/plugins/<name>` for a name that is not archived."""
+    errors = []
+    for f in live_files(root):
+        raw = f.read_bytes()
+        if b"\0" in raw[:4096]:
+            continue
+        for n, line in enumerate(raw.decode(errors="replace").splitlines(), 1):
+            for m in ARCHIVE_REF_RE.finditer(line):
+                name = m.group(1).rstrip(".")
+                if not (root / "archive/plugins" / name).is_dir():
+                    errors.append(f"{f.relative_to(root)}:{n}: archive/plugins/{name} does not exist")
+    return errors
 
 # Root suites that load the plugins of whole metas: expected plugins = closure of the metas, minus meta and bundle
 # plugins, minus `exclude`, plus `extra`. `3rd-party/<dir>` names an external checkout.
