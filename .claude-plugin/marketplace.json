@@ -31,7 +31,7 @@
       "name": "design-core",
       "source": "./plugins/design-core",
       "description": "Core bundle of UI and UX design plugins that the web and design metas install. Ships no components of its own.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "bundle"
     },
     {
@@ -149,8 +149,8 @@
     {
       "name": "accessibility-review",
       "source": "./plugins/accessibility-review",
-      "description": "Audits a design, mockup or page against WCAG 2.2 AA at design level: contrast, focus visibility, target size, keyboard and dragging alternatives, labels, errors and authentication. Use for \"audit accessibility\", \"check a11y\", \"is this accessible?\" or a WCAG check before handoff.",
-      "version": "0.1.1",
+      "description": "Deprecated. Audits a design, mockup or page against WCAG 2.2 AA at design level: contrast, focus visibility, target size, keyboard and dragging alternatives, labels, errors and authentication. Use for \"audit accessibility\", \"check a11y\", \"is this accessible?\" or a WCAG check before handoff.",
+      "version": "0.1.2",
       "category": "development"
     },
     {

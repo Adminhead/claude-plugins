@@ -1,6 +1,6 @@
 {
   "name": "design-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Core bundle of UI and UX design plugins that the web and design metas install. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -11,7 +11,6 @@
     "ui-critic",
     "web-design",
     "screen-reader-testing",
-    "accessibility-review",
     "ux-copy"
   ]
 }
