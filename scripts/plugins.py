@@ -52,7 +52,7 @@ MULTI_COMPONENT = {
 # Pairs of metas whose plugin sets must not overlap, except through baseline.
 EXCLUSIVE_METAS = [("github-meta", "forgejo-meta")]
 # Plugins that detect the forge themselves, so both forge metas may list them.
-FORGE_NEUTRAL = {"readme"}
+FORGE_NEUTRAL = {"readme", "pr-comments"}
 
 
 def is_meta(name):
