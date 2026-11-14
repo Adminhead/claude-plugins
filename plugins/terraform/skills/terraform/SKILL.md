@@ -11,7 +11,8 @@ This skill was checked against Terraform 1.16 docs (developer.hashicorp.com/terr
 
 ## Safety contract
 
-- Run `init`, `validate`, `fmt -check`, and `plan` freely. Never run `apply`, `destroy`, `state rm`, `state mv`, `force-unlock`, or `import` (the CLI command) without an explicit instruction naming the target workspace. These change real infrastructure or state, and state edits are hard to undo.
+- Run `init`, `validate`, `fmt -check`, and `plan` freely in a repo the user owns and works in. They are not inert: `init` downloads modules and providers, `plan` runs provider code and every `data "external"` program (re-run on each refresh), and wrappers (`mise run tofu`, `make`, `task`) run repo-defined code. In an unfamiliar or freshly cloned repo, first read the wrapper and grep for `data "external"` and `local-exec` (the latter runs at apply), and check module and provider sources.
+- Never run `apply` (including `apply -refresh-only`, which writes state), `destroy`, `state rm`, `state mv`, `state push`, `state replace-provider`, `taint`, `untaint`, `workspace delete`, `force-unlock`, `import` (the CLI command), or `terraform test` with `command = apply` runs, without an explicit instruction naming the target workspace. These change real infrastructure or state, and state edits are hard to undo. `workspace delete -force` orphans resources the state still tracks, and `state push -force` overwrites the remote state.
 - Save plans with `plan -out=tfplan` and show the user the diff. Apply only that saved file, so what was reviewed is what runs. A plan file holds sensitive values in plaintext, so add `tfplan*` and `*.tfplan.json` to `.gitignore`, keep them out of commits, and delete them after apply or scan.
 - Never paste state, plan, or `.tfvars` contents into replies. They hold secrets in plain text (see the secrets section).
 - Use `-lock=false` only for a stated emergency, and say so. Prefer `-lock-timeout` when another run holds the lock.
