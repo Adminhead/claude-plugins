@@ -1,14 +1,14 @@
 # Triage rubric and reply drafts
 
-Read at step 1 when a thread's action isn't obvious (a bot suggestion, a design opinion, two reviewers disagreeing), and at step 3 when drafting replies. Everything here produces text for the user. Posting, resolving, and requesting reviews stay with the user.
+Read at triage when a thread's action isn't obvious (a bot suggestion, a design opinion, two reviewers disagreeing), and at the report when drafting replies. Applies on every forge. Everything here produces text for the user. Posting, resolving, and requesting reviews stay with the user.
 
 ## Reviewer type
 
 | Reviewer | Default action |
 | --- | --- |
 | Human | `clarify` or `push back` goes to the user as an open question, never as a settled decision. Recommend `fix` only when the request is clear and local |
-| Security or code-scanning bot (for example `github-advanced-security`) | Surface to the user. Follow the repo's documented suppression or fix convention if there is one, and cite it |
-| Other review bots (Copilot and similar) | Triage with the rubric below, since their suggestions are often generic |
+| Security or code-scanning bot (on GitHub, for example `github-advanced-security`) | Surface to the user. Follow the repo's documented suppression or fix convention if there is one, and cite it |
+| Other review bots (on GitHub, Copilot and similar) | Triage with the rubric below, since their suggestions are often generic |
 
 A human thread left unanswered reads as ignored, so every human row ends with a draft reply, even when the action is `push back`.
 
@@ -28,7 +28,7 @@ Score each request on value (what the fix gains, minus the cost to make and revi
 
 - A real correctness bug: lifetime or race that loses data, an off-by-one, a null dereference, an unhandled error path, a check that skips legitimate cases.
 - A cross-cutting concern with a clean local fix, such as widening a lock's scope or pulling a duplicated check into a helper.
-- Drift between a code comment or the test plan in the repo and the code. When the PR description drifted, editing it is a write on GitHub, so the row is `clarify` and the report includes corrected text for the user to paste.
+- Drift between a code comment or the test plan in the repo and the code. When the PR description drifted, editing it is a write on the forge, so the row is `clarify` and the report includes corrected text for the user to paste.
 
 ## Push back when the request is
 
@@ -40,7 +40,7 @@ Score each request on value (what the fix gains, minus the cost to make and revi
 
 ## Check repo policy before a generic fix
 
-Some findings are settled by project convention rather than general reasoning. Look at `CLAUDE.md`, `CONTRIBUTING`, `.github/` instructions, linter and spell-check config, and neighboring files before deciding.
+Some findings are settled by project convention rather than general reasoning. Look at `CLAUDE.md`, `CONTRIBUTING`, `.github/`, `.forgejo/` or `.gitea/` instructions, linter and spell-check config, and neighboring files before deciding.
 
 - Spell-check findings follow the repo's own mechanism (reword, dictionary entry, or inline ignore).
 - Lint suppressions need the inline rationale the repo expects.

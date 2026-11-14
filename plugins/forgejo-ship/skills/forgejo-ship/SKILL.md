@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 Carry current work through commit, push, and optionally PR and merge on a Forgejo or Codeberg repo. The user's explicit request for the chosen level is the authorization for every step at that level, so don't pause for approval between steps. Stop and report when a gate fails. Codeberg's terms restrict projects made mostly of generative-AI code, so never post or merge unattended. Run it only for a level the user asked for; an agent must not pick the level on its own.
 
-Not for writing or improving a PR body (`forgejo-pr`), commit-only requests (`git-commit`), acting on review comments (`forgejo-pr-comments`), or GitHub repos (`ship`).
+Not for writing or improving a PR body (`forgejo-pr`), commit-only requests (`git-commit`), acting on review comments (`pr-comments`), or GitHub repos (`ship`).
 
 Arguments: $ARGUMENTS
 

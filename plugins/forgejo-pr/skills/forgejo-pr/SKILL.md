@@ -5,7 +5,7 @@ description: "Prepares and opens a Forgejo or Codeberg pull request with fj, wit
 
 # Forgejo Pull Request
 
-Produce a PR a reviewer can judge in minutes. Not for acting on review feedback (`/forgejo-pr-comments`) or a one-shot commit, push, open and merge flow (`forgejo-ship`).
+Produce a PR a reviewer can judge in minutes. Not for acting on review feedback (`/pr-comments`) or a one-shot commit, push, open and merge flow (`forgejo-ship`).
 
 Pushing a branch, opening or editing a PR, and merging are shared-state writes. Draft everything locally, show it, and run each write only after the user approves it. A request to "open a PR" is not approval of the command. Before running, show the title, the body, the `git push` remote and branch, and the full `fj pr create` command line, and run them after the user confirms. Codeberg's terms restrict projects made mostly of generative-AI code, so never post unattended and leave the decision to the user.
 

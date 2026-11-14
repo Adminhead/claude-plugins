@@ -1,7 +1,7 @@
 {
   "name": "pr-comments",
-  "version": "0.1.1",
-  "description": "Manual /pr-comments: pull a PR's unresolved review threads and review summaries into context, triage them, and fix the ones you pick. Read-only on GitHub. Not for Forgejo or Codeberg PRs (/forgejo-pr-comments).",
+  "version": "0.1.2",
+  "description": "Manual /pr-comments: pull a PR's review comments and review summaries into context on GitHub (gh) or Forgejo and Codeberg (fj), triage them, and fix the ones you pick. Detects the forge from the git remote. Read-only.",
   "author": {
     "name": "AdminHead",
     "email": "support@adminhead.com"
