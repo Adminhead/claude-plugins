@@ -71,7 +71,7 @@ Check power and reset, then the console, then one peripheral at a time with a kn
 ## Build, flash, monitor
 
 1. Run `idf.py --version`. A path that exists is not proof the toolchain works. If it fails, the user loads the environment with `. $IDF_PATH/export.sh` in that shell, and the setup is theirs to fix.
-2. Build with the project's wrapper when it has one, otherwise `idf.py build`. Copy wrappers from [templates/scripts](templates/scripts/) when the project has none: `common.sh`, `build.sh`, `flash.sh`, `monitor.sh`. They check the toolchain and target, and never run `set-target`, which wipes `sdkconfig`.
+2. Build with the project's wrapper when it has one, otherwise `idf.py build`. Copy wrappers from [templates/scripts](templates/scripts/) when the project has none: `common.sh`, `build.sh`, `flash.sh`, `monitor.sh`. They check the toolchain and target, and never run `set-target`, which wipes `sdkconfig`. `flash.sh` also refuses when `sdkconfig` enables `CONFIG_SECURE_BOOT` or `CONFIG_SECURE_FLASH_ENC_ENABLED` unless `ACK_EFUSE=1` is set.
 3. A failing build, or one that warns about something real, is not done. Fix it and rebuild; try `idf.py fullclean build` when stale config could explain the failure.
 4. `idf.py flash monitor` is the usual hardware loop. `monitor` needs an interactive terminal, so hand the user the command when you cannot run one. Flash only after the confirmation above.
 5. If the project depends on ESP-ADF, ESP-SR, or similar frameworks, record exact versions and compatibility evidence before building ([dependency compatibility](references/dependency-compatibility.md)).
