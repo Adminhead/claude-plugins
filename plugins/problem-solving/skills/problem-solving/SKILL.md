@@ -42,6 +42,8 @@ You will show commands, outputs and captured artifacts. Replace every secret wit
 
 7. **Name the root cause and correction boundary.** State the smallest condition that explains the reproduced symptom and why the evidence rules out the nearest alternatives. Correct it at the owner of that condition. Leave out cleanup, redesign, and unmeasured optimization. Use `coding` for implementation mechanics and `unit-testing` for the regression test.
 
+   A read-only caller (such as the `debugger` agent) stops after step 7 and returns the proposed fix and regression test instead of applying them: skip steps 8 and 9 except the repro check, and edit or commit nothing.
+
 8. **Implement after evidence.** Turn the minimized repro into a regression test at a seam that exercises the real bug pattern, and watch it fail before the fix. If you forced the red by mutating code or a fixture, diff against a pristine copy to prove the mutation landed. If the only available seam is too shallow to replicate the chain that triggered the bug, don't write a falsely reassuring test there: report the missing seam as a finding. Apply one coherent change. If the fix invalidates the diagnosis, revert it and return to the hypotheses rather than stacking fixes. Use `mistake-proof` (if installed) to sweep for other instances of the same defect.
 
 9. **Verify, clean up, and stop.** Before declaring done:
