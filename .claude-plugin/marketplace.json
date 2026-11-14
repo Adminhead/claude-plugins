@@ -143,7 +143,7 @@
       "name": "orchestration-meta",
       "source": "./plugins/orchestration-meta",
       "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own.",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "category": "meta"
     },
     {
@@ -164,7 +164,7 @@
       "name": "ansible",
       "source": "./plugins/ansible",
       "description": "Ansible skill: playbooks, roles and inventories with idempotency proof, check-mode limits, validate hooks, vault or sops secrets, and ansible-lint style.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -220,14 +220,14 @@
       "name": "coding",
       "source": "./plugins/coding",
       "description": "Makes the smallest complete, maintainable code change for a bounded feature, fix, integration, or behavior-preserving refactor. Use when implementing or modifying code whose approach is already clear (\"add X to Y\", \"fix this function\", \"refactor this without changing behavior\", \"simplest solution\", \"this is over-engineered\").",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
       "name": "debugger",
       "source": "./plugins/debugger",
       "description": "A read-only diagnosis subagent for failures with an unknown cause: reproduce first, rank hypotheses, confirm with a probe that flips the result, and return the root cause with a fix recommendation.",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "category": "development"
     },
     {
@@ -458,7 +458,7 @@
       "name": "playwright-cli",
       "source": "./plugins/playwright-cli",
       "description": "Drive a headless, isolated browser from Bash with playwright-cli through a verb-checked wrapper: inspect pages, fill forms, take screenshots, debug console and network errors, and run smoke QA.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "development"
     },
     {
@@ -472,14 +472,14 @@
       "name": "prisma",
       "source": "./plugins/prisma",
       "description": "Prisma ORM 6 and 7 traps for TypeScript backends, such as updateMany returning a count, interactive transaction timeouts, migrate dev resets, edited applied migrations, undefined filters, P2002/P2025/P2003 handling, serverless connections and driver adapters. Use when writing a Prisma schema, query, transaction or migration, or debugging one.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "problem-solving",
       "source": "./plugins/problem-solving",
       "description": "Root-cause diagnosis for failures, flaky tests and performance regressions: a red-capable feedback loop, competing falsifiable hypotheses, one-variable probes and evidence-backed fixes. Also algorithm choice under unclear constraints.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -584,7 +584,7 @@
       "name": "terraform",
       "source": "./plugins/terraform",
       "description": "Terraform, OpenTofu and Terragrunt skill: safe plan and saved-plan apply, plan review, state and refactoring blocks, Terratest, and security scanning with Trivy, Checkov and OPA.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -892,7 +892,7 @@
       "name": "esp-idf",
       "source": "./plugins/esp-idf",
       "description": "ESP-IDF firmware skill for ESP32-family chips: write, review, debug and bring-up, with build/flash/monitor wrappers, templates, and confirmation gates before flashing, eFuse burns or partition changes.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1081,7 +1081,7 @@
       "name": "security-scan",
       "source": "./plugins/security-scan",
       "description": "Manual security audit of a branch: gitleaks, semgrep, trivy, govulncheck and pip-audit in one script, subagent verification, a ranked findings table, plus CI and supply-chain trust checks and SBOM guidance.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "category": "development"
     },
     {
@@ -1172,7 +1172,7 @@
       "name": "csharp",
       "source": "./plugins/csharp",
       "description": "Writes, reviews, refactors and debugs C# and .NET code (types, nullable references, async and cancellation, exceptions, DI, options and logging in the generic host, file-based apps). Use for work in *.cs or *.csx files, \"review this C# class\", CS86xx nullable warnings, a deadlock or sync-over-async bug, or a rename across a solution.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1221,7 +1221,7 @@
       "name": "dotnet-upgrade-guide",
       "source": "./plugins/dotnet-upgrade-guide",
       "description": "Upgrades .NET projects - TFM hops from .NET 8 to 11 with breaking changes by area, legacy csproj to SDK-style, packages.config to PackageReference, AOT and trim warnings, Thread.Abort removal, test framework moves. Use for \"upgrade to .NET 10\", SDK-style conversion, IL2026/IL3050 warnings, or moving to xUnit v3, MSTest v4 or MTP.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1319,7 +1319,7 @@
       "name": "godot",
       "source": "./plugins/godot",
       "description": "Godot 4 entry point: GDScript, nodes and scenes, signals, custom Resources, autoloads, project.godot and safe .tscn/.tres edits (uid:// and .uid files), with references for 2D, 3D, UI, input, audio, animation, saves, performance and debugging, and routing to the other godot plugins and the editor MCP.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1375,7 +1375,7 @@
       "name": "godot-physics",
       "source": "./plugins/godot-physics",
       "description": "Godot 4 physics skill: CharacterBody controllers and move_and_slide, rigid, static, animatable and area bodies, collision layers and masks, raycasts and space queries, physics interpolation and Jolt, with references for controller recipes, queries, ragdolls and soft bodies.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1837,7 +1837,7 @@
       "name": "android-build",
       "source": "./plugins/android-build",
       "description": "Diagnoses and writes Android Gradle Plugin builds. Use for \"Manifest merger failed\", \"Duplicate class found in modules\", \"Namespace not specified\", minSdk conflicts with a library, resource linking failures, 16 KB page size warnings, or ClassNotFoundException or NoSuchMethodError only in the release build (keep rules). Covers the android {} block, build types, flavors, androidComponents, signing, desugaring, KSP and kapt, lint baselines and AGP, Gradle and JDK versions within a major.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1865,7 +1865,7 @@
       "name": "play-publishing",
       "source": "./plugins/play-publishing",
       "description": "Sets up and runs the release path to Google Play. Use for \"Version code 42 has already been used\", \"signed with the wrong key\", a lost upload key, shipping the AAB to the internal track from CI, staged rollouts, or the target API deadline. Covers upload key versus Play App Signing, Gradle Play Publisher, fastlane supply, tracks, mapping upload, store listing and data safety drafts. Never publishes without an explicit yes.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1921,7 +1921,7 @@
       "name": "plan-ledger-usage",
       "source": "./plugins/plan-ledger-usage",
       "description": "How to use the plan-ledger plan tool (mcp__plan-ledger__plan): the orchestrator and subagent call sequences, the verifyChecks setting and parallelSafe items. Preloaded by the agents that list the tool.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     }
   ]
