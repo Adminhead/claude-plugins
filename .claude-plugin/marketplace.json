@@ -220,7 +220,7 @@
       "name": "coding",
       "source": "./plugins/coding",
       "description": "Makes the smallest complete, maintainable code change for a bounded feature, fix, integration, or behavior-preserving refactor. Use when implementing or modifying code whose approach is already clear (\"add X to Y\", \"fix this function\", \"refactor this without changing behavior\", \"simplest solution\", \"this is over-engineered\").",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development"
     },
     {
@@ -255,7 +255,7 @@
       "name": "design-handoff",
       "source": "./plugins/design-handoff",
       "description": "Writes a developer handoff spec from a finished design: layout, tokens, component props, states and interactions, responsive breakpoints, content limits, edge cases, motion and accessibility notes. Use when a design is ready for engineering, or for \"write handoff specs\", \"spec this screen for developers\".",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -283,14 +283,14 @@
       "name": "e2e-testing",
       "source": "./plugins/e2e-testing",
       "description": "Write, run and diagnose browser end-to-end tests (Playwright, Cypress) for critical user journeys, with accessible locators, condition-based waits and flake triage.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "fastapi",
       "source": "./plugins/fastapi",
       "description": "Bounded changes to existing FastAPI apps: lifespan, dependencies, Pydantic models, async handlers, auth dependencies, transactions and dependency_overrides tests.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -507,7 +507,7 @@
       "name": "react",
       "source": "./plugins/react",
       "description": "Changes, reviews and debugs React components: state ownership, effects, keys, render purity, Server Components and Actions, accessibility, measured performance, React 19 upgrades and component tests. Use for .tsx/.jsx behavior or render cost, such as \"this list lags when I type\", \"it re-renders too much\", effect loops or hydration mismatches.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -549,7 +549,7 @@
       "name": "screen-reader-testing",
       "source": "./plugins/screen-reader-testing",
       "description": "Plan, run with the user and report manual screen-reader and keyboard tests of a built web journey (NVDA, JAWS, VoiceOver, Orca, TalkBack).",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -612,7 +612,7 @@
       "name": "typescript",
       "source": "./plugins/typescript",
       "description": "Handles TypeScript type-level and compiler work, covering tsconfig strictness, narrowing, generics, discriminated unions, declarations and module resolution, public type APIs, runtime validation of unknown data, and type tests. Use when editing *.ts/*.tsx types or tsconfig.json, or fixing tsc errors.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -654,28 +654,28 @@
       "name": "ux-copy",
       "source": "./plugins/ux-copy",
       "description": "Writes and reviews product microcopy: button and CTA labels, error messages, empty states, confirmation dialogs, tooltips, loading and onboarding text. Use for \"what should this button say?\", \"write copy for\", \"review this error message\" or wording a dialog. Not for marketing page copy or long-form docs.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "vite",
       "source": "./plugins/vite",
       "description": "Configures and debugs Vite 7 and 8 (Rolldown/Oxc): env variables and client-bundle exposure, dev vs build vs preview, chunking, library mode, SSR externals, pre-bundling, proxy and container access. Use when editing vite.config.*, when a build differs from dev, an env value is missing or leaked, chunks go stale after a deploy, or the dev server is slow.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "vue",
       "source": "./plugins/vue",
       "description": "Builds and debugs Vue 3 components with the Composition API, Pinia stores and Nuxt 4 data fetching: props, emits, defineModel, composables, reactivity, watchers, SSR safety and tests. Use when adding, changing or debugging .vue files, Pinia stores or a Nuxt app, such as lost reactivity, stale state, hydration mismatches or duplicate fetches.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
       "name": "web-design",
       "source": "./plugins/web-design",
       "description": "Extend an existing product's visual system: hierarchy, responsive, state and accessibility intent, DESIGN.md, and review of the rendered UI against it.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -752,7 +752,7 @@
       "name": "api-rest-design",
       "source": "./plugins/api-rest-design",
       "description": "REST/HTTP API contract design and review skill: resources and methods, status codes, RFC 9457 errors, pagination, rate-limit headers, contract-first OpenAPI with drift checks, and versioning and deprecation policy.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -766,7 +766,7 @@
       "name": "app-auth",
       "source": "./plugins/app-auth",
       "description": "Application-side authentication and authorization: sessions, password and recovery flows, OAuth/OIDC callbacks, JWT validation, tenant and ownership checks, cookies, CSRF and rate limits.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1039,7 +1039,7 @@
       "name": "prototype",
       "source": "./plugins/prototype",
       "description": "Builds a throwaway prototype that answers one design question, either a single-file HTML demo that drives a state model through hard cases or several structurally different UI variants on one route. Use to sanity-check a state model, data shape or API feel, or to compare layouts before committing.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1081,7 +1081,7 @@
       "name": "security-scan",
       "source": "./plugins/security-scan",
       "description": "Manual security audit of a branch: gitleaks, semgrep, trivy, govulncheck and pip-audit in one script, subagent verification, a ranked findings table, plus CI and supply-chain trust checks and SBOM guidance.",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "category": "development"
     },
     {
@@ -1130,7 +1130,7 @@
       "name": "threat-model",
       "source": "./plugins/threat-model",
       "description": "STRIDE threat modeling from the code: trust boundaries, data-flow diagram, verified findings tiered by exploitability, attack trees, testable security requirements and mapped controls.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
@@ -1235,14 +1235,14 @@
       "name": "game-ai",
       "source": "./plugins/game-ai",
       "description": "Engine-agnostic game AI skill: NPC and enemy decisions with FSMs, behavior trees and utility AI, steering and flocking, A*, flow fields and navmeshes in concept, perception and difficulty knobs.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "game-architecture",
       "source": "./plugins/game-architecture",
       "description": "Engine-agnostic game code structure: game loop and fixed timestep, state machines (flat, hierarchical, parallel), composition, event bus, object pools, data-driven content, inventory and ability systems, scene flow and save systems.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1263,7 +1263,7 @@
       "name": "game-design",
       "source": "./plugins/game-design",
       "description": "Game design documents and decisions: pitch, pillars, core loop, mechanic specs, progression, economy and balancing (curves, sinks and faucets, loot tables, simulation), difficulty and scope cuts. Engine-neutral templates and checklists.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1312,21 +1312,21 @@
       "name": "game-ui",
       "source": "./plugins/game-ui",
       "description": "Engine-neutral game UI and UX: HUDs, menus and overlays, a screen stack, resolution and aspect scaling, safe areas, gamepad focus navigation, event-driven HUDs, settings screens, and a game accessibility checklist.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "godot",
       "source": "./plugins/godot",
       "description": "Godot 4 entry point: GDScript, nodes and scenes, signals, custom Resources, autoloads, project.godot and safe .tscn/.tres edits (uid:// and .uid files), with references for 2D, 3D, UI, input, audio, animation, saves, performance and debugging, and routing to the other godot plugins and the editor MCP.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
       "name": "godot-addons",
       "source": "./plugins/godot-addons",
       "description": "Godot addon APIs for Beehave and LimboAI behavior trees, Phantom Camera and Dialogue Manager v4. Use when a project has addons/beehave, addons/limboai, addons/phantom_camera or addons/dialogue_manager, or when choosing, installing or writing code and .dialogue files for one of them.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development"
     },
     {
@@ -1403,7 +1403,7 @@
       "name": "level-design",
       "source": "./plugins/level-design",
       "description": "Engine-agnostic level design: player metrics, blockout to playable, critical path and gating, pacing and tension curves, encounters, readability, and seeded procedural generation (noise, rooms and corridors, BSP, cellular caves, WFC).",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development"
     },
     {
@@ -1711,7 +1711,7 @@
       "name": "vet",
       "source": "./plugins/vet",
       "description": "Decides whether an external repo, skill, plugin or MCP server is worth adding to this marketplace, dedupes against past verdicts first, and records one of five fixed verdicts in the research ledger. Installs nothing; plugin-vetter checks anything adopted.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "development"
     },
     {
