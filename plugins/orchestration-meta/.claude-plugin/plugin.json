@@ -1,6 +1,6 @@
 {
   "name": "orchestration-meta",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Orchestrated sessions: a main orchestration agent, the hook that builds its routing rules from the installed agents, and a set of general-purpose agents. Ships no components of its own.",
   "author": {
     "name": "AdminHead",
@@ -14,6 +14,7 @@
     "reviewer",
     "debugger",
     "scribe",
+    "plan-ledger",
     "plan-ledger-usage"
   ]
 }
